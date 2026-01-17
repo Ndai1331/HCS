@@ -43,6 +43,7 @@
     private bool _isInitialized = false;
     private bool _isInitializing = false; // Prevent multiple initialization attempts
     private DotNetObjectReference<NotificationToast>? _objRef;
+    private Dictionary<Guid, string> _chatNotifications = new(); // Track chat notifications by ConversationId
 
     [Inject] private NavigationManager NavigationManager { get; set; } = null!;
     [Inject] private INotificationsAppService NotificationsAppService { get; set; } = null!;
@@ -68,18 +69,20 @@
             {
                 // Create DotNetObjectReference for JavaScript interop
                 _objRef = DotNetObjectReference.Create(this);
-                
-                // Initialize SignalR connection from JavaScript (browser-side)
-                // This ensures cookies are sent correctly with the connection
-                // Using SafeInvokeVoidAsync to automatically handle JSDisconnectedException
+                // 1. Initialize Notification Hub
                 await JS.SafeInvokeVoidAsync("notificationHub.start", _objRef);
+                NotificationLogger.LogInformation("[NotificationToast] ✅ Notification Hub initialized");
+                
+                // 2. Initialize Chat Hub for chat notifications
+                await JS.SafeInvokeVoidAsync("chatHub.startForNotifications", _objRef);
+                NotificationLogger.LogInformation("[NotificationToast] ✅ Chat Hub initialized for notifications");
                 
                 _isInitialized = true;
-                NotificationLogger.LogInformation("[NotificationToast] ✅ SignalR connection initialized from JavaScript. IsInitialized={IsInitialized}", _isInitialized);
+                NotificationLogger.LogInformation("[NotificationToast] ✅ All SignalR connections initialized. IsInitialized={IsInitialized}", _isInitialized);
             }
             catch (Exception ex)
             {
-                NotificationLogger.LogError(ex, "[NotificationToast] ❌ Error initializing SignalR connection from JavaScript: Message={Message}", ex.Message);
+                NotificationLogger.LogError(ex, "[NotificationToast] ❌ Error initializing SignalR connections: Message={Message}", ex.Message);
                 _isInitializing = false; // Reset on error so it can retry
             }
         }
@@ -116,6 +119,232 @@
         // This method exists to prevent errors when SignalR calls it
         // The Notification component will handle the unread count update
         await Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public async Task OnChatMessageReceived(string messageJson)
+    {
+        try
+        {
+            NotificationLogger.LogInformation("[NotificationToast] ✅ Received chat message from SignalR: {MessageJson}", messageJson);
+            
+            var currentUri = NavigationManager.Uri.ToLower();
+            if (currentUri.Contains("/chat"))
+            {
+                NotificationLogger.LogInformation("[NotificationToast] User is on /chat page, skipping toast notification");
+                return;
+            }
+            
+            // Deserialize message
+            var messageData = System.Text.Json.JsonSerializer.Deserialize<ChatMessageData>(messageJson, new System.Text.Json.JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true 
+            });
+            
+            if (messageData == null)
+            {
+                NotificationLogger.LogWarning("[NotificationToast] Failed to deserialize chat message");
+                return;
+            }
+            
+            // Create notification for chat message
+            await ShowChatNotificationAsync(messageData);
+        }
+        catch (Exception ex)
+        {
+            NotificationLogger.LogError(ex, "[NotificationToast] ❌ Error handling chat message: {Message}", ex.Message);
+        }
+    }
+
+    private async Task ShowChatNotificationAsync(ChatMessageData messageData)
+    {
+        try
+        {
+            // Format sender name: "Surname Name"
+            var senderName = $"{messageData.SenderSurname} {messageData.SenderName}".Trim();
+            
+            // Create a fake NotificationDto for chat message
+            var notification = new NotificationDto
+            {
+                Id = Guid.NewGuid(),
+                Title = "Chat:NewMessage",
+                Content = $"Chat:MessageFrom|{senderName}",
+                Priority = "NORMAL",
+                CreationTime = DateTime.Now,
+                RelatedId = messageData.ConversationId?.ToString(),
+                RelatedType = "CHAT"
+            };
+            
+            // Prevent duplicate notifications for same conversation
+            if (messageData.ConversationId.HasValue && _chatNotifications.ContainsKey(messageData.ConversationId.Value))
+            {
+                NotificationLogger.LogInformation("[NotificationToast] ⚠️ Chat notification already exists for ConversationId={ConversationId}", messageData.ConversationId.Value);
+                return;
+            }
+            
+            if (messageData.ConversationId.HasValue)
+            {
+                _chatNotifications[messageData.ConversationId.Value] = messageData.Text ?? "";
+            }
+            
+            _notifications.Insert(0, notification);
+            await InvokeAsync(StateHasChanged);
+            
+            // Auto-remove after 5 seconds
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(5000);
+                await RemoveNotificationWithAnimationAsync(notification.Id);
+                if (messageData.ConversationId.HasValue)
+                {
+                    _chatNotifications.Remove(messageData.ConversationId.Value);
+                }
+            });
+            
+            NotificationLogger.LogInformation("[NotificationToast] ✅ Chat notification displayed: Sender={Sender}, Text={Text}", 
+                messageData.SenderUsername, messageData.Text?.Substring(0, Math.Min(20, messageData.Text?.Length ?? 0)));
+        }
+        catch (Exception ex)
+        {
+            NotificationLogger.LogError(ex, "[NotificationToast] ❌ Error showing chat notification: {Message}", ex.Message);
+        }
+    }
+
+    // Helper class for deserializing chat message data
+    private class ChatMessageData
+    {
+        public Guid Id { get; set; }
+        public Guid? ConversationId { get; set; }
+        public Guid SenderUserId { get; set; }
+        public string? SenderUsername { get; set; }
+        public string? SenderName { get; set; }
+        public string? SenderSurname { get; set; }
+        public string? Text { get; set; }
+        public DateTime MessageDate { get; set; }
+    }
+
+    // Helper class for deserializing conversation created data
+    private class ConversationCreatedData
+    {
+        public Guid ConversationId { get; set; }
+        public string? Type { get; set; }
+        public string? ConversationName { get; set; }
+        public Guid CreatorUserId { get; set; }
+        public string? CreatorUserName { get; set; }
+        public string? CreatorName { get; set; }
+        public string? CreatorSurname { get; set; }
+        public DateTime CreatedDate { get; set; }
+    }
+
+    [JSInvokable]
+    public async Task OnConversationCreated(string conversationJson)
+    {
+        try
+        {
+            NotificationLogger.LogInformation("[NotificationToast] ✅ Received conversation created from SignalR: {ConversationJson}", conversationJson);
+            
+            var currentUri = NavigationManager.Uri.ToLower();
+            if (currentUri.Contains("/chat"))
+            {
+                NotificationLogger.LogInformation("[NotificationToast] User is on /chat page, skipping toast notification");
+                return;
+            }
+            
+            // Deserialize conversation data
+            var conversationData = System.Text.Json.JsonSerializer.Deserialize<ConversationCreatedData>(conversationJson, new System.Text.Json.JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true 
+            });
+            
+            if (conversationData == null)
+            {
+                NotificationLogger.LogWarning("[NotificationToast] Failed to deserialize conversation data");
+                return;
+            }
+            
+            // Create notification for new conversation
+            await ShowConversationNotificationAsync(conversationData);
+        }
+        catch (Exception ex)
+        {
+            NotificationLogger.LogError(ex, "[NotificationToast] ❌ Error handling conversation created: {Message}", ex.Message);
+        }
+    }
+
+    private async Task ShowConversationNotificationAsync(ConversationCreatedData conversationData)
+    {
+        try
+        {
+            // Format creator name: "Surname Name"
+            var creatorName = $"{conversationData.CreatorSurname} {conversationData.CreatorName}".Trim();
+            
+            // Determine the notification content based on conversation type
+            string contentKey;
+            string contentParam;
+            
+            switch (conversationData.Type?.ToUpper())
+            {
+                case "USER":
+                    contentKey = "Chat:NewUserConversation";
+                    contentParam = creatorName;
+                    break;
+                case "GROUP":
+                    contentKey = "Chat:NewGroupConversation";
+                    contentParam = $"{creatorName}|{conversationData.ConversationName}";
+                    break;
+                case "PROJECT":
+                    contentKey = "Chat:NewProjectConversation";
+                    contentParam = $"{creatorName}|{conversationData.ConversationName}";
+                    break;
+                case "TASK":
+                    contentKey = "Chat:NewTaskConversation";
+                    contentParam = $"{creatorName}|{conversationData.ConversationName}";
+                    break;
+                default:
+                    contentKey = "Chat:NewConversation";
+                    contentParam = creatorName;
+                    break;
+            }
+            
+            // Create a NotificationDto for conversation
+            var notification = new NotificationDto
+            {
+                Id = Guid.NewGuid(),
+                Title = "Chat:NewConversation",
+                Content = $"{contentKey}|{contentParam}",
+                Priority = "NORMAL",
+                CreationTime = DateTime.Now,
+                RelatedId = conversationData.ConversationId.ToString(),
+                RelatedType = "CHAT"
+            };
+            
+            // Prevent duplicate notifications for same conversation
+            if (_chatNotifications.ContainsKey(conversationData.ConversationId))
+            {
+                NotificationLogger.LogInformation("[NotificationToast] ⚠️ Conversation notification already exists for ConversationId={ConversationId}", conversationData.ConversationId);
+                return;
+            }
+            
+            _chatNotifications[conversationData.ConversationId] = conversationData.ConversationName ?? "";
+            
+            _notifications.Insert(0, notification);
+            await InvokeAsync(StateHasChanged);
+            
+            // Auto-remove after 5 seconds
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(5000);
+                await RemoveNotificationWithAnimationAsync(notification.Id);
+                _chatNotifications.Remove(conversationData.ConversationId);
+            });
+            
+            NotificationLogger.LogInformation("[NotificationToast] ✅ Conversation notification displayed: Type={Type}, Creator={Creator}", 
+                conversationData.Type, creatorName);
+        }
+        catch (Exception ex)
+        {
+            NotificationLogger.LogError(ex, "[NotificationToast] ❌ Error showing conversation notification: {Message}", ex.Message);
+        }
     }
 
     private async Task LoadNotificationAsync(Guid notificationId)
@@ -265,18 +494,22 @@
             "TASK" => $"/project-task-detail/{notification.RelatedId}",
             "PROJECT" => $"/project-detail/{notification.RelatedId}",
             "DOCUMENT" => $"/document-detail/{notification.RelatedId}",
+            "CHAT" => "/chat",
             _ => "#"
         };
     }
 
     public async ValueTask DisposeAsync()
     {
-        // Stop SignalR connection from JavaScript
+        // Stop SignalR connections from JavaScript
         // Using SafeInvokeVoidAsync to automatically handle JSDisconnectedException
         if (_isInitialized)
         {
             await JS.SafeInvokeVoidAsync("notificationHub.stop");
-            NotificationLogger.LogInformation("[NotificationToast] SignalR connection stopped");
+            NotificationLogger.LogInformation("[NotificationToast] Notification Hub stopped");
+            
+            await JS.SafeInvokeVoidAsync("chatHub.stopForNotifications");
+            NotificationLogger.LogInformation("[NotificationToast] Chat Hub stopped");
         }
         
         _objRef?.Dispose();

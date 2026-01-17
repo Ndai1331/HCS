@@ -14,6 +14,7 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
      private readonly List<Func<ChatMessageRdto, Task>> _messageReceived;
      private readonly List<Func<Guid, Task>> _messageDeleted;
      private readonly List<Func<Guid, Task>> _conversationDeleted;
+     private readonly List<Func<object, Task>> _conversationCreated;
      private readonly ILogger<ChatHubConnectionService> _logger;
      private readonly IJSRuntime _jsRuntime;
 
@@ -24,6 +25,7 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
           _messageReceived = new List<Func<ChatMessageRdto, Task>>();
           _messageDeleted = new List<Func<Guid, Task>>();
           _conversationDeleted = new List<Func<Guid, Task>>();
+          _conversationCreated = new List<Func<object, Task>>();
           _logger = logger;
           _jsRuntime = jsRuntime;
      }
@@ -77,6 +79,28 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
      public Task OnDeletedConversationAsync(Func<Guid, Task> func)
      {
           _conversationDeleted.Add(func);
+          return Task.CompletedTask;
+     }
+
+     public async Task ConversationCreatedAsync(object conversationData)
+     {
+          _logger.LogInformation($"ChatHubConnectionService: ConversationCreatedAsync called, calling {_conversationCreated.Count} registered callbacks");
+
+          foreach (var func in _conversationCreated)
+          {
+               _logger.LogInformation("ChatHubConnectionService: Calling conversation created callback...");
+               await func(conversationData);
+               _logger.LogInformation("ChatHubConnectionService: Conversation created callback completed");
+          }
+
+          _logger.LogInformation("ChatHubConnectionService: All conversation created callbacks completed");
+     }
+
+     public Task OnConversationCreatedAsync(Func<object, Task> func)
+     {
+          _logger.LogInformation("ChatHubConnectionService: Registering OnConversationCreatedAsync callback");
+          _conversationCreated.Add(func);
+          _logger.LogInformation($"ChatHubConnectionService: Total conversation created callbacks registered: {_conversationCreated.Count}");
           return Task.CompletedTask;
      }
 
@@ -299,22 +323,31 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
           await DeletedConversationAsync(userId);
      }
 
+     [JSInvokable]
+     public async Task OnConversationCreated(object conversationData)
+     {
+          _logger.LogInformation($"ChatHubConnectionService: OnConversationCreated called with: {System.Text.Json.JsonSerializer.Serialize(conversationData)}");
+          await ConversationCreatedAsync(conversationData);
+     }
+
      public async ValueTask DisposeAsync()
      {
-          try
-          {
-               // Stop the JavaScript SignalR connection
-               await _jsRuntime.InvokeVoidAsync("chatHub.stop");
-               _logger.LogInformation("Chat SignalR connection disposed");
-          }
-          catch (Exception ex)
-          {
-               _logger.LogWarning(ex, "Error disposing chat SignalR connection");
-          }
+          // IMPORTANT: Don't stop chatHub connection here!
+          // The connection is shared between Chat page and NotificationToast
+          // Let the connection stay alive for notifications
+          _logger.LogInformation("ChatHubConnectionService: Disposing (keeping connection alive for notifications)");
+
+          // Clear callbacks
+          _messageReceived.Clear();
+          _messageDeleted.Clear();
+          _conversationDeleted.Clear();
+          _conversationCreated.Clear();
 
           // Dispose object reference
           _objRef?.Dispose();
           _objRef = null;
+          
+          await Task.CompletedTask;
      }
 
      public bool IsConnected => true; // For now, assume connected since we can't check JS connection status easily

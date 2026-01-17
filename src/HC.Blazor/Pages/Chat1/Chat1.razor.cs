@@ -408,6 +408,56 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             _logger.LogInformation($"Chat1: Stack trace: {ex.StackTrace}");
         }
     }
+
+    private async Task ProcessConversationCreated(object conversationData)
+    {
+        _logger.LogInformation("Chat1: ProcessConversationCreated CALLED from service!");
+
+        try
+        {
+            if (CurrentUser == null)
+            {
+                _logger.LogInformation("Chat1: CurrentUser is null, ignoring conversation created event");
+                return;
+            }
+
+            // Parse conversation data
+            var jsonElement = (System.Text.Json.JsonElement)conversationData;
+            var conversationId = jsonElement.GetProperty("ConversationId").GetGuid();
+            var conversationType = jsonElement.GetProperty("Type").GetString();
+            var conversationName = jsonElement.TryGetProperty("ConversationName", out var nameElement) ? nameElement.GetString() : null;
+            var creatorUserId = jsonElement.GetProperty("CreatorUserId").GetGuid();
+
+            _logger.LogInformation($"Chat1: New conversation created - ConversationId: {conversationId}, Type: {conversationType}, Name: {conversationName}, CreatorUserId: {creatorUserId}");
+
+            // Refresh the conversation list to show the new conversation
+            _logger.LogInformation("Chat1: Refreshing conversation list...");
+            await GetContactsAsync(includeOtherContacts: false, preserveCurrentContact: true, loadMore: false);
+            
+            // Find the newly created conversation in the list
+            var newConversation = ChatContactDtos.FirstOrDefault(c => c.ConversationId == conversationId);
+            if (newConversation != null)
+            {
+                _logger.LogInformation($"Chat1: New conversation found in list - Name: {newConversation.Name}");
+                
+                // Move to top of list for visibility
+                ChatContactDtos.Remove(newConversation);
+                ChatContactDtos.Insert(0, newConversation);
+                
+                _logger.LogInformation("Chat1: Calling StateHasChanged to update UI...");
+                await InvokeAsync(StateHasChanged);
+                _logger.LogInformation("Chat1: StateHasChanged completed");
+            }
+            else
+            {
+                _logger.LogWarning($"Chat1: Could not find new conversation in list - ConversationId: {conversationId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Chat1: ERROR in ProcessConversationCreated: {ex.Message}");
+        }
+    }
     
     protected ChatSettingsDto ChatSettings { get; set; }
     public string ChatMessagesContainerStyle { get; set; }
@@ -451,6 +501,12 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                     ChatContactDtos.RemoveAll(contact => contact.UserId == userId);
                 }
                 await InvokeAsync(StateHasChanged);
+            });
+
+            await ChatHubConnectionService.OnConversationCreatedAsync(async conversationData =>
+            {
+                _logger.LogInformation($"Chat1: ConversationCreated event received: {System.Text.Json.JsonSerializer.Serialize(conversationData)}");
+                await ProcessConversationCreated(conversationData);
             });
 
             // Initialize SignalR with service reference
@@ -1801,21 +1857,17 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        // Cleanup SignalR connection when component is disposed
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("chatHub.stop");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogInformation($"Chat1: Error stopping SignalR: {ex.Message}");
-        }
+        // IMPORTANT: Don't stop chatHub connection here!
+        // NotificationToast component is still using the same connection for chat notifications
+        // Connection will be automatically managed by SignalR (auto-reconnect on disconnect)
+        
+        _logger.LogInformation("Chat1: Component disposing, keeping SignalR connection alive for NotificationToast");
 
         // Dispose object reference
         _objRef?.Dispose();
         _objRef = null;
 
-        // Cleanup ChatHubConnectionService if needed
+        // Cleanup ChatHubConnectionService if needed (this only clears callbacks, not the connection)
         if (ChatHubConnectionService is IAsyncDisposable asyncDisposable)
         {
             await asyncDisposable.DisposeAsync();

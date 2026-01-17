@@ -8,6 +8,7 @@ using Volo.Abp;
 using Volo.Abp.Authorization;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.Data;
+using Volo.Abp.EventBus.Distributed;
 using Volo.Abp.Features;
 using Volo.Abp.PermissionManagement;
 using Volo.Abp.Uow;
@@ -33,6 +34,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
     private readonly IAuthorizationService _authorizationService;
     private readonly IPermissionFinder _permissionFinder;
     private readonly IBlobContainer _blobContainer;
+    private readonly IDistributedEventBus _distributedEventBus;
 
     public ConversationAppService(
         MessagingManager messagingManager,
@@ -45,7 +47,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         IRealTimeChatMessageSender realTimeChatMessageSender,
         IAuthorizationService authorizationService,
         IPermissionFinder permissionFinder,
-        IBlobContainer blobContainer)
+        IBlobContainer blobContainer,
+        IDistributedEventBus distributedEventBus)
     {
         _messagingManager = messagingManager;
         _chatUserLookupService = chatUserLookupService;
@@ -58,6 +61,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         _authorizationService = authorizationService;
         _permissionFinder = permissionFinder;
         _blobContainer = blobContainer;
+        _distributedEventBus = distributedEventBus;
     }
 
     public virtual async Task<ChatMessageDto> SendMessageAsync(SendMessageInput input)
@@ -312,6 +316,20 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             await uow.CompleteAsync();
         }
         
+        // Publish event to notify target user about new conversation
+        var currentUser = await _chatUserLookupService.FindByIdAsync(currentUserId);
+        await _distributedEventBus.PublishAsync(new ConversationCreatedEto
+        {
+            TargetUserId = input.TargetUserId,
+            ConversationId = conversation.Id,
+            Type = ConversationType.User,
+            ConversationName = null, // User conversation doesn't have name
+            CreatorUserId = currentUserId,
+            CreatorUserName = currentUser?.UserName ?? "",
+            CreatorName = currentUser?.Name ?? "",
+            CreatorSurname = currentUser?.Surname ?? ""
+        });
+        
         return await MapToConversationDtoAsync(conversation, currentUserId);
     }
     
@@ -375,6 +393,29 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             }
             
             await uow.CompleteAsync();
+        }
+        
+        // Publish event to notify all members about new conversation
+        var currentUser = await _chatUserLookupService.FindByIdAsync(currentUserId);
+        var allMemberIds = new List<Guid>(input.MemberUserIds);
+        if (!allMemberIds.Contains(currentUserId))
+        {
+            allMemberIds.Add(currentUserId);
+        }
+        
+        foreach (var memberId in allMemberIds)
+        {
+            await _distributedEventBus.PublishAsync(new ConversationCreatedEto
+            {
+                TargetUserId = memberId,
+                ConversationId = conversation.Id,
+                Type = ConversationType.Group,
+                ConversationName = conversation.Name,
+                CreatorUserId = currentUserId,
+                CreatorUserName = currentUser?.UserName ?? "",
+                CreatorName = currentUser?.Name ?? "",
+                CreatorSurname = currentUser?.Surname ?? ""
+            });
         }
         
         return await MapToConversationDtoAsync(conversation, currentUserId);
@@ -448,6 +489,29 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             await uow.CompleteAsync();
         }
         
+        // Publish event to notify all members about new conversation
+        var currentUser = await _chatUserLookupService.FindByIdAsync(currentUserId);
+        var allMemberIds = new List<Guid> { currentUserId };
+        if (input.MemberUserIds != null && input.MemberUserIds.Any())
+        {
+            allMemberIds.AddRange(input.MemberUserIds.Where(id => id != currentUserId));
+        }
+        
+        foreach (var memberId in allMemberIds)
+        {
+            await _distributedEventBus.PublishAsync(new ConversationCreatedEto
+            {
+                TargetUserId = memberId,
+                ConversationId = conversation.Id,
+                Type = ConversationType.Project,
+                ConversationName = conversation.Name,
+                CreatorUserId = currentUserId,
+                CreatorUserName = currentUser?.UserName ?? "",
+                CreatorName = currentUser?.Name ?? "",
+                CreatorSurname = currentUser?.Surname ?? ""
+            });
+        }
+        
         return await MapToConversationDtoAsync(conversation, currentUserId);
     }
     
@@ -517,6 +581,29 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             }
             
             await uow.CompleteAsync();
+        }
+        
+        // Publish event to notify all members about new conversation
+        var currentUser = await _chatUserLookupService.FindByIdAsync(currentUserId);
+        var allMemberIds = new List<Guid> { currentUserId };
+        if (input.MemberUserIds != null && input.MemberUserIds.Any())
+        {
+            allMemberIds.AddRange(input.MemberUserIds.Where(id => id != currentUserId));
+        }
+        
+        foreach (var memberId in allMemberIds)
+        {
+            await _distributedEventBus.PublishAsync(new ConversationCreatedEto
+            {
+                TargetUserId = memberId,
+                ConversationId = conversation.Id,
+                Type = ConversationType.Task,
+                ConversationName = conversation.Name,
+                CreatorUserId = currentUserId,
+                CreatorUserName = currentUser?.UserName ?? "",
+                CreatorName = currentUser?.Name ?? "",
+                CreatorSurname = currentUser?.Surname ?? ""
+            });
         }
         
         return await MapToConversationDtoAsync(conversation, currentUserId);

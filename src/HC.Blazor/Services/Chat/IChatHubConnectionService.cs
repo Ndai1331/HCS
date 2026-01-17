@@ -20,6 +20,10 @@ public interface IChatHubConnectionService
 
     Task OnDeletedConversationAsync(Func<Guid, Task> func);
 
+    Task ConversationCreatedAsync(object conversationData);
+
+    Task OnConversationCreatedAsync(Func<object, Task> func);
+
     Task InitializeAsync(string hubUrl, string accessToken);
 
     bool IsConnected { get; }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using HC.Chat.Conversations;
 using HC.Chat.Messages;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,7 @@ public class ChatEventHandler :
     IDistributedEventHandler<ChatMessageEto>,
     IDistributedEventHandler<ChatDeletedMessageEto>,
     IDistributedEventHandler<ChatDeletedConversationEto>,
+    IDistributedEventHandler<ConversationCreatedEto>,
     ITransientDependency
 {
     private readonly IHubContext<ChatHub> _hubContext;
@@ -143,6 +145,51 @@ public class ChatEventHandler :
             _logger.LogError(ex,
                 "Error handling ChatDeletedConversationEto: UserId={UserId}, TargetUserId={TargetUserId}",
                 eventData.UserId,
+                eventData.TargetUserId);
+        }
+    }
+
+    public async Task HandleEventAsync(ConversationCreatedEto eventData)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Handling ConversationCreatedEto: ConversationId={ConversationId}, TargetUserId={TargetUserId}, Type={Type}, CreatorUserId={CreatorUserId}",
+                eventData.ConversationId,
+                eventData.TargetUserId,
+                eventData.Type,
+                eventData.CreatorUserId);
+
+            var targetUserIdString = eventData.TargetUserId.ToString();
+
+            // Create conversation data to send to client
+            var conversationData = new
+            {
+                ConversationId = eventData.ConversationId,
+                Type = eventData.Type.ToString(),
+                ConversationName = eventData.ConversationName,
+                CreatorUserId = eventData.CreatorUserId,
+                CreatorUserName = eventData.CreatorUserName,
+                CreatorName = eventData.CreatorName,
+                CreatorSurname = eventData.CreatorSurname,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            // Send new conversation notification to target user via SignalR
+            await _hubContext.Clients
+                .User(targetUserIdString)
+                .SendAsync("ConversationCreated", conversationData);
+
+            _logger.LogInformation(
+                "Successfully sent new conversation notification: TargetUserId={TargetUserId}, ConversationId={ConversationId}",
+                targetUserIdString,
+                eventData.ConversationId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error handling ConversationCreatedEto: ConversationId={ConversationId}, TargetUserId={TargetUserId}",
+                eventData.ConversationId,
                 eventData.TargetUserId);
         }
     }

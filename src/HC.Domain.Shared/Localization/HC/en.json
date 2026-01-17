@@ -762,6 +762,14 @@
     "CreateProject": "Create Project",
     "CreateTask": "Create Task",
     "Member": "member",
-    "UnknownUser": "Unknown User"
+    "UnknownUser": "Unknown User",
+    "Chat:NewMessage": "New chat message",
+    "Chat:MessageFrom": "Message from {0}",
+    "Chat:NewConversation": "New conversation",
+    "Chat:ConversationFrom": "Conversation from {0}",
+    "Chat:NewUserConversation": "{0} started a conversation with you",
+    "Chat:NewGroupConversation": "{0} added you to group \"{1}\"",
+    "Chat:NewProjectConversation": "{0} added you to project \"{1}\"",
+    "Chat:NewTaskConversation": "{0} added you to task \"{1}\""
   }
 }

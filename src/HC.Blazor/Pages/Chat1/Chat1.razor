@@ -71,18 +71,8 @@
                         <div class="messages-box lpx-ps-scroll-container m-0 p-0 ps ps--active-y" id="chat-messages-container" style="flex: 1; overflow-y: auto; min-height: 0;">
                             <div class="list-group rounded-3 contract-list" id="contact_list">
                                 @{
-                                    var otherContacts = false;
                                     foreach (var chatContact in ChatContactDtos)
                                     {
-                                        if (chatContact.LastMessage.IsNullOrWhiteSpace() && !otherContacts)
-                                        {
-                                            <div class="list-group-item px-2 py-1 bg-light text-muted text-center font-size-sm text-uppercase border-start-0 border-end-0">
-                                                <small>@L["OtherContacts"]</small>
-                                            </div>
-
-                                            otherContacts = true;
-                                        }
-
                                         <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2 @(ChatContactsActive.ContainsKey(chatContact) ? ChatContactsActive[chatContact] : string.Empty)">
                                             <div class="media" @onclick="async () => await SetActiveAsync(chatContact)" >
                                                 @* Conversation Type Icon *@
@@ -344,8 +334,7 @@
                                         }
                                         else
                                         {
-                                            <div class="media w-75 mw-65 w-lp-auto mb-2">
-                                                @* Avatar and sender name for Group/Project/Task conversations *@
+                                            <div class="media w-75 mw-65 w-lp-auto mb-2 position-relative">
                                                 @if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User && message.SenderUserId.HasValue)
                                                 {
                                                     <div class="me-2">
@@ -429,7 +418,7 @@
 
                                                 <div class="dropdown position-absolute top-0 end-0">
                                                     <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="bi bi-chevron-down text-muted" aria-hidden="true"></i>
+                                                        <i class="bi bi-three-dots-vertical text-dark" aria-hidden="true"></i>
                                                     </button>
                                                     <ul class="dropdown-menu" style="">
                                                         <li>

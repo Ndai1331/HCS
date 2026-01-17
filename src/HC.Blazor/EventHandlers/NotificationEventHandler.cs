@@ -10,10 +10,6 @@ using Volo.Abp.EventBus.Distributed;
 using HC.Blazor.Hubs;
 
 namespace HC.Blazor.EventHandlers;
-
-/// <summary>
-/// Handles NotificationCreatedEto events and pushes notifications via SignalR
-/// </summary>
 public class NotificationEventHandler :
     IDistributedEventHandler<NotificationCreatedEto>,
     ITransientDependency

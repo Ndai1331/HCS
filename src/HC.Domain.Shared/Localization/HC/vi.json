@@ -797,6 +797,14 @@
     "CreateProject": "Tạo dự án",
     "CreateTask": "Tạo công việc",
     "Member": "thành viên",
-    "UnknownUser": "Người dùng"
+    "UnknownUser": "Người dùng",
+    "Chat:NewMessage": "Tin nhắn mới",
+    "Chat:MessageFrom": "Có tin nhắn mới từ {0}",
+    "Chat:NewConversation": "Cuộc trò chuyện mới",
+    "Chat:ConversationFrom": "Cuộc trò chuyện từ {0}",
+    "Chat:NewUserConversation": "{0} đã tạo cuộc trò chuyện với bạn",
+    "Chat:NewGroupConversation": "{0} đã thêm bạn vào nhóm \"{1}\"",
+    "Chat:NewProjectConversation": "{0} đã thêm bạn vào dự án \"{1}\"",
+    "Chat:NewTaskConversation": "{0} đã thêm bạn vào công việc \"{1}\""
   }
 }
