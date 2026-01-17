@@ -294,29 +294,39 @@
                 }
               <DataGridColumn TItem="CalendarEventDto"
                       Field="Title"
-                      Caption="@L["Title"]">
+                      Caption="@L["Title"]"
+                        CellStyle="@((item) => "min-width: 150px")"
+                        Width="150px">
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="Description"
-                      Caption="@L["Description"]">
+                      Caption="@L["Description"]"
+                        CellStyle="@((item) => "min-width: 150px")"
+                        Width="150px">
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="StartTime"
-                      Caption="@L["StartTime"]">
+                      Caption="@L["StartTime"]"
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px">
                   <DisplayTemplate>
                         @context.StartTime.ToString("dd/MM/yyyy HH:mm")
                   </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="EndTime"
-                      Caption="@L["EndTime"]">
+                      Caption="@L["EndTime"]"
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px">
                   <DisplayTemplate>
                         @context.EndTime.ToString("dd/MM/yyyy HH:mm")
                   </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="AllDay"
-                      Caption="@L["AllDay"]">
+                      Caption="@L["AllDay"]"
+                        CellStyle="@((item) => "min-width: 150px")"
+                        Width="150px">
                     <DisplayTemplate>
                         @if (context.AllDay)
                         {
@@ -330,7 +340,9 @@
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="EventType"
-                      Caption="@L["EventType"]">
+                      Caption="@L["EventType"]"
+                        CellStyle="@((item) => "min-width: 150px")"
+                        Width="150px">
                   <DisplayTemplate>
                       @if (Enum.TryParse<EventType>(context.EventType, out var eventType))
                       {
@@ -344,11 +356,15 @@
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="Location"
-                      Caption="@L["Location"]">
+                      Caption="@L["Location"]"
+                        CellStyle="@((item) => "min-width: 150px")"
+                        Width="150px">
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="RelatedType"
-                      Caption="@L["RelatedType"]">
+                      Caption="@L["RelatedType"]"
+                        CellStyle="@((item) => "min-width: 150px")"
+                        Width="150px">
                   <DisplayTemplate>
                       @if (Enum.TryParse<RelatedType>(context.RelatedType, out var relatedType))
                       {
@@ -362,14 +378,18 @@
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="RelatedId"
-                      Caption="@L["RelatedId"]">
+                      Caption="@L["RelatedId"]"
+                        CellStyle="@((item) => "min-width: 150px")"
+                        Width="150px">
                   <DisplayTemplate>
                       @GetRelatedIdDisplayCode(context)
                   </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="Visibility"
-                      Caption="@L["Visibility"]">
+                      Caption="@L["Visibility"]"
+                        CellStyle="@((item) => "min-width: 150px")"
+                        Width="150px">
                   <DisplayTemplate>
                       @if (Enum.TryParse<EventVisibility>(context.Visibility, out var visibility))
                       {
@@ -382,12 +402,14 @@
                   </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
-                      Caption="@L["NumberOfParticipants"]">
+                      Caption="@L["NumberOfParticipants"]"
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px">
                   <DisplayTemplate>
                       @(_participantCountCache.TryGetValue(context.Id, out var count) ? count : 0)
                   </DisplayTemplate>
               </DataGridColumn>
-                <DataGridColumn TItem="CalendarEventDto" Caption="@L["Actions"]">
+                <DataGridColumn TItem="CalendarEventDto" Caption="@L["Actions"]" CellStyle="@((item) => "min-width: 150px")" Width="150px">
                     <DisplayTemplate>
                         <div class="hc-action-icons">
                             @if (CanEditCalendarEvent)
