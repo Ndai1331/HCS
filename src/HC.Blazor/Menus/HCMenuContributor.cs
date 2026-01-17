@@ -22,6 +22,7 @@ using Volo.Abp.TextTemplateManagement.Blazor.Menus;
 using Volo.Abp.OpenIddict.Pro.Blazor.Menus;
 using Volo.Saas.Host.Blazor.Navigation;
 using Volo.FileManagement.Blazor.Navigation;
+using HC.Chat.Authorization;
 
 namespace HC.Blazor.Menus;
 
@@ -58,7 +59,8 @@ public class HCMenuContributor : IMenuContributor
         context.Menu.AddItem(new ApplicationMenuItem("Personal", l["Menu:Personal"], icon: "fa fa-users", order: 5)
         .AddItem(new ApplicationMenuItem("Users.Signatures", l["Menu:Signatures"], url: "/user-signatures").RequirePermissions(HCPermissions.UserSignatures.Default))
         .AddItem(new ApplicationMenuItem("Users.Departments", l["Menu:Departments"], url: "/user-departments").RequirePermissions(HCPermissions.Departments.Default))
-        .AddItem(new ApplicationMenuItem("Users.Notifications", l["Menu:Notifications"], url: "/notification-receivers").RequirePermissions(HCPermissions.Notifications.Default)));
+        .AddItem(new ApplicationMenuItem("Users.Notifications", l["Menu:Notifications"], url: "/notification-receivers").RequirePermissions(HCPermissions.Notifications.Default))
+        .AddItem(new ApplicationMenuItem("Users.Chats", l["Menu:Chats"], url: "/chat").RequirePermissions(ChatPermissions.Messaging)));
 
         context.Menu.AddItem(new ApplicationMenuItem("SurveyResults", l["Menu:SurveyResults"], icon: "fa fa-chart-line", order: 6).AddItem(new ApplicationMenuItem("SurveyResults.SurveyResults", l["Menu:SurveyResults"], url: "/survey-results").RequirePermissions(HCPermissions.SurveyResults.Default)));
         context.Menu.AddItem(new ApplicationMenuItem("MasterDatas", l["Menu:Categories"], icon: "fa fa-layer-group", order: 9).AddItem(new ApplicationMenuItem("MasterDatas.DocumentTypes", l["DocumentTypes"], url: "/document-types").RequirePermissions(HCPermissions.MasterDatas.DocumentTypeDefault)).AddItem(new ApplicationMenuItem("MasterDatas.Sector", l["Sector"], url: "/sectors").RequirePermissions(HCPermissions.MasterDatas.SectorDefault))

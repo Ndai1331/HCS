@@ -507,7 +507,6 @@
                                         @bind="Message"
                                         @bind:event="oninput"
                                         @onkeydown="@(async e => await OnMessageEntryAsync(e))"
-                                        @onkeydown:preventDefault="true"
                                         type="text" placeholder="@L["TypeMessage"].Value" class="form-control rounded py-2 flex-grow-1"></textarea>
                                     </div>
                                     <div class="form-check float-start mt-2">
