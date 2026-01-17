@@ -27,14 +27,10 @@ public class EfCoreMessageFileRepository : EfCoreRepository<IChatDbContext, Mess
     {
         var dbContext = await GetDbContextAsync();
         
-        // Get message IDs from the conversation
-        var messageIds = await dbContext.ChatUserMessages
-            .Where(um => dbContext.ChatConversations.Any(c => 
-                ((c.UserId == um.UserId && c.TargetUserId == um.TargetUserId) ||
-                 (c.UserId == um.TargetUserId && c.TargetUserId == um.UserId)) &&
-                c.Id == conversationId))
-            .Select(um => um.ChatMessageId)
-            .Distinct()
+        // Get message IDs from the conversation using Message.ConversationId
+        var messageIds = await dbContext.ChatMessages
+            .Where(m => m.ConversationId == conversationId)
+            .Select(m => m.Id)
             .ToListAsync(GetCancellationToken(cancellationToken));
             
         return await (await GetDbSetAsync())

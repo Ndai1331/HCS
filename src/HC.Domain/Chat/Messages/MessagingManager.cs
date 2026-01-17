@@ -135,11 +135,12 @@ public class MessagingManager : DomainService
 
         conversationPair ??= new ConversationPair();
 
+        // TODO: This old logic is deprecated - User conversations should be created via CreateUserConversationAsync API
+        // Keeping minimal compatibility for now
         if (conversationPair.SenderConversation == null)
         {
-            var senderConversation = new Conversation(GuidGenerator.Create(), senderId, receiverId, ConversationType.Direct, null, null, null, null, CurrentTenant.Id)
+            var senderConversation = new Conversation(GuidGenerator.Create(), ConversationType.User, null, null, null, null, CurrentTenant.Id)
             {
-                LastMessageSide = ChatMessageSide.Sender,
                 LastMessage = messageText,
                 LastMessageDate = now
             };
@@ -155,9 +156,8 @@ public class MessagingManager : DomainService
 
         if (conversationPair.TargetConversation == null)
         {
-            var receiverConversation = new Conversation(GuidGenerator.Create(), receiverId, senderId, ConversationType.Direct, null, null, null, null, CurrentTenant.Id)
+            var receiverConversation = new Conversation(GuidGenerator.Create(), ConversationType.User, null, null, null, null, CurrentTenant.Id)
             {
-                LastMessageSide = ChatMessageSide.Receiver,
                 LastMessage = messageText,
                 LastMessageDate = now
             };
@@ -171,8 +171,8 @@ public class MessagingManager : DomainService
             }
         }
 
-        conversationPair.SenderConversation.SetLastMessage(messageText, now, ChatMessageSide.Sender);
-        conversationPair.TargetConversation.SetLastMessage(messageText, now, ChatMessageSide.Receiver);
+        conversationPair.SenderConversation.SetLastMessage(messageText, now);
+        conversationPair.TargetConversation.SetLastMessage(messageText, now);
 
         await _conversationRepository.UpdateAsync(conversationPair.SenderConversation);
         await _conversationRepository.UpdateAsync(conversationPair.TargetConversation);
@@ -193,13 +193,13 @@ public class MessagingManager : DomainService
 
         if (conversationPair?.SenderConversation != null && conversationPair.SenderConversation.LastMessage == deletedText)
         {
-            conversationPair.SenderConversation.SetLastMessage(messageText, messageTime, ChatMessageSide.Sender, ignoreNullOrEmpty: true);
+            conversationPair.SenderConversation.SetLastMessage(messageText, messageTime, ignoreNullOrEmpty: true);
             await _conversationRepository.UpdateAsync(conversationPair.SenderConversation);
         }
 
         if (conversationPair?.TargetConversation != null && conversationPair.TargetConversation.LastMessage == deletedText)
         {
-            conversationPair.TargetConversation.SetLastMessage(messageText, messageTime, ChatMessageSide.Sender, ignoreNullOrEmpty: true);
+            conversationPair.TargetConversation.SetLastMessage(messageText, messageTime, ignoreNullOrEmpty: true);
             await _conversationRepository.UpdateAsync(conversationPair.TargetConversation);
         }
     }
@@ -209,7 +209,7 @@ public class MessagingManager : DomainService
         var conversationPair = await _conversationRepository.FindPairAsync(CurrentUser.GetId(), targetUserId);
         if (conversationPair != null)
         {
-            conversationPair.SenderConversation?.ResetUnreadMessageCount();
+            // TODO: Update per-user read status in ConversationMember
 
             if (conversationPair.SenderConversation != null)
             {
@@ -268,7 +268,7 @@ public class MessagingManager : DomainService
         var conversation = await _conversationRepository.GetWithMembersAsync(conversationId);
         if (conversation != null)
         {
-            conversation.ResetUnreadMessageCount();
+            // TODO: Update per-user read status in ConversationMember
             await _conversationRepository.UpdateAsync(conversation);
         }
         

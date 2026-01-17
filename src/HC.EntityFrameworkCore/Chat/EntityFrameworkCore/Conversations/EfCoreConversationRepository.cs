@@ -8,6 +8,7 @@ using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using HC.Chat.Conversations;
 using HC.Chat.Messages;
+using HC.Chat.Users;
 
 namespace HC.Chat.EntityFrameworkCore.Conversations;
 
@@ -19,19 +20,28 @@ public class EfCoreConversationRepository : EfCoreRepository<IChatDbContext, Con
 
     public virtual async Task<ConversationPair> FindPairAsync(Guid senderId, Guid targetId, CancellationToken cancellationToken = default)
     {
-        var matchedConversations = await (await GetDbSetAsync())
-            .Where(x => (x.UserId == senderId && x.TargetUserId == targetId) ||
-                        (x.UserId == targetId && x.TargetUserId == senderId)).ToListAsync(GetCancellationToken(cancellationToken));
+        // TODO: This method is deprecated - User conversations are now single shared conversations
+        // For backward compatibility, return the same conversation for both sender and target
+        var dbContext = await GetDbContextAsync();
+        
+        var conversation = await (from c in (await GetDbSetAsync())
+            join m1 in dbContext.Set<ConversationMember>() on c.Id equals m1.ConversationId
+            join m2 in dbContext.Set<ConversationMember>() on c.Id equals m2.ConversationId
+            where c.Type == ConversationType.User
+                && m1.UserId == senderId && m1.IsActive
+                && m2.UserId == targetId && m2.IsActive
+                && m1.ConversationId == m2.ConversationId
+            select c).FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
 
-        if (!matchedConversations.Any())
+        if (conversation == null)
         {
             return null;
         }
 
         return new ConversationPair
         {
-            SenderConversation = matchedConversations.FirstOrDefault(x => x.UserId == senderId),
-            TargetConversation = matchedConversations.FirstOrDefault(x => x.UserId == targetId)
+            SenderConversation = conversation,
+            TargetConversation = conversation // Same conversation for both users now
         };
     }
 
@@ -42,75 +52,74 @@ public class EfCoreConversationRepository : EfCoreRepository<IChatDbContext, Con
         var conversations = await GetDbSetAsync();
         var conversationMembers = dbContext.ChatConversationMembers;
         
-        // Get conversations in two ways:
-        // 1. Direct conversations: where UserId == userId (old way, for backward compatibility)
-        // 2. Group/Project/Task conversations: where user is a member via ConversationMember
-        var directConversationsQuery = from chatConversation in conversations
-                    join targetUser in dbContext.ChatUsers 
-                        on chatConversation.TargetUserId equals targetUser.Id into userGroup
-                    from targetUser in userGroup.DefaultIfEmpty()
-                    where userId == chatConversation.UserId && chatConversation.Type == ConversationType.Direct
-                    select new { chatConversation, targetUser };
-        
-        // Get group/project/task conversations where user is a member
-        var groupConversationsQuery = from member in conversationMembers
-                    join conversation in conversations on member.ConversationId equals conversation.Id
-                    join targetUser in dbContext.ChatUsers 
-                        on conversation.TargetUserId equals targetUser.Id into userGroup
-                    from targetUser in userGroup.DefaultIfEmpty()
-                    where member.UserId == userId && member.IsActive 
-                        && conversation.Type != ConversationType.Direct
-                    select new { chatConversation = conversation, targetUser };
-        
-        // Combine both queries
-        var combinedQuery = directConversationsQuery.Union(groupConversationsQuery);
-        
-        // Apply filter if provided
-        if (!string.IsNullOrWhiteSpace(filter))
-        {
-            combinedQuery = combinedQuery.Where(x => 
-                (x.targetUser != null && 
-                 (x.targetUser.Name != null && x.targetUser.Name.Contains(filter) || 
-                  x.targetUser.Surname != null && x.targetUser.Surname.Contains(filter) || 
-                  x.targetUser.UserName != null && x.targetUser.UserName.Contains(filter))) ||
-                (x.targetUser == null && 
-                 x.chatConversation.Name != null && x.chatConversation.Name.Contains(filter)));
-        }
-        
-        // Execute query and map to result
-        var results = await combinedQuery
-            .OrderByDescending(x => x.chatConversation.LastMessageDate)
+        // Step 1: Get distinct conversation IDs where user is a member
+        var conversationIds = await conversationMembers
+            .Where(m => m.UserId == userId && m.IsActive)
+            .Select(m => m.ConversationId)
+            .Distinct()
             .ToListAsync(GetCancellationToken(cancellationToken));
         
-        return results.Select(x => new ConversationWithTargetUser
+        // Step 2: Load conversations with their data
+        var conversationList = await conversations
+            .Where(c => conversationIds.Contains(c.Id))
+            .ToListAsync(GetCancellationToken(cancellationToken));
+        
+        // Step 3: For each conversation, get target user if it's User type
+        var result = new List<ConversationWithTargetUser>();
+        
+        foreach (var conversation in conversationList)
         {
-            Conversation = x.chatConversation,
-            TargetUser = x.targetUser
-        }).ToList();
+            ChatUser targetUser = null;
+            
+            // For User type, get the other member as target user
+            if (conversation.Type == ConversationType.User)
+            {
+                var otherMemberId = await conversationMembers
+                    .Where(m => m.ConversationId == conversation.Id && m.UserId != userId && m.IsActive)
+                    .Select(m => m.UserId)
+                    .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
+                
+                if (otherMemberId != Guid.Empty)
+                {
+                    targetUser = await dbContext.ChatUsers
+                        .FirstOrDefaultAsync(u => u.Id == otherMemberId, GetCancellationToken(cancellationToken));
+                }
+            }
+            
+            // Apply filter
+            if (!string.IsNullOrWhiteSpace(filter))
+            {
+                var matchesFilter = 
+                    (targetUser != null && 
+                     (targetUser.Name?.Contains(filter) == true || 
+                      targetUser.Surname?.Contains(filter) == true || 
+                      targetUser.UserName?.Contains(filter) == true)) ||
+                    (targetUser == null && 
+                     conversation.Name?.Contains(filter) == true);
+                
+                if (!matchesFilter)
+                {
+                    continue;
+                }
+            }
+            
+            result.Add(new ConversationWithTargetUser
+            {
+                Conversation = conversation,
+                TargetUser = targetUser
+            });
+        }
+        
+        // Sort by LastMessageDate
+        return result.OrderByDescending(x => x.Conversation.LastMessageDate).ToList();
     }
 
     public virtual async Task<int> GetTotalUnreadMessageCountAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        var conversations = await GetQueryableAsync();
-        var conversationMembers = dbContext.ChatConversationMembers;
-        
-        // Get unread count from:
-        // 1. Direct conversations: where UserId == userId
-        var directUnreadCount = await conversations
-            .Where(x => x.UserId == userId && x.Type == ConversationType.Direct && x.LastMessageSide == ChatMessageSide.Receiver)
-            .SumAsync(x => x.UnreadMessageCount, cancellationToken: GetCancellationToken(cancellationToken));
-        
-        // 2. Group/Project/Task conversations: where user is a member via ConversationMember
-        var groupUnreadCount = await (from member in conversationMembers
-                    join conversation in conversations on member.ConversationId equals conversation.Id
-                    where member.UserId == userId && member.IsActive 
-                        && conversation.Type != ConversationType.Direct
-                        && conversation.LastMessageSide == ChatMessageSide.Receiver
-                    select conversation.UnreadMessageCount)
-            .SumAsync(GetCancellationToken(cancellationToken));
-        
-        return directUnreadCount + groupUnreadCount;
+        // TODO: Calculate unread count from ConversationMember per-user read status
+        // Old logic used Conversation.UnreadMessageCount and LastMessageSide which are removed
+        await Task.CompletedTask;
+        return 0;
     }
     
     // New methods
@@ -120,8 +129,15 @@ public class EfCoreConversationRepository : EfCoreRepository<IChatDbContext, Con
         bool includePinned = false,
         CancellationToken cancellationToken = default)
     {
-        var query = (await GetQueryableAsync())
-            .Where(x => x.UserId == userId && x.Type == type);
+        var dbContext = await GetDbContextAsync();
+        var conversations = await GetQueryableAsync();
+        
+        // Get conversations by type where user is a member
+        var query = from member in dbContext.ChatConversationMembers
+                    join conversation in conversations on member.ConversationId equals conversation.Id
+                    where member.UserId == userId && member.IsActive 
+                        && conversation.Type == type
+                    select conversation;
             
         return await query.ToListAsync(GetCancellationToken(cancellationToken));
     }

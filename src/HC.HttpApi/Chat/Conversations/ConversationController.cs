@@ -56,6 +56,13 @@ public class ConversationController : ChatController, IConversationAppService
     
     // New endpoints
     [HttpPost]
+    [Route("user")]
+    public Task<ConversationDto> CreateUserConversationAsync(CreateUserConversationInput input)
+    {
+        return _conversationAppService.CreateUserConversationAsync(input);
+    }
+    
+    [HttpPost]
     [Route("group")]
     public Task<ConversationDto> CreateGroupConversationAsync(CreateGroupConversationInput input)
     {

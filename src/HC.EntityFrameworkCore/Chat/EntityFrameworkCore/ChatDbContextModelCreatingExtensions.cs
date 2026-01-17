@@ -110,23 +110,17 @@ public static class ChatDbContextModelCreatingExtensions
                 b.ToTable(ChatDbProperties.DbTablePrefix + "Conversations", ChatDbProperties.DbSchema);
 
             b.ConfigureByConvention();
-
-            b.Property(x => x.UserId).IsRequired().HasColumnName(nameof(Conversation.UserId));
-            b.Property(x => x.TargetUserId).HasColumnName(nameof(Conversation.TargetUserId));
             
-            // New properties
-            b.Property(x => x.Type).IsRequired().HasColumnName(nameof(Conversation.Type)).HasDefaultValue(ConversationType.Direct);
+            // Core properties
+            b.Property(x => x.Type).IsRequired().HasColumnName(nameof(Conversation.Type)).HasDefaultValue(ConversationType.User);
             b.Property(x => x.Name).IsRequired(false).HasMaxLength(ChatConsts.MaxConversationNameLength).HasColumnName(nameof(Conversation.Name));
             b.Property(x => x.Description).IsRequired(false).HasMaxLength(ChatConsts.MaxConversationDescriptionLength).HasColumnName(nameof(Conversation.Description));
             b.Property(x => x.ProjectId).HasColumnName(nameof(Conversation.ProjectId));
             b.Property(x => x.TaskId).HasColumnName(nameof(Conversation.TaskId));
             
             b.Property(x => x.LastMessage).IsRequired(false).HasColumnName(nameof(Conversation.LastMessage)).HasMaxLength(ChatMessageConsts.MaxTextLength);
-            b.Property(x => x.LastMessageSide).HasColumnName(nameof(Conversation.LastMessageSide));
             b.Property(x => x.LastMessageDate).HasColumnName(nameof(Conversation.LastMessageDate));
-            b.Property(x => x.UnreadMessageCount).HasColumnName(nameof(Conversation.UnreadMessageCount));
 
-            b.HasIndex(x => x.UserId);
             b.HasIndex(x => x.Type);
             b.HasIndex(x => x.ProjectId);
             b.HasIndex(x => x.TaskId);

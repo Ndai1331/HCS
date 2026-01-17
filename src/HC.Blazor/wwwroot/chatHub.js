@@ -1,4 +1,6 @@
 window.chatHub = {
+    _broadcastChannel: null,
+
     start: function (dotnetHelper) {
         // Prevent duplicate connections - check if connection already exists
         if (window._chatConnection) {
@@ -12,6 +14,32 @@ window.chatHub = {
                 window._chatConnection._dotnetHelpers.push(dotnetHelper);
             }
             return;
+        }
+
+        // Initialize BroadcastChannel for cross-tab communication
+        if (typeof BroadcastChannel !== 'undefined') {
+            this._broadcastChannel = new BroadcastChannel('chat-messages');
+            console.log("Chat SignalR: BroadcastChannel initialized for cross-tab sync");
+
+            // Listen for messages from other tabs
+            this._broadcastChannel.onmessage = (event) => {
+                console.log("Chat SignalR: Received message from another tab:", event.data);
+                if (event.data.type === 'chat-message') {
+                    // Forward to all local helpers using HandleCrossTabMessage
+                    if (window._chatConnection && window._chatConnection._dotnetHelpers) {
+                        window._chatConnection._dotnetHelpers.forEach((helper, index) => {
+                            if (helper) {
+                                console.log(`Chat SignalR: Forwarding cross-tab message to helper ${index}`);
+                                helper.invokeMethodAsync("HandleCrossTabMessageJson", event.data.messageData)
+                                    .then(() => console.log("Chat SignalR: Cross-tab message forwarded successfully"))
+                                    .catch(err => console.error("Error forwarding cross-tab message:", err));
+                            }
+                        });
+                    }
+                }
+            };
+        } else {
+            console.warn("Chat SignalR: BroadcastChannel not supported, cross-tab sync disabled");
         }
 
         const connection = new signalR.HubConnectionBuilder()
@@ -31,25 +59,29 @@ window.chatHub = {
                 connection._dotnetHelpers.forEach((helper, index) => {
                     console.log(`Chat SignalR: Helper ${index}:`, helper);
                     if (helper) {
-                        // Call method in ChatHubConnectionService
-                        console.log("Chat SignalR: Calling HandleSignalRMessage for helper");
-                        helper.invokeMethodAsync("HandleSignalRMessage", messageData)
-                            .then(() => console.log("Chat SignalR: HandleSignalRMessage call completed"))
+                        // Call method in ChatHubConnectionService using JsonElement-based method
+                        console.log("Chat SignalR: Calling HandleSignalRMessageJson for helper");
+                        helper.invokeMethodAsync("HandleSignalRMessageJson", messageData)
+                            .then(() => console.log("Chat SignalR: HandleSignalRMessageJson call completed"))
                             .catch(err => {
-                                console.error("Error calling HandleSignalRMessage:", err);
-
-                                // Try with namespace
-                                console.log("Chat SignalR: Trying with namespace...");
-                                return helper.invokeMethodAsync("HC.Blazor.Components.Chat.ChatHubConnectionService.HandleSignalRMessage", messageData);
-                            })
-                            .then(() => console.log("Chat SignalR: Namespace call completed"))
-                            .catch(err2 => console.error("Error calling with namespace:", err2));
+                                console.error("Error calling HandleSignalRMessageJson:", err);
+                            });
                     } else {
                         console.log("Chat SignalR: Helper is null");
                     }
                 });
             } else {
                 console.log("Chat SignalR: No dotnetHelpers available");
+            }
+
+            // Broadcast message to other tabs for cross-tab sync
+            if (window.chatHub._broadcastChannel) {
+                console.log("Chat SignalR: Broadcasting message to other tabs");
+                window.chatHub._broadcastChannel.postMessage({
+                    type: 'chat-message',
+                    messageData: messageData,
+                    timestamp: Date.now()
+                });
             }
         });
 
@@ -102,6 +134,13 @@ window.chatHub = {
                 .then(() => console.log("Chat SignalR disconnected"))
                 .catch(err => console.error("Chat SignalR disconnect error:", err));
             window._chatConnection = null;
+        }
+
+        // Cleanup BroadcastChannel
+        if (this._broadcastChannel) {
+            this._broadcastChannel.close();
+            this._broadcastChannel = null;
+            console.log("Chat SignalR: BroadcastChannel cleaned up");
         }
     }
 };

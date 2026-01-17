@@ -87,7 +87,7 @@
                                             <div class="media" @onclick="async () => await SetActiveAsync(chatContact)" >
                                                 @* Conversation Type Icon *@
                                                 <div class="me-2">
-                                                    @if (chatContact.Type == ConversationType.Direct)
+                                                    @if (chatContact.Type == ConversationType.User)
                                                     {
                                                         <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="40" Height="40"></canvas>
                                                     }
@@ -126,7 +126,7 @@
                                                         }
                                                     </div>
                                                     <p class="mb-0 small last-message">@chatContact.LastMessage.TruncateWithPostfix(36,"...")</p>
-                                                    @if (chatContact.Type != ConversationType.Direct && chatContact.MemberCount > 0)
+                                                    @if (chatContact.Type != ConversationType.User && chatContact.MemberCount > 0)
                                                     {
                                                         <small class="text-muted"><i class="bi bi-people"></i> @chatContact.MemberCount @L["Member"]</small>
                                                     }
@@ -137,7 +137,7 @@
                                                     <i class="lpx-caret bi-chevron-down" aria-hidden="true"></i>
                                                 </button>
                                                 <ul class="dropdown-menu">
-                                                    @if (chatContact.Type != ConversationType.Direct)
+                                                    @if (chatContact.Type != ConversationType.User)
                                                     {
                                                         <li>
                                                             <a class="dropdown-item" @onclick="async () => await TogglePinConversationAsync(chatContact)">
@@ -188,7 +188,7 @@
                         <div id="AvatarId" class="px-2 py-1 border mb-2 rounded-2">
                             <div class="row">
                                 <div class="col-auto pe-0">
-                                    @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.Direct)
+                                    @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
                                     {
                                         <canvas @ref="CurrentChatContactCanvas" class="rounded-circle mt-1" width="36" height="36"></canvas>
                                     }
@@ -212,7 +212,7 @@
                                     <h5 id="Conversation_Title" class="m-0">
                                         @if (CurrentChatContact != null)
                                         {
-                                            @if (CurrentChatContact.Type == ConversationType.Direct)
+                                            @if (CurrentChatContact.Type == ConversationType.User)
                                             {
                                                 @(GetName(CurrentChatContact) + (CurrentChatContact.HasChatPermission ? string.Empty : $" - {L["Volo.Chat:010004"]}"))
                                             }
@@ -239,9 +239,6 @@
                             <div id="EmptyTemplate" class="card-body pt-12 pb-12 text-center">
                                 <i class="fa fa-commenting-o fs-2" aria-hidden="true"></i>
                                 <p>@L["NoMessageYetMessage"].Value</p>
-                                <button id="StartConversation" @onclick="@(async () => await StartConversationAsync())" type="button" class="btn btn-primary">
-                                    @L["StartConversation"]
-                                </button>
                             </div>
                         }else{
                             <div id="chat_conversation_wrapper" class="chat-box mb-2" style="flex: 1; overflow-y: auto; min-height: 0;" @onscroll="OnConversationScroll">
@@ -349,7 +346,7 @@
                                         {
                                             <div class="media w-75 mw-65 w-lp-auto mb-2">
                                                 @* Avatar and sender name for Group/Project/Task conversations *@
-                                                @if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.Direct && message.SenderUserId.HasValue)
+                                                @if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User && message.SenderUserId.HasValue)
                                                 {
                                                     <div class="me-2">
                                                         <canvas id="sender-avatar-@message.Id" width="32" height="32" style="border-radius: 50%;"></canvas>
@@ -357,7 +354,7 @@
                                                 }
                                                 <div class="media-body position-relative ms-3">
                                                     @* Sender name for Group/Project/Task conversations *@
-                                                    @if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.Direct && message.SenderUserId.HasValue)
+                                                    @if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User && message.SenderUserId.HasValue)
                                                     {
                                                         <div class="mb-1">
                                                             <small class="text-muted fw-bold">
@@ -396,14 +393,14 @@
                                                             </div>
                                                         </div>
                                                     }
-                                                    <div class="bg-light shadow rounded py-2 px-3 mb-1 position-relative">
+                                                    <div class="bg-white shadow rounded py-1 px-2 mb-1 position-relative">
                                                         @if (message.IsSending)
                                                         {
                                                             <div class="position-absolute top-0 end-0 p-1">
                                                                 <span class="spinner-border spinner-border-sm text-muted" role="status" aria-hidden="true"></span>
                                                             </div>
                                                         }
-                                                        <p class="text-small mb-0 text-muted">@message.Message</p>
+                                                        <p class="text-small mb-0 text-black">@message.Message</p>
                                                         @* Message Files *@
                                                         @if (message.Files != null && message.Files.Any())
                                                         {

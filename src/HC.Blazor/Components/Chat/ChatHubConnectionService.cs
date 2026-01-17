@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.JSInterop;
 using Microsoft.Extensions.Logging;
@@ -31,23 +32,23 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
 
      public async Task ReceivedMessageAsync(ChatMessageRdto message)
      {
-          Console.WriteLine($"ChatHubConnectionService: ReceivedMessageAsync called with {message.Id}, calling {_messageReceived.Count} registered callbacks");
+          _logger.LogInformation($"ChatHubConnectionService: ReceivedMessageAsync called with {message.Id}, calling {_messageReceived.Count} registered callbacks");
 
           foreach (var func in _messageReceived)
           {
-               Console.WriteLine("ChatHubConnectionService: Calling callback...");
+               _logger.LogInformation("ChatHubConnectionService: Calling callback...");
                await func(message);
-               Console.WriteLine("ChatHubConnectionService: Callback completed");
+               _logger.LogInformation("ChatHubConnectionService: Callback completed");
           }
 
-          Console.WriteLine("ChatHubConnectionService: All callbacks completed");
+          _logger.LogInformation("ChatHubConnectionService: All callbacks completed");
      }
 
      public Task OnReceiveMessageAsync(Func<ChatMessageRdto, Task> func)
      {
-          Console.WriteLine("ChatHubConnectionService: Registering OnReceiveMessageAsync callback");
+          _logger.LogInformation("ChatHubConnectionService: Registering OnReceiveMessageAsync callback");
           _messageReceived.Add(func);
-          Console.WriteLine($"ChatHubConnectionService: Total callbacks registered: {_messageReceived.Count}");
+          _logger.LogInformation($"ChatHubConnectionService: Total callbacks registered: {_messageReceived.Count}");
           return Task.CompletedTask;
      }
 
@@ -83,62 +84,165 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
      {
           try
           {
-               Console.WriteLine("ChatHubConnectionService: Initializing SignalR connection...");
+               _logger.LogInformation("ChatHubConnectionService: Initializing SignalR connection...");
 
                // Create object reference for JavaScript callbacks
                _objRef = DotNetObjectReference.Create(this);
-               Console.WriteLine($"ChatHubConnectionService: Created DotNetObjectReference: {_objRef != null}");
+               _logger.LogInformation($"ChatHubConnectionService: Created DotNetObjectReference: {_objRef != null}");
 
                // Start the JavaScript SignalR connection
-               Console.WriteLine("ChatHubConnectionService: Calling chatHub.start...");
+               _logger.LogInformation("ChatHubConnectionService: Calling chatHub.start...");
                await _jsRuntime.InvokeVoidAsync("chatHub.start", _objRef);
-               Console.WriteLine("ChatHubConnectionService: chatHub.start completed");
+               _logger.LogInformation("ChatHubConnectionService: chatHub.start completed");
 
-               Console.WriteLine("ChatHubConnectionService: Chat SignalR connection initialized successfully");
+               _logger.LogInformation("ChatHubConnectionService: Chat SignalR connection initialized successfully");
                _logger.LogInformation("Chat SignalR connection initialized via JavaScript");
           }
           catch (Exception ex)
           {
-               Console.WriteLine($"ChatHubConnectionService: Failed to initialize SignalR connection: {ex.Message}");
+               _logger.LogError(ex, $"ChatHubConnectionService: Failed to initialize SignalR connection: {ex.Message}");
                _logger.LogError(ex, "Failed to initialize chat SignalR connection");
                throw;
           }
      }
 
     // Test method for JS interop
-    [JSInvokable]
+    [JSInvokable("TestJSInterop")]
     public void TestJSInterop()
     {
-        Console.WriteLine("ChatHubConnectionService: TestJSInterop called successfully!");
+        _logger.LogInformation("ChatHubConnectionService: TestJSInterop called successfully!");
+    }
+
+    // Simple test with string parameter
+    [JSInvokable("TestWithString")]
+    public void TestWithString(string message)
+    {
+        _logger.LogInformation($"ChatHubConnectionService: TestWithString called with: {message}");
+    }
+
+    // Handler using JsonElement for SignalR messages
+    [JSInvokable("HandleSignalRMessageJson")]
+    public async Task HandleSignalRMessageJson(JsonElement messageData)
+    {
+        _logger.LogInformation("ChatHubConnectionService: HandleSignalRMessageJson ENTRY with JsonElement!");
+        _logger.LogInformation($"ChatHubConnectionService: HandleSignalRMessageJson called with: {messageData.GetRawText()}");
+
+        try
+        {
+            // Deserialize JsonElement to ChatMessageRdto
+            var message = JsonSerializer.Deserialize<ChatMessageRdto>(messageData.GetRawText(), new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true 
+            });
+
+            if (message != null)
+            {
+                message.IsCrossTabMessage = false; // This is from SignalR, not cross-tab
+                _logger.LogInformation($"ChatHubConnectionService: Deserialized message - Id: {message.Id}, Sender: {message.SenderUsername}, Text: {message.Text}");
+                await ReceivedMessageAsync(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"ChatHubConnectionService: Error processing message: {ex.Message}");
+        }
+    }
+
+    // Handler using JsonElement for cross-tab messages
+    [JSInvokable("HandleCrossTabMessageJson")]
+    public async Task HandleCrossTabMessageJson(JsonElement messageData)
+    {
+        _logger.LogInformation("ChatHubConnectionService: HandleCrossTabMessageJson ENTRY with JsonElement!");
+        _logger.LogInformation($"ChatHubConnectionService: HandleCrossTabMessageJson called with: {messageData.GetRawText()}");
+
+        try
+        {
+            // Deserialize JsonElement to ChatMessageRdto
+            var message = JsonSerializer.Deserialize<ChatMessageRdto>(messageData.GetRawText(), new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true 
+            });
+
+            if (message != null)
+            {
+                message.IsCrossTabMessage = true; // Mark as cross-tab message
+                _logger.LogInformation($"ChatHubConnectionService: Deserialized cross-tab message - Id: {message.Id}, Sender: {message.SenderUsername}, Text: {message.Text}");
+                await ReceivedMessageAsync(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"ChatHubConnectionService: Error processing cross-tab message: {ex.Message}");
+        }
     }
 
     // Direct SignalR message handler
-    [JSInvokable]
+    [JSInvokable("HandleSignalRMessage")]
     public async Task HandleSignalRMessage(object messageData)
     {
-        Console.WriteLine($"ChatHubConnectionService: HandleSignalRMessage called with: {System.Text.Json.JsonSerializer.Serialize(messageData)}");
+        _logger.LogInformation("ChatHubConnectionService: HandleSignalRMessage ENTRY POINT!");
+        _logger.LogInformation($"ChatHubConnectionService: HandleSignalRMessage called with: {System.Text.Json.JsonSerializer.Serialize(messageData)}");
 
-        // Convert dynamic object to ChatMessageRdto
-        var message = new ChatMessageRdto
+        try
         {
-            Id = Guid.Parse(messageData.GetType().GetProperty("Id")?.GetValue(messageData)?.ToString() ?? Guid.Empty.ToString()),
-            ConversationId = Guid.TryParse(messageData.GetType().GetProperty("ConversationId")?.GetValue(messageData)?.ToString(), out var convId) ? convId : null,
-            SenderUserId = Guid.Parse(messageData.GetType().GetProperty("SenderUserId")?.GetValue(messageData)?.ToString() ?? Guid.Empty.ToString()),
-            SenderUsername = messageData.GetType().GetProperty("SenderUsername")?.GetValue(messageData)?.ToString(),
-            SenderName = messageData.GetType().GetProperty("SenderName")?.GetValue(messageData)?.ToString(),
-            SenderSurname = messageData.GetType().GetProperty("SenderSurname")?.GetValue(messageData)?.ToString(),
-            Text = messageData.GetType().GetProperty("Text")?.GetValue(messageData)?.ToString()
-        };
+            // Convert dynamic object to ChatMessageRdto
+            var message = new ChatMessageRdto
+            {
+                Id = Guid.Parse(messageData.GetType().GetProperty("Id")?.GetValue(messageData)?.ToString() ?? Guid.Empty.ToString()),
+                ConversationId = Guid.TryParse(messageData.GetType().GetProperty("ConversationId")?.GetValue(messageData)?.ToString(), out var convId) ? convId : null,
+                SenderUserId = Guid.Parse(messageData.GetType().GetProperty("SenderUserId")?.GetValue(messageData)?.ToString() ?? Guid.Empty.ToString()),
+                SenderUsername = messageData.GetType().GetProperty("SenderUsername")?.GetValue(messageData)?.ToString(),
+                SenderName = messageData.GetType().GetProperty("SenderName")?.GetValue(messageData)?.ToString(),
+                SenderSurname = messageData.GetType().GetProperty("SenderSurname")?.GetValue(messageData)?.ToString(),
+                Text = messageData.GetType().GetProperty("Text")?.GetValue(messageData)?.ToString()
+            };
 
-        Console.WriteLine($"ChatHubConnectionService: Forwarding message to registered callbacks");
-        await ReceivedMessageAsync(message);
+            _logger.LogInformation($"ChatHubConnectionService: Forwarding message to registered callbacks - Id: {message.Id}, Sender: {message.SenderUsername}, ConversationId: {message.ConversationId}");
+            await ReceivedMessageAsync(message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"ChatHubConnectionService: Error processing SignalR message: {ex.Message}");
+        }
+    }
+
+    // Handle cross-tab messages (from BroadcastChannel)
+    [JSInvokable]
+    public async Task HandleCrossTabMessage(object messageData)
+    {
+        _logger.LogInformation($"ChatHubConnectionService: HandleCrossTabMessage called with: {System.Text.Json.JsonSerializer.Serialize(messageData)}");
+
+        try
+        {
+            // Convert dynamic object to ChatMessageRdto
+            var message = new ChatMessageRdto
+            {
+                Id = Guid.Parse(messageData.GetType().GetProperty("Id")?.GetValue(messageData)?.ToString() ?? Guid.Empty.ToString()),
+                ConversationId = Guid.TryParse(messageData.GetType().GetProperty("ConversationId")?.GetValue(messageData)?.ToString(), out var convId) ? convId : null,
+                SenderUserId = Guid.Parse(messageData.GetType().GetProperty("SenderUserId")?.GetValue(messageData)?.ToString() ?? Guid.Empty.ToString()),
+                SenderUsername = messageData.GetType().GetProperty("SenderUsername")?.GetValue(messageData)?.ToString(),
+                SenderName = messageData.GetType().GetProperty("SenderName")?.GetValue(messageData)?.ToString(),
+                SenderSurname = messageData.GetType().GetProperty("SenderSurname")?.GetValue(messageData)?.ToString(),
+                Text = messageData.GetType().GetProperty("Text")?.GetValue(messageData)?.ToString()
+            };
+
+            // Mark as cross-tab message to avoid duplicate processing
+            message.IsCrossTabMessage = true;
+
+            _logger.LogInformation($"ChatHubConnectionService: Forwarding cross-tab message to registered callbacks - Id: {message.Id}, Sender: {message.SenderUsername}, ConversationId: {message.ConversationId}");
+            await ReceivedMessageAsync(message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"ChatHubConnectionService: Error processing cross-tab message: {ex.Message}");
+        }
     }
 
     // Methods called by JavaScript
     [JSInvokable]
     public void OnMessageReceivedSync(object messageData)
     {
-        Console.WriteLine($"ChatHubConnectionService: OnMessageReceivedSync called with: {System.Text.Json.JsonSerializer.Serialize(messageData)}");
+        _logger.LogInformation($"ChatHubConnectionService: OnMessageReceivedSync called with: {System.Text.Json.JsonSerializer.Serialize(messageData)}");
     }
 
     [JSInvokable]
@@ -146,7 +250,7 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
     {
           try
           {
-               Console.WriteLine($"ChatHubConnectionService: OnMessageReceived called with data: {System.Text.Json.JsonSerializer.Serialize(messageData)}");
+               _logger.LogInformation($"ChatHubConnectionService: OnMessageReceived called with data: {System.Text.Json.JsonSerializer.Serialize(messageData)}");
 
                // Convert dynamic object to ChatMessageRdto
                var message = new ChatMessageRdto
@@ -160,27 +264,26 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
                     Text = messageData.GetType().GetProperty("Text")?.GetValue(messageData)?.ToString()
                };
 
-               Console.WriteLine($"ChatHubConnectionService: Converted to ChatMessageRdto - Id: {message.Id}, Sender: {message.SenderUsername}, Text: {message.Text}, ConversationId: {message.ConversationId}");
+               _logger.LogInformation($"ChatHubConnectionService: Converted to ChatMessageRdto - Id: {message.Id}, Sender: {message.SenderUsername}, Text: {message.Text}, ConversationId: {message.ConversationId}");
 
                // Use Task.Run to ensure we're not blocking the JS interop thread
                Task.Run(async () =>
                {
-                    Console.WriteLine("ChatHubConnectionService: Calling ReceivedMessageAsync in Task.Run...");
+                    _logger.LogInformation("ChatHubConnectionService: Calling ReceivedMessageAsync in Task.Run...");
                     try
                     {
                          await ReceivedMessageAsync(message);
-                         Console.WriteLine("ChatHubConnectionService: ReceivedMessageAsync completed");
+                         _logger.LogInformation("ChatHubConnectionService: ReceivedMessageAsync completed");
                     }
                     catch (Exception ex)
                     {
-                         Console.WriteLine($"ChatHubConnectionService: Error in Task.Run: {ex.Message}");
+                         _logger.LogError(ex, $"ChatHubConnectionService: Error in Task.Run: {ex.Message}");
                     }
                });
           }
           catch (Exception ex)
           {
-               _logger.LogError(ex, "Error processing received message");
-               Console.WriteLine($"ChatHubConnectionService: Error processing message: {ex.Message}");
+               _logger.LogError(ex, $"ChatHubConnectionService: Error processing message: {ex.Message}");
           }
      }
 

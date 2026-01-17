@@ -6,9 +6,9 @@ namespace HC.Chat.Conversations;
 public enum ConversationType
 {
     /// <summary>
-    /// Direct chat between two users (1-1)
+    /// User-to-user conversation (2 members, uses Conversation logic)
     /// </summary>
-    Direct = 1,
+    User = 1,  // Previously 'Direct', now uses Conversation with 2 members
     
     /// <summary>
     /// Group chat with multiple members

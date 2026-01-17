@@ -62,126 +62,83 @@ public class ConversationAppService : ChatAppService, IConversationAppService
 
     public virtual async Task<ChatMessageDto> SendMessageAsync(SendMessageInput input)
     {
-        Message message;
-        Guid targetUserId;
+        // ALL conversations now require ConversationId
+        var conversation = await _conversationRepository.GetWithMembersAsync(input.ConversationId);
+        if (conversation == null)
+        {
+            throw new BusinessException("HC.Chat:ConversationNotFound");
+        }
         
-        if (input.ConversationId.HasValue)
+        var currentUserId = CurrentUser.GetId();
+        var isMember = await _conversationRepository.IsUserMemberAsync(input.ConversationId, currentUserId);
+        if (!isMember)
         {
-            // Group/Project/Task conversation
-            var conversation = await _conversationRepository.GetWithMembersAsync(input.ConversationId.Value);
-            if (conversation == null)
-            {
-                throw new BusinessException("HC.Chat:ConversationNotFound");
-            }
-            
-            var currentUserId = CurrentUser.GetId();
-            var isMember = await _conversationRepository.IsUserMemberAsync(input.ConversationId.Value, currentUserId);
-            if (!isMember)
-            {
-                throw new BusinessException("HC.Chat:UserNotMember");
-            }
-            
-            // Get first other member as target, or current user if alone
-            targetUserId = conversation.Members.FirstOrDefault(m => m.UserId != currentUserId && m.IsActive)?.UserId ?? currentUserId;
+            throw new BusinessException("HC.Chat:UserNotMember");
         }
-        else
-        {
-            // Direct conversation
-            var targetUser = await _chatUserLookupService.FindByIdAsync(input.TargetUserId);
-            if (targetUser == null)
-            {
-                throw new BusinessException("HC.Chat:010002");
-            }
-
-            if (!await _permissionFinder.IsGrantedAsync(targetUser.Id, ChatPermissions.Messaging))
-            {
-                throw new BusinessException("HC.Chat:010004");
-            }
-
-            var hasGrantToStartConversation = await _authorizationService.IsGrantedAsync(ChatPermissions.Searching);
-            if (!hasGrantToStartConversation)
-            {
-                var hasConversation = await _messagingManager.HasConversationAsync(targetUser.Id);
-                if (!hasConversation)
-                {
-                    throw new AbpAuthorizationException(code: AbpAuthorizationErrorCodes.GivenRequirementHasNotGrantedForGivenResource);
-                }
-            }
-            
-            targetUserId = input.TargetUserId;
-        }
-
+        
+        Message message;
+        List<Guid> memberUserIds;
+        
         using (var uow = UnitOfWorkManager.Begin(requiresNew: true))
         {
-            var currentUserId = CurrentUser.GetId();
+            // Create message with ConversationId
+            var messageText = input.Message ?? string.Empty;
+            Check.NotNullOrWhiteSpace(messageText, nameof(input.Message));
             
-            if (input.ConversationId.HasValue)
+            message = new Message(
+                GuidGenerator.Create(),
+                messageText,
+                CurrentTenant.Id,
+                input.ConversationId
+            );
+            await _messageRepository.InsertAsync(message);
+            
+            // Create UserMessage for all active members
+            var activeMembers = conversation.Members.Where(m => m.IsActive).ToList();
+            memberUserIds = activeMembers.Select(m => m.UserId).ToList();
+            
+            foreach (var member in activeMembers)
             {
-                // For group conversations, create message with ConversationId
-                var messageText = input.Message ?? string.Empty;
-                Check.NotNullOrWhiteSpace(messageText, nameof(input.Message));
+                var side = member.UserId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver;
+                // Use first other member as target, or current user if alone
+                var targetId = activeMembers.FirstOrDefault(m => m.UserId != currentUserId)?.UserId ?? currentUserId;
                 
-                message = new Message(
-                    GuidGenerator.Create(),
-                    messageText,
-                    CurrentTenant.Id,
-                    input.ConversationId.Value // Set ConversationId for group conversations
-                );
-                await _messageRepository.InsertAsync(message);
-                
-                // Create UserMessage for all active members
-                var conversation = await _conversationRepository.GetWithMembersAsync(input.ConversationId.Value);
-                var activeMembers = conversation.Members.Where(m => m.IsActive).ToList();
-                
-                foreach (var member in activeMembers)
-                {
-                    var side = member.UserId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver;
-                    // Use first other member as target, or current user if alone
-                    var targetId = activeMembers.FirstOrDefault(m => m.UserId != currentUserId)?.UserId ?? currentUserId;
-                    
-                    await _userMessageRepository.InsertAsync(
-                        new UserMessage(GuidGenerator.Create(), member.UserId, message.Id, side, targetId, CurrentTenant.Id)
-                    );
-                }
-                
-                // Update LastMessage for the group conversation
-                // Now there's only ONE conversation shared by all members
-                var now = Clock.Now;
-                var mainConversation = await _conversationRepository.GetAsync(input.ConversationId.Value);
-                if (mainConversation != null)
-                {
-                    // Update the single conversation (shared by all members)
-                    mainConversation.SetLastMessage(messageText, now, ChatMessageSide.Sender);
-                    await _conversationRepository.UpdateAsync(mainConversation);
-                }
-            }
-            else
-            {
-                // Direct conversation - use existing logic
-                message = await _messagingManager.CreateNewMessage(
-                    currentUserId,
-                    targetUserId,
-                    input.Message
+                await _userMessageRepository.InsertAsync(
+                    new UserMessage(GuidGenerator.Create(), member.UserId, message.Id, side, targetId, CurrentTenant.Id)
                 );
             }
+            
+            // Update LastMessage for the conversation (shared by all members)
+            var now = Clock.Now;
+            conversation.SetLastMessage(messageText, now);
+            await _conversationRepository.UpdateAsync(conversation);
             
             await uow.CompleteAsync();
         }
 
+        // Send real-time notification to all members (except sender for User conversations)
         var senderUser = await _chatUserLookupService.FindByIdAsync(CurrentUser.GetId());
-        await _realTimeChatMessageSender.SendAsync(
-            targetUserId,
-            new ChatMessageRdto
-            {
-                Id = message.Id ,
-                ConversationId = input.ConversationId,
-                SenderName = senderUser.Name,
-                SenderSurname = senderUser.Surname,
-                SenderUserId = senderUser.Id,
-                SenderUsername = senderUser.UserName,
-                Text = input.Message
-            }
-        );
+        var messageDto = new ChatMessageRdto
+        {
+            Id = message.Id,
+            ConversationId = input.ConversationId,
+            SenderName = senderUser.Name,
+            SenderSurname = senderUser.Surname,
+            SenderUserId = senderUser.Id,
+            SenderUsername = senderUser.UserName,
+            Text = input.Message
+        };
+        
+        // For User (1-1) conversation: send to other user only
+        // For Group/Project/Task: send to all members except sender
+        var recipientUserIds = conversation.Type == ConversationType.User 
+            ? memberUserIds.Where(id => id != currentUserId).ToList()
+            : memberUserIds.Where(id => id != currentUserId).ToList(); // For now, same logic, but can be customized
+        
+        foreach (var recipientUserId in recipientUserIds)
+        {
+            await _realTimeChatMessageSender.SendAsync(recipientUserId, messageDto);
+        }
         
         return await MapToChatMessageDtoAsync(message, ChatMessageSide.Sender, message.CreatorId);
     }
@@ -242,17 +199,27 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             Messages = new List<ChatMessageDto>()
         };
 
-        // Get messages
+        // Get messages - ALL conversations now use ConversationId
         List<MessageWithDetails> messages;
+        Guid conversationId;
+        
         if (input.ConversationId.HasValue)
         {
-            // For group conversations, use conversation-based message retrieval
-            messages = await _messagingManager.ReadMessagesByConversationIdAsync(input.ConversationId.Value, input.SkipCount, input.MaxResultCount);
+            conversationId = input.ConversationId.Value;
         }
         else
         {
-            messages = await _messagingManager.ReadMessagesAsync(input.TargetUserId, input.SkipCount, input.MaxResultCount);
+            // Backward compatibility: Convert TargetUserId to ConversationId
+            var conversationPair = await _conversationRepository.FindPairAsync(CurrentUser.GetId(), input.TargetUserId);
+            if (conversationPair?.SenderConversation == null)
+            {
+                // No conversation exists - return empty
+                return chatConversation;
+            }
+            conversationId = conversationPair.SenderConversation.Id;
         }
+        
+        messages = await _messagingManager.ReadMessagesByConversationIdAsync(conversationId, input.SkipCount, input.MaxResultCount);
 
         foreach (var x in messages)
         {
@@ -268,25 +235,10 @@ public class ConversationAppService : ChatAppService, IConversationAppService
 
     public virtual async Task MarkConversationAsReadAsync(MarkConversationAsReadInput input)
     {
-        try
-        {
-            using (var uow = UnitOfWorkManager.Begin(requiresNew: true, isTransactional: UnitOfWorkManager.Current?.Options.IsTransactional ?? false))
-            {
-                var conversationPair = await _conversationRepository.FindPairAsync(CurrentUser.GetId(), input.TargetUserId);
-
-                if (conversationPair.SenderConversation.LastMessageSide == ChatMessageSide.Receiver)
-                {
-                    conversationPair.SenderConversation.ResetUnreadMessageCount();
-                    await _conversationRepository.UpdateAsync(conversationPair.SenderConversation);
-                }
-
-                await uow.CompleteAsync();
-            }
-        }
-        catch (AbpDbConcurrencyException e)
-        {
-            // The conversation is change by another request. So, we can ignore this exception.
-        }
+        // TODO: Refactor to use ConversationMember-based unread tracking
+        // Old logic used Conversation.UnreadMessageCount which is removed
+        // New logic should update ConversationMember.LastReadMessageId or similar
+        await Task.CompletedTask;
     }
     
     public async Task DeleteConversationAsync(DeleteConversationInput input)
@@ -300,6 +252,69 @@ public class ConversationAppService : ChatAppService, IConversationAppService
     }
     
     // New methods for expanded features
+    public virtual async Task<ConversationDto> CreateUserConversationAsync(CreateUserConversationInput input)
+    {
+        var currentUserId = CurrentUser.GetId();
+        
+        // Validate target user exists
+        var targetUser = await _chatUserLookupService.FindByIdAsync(input.TargetUserId);
+        if (targetUser == null)
+        {
+            throw new BusinessException("HC.Chat:UserNotFound").WithData("UserId", input.TargetUserId);
+        }
+        
+        if (currentUserId == input.TargetUserId)
+        {
+            throw new BusinessException("HC.Chat:CannotChatWithYourself");
+        }
+        
+        // TODO: Check if conversation already exists between these 2 users
+        // For now, we'll create a new conversation
+        // The UI should handle duplicate prevention
+        
+        Conversation conversation;
+        using (var uow = UnitOfWorkManager.Begin(requiresNew: true))
+        {
+            // Create SINGLE conversation for 2 users
+            conversation = new Conversation(
+                GuidGenerator.Create(),
+                ConversationType.User,
+                input.Name ?? $"{targetUser.Name} {targetUser.Surname}".Trim(), // Default name
+                null, // No description
+                null, // No project
+                null, // No task
+                CurrentTenant.Id
+            );
+            // Initialize LastMessage properties
+            conversation.LastMessage = string.Empty;
+            conversation.LastMessageDate = Clock.Now;
+            await _conversationRepository.InsertAsync(conversation);
+            
+            // Add 2 members (both as MEMBER role)
+            var currentUserMember = new ConversationMember(
+                GuidGenerator.Create(),
+                conversation.Id,
+                currentUserId,
+                "MEMBER",
+                CurrentTenant.Id
+            );
+            await _conversationMemberRepository.InsertAsync(currentUserMember);
+            
+            var targetUserMember = new ConversationMember(
+                GuidGenerator.Create(),
+                conversation.Id,
+                input.TargetUserId,
+                "MEMBER",
+                CurrentTenant.Id
+            );
+            await _conversationMemberRepository.InsertAsync(targetUserMember);
+            
+            await uow.CompleteAsync();
+        }
+        
+        return await MapToConversationDtoAsync(conversation, currentUserId);
+    }
+    
     public virtual async Task<ConversationDto> CreateGroupConversationAsync(CreateGroupConversationInput input)
     {
         var currentUserId = CurrentUser.GetId();
@@ -323,8 +338,6 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             // Create ONLY ONE conversation for the group (not per member)
             conversation = new Conversation(
                 GuidGenerator.Create(),
-                currentUserId, // Creator's UserId for reference, but all members share this conversation
-                null, // No target user for group
                 ConversationType.Group,
                 input.Name,
                 input.Description,
@@ -335,7 +348,6 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             // Initialize LastMessage properties to avoid null constraint violation
             conversation.LastMessage = string.Empty;
             conversation.LastMessageDate = Clock.Now;
-            conversation.LastMessageSide = ChatMessageSide.Sender;
             await _conversationRepository.InsertAsync(conversation);
             
             // Add ALL members (including creator) to ConversationMember
@@ -394,8 +406,6 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             // Create ONLY ONE conversation for the project (not per member)
             conversation = new Conversation(
                 GuidGenerator.Create(),
-                currentUserId, // Creator's UserId for reference, but all members share this conversation
-                null,
                 ConversationType.Project,
                 input.Name ?? $"Project {input.ProjectId}",
                 null,
@@ -406,7 +416,6 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             // Initialize LastMessage properties to avoid null constraint violation
             conversation.LastMessage = string.Empty;
             conversation.LastMessageDate = Clock.Now;
-            conversation.LastMessageSide = ChatMessageSide.Sender;
             await _conversationRepository.InsertAsync(conversation);
             
             // Add ALL members (including creator) to ConversationMember
@@ -468,8 +477,6 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             // Create ONLY ONE conversation for the task (not per member)
             conversation = new Conversation(
                 GuidGenerator.Create(),
-                currentUserId, // Creator's UserId for reference, but all members share this conversation
-                null,
                 ConversationType.Task,
                 input.Name ?? $"Task {input.TaskId}",
                 null,
@@ -480,7 +487,6 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             // Initialize LastMessage properties to avoid null constraint violation
             conversation.LastMessage = string.Empty;
             conversation.LastMessageDate = Clock.Now;
-            conversation.LastMessageSide = ChatMessageSide.Sender;
             await _conversationRepository.InsertAsync(conversation);
             
             // Add ALL members (including creator) to ConversationMember
@@ -614,19 +620,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                 );
                 await _conversationMemberRepository.InsertAsync(member);
                 
-                // Create conversation entry for new member
-                var memberConversation = new Conversation(
-                    GuidGenerator.Create(),
-                    userId,
-                    null,
-                    conversation.Type,
-                    conversation.Name,
-                    conversation.Description,
-                    conversation.ProjectId,
-                    conversation.TaskId,
-                    CurrentTenant.Id
-                );
-                await _conversationRepository.InsertAsync(memberConversation);
+                // No need to create separate conversation - all members share the same conversation now
             }
             
             await uow.CompleteAsync();
@@ -818,7 +812,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                 if (mainConversation != null)
                 {
                     // Update the single conversation (shared by all members)
-                    mainConversation.SetLastMessage(input.Message, now, ChatMessageSide.Sender);
+                    mainConversation.SetLastMessage(input.Message, now);
                     await _conversationRepository.UpdateAsync(mainConversation);
                 }
             }
@@ -847,8 +841,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                 var conversationPair = await _conversationRepository.FindPairAsync(currentUserId, targetUserId);
                 if (conversationPair != null)
                 {
-                    conversationPair.SenderConversation?.SetLastMessage(input.Message, Clock.Now, ChatMessageSide.Sender);
-                    conversationPair.TargetConversation?.SetLastMessage(input.Message, Clock.Now, ChatMessageSide.Receiver);
+                    conversationPair.SenderConversation?.SetLastMessage(input.Message, Clock.Now);
+                    conversationPair.TargetConversation?.SetLastMessage(input.Message, Clock.Now);
                     
                     if (conversationPair.SenderConversation != null)
                     {
@@ -998,7 +992,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                 if (mainConversation != null)
                 {
                     // Update the single conversation (shared by all members)
-                    mainConversation.SetLastMessage(messageText, now, ChatMessageSide.Sender);
+                    mainConversation.SetLastMessage(messageText, now);
                     await _conversationRepository.UpdateAsync(mainConversation);
                 }
             }
@@ -1207,22 +1201,26 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             MemberCount = members.Count(m => m.IsActive),
             LastMessage = conversation.LastMessage,
             LastMessageDate = conversation.LastMessageDate,
-            UnreadMessageCount = conversation.UnreadMessageCount
+            UnreadMessageCount = 0 // TODO: Calculate from ConversationMember per-user read status
         };
         
-        // For Direct type, get target user info
-        if (conversation.Type == ConversationType.Direct && conversation.TargetUserId.HasValue)
+        // For User type, get target user info (from members, not TargetUserId)
+        if (conversation.Type == ConversationType.User)
         {
-            var targetUser = await _chatUserLookupService.FindByIdAsync(conversation.TargetUserId.Value);
-            if (targetUser != null)
+            var targetMember = members.FirstOrDefault(m => m.UserId != currentUserId && m.IsActive);
+            if (targetMember != null)
             {
-                dto.TargetUserInfo = new ChatTargetUserInfo
+                var targetUser = await _chatUserLookupService.FindByIdAsync(targetMember.UserId);
+                if (targetUser != null)
                 {
-                    UserId = targetUser.Id,
-                    Name = targetUser.Name,
-                    Surname = targetUser.Surname,
-                    Username = targetUser.UserName
-                };
+                    dto.TargetUserInfo = new ChatTargetUserInfo
+                    {
+                        UserId = targetUser.Id,
+                        Name = targetUser.Name,
+                        Surname = targetUser.Surname,
+                        Username = targetUser.UserName
+                    };
+                }
             }
         }
         else

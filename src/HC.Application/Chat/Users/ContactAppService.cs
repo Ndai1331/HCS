@@ -51,7 +51,7 @@ public class ContactAppService : ChatAppService, IContactAppService
                 var isPinned = false;
                 DateTime? pinnedDate = null;
                 string memberRole = null;
-                if (x.Conversation.Type != ConversationType.Direct)
+                if (x.Conversation.Type != ConversationType.User)
                 {
                     try
                     {
@@ -71,7 +71,7 @@ public class ContactAppService : ChatAppService, IContactAppService
                 
                 // Get member count for group/project/task
                 var memberCount = 0;
-                if (x.Conversation.Type != ConversationType.Direct)
+                if (x.Conversation.Type != ConversationType.User)
                 {
                     try
                     {
@@ -91,10 +91,9 @@ public class ContactAppService : ChatAppService, IContactAppService
                     Name = x.TargetUser?.Name,
                     Surname = x.TargetUser?.Surname,
                     Username = x.TargetUser?.UserName,
-                    LastMessageSide = x.Conversation.LastMessageSide,
                     LastMessage = x.Conversation.LastMessage,
                     LastMessageDate = x.Conversation.LastMessageDate,
-                    UnreadMessageCount = x.Conversation.UnreadMessageCount,
+                    UnreadMessageCount = 0, // TODO: Calculate from ConversationMember per-user read status
                     Type = x.Conversation.Type,
                     ConversationName = x.Conversation.Name,
                     ConversationId = x.Conversation.Id,
@@ -136,7 +135,7 @@ public class ContactAppService : ChatAppService, IContactAppService
             try
             {
                 var contactsToCheck = conversationContacts
-                    .Where(x => x.UserId != Guid.Empty && x.UserId != currentUserId && x.Type == ConversationType.Direct)
+                    .Where(x => x.UserId != Guid.Empty && x.UserId != currentUserId && x.Type == ConversationType.User)
                     .ToList();
                 
                 if (contactsToCheck.Any())
@@ -157,7 +156,7 @@ public class ContactAppService : ChatAppService, IContactAppService
                         if (contactDto.UserId != Guid.Empty)
                         {
                             // Current user always has permission, group conversations don't need permission check
-                            if (contactDto.UserId == currentUserId || contactDto.Type != ConversationType.Direct)
+                            if (contactDto.UserId == currentUserId || contactDto.Type != ConversationType.User)
                             {
                                 contactDto.HasChatPermission = true;
                             }
@@ -219,6 +218,7 @@ public class ContactAppService : ChatAppService, IContactAppService
 
     public virtual async Task<int> GetTotalUnreadMessageCountAsync()
     {
-        return await _conversationRepository.GetTotalUnreadMessageCountAsync(CurrentUser.GetId());
+        // TODO: Calculate from ConversationMember per-user read status
+        return 0;
     }
 }

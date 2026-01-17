@@ -19,6 +19,8 @@ public interface IConversationAppService : IApplicationService
     Task DeleteConversationAsync(DeleteConversationInput input);
     
     // New methods for expanded features
+    Task<ConversationDto> CreateUserConversationAsync(CreateUserConversationInput input);
+    
     Task<ConversationDto> CreateGroupConversationAsync(CreateGroupConversationInput input);
     
     Task<ConversationDto> CreateProjectConversationAsync(CreateProjectConversationInput input);

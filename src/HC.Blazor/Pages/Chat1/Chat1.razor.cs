@@ -129,68 +129,144 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
     private DotNetObjectReference<Chat1>? _objRef;
 
+    [JSInvokable]
+    public async Task HandleSignalRMessage(object messageData)
+    {
+        try
+        {
+            Console.WriteLine($"Chat1: HandleSignalRMessage called");
+
+            // Convert dynamic object to ChatMessageRdto
+            var message = new ChatMessageRdto
+            {
+                Id = Guid.Parse(messageData.GetType().GetProperty("Id")?.GetValue(messageData)?.ToString() ?? Guid.Empty.ToString()),
+                ConversationId = Guid.TryParse(messageData.GetType().GetProperty("ConversationId")?.GetValue(messageData)?.ToString(), out var convId) ? convId : null,
+                SenderUserId = Guid.Parse(messageData.GetType().GetProperty("SenderUserId")?.GetValue(messageData)?.ToString() ?? Guid.Empty.ToString()),
+                SenderUsername = messageData.GetType().GetProperty("SenderUsername")?.GetValue(messageData)?.ToString(),
+                SenderName = messageData.GetType().GetProperty("SenderName")?.GetValue(messageData)?.ToString(),
+                SenderSurname = messageData.GetType().GetProperty("SenderSurname")?.GetValue(messageData)?.ToString(),
+                Text = messageData.GetType().GetProperty("Text")?.GetValue(messageData)?.ToString(),
+                IsCrossTabMessage = false
+            };
+
+            await ProcessReceivedMessage(message);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chat1: Error in HandleSignalRMessage: {ex.Message}");
+            _logger.LogError(ex, "Error processing SignalR message");
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleCrossTabMessage(object messageData)
+    {
+        try
+        {
+            // Convert dynamic object to ChatMessageRdto
+            var message = new ChatMessageRdto
+            {
+                Id = Guid.Parse(messageData.GetType().GetProperty("Id")?.GetValue(messageData)?.ToString() ?? Guid.Empty.ToString()),
+                ConversationId = Guid.TryParse(messageData.GetType().GetProperty("ConversationId")?.GetValue(messageData)?.ToString(), out var convId) ? convId : null,
+                SenderUserId = Guid.Parse(messageData.GetType().GetProperty("SenderUserId")?.GetValue(messageData)?.ToString() ?? Guid.Empty.ToString()),
+                SenderUsername = messageData.GetType().GetProperty("SenderUsername")?.GetValue(messageData)?.ToString(),
+                SenderName = messageData.GetType().GetProperty("SenderName")?.GetValue(messageData)?.ToString(),
+                SenderSurname = messageData.GetType().GetProperty("SenderSurname")?.GetValue(messageData)?.ToString(),
+                Text = messageData.GetType().GetProperty("Text")?.GetValue(messageData)?.ToString(),
+                IsCrossTabMessage = true
+            };
+
+            await ProcessReceivedMessage(message);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chat1: Error in HandleCrossTabMessage: {ex.Message}");
+            _logger.LogError(ex, "Error processing cross-tab message");
+        }
+    }
+
     private async Task ProcessReceivedMessage(ChatMessageRdto message)
     {
+        _logger.LogInformation("CHAT1: ProcessReceivedMessage CALLED from service!");
+
         try
         {
             if (CurrentChatContact == null)
             {
-                Console.WriteLine("Chat1: CurrentChatContact is null, ignoring message");
+                _logger.LogInformation("Chat1: CurrentChatContact is null, ignoring message");
                 return;
             }
 
             if (CurrentUser == null)
             {
-                Console.WriteLine("Chat1: CurrentUser is null, ignoring message");
+                _logger.LogInformation("Chat1: CurrentUser is null, ignoring message");
                 return;
             }
 
-            Console.WriteLine($"Chat1: Current chat - Type: {CurrentChatContact.Type}, UserId: {CurrentChatContact.UserId}, ConversationId: {CurrentConversationId}");
-            Console.WriteLine($"Chat1: DEBUG - Message details: Id={message.Id}, SenderUserId={message.SenderUserId}, SenderUsername={message.SenderUsername}, Text={message.Text}, ConversationId={message.ConversationId}");
-            Console.WriteLine($"Chat1: DEBUG - Current user details: CurrentUser.Id={CurrentUser.Id}, CurrentUser.UserName={CurrentUser.UserName}");
+            _logger.LogInformation($"Chat1: Current chat - Type: {CurrentChatContact.Type}, UserId: {CurrentChatContact.UserId}, ConversationId: {CurrentConversationId}");
+            _logger.LogInformation($"Chat1: DEBUG - Message details: Id={message.Id}, SenderUserId={message.SenderUserId}, SenderUsername={message.SenderUsername}, Text={message.Text}, ConversationId={message.ConversationId}");
+            _logger.LogInformation($"Chat1: DEBUG - Current user details: CurrentUser.Id={CurrentUser.Id}, CurrentUser.UserName={CurrentUser.UserName}");
 
             // Check if message is for current conversation
             bool isForCurrentConversation = false;
 
-            if (CurrentChatContact.Type == ConversationType.Direct)
+            if (CurrentChatContact.Type == ConversationType.User)
             {
                 // For direct chat: message can be from the other user OR from ourselves (when sending from another tab)
                 // Direct chat doesn't have ConversationId, so check based on sender
                 bool isFromOtherUser = CurrentChatContact.UserId == message.SenderUserId;
                 bool isFromCurrentUser = message.SenderUserId == CurrentUser.Id;
                 isForCurrentConversation = isFromOtherUser || isFromCurrentUser;
-                Console.WriteLine($"Chat1: Direct chat check - CurrentChatContact.UserId: {CurrentChatContact.UserId}, message.SenderUserId: {message.SenderUserId}, CurrentUser.Id: {CurrentUser.Id}, isFromOtherUser: {isFromOtherUser}, isFromCurrentUser: {isFromCurrentUser}, isForCurrentConversation: {isForCurrentConversation}");
+
+                // For cross-tab messages from current user, we still want to display them
+                // For SignalR messages from current user in same tab, skip to avoid duplicates
+                if (isFromCurrentUser && !message.IsCrossTabMessage)
+                {
+                    _logger.LogInformation("Chat1: Skipping SignalR message from current user in same tab to avoid duplicate processing");
+                    return;
+                }
+
+                _logger.LogInformation($"Chat1: Direct chat check - CurrentChatContact.UserId: {CurrentChatContact.UserId}, message.SenderUserId: {message.SenderUserId}, CurrentUser.Id: {CurrentUser.Id}, isFromOtherUser: {isFromOtherUser}, isFromCurrentUser: {isFromCurrentUser}, isCrossTab: {message.IsCrossTabMessage}, isForCurrentConversation: {isForCurrentConversation}");
 
                 // Additional debug for current user scenario
                 if (message.SenderUserId == CurrentUser.Id)
                 {
-                    Console.WriteLine("Chat1: DEBUG - Message is from current user, this should be displayed for multi-tab support");
+                    _logger.LogInformation("Chat1: DEBUG - Message is from current user, this should be displayed for multi-tab support");
                 }
             }
-            else if (CurrentChatContact.Type != ConversationType.Direct && CurrentConversationId.HasValue)
+            else if (CurrentChatContact.Type != ConversationType.User && CurrentConversationId.HasValue)
             {
                 // For group conversations: check if message belongs to current conversation
                 isForCurrentConversation = message.ConversationId.HasValue &&
                                          message.ConversationId.Value == CurrentConversationId.Value;
-                Console.WriteLine($"Chat1: Group chat check - message.ConversationId: {message.ConversationId}, CurrentConversationId: {CurrentConversationId}, isForCurrentConversation: {isForCurrentConversation}");
+
+                // For cross-tab messages from current user, we still want to display them
+                // For SignalR messages from current user in same tab, skip to avoid duplicates
+                if (message.SenderUserId == CurrentUser.Id && !message.IsCrossTabMessage)
+                {
+                    _logger.LogInformation("Chat1: Skipping SignalR message from current user in same tab to avoid duplicate processing");
+                    return;
+                }
+
+                _logger.LogInformation($"Chat1: Group chat check - message.ConversationId: {message.ConversationId}, CurrentConversationId: {CurrentConversationId}, SenderUserId: {message.SenderUserId}, CurrentUser.Id: {CurrentUser.Id}, isCrossTab: {message.IsCrossTabMessage}, isForCurrentConversation: {isForCurrentConversation}");
 
                 // Additional debug for group chats
                 if (message.ConversationId.HasValue && CurrentConversationId.HasValue)
                 {
-                    Console.WriteLine($"Chat1: DEBUG - Conversation match check: message.ConversationId == CurrentConversationId? {message.ConversationId.Value == CurrentConversationId.Value}");
+                    _logger.LogInformation($"Chat1: DEBUG - Conversation match check: message.ConversationId == CurrentConversationId? {message.ConversationId.Value == CurrentConversationId.Value}");
                 }
             }
             else
             {
-                Console.WriteLine($"Chat1: WARNING - Cannot determine if message is for current conversation. Type: {CurrentChatContact.Type}, CurrentConversationId: {CurrentConversationId}, message.ConversationId: {message.ConversationId}");
+                _logger.LogInformation($"Chat1: WARNING - Cannot determine if message is for current conversation. Type: {CurrentChatContact.Type}, CurrentConversationId: {CurrentConversationId}, message.ConversationId: {message.ConversationId}");
             }
 
             if (isForCurrentConversation)
             {
-                Console.WriteLine("Chat1: Message is for current conversation, refreshing...");
+                _logger.LogInformation("Chat1: Message is for current conversation, refreshing...");
 
                 // Refresh conversation
-                if (CurrentChatContact.Type == ConversationType.Direct)
+                if (CurrentChatContact.Type == ConversationType.User)
                 {
                     Console.WriteLine("Chat1: Refreshing direct conversation...");
                     ChatConversationDto = await ConversationAppService.GetConversationAsync(
@@ -205,7 +281,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                     Console.WriteLine($"Chat1: Group conversation refreshed, messages count: {ChatConversationDto?.Messages?.Count ?? 0}");
                 }
 
-                if (CurrentChatContact.UnreadMessageCount > 0 && CurrentChatContact.Type == ConversationType.Direct)
+                if (CurrentChatContact.UnreadMessageCount > 0 && CurrentChatContact.Type == ConversationType.User)
                 {
                     Console.WriteLine("Chat1: Marking conversation as read...");
                     await ConversationAppService.MarkConversationAsReadAsync(
@@ -261,12 +337,33 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         {
             Console.WriteLine("Chat1: Initializing SignalR connection...");
 
-            // Register callback with ChatHubConnectionService
+            // Register callback with ChatHubConnectionService FIRST
             Console.WriteLine("Chat1: Registering SignalR message callback...");
             await ChatHubConnectionService.OnReceiveMessageAsync(async message =>
             {
                 Console.WriteLine($"Chat1: SignalR message received - Id: {message.Id}, Sender: {message.SenderUsername}, Text: {message.Text}, ConversationId: {message.ConversationId}");
                 await ProcessReceivedMessage(message);
+            });
+
+            // Register delete callbacks
+            await ChatHubConnectionService.OnDeletedMessageAsync(async messageId =>
+            {
+                ChatConversationDto.Messages.RemoveAll(message => message.Id == messageId);
+                var lastMessage = ChatConversationDto.Messages.LastOrDefault();
+                CurrentChatContact.LastMessage = lastMessage?.Message;
+                CurrentChatContact.LastMessageDate = lastMessage?.MessageDate;
+                await InvokeAsync(StateHasChanged);
+            });
+            
+            await ChatHubConnectionService.OnDeletedConversationAsync(async userId =>
+            {
+                if (userId == CurrentChatContact.UserId)
+                {
+                    CanvasElementReferences.Clear();
+                    ChatConversationDto = null;
+                    ChatContactDtos.RemoveAll(contact => contact.UserId == userId);
+                }
+                await InvokeAsync(StateHasChanged);
             });
 
             // Initialize SignalR with service reference
@@ -279,27 +376,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             Console.WriteLine($"Chat1: Failed to initialize chat SignalR connection: {ex.Message}");
             _logger.LogError(ex, "Failed to initialize chat SignalR connection");
         }
-
-
-        await ChatHubConnectionService.OnDeletedMessageAsync(async messageId =>
-        {
-            ChatConversationDto.Messages.RemoveAll(message => message.Id == messageId);
-            var lastMessage = ChatConversationDto.Messages.LastOrDefault();
-            CurrentChatContact.LastMessage = lastMessage?.Message;
-            CurrentChatContact.LastMessageDate = lastMessage?.MessageDate;
-            await InvokeAsync(StateHasChanged);
-        });
-        
-        await ChatHubConnectionService.OnDeletedConversationAsync(async userId =>
-        {
-            if (userId == CurrentChatContact.UserId)
-            {
-                CanvasElementReferences.Clear();
-                ChatConversationDto = null;
-                ChatContactDtos.RemoveAll(contact => contact.UserId == userId);
-            }
-            await InvokeAsync(StateHasChanged);
-        });
     }
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
@@ -318,7 +394,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         
         // Update avatar for current chat contact after canvas is rendered in DOM
-        if (_shouldUpdateAvatar && CurrentChatContact?.Type == ConversationType.Direct)
+        if (_shouldUpdateAvatar && CurrentChatContact?.Type == ConversationType.User)
         {
             _shouldUpdateAvatar = false;
             try
@@ -338,7 +414,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         
         // Draw avatars for sender messages in Group/Project/Task conversations
-        if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.Direct && ChatConversationDto?.Messages != null)
+        if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User && ChatConversationDto?.Messages != null)
         {
             await Task.Delay(100); // Wait for DOM to be ready
             foreach (var message in ChatConversationDto.Messages.Where(m => m.SenderUserId.HasValue && m.Side == ChatMessageSide.Receiver))
@@ -386,7 +462,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     public static string GetContactDisplayName(ChatContactDto contact)
     {
         // For group/project/task, use ConversationName if available
-        if (contact.Type != ConversationType.Direct && !string.IsNullOrWhiteSpace(contact.ConversationName))
+        if (contact.Type != ConversationType.User && !string.IsNullOrWhiteSpace(contact.ConversationName))
         {
             return contact.ConversationName;
         }
@@ -406,7 +482,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         
         // Preserve current contact selection if requested (e.g., when refreshing after sending message)
         var currentContactId = preserveCurrentContact && CurrentChatContact != null 
-            ? (CurrentChatContact.Type == ConversationType.Direct 
+            ? (CurrentChatContact.Type == ConversationType.User 
                 ? CurrentChatContact.UserId 
                 : CurrentChatContact.ConversationId)
             : (Guid?)null;
@@ -469,8 +545,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         if (preserveCurrentContact && currentContactId.HasValue)
         {
             CurrentChatContact = ChatContactDtos.FirstOrDefault(c => 
-                (c.Type == ConversationType.Direct && c.UserId == currentContactId.Value) ||
-                (c.Type != ConversationType.Direct && c.ConversationId == currentContactId.Value));
+                (c.Type == ConversationType.User && c.UserId == currentContactId.Value) ||
+                (c.Type != ConversationType.User && c.ConversationId == currentContactId.Value));
         }
         else
         {
@@ -497,7 +573,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         // Preserve current contact selection
         var currentContactId = CurrentChatContact != null 
-            ? (CurrentChatContact.Type == ConversationType.Direct 
+            ? (CurrentChatContact.Type == ConversationType.User 
                 ? CurrentChatContact.UserId 
                 : CurrentChatContact.ConversationId)
             : (Guid?)null;
@@ -514,8 +590,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         foreach (var refreshedContact in refreshedContacts)
         {
             var existingContact = ChatContactDtos.FirstOrDefault(c => 
-                (c.Type == ConversationType.Direct && c.UserId == refreshedContact.UserId) ||
-                (c.Type != ConversationType.Direct && c.ConversationId == refreshedContact.ConversationId));
+                (c.Type == ConversationType.User && c.UserId == refreshedContact.UserId) ||
+                (c.Type != ConversationType.User && c.ConversationId == refreshedContact.ConversationId));
             
             if (existingContact != null)
             {
@@ -536,8 +612,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         if (currentContactId.HasValue)
         {
             CurrentChatContact = ChatContactDtos.FirstOrDefault(c => 
-                (c.Type == ConversationType.Direct && c.UserId == currentContactId.Value) ||
-                (c.Type != ConversationType.Direct && c.ConversationId == currentContactId.Value));
+                (c.Type == ConversationType.User && c.UserId == currentContactId.Value) ||
+                (c.Type != ConversationType.User && c.ConversationId == currentContactId.Value));
         }
     }
     
@@ -575,14 +651,14 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         if (CurrentChatContact != null)
         {
             // Chỉ cho phép xóa Direct conversations cho tất cả users
-            if (CurrentChatContact.Type == ConversationType.Direct)
+            if (CurrentChatContact.Type == ConversationType.User)
             {
                 return true;
             }
             
             // GROUP | PROJECT | TASK chỉ admin mới xóa được
             // Check if current user is admin of the conversation
-            if (CurrentChatContact.Type != ConversationType.Direct)
+            if (CurrentChatContact.Type != ConversationType.User)
             {
                 // Check if user has ADMIN role in the conversation
                 return CurrentChatContact.MemberRole == "ADMIN";
@@ -654,7 +730,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             
             // For group conversations, always allow chat (permission check not needed)
             // For direct conversations, check HasChatPermission
-            var hasPermission = contactDto.Type != ConversationType.Direct || contactDto.HasChatPermission;
+            var hasPermission = contactDto.Type != ConversationType.User || contactDto.HasChatPermission;
             ChatMessagesContainerStyle = !hasPermission ? "pointer-events: none; opacity: 0.5;" : "";
             
             ChatContactsActive[contactDto] = "active";
@@ -667,8 +743,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             // For Group/Project/Task, icon will be shown in UI instead of canvas
             // Canvas update will be done after messages are loaded
 
-            // Support both Direct and Group/Project/Task conversations
-            if (CurrentChatContact.Type == ConversationType.Direct)
+            // ALL conversations now have ConversationId (User, Group, Project, Task)
+            if (CurrentChatContact.ConversationId.HasValue)
             {
                 // Reset pagination when switching conversations
                 _messagesSkipCount = 0;
@@ -676,11 +752,12 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 
                 ChatConversationDto = await ConversationAppService.GetConversationAsync(new GetConversationInput
                 {
-                    TargetUserId = CurrentChatContact.UserId,
+                    ConversationId = CurrentChatContact.ConversationId.Value,
+                    TargetUserId = CurrentChatContact.UserId, // For backward compatibility
                     SkipCount = 0,
                     MaxResultCount = MessagesPageSize // Load 10 messages initially
                 });
-                CurrentConversationId = null;
+                CurrentConversationId = CurrentChatContact.ConversationId.Value;
                 
                 // Check if there are more messages
                 if (ChatConversationDto?.Messages != null && ChatConversationDto.Messages.Count < MessagesPageSize)
@@ -692,20 +769,33 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                     _messagesSkipCount = MessagesPageSize;
                 }
             }
-            else if (CurrentChatContact.ConversationId.HasValue)
+            else if (CurrentChatContact.Type == ConversationType.User && CurrentChatContact.UserId != Guid.Empty)
             {
-                // Reset pagination when switching conversations
+                // Backward compatibility: User conversation without ConversationId yet
+                // Use TargetUserId to find conversation, then update ConversationId
                 _messagesSkipCount = 0;
                 _hasMoreMessages = true;
                 
                 ChatConversationDto = await ConversationAppService.GetConversationAsync(new GetConversationInput
                 {
-                    ConversationId = CurrentChatContact.ConversationId.Value,
-                    TargetUserId = Guid.Empty, // Not used for group conversations
+                    TargetUserId = CurrentChatContact.UserId,
                     SkipCount = 0,
-                    MaxResultCount = MessagesPageSize // Load 10 messages initially
+                    MaxResultCount = MessagesPageSize
                 });
-                CurrentConversationId = CurrentChatContact.ConversationId.Value;
+                
+                // After loading, get ConversationId from contact if available
+                // Or create new conversation for this user
+                if (CurrentChatContact.ConversationId.HasValue)
+                {
+                    CurrentConversationId = CurrentChatContact.ConversationId.Value;
+                }
+                else
+                {
+                    // Need to create conversation first - for now set to null
+                    // User must create conversation before sending message
+                    CurrentConversationId = null;
+                    _logger.LogWarning($"Chat1: User conversation without ConversationId - UserId: {CurrentChatContact.UserId}");
+                }
                 
                 // Check if there are more messages
                 if (ChatConversationDto?.Messages != null && ChatConversationDto.Messages.Count < MessagesPageSize)
@@ -731,14 +821,14 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             IsLoadingMessages = false;
             
             // Set flag to update avatar after render
-            if (CurrentChatContact?.Type == ConversationType.Direct)
+            if (CurrentChatContact?.Type == ConversationType.User)
             {
                 _shouldUpdateAvatar = true;
             }
             
             await InvokeAsync(StateHasChanged);
 
-            if (contactDto.UnreadMessageCount > 0 && CurrentChatContact.Type == ConversationType.Direct)
+            if (contactDto.UnreadMessageCount > 0 && CurrentChatContact.Type == ConversationType.User)
             {
                 await ConversationAppService.MarkConversationAsReadAsync(new MarkConversationAsReadInput
                 {
@@ -832,8 +922,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 return;
             }
             
-            // Check if conversation already exists in current list
-            var existingContact = ChatContactDtos.FirstOrDefault(c => c.Type == ConversationType.Direct && c.UserId == targetUserId);
+            // Check if conversation already exists in current list (now using User type instead of Direct)
+            var existingContact = ChatContactDtos.FirstOrDefault(c => c.Type == ConversationType.User && c.UserId == targetUserId);
             if (existingContact != null)
             {
                 // Conversation already exists, just set it active
@@ -843,36 +933,25 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 return;
             }
             
-            // Refresh contacts to get the user (without other contacts to avoid showing "Other contacts")
+            // Create new User conversation using API
+            _logger.LogInformation($"Creating User conversation with target user: {targetUserId}");
+            var conversation = await ConversationAppService.CreateUserConversationAsync(new CreateUserConversationInput
+            {
+                TargetUserId = targetUserId,
+                Name = SelectedDirectUser.First().DisplayName // Optional custom name
+            });
+            
+            _logger.LogInformation($"User conversation created: {conversation.Id}");
+            
+            // Refresh contacts to get the newly created conversation
             await GetContactsAsync(false);
             
-            // Check again after refresh
-            existingContact = ChatContactDtos.FirstOrDefault(c => c.Type == ConversationType.Direct && c.UserId == targetUserId);
-            if (existingContact != null)
+            // Find and activate the new conversation
+            var newContact = ChatContactDtos.FirstOrDefault(c => c.ConversationId == conversation.Id);
+            if (newContact != null)
             {
-                // Conversation already exists in database, just set it active
-                await SetActiveAsync(existingContact);
-                ShowCreateDirectModal = false;
-                SelectedDirectUser.Clear();
-                return;
+                await SetActiveAsync(newContact);
             }
-            
-            // Conversation does not exist yet, create contact entry
-            // The conversation will be created automatically when first message is sent
-            // Get user info from lookup service instead of including all other contacts
-            var selectedUser = SelectedDirectUser.First();
-            var fallbackContact = new ChatContactDto
-            {
-                UserId = targetUserId,
-                Username = selectedUser.DisplayName,
-                Name = selectedUser.DisplayName,
-                Type = ConversationType.Direct,
-                HasChatPermission = true
-            };
-            
-            ChatContactDtos.Insert(0, fallbackContact);
-            ChatContactsActive[fallbackContact] = "";
-            await SetActiveAsync(fallbackContact);
             
             ShowCreateDirectModal = false;
             SelectedDirectUser.Clear();
@@ -1297,8 +1376,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         
         // Update contact in list
         var contactInList = ChatContactDtos.FirstOrDefault(c => 
-            (c.Type == ConversationType.Direct && c.UserId == CurrentChatContact.UserId) ||
-            (c.Type != ConversationType.Direct && c.ConversationId == CurrentChatContact.ConversationId));
+            (c.Type == ConversationType.User && c.UserId == CurrentChatContact.UserId) ||
+            (c.Type != ConversationType.User && c.ConversationId == CurrentChatContact.ConversationId));
         
         if (contactInList != null)
         {
@@ -1355,8 +1434,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                     serverMessage = await ConversationAppService.SendMessageAsync(new SendMessageInput
                     {
                         Message = messageText,
-                        TargetUserId = targetUserId,
-                        ConversationId = conversationId
+                        ConversationId = conversationId ?? throw new InvalidOperationException("ConversationId is required")
                     });
                 }
 
@@ -1487,7 +1565,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         {
             List<ChatMessageDto> newMessages;
             
-            if (CurrentChatContact.Type == ConversationType.Direct)
+            if (CurrentChatContact.Type == ConversationType.User)
             {
                 var conversation = await ConversationAppService.GetConversationAsync(new GetConversationInput
                 {
