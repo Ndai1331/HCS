@@ -83,6 +83,8 @@ public partial class UserDepartments
     protected override async Task OnInitializedAsync()
     {
         await SetPermissionsAsync();
+        await GetDepartmentCollectionLookupAsync();
+        await GetIdentityUserCollectionLookupAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -180,6 +182,8 @@ public partial class UserDepartments
         };
         SelectedCreateTab = "userDepartment-create-tab";
         await NewUserDepartmentValidations.ClearAll();
+        await GetDepartmentCollectionLookupAsync(string.Empty);
+        await GetIdentityUserCollectionLookupAsync(string.Empty);
         await CreateUserDepartmentModal.Show();
     }
 
@@ -197,6 +201,8 @@ public partial class UserDepartments
         var userDepartment = await UserDepartmentsAppService.GetWithNavigationPropertiesAsync(input.UserDepartment.Id);
         EditingUserDepartmentId = userDepartment.UserDepartment.Id;
         EditingUserDepartment = ObjectMapper.Map<UserDepartmentDto, UserDepartmentUpdateDto>(userDepartment.UserDepartment);
+        await GetDepartmentCollectionLookupAsync(userDepartment.Department.Name);
+        await GetIdentityUserCollectionLookupAsync(userDepartment.User.Name);
         await EditingUserDepartmentValidations.ClearAll();
         await EditUserDepartmentModal.Show();
     }
@@ -295,7 +301,7 @@ public partial class UserDepartments
     {
         DepartmentsCollection = (await UserDepartmentsAppService.GetDepartmentLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
     }
-
+ 
     private async Task GetIdentityUserCollectionLookupAsync(string? newValue = null)
     {
         IdentityUsersCollection = (await UserDepartmentsAppService.GetIdentityUserLookupAsync(new LookupRequestDto { Filter = newValue })).Items;

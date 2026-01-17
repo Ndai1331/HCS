@@ -376,7 +376,9 @@
     "Permission:ProjectTaskAssignments": "Gán người thực hiện vào công việc",
     "Permission:ProjectTaskDocuments": "Văn bản của công việc",
     "Permission:UserDepartments": "Phòng ban của người dùng",
-
+    "UserDepartments": "Phòng ban của người dùng",
+    "NewUserDepartment": "Tạo phòng ban của người dùng mới",
+    "Menu:UserDepartments": "Phòng ban của người dùng",
 
     "IsRead": "Đã đọc",
     "ReadAt": "Thời điểm đọc",

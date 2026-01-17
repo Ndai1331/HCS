@@ -44,8 +44,18 @@ public abstract class UserDepartmentsAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<UserDepartmentWithNavigationPropertiesDto>> GetListAsync(GetUserDepartmentsInput input)
     {
-        var totalCount = await _userDepartmentRepository.GetCountAsync(input.FilterText, input.IsPrimary, input.IsActive, input.DepartmentId, input.UserId);
-        var items = await _userDepartmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.IsPrimary, input.IsActive, input.DepartmentId, input.UserId, input.Sorting, input.MaxResultCount, input.SkipCount);
+        // Check if current user is admin
+        var isAdmin = CurrentUser.IsInRole("admin");
+
+        // If not admin, filter by current user's UserId
+        Guid? filterUserId = input.UserId;
+        if (!isAdmin && CurrentUser.Id.HasValue)
+        {
+            filterUserId = CurrentUser.Id.Value;
+        }
+
+        var totalCount = await _userDepartmentRepository.GetCountAsync(input.FilterText, input.IsPrimary, input.IsActive, input.DepartmentId, filterUserId);
+        var items = await _userDepartmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.IsPrimary, input.IsActive, input.DepartmentId, filterUserId, input.Sorting, input.MaxResultCount, input.SkipCount);
         return new PagedResultDto<UserDepartmentWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,
