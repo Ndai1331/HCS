@@ -338,27 +338,39 @@
                 }
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="ProviderCode"
-                      Caption="@L["ProviderCode"]">
+                      Caption="@L["ProviderCode"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="ProviderType"
-                      Caption="@L["ProviderType"]">
+                      Caption="@L["ProviderType"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="ApiEndpoint"
-                      Caption="@L["ApiEndpoint"]">
+                      Caption="@L["ApiEndpoint"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="ApiTimeout"
-                      Caption="@L["ApiTimeout"]">
+                      Caption="@L["ApiTimeout"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="DefaultSignType"
-                      Caption="@L["DefaultSignType"]">
+                      Caption="@L["DefaultSignType"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="AllowElectronicSign"
-                      Caption="@L["AllowElectronicSign"]">
+                      Caption="@L["AllowElectronicSign"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
                     <DisplayTemplate>
                         @if (context.AllowElectronicSign)
                         {
@@ -372,7 +384,9 @@
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="AllowDigitalSign"
-                      Caption="@L["AllowDigitalSign"]">
+                      Caption="@L["AllowDigitalSign"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
                     <DisplayTemplate>
                         @if (context.AllowDigitalSign)
                         {
@@ -386,7 +400,9 @@
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="RequireOtp"
-                      Caption="@L["RequireOtp"]">
+                      Caption="@L["RequireOtp"]"
+                      CellStyle="@((item) => "min-width: 150px")"
+                      Width="150px">
                     <DisplayTemplate>
                         @if (context.RequireOtp)
                         {
@@ -400,19 +416,27 @@
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="SignWidth"
-                      Caption="@L["SignWidth"]">
+                      Caption="@L["SignWidth"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="SignHeight"
-                      Caption="@L["SignHeight"]">
+                      Caption="@L["SignHeight"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="SignedFileSuffix"
-                      Caption="@L["SignedFileSuffix"]">
+                      Caption="@L["SignedFileSuffix"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="KeepOriginalFile"
-                      Caption="@L["KeepOriginalFile"]">
+                      Caption="@L["KeepOriginalFile"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
                     <DisplayTemplate>
                         @if (context.KeepOriginalFile)
                         {
@@ -426,7 +450,9 @@
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="OverwriteSignedFile"
-                      Caption="@L["OverwriteSignedFile"]">
+                      Caption="@L["OverwriteSignedFile"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
                     <DisplayTemplate>
                         @if (context.OverwriteSignedFile)
                         {
@@ -440,7 +466,9 @@
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="EnableSignLog"
-                      Caption="@L["EnableSignLog"]">
+                      Caption="@L["EnableSignLog"]"
+                      CellStyle="@((item) => "min-width: 150px")"
+                      Width="150px">
                     <DisplayTemplate>
                         @if (context.EnableSignLog)
                         {
@@ -454,7 +482,9 @@
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="IsActive"
-                      Caption="@L["IsActive"]">
+                      Caption="@L["IsActive"]"
+                      CellStyle="@((item) => "min-width: 150px")"
+                      Width="150px">
                     <DisplayTemplate>
                         @if (context.IsActive)
                         {
@@ -466,7 +496,7 @@
                         }
                     </DisplayTemplate>
               </DataGridColumn>
-                <DataGridColumn TItem="SignatureSettingDto" Caption="@L["Actions"]">
+                <DataGridColumn TItem="SignatureSettingDto" Caption="@L["Actions"]" CellStyle="@((item) => "min-width: 150px")" Width="150px">
                     <DisplayTemplate>
                         <div class="hc-action-icons">
                             @if (CanEditSignatureSetting)

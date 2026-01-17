@@ -213,15 +213,21 @@
                 }
               <DataGridColumn TItem="SurveyCriteriaWithNavigationPropertiesDto"
                       Field="SurveyCriteria.Code"
-                      Caption="@L["Code"]">
+                      Caption="@L["Code"]"
+                      CellStyle="@((item) => "min-width: 100px")"
+                      Width="100px">
               </DataGridColumn>
               <DataGridColumn TItem="SurveyCriteriaWithNavigationPropertiesDto"
                       Field="SurveyCriteria.Name"
-                      Caption="@L["Name"]">
+                      Caption="@L["Name"]"
+                      CellStyle="@((item) => "min-width: 150px")"
+                      Width="150px">
               </DataGridColumn>
               <DataGridColumn TItem="SurveyCriteriaWithNavigationPropertiesDto"
                       Field="SurveyCriteria.Image"
-                      Caption="@L["Image"]">
+                      Caption="@L["Image"]"
+                      CellStyle="@((item) => "min-width: 150px")"
+                      Width="150px">
                   <DisplayTemplate>
                       @if (!string.IsNullOrEmpty(context.SurveyCriteria.Image))
                       {
@@ -238,15 +244,21 @@
               </DataGridColumn>
                <DataGridColumn TItem="SurveyCriteriaWithNavigationPropertiesDto"
                       Field="SurveyLocation.Name"
-                      Caption="@L["SurveyLocation"]">
+                      Caption="@L["SurveyLocation"]"
+                      CellStyle="@((item) => "min-width: 180px")"
+                      Width="180px">
               </DataGridColumn>
               <DataGridColumn TItem="SurveyCriteriaWithNavigationPropertiesDto"
                       Field="SurveyCriteria.DisplayOrder"
-                      Caption="@L["DisplayOrder"]">
+                      Caption="@L["DisplayOrder"]"
+                      CellStyle="@((item) => "min-width: 180px")"
+                      Width="180px">
               </DataGridColumn>
               <DataGridColumn TItem="SurveyCriteriaWithNavigationPropertiesDto"
                       Field="SurveyCriteria.IsActive"
                       Caption="@L["IsActive"]"
+                      CellStyle="@((item) => "min-width: 150px")"
+                      Width="150px"
                       TextAlignment="TextAlignment.Center">
                     <DisplayTemplate>
                         @if (context.SurveyCriteria.IsActive)
@@ -260,7 +272,7 @@
                     </DisplayTemplate>
               </DataGridColumn>
              
-                <DataGridColumn TItem="SurveyCriteriaWithNavigationPropertiesDto" Caption="@L["Actions"]">
+                <DataGridColumn TItem="SurveyCriteriaWithNavigationPropertiesDto" Caption="@L["Actions"]" CellStyle="@((item) => "min-width: 150px")" Width="150px">
                     <DisplayTemplate>
                         <div class="hc-action-icons">
                             @if (CanEditSurveyCriteria)
