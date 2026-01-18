@@ -20,6 +20,7 @@ using HC.Chat.Users;
 using HC.Projects;
 using HC.ProjectTasks;
 using HC.ProjectMembers;
+using HC.ProjectTaskAssignments;
 using HC.Shared;
 using Microsoft.Extensions.Caching.Memory;
 using Volo.Abp.Application.Dtos;
@@ -117,6 +118,9 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
     [Inject]
     protected NavigationManager Navigation { get; set; }
+
+    [Inject]
+    protected IProjectTaskAssignmentsAppService ProjectTaskAssignmentsAppService { get; set; } = default!;
 
     [Inject]
     protected IChatHubConnectionService ChatHubConnectionService { get; set; }

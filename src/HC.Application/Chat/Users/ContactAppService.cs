@@ -100,7 +100,9 @@ public class ContactAppService : ChatAppService, IContactAppService
                     IsPinned = isPinned,
                     PinnedDate = pinnedDate,
                     MemberCount = memberCount,
-                    MemberRole = memberRole
+                    MemberRole = memberRole,
+                    ProjectId = x.Conversation.ProjectId, // For Project conversations
+                    TaskId = x.Conversation.TaskId // For Task conversations
                 });
             }
 

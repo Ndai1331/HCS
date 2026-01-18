@@ -32,4 +32,6 @@ public class ChatContactDto
     public int MemberCount { get; set; }
     public Guid? ConversationId { get; set; } // For group/project/task conversations
     public string MemberRole { get; set; } // ADMIN / MEMBER - Role of current user in the conversation
+    public Guid? ProjectId { get; set; } // For Project conversations
+    public Guid? TaskId { get; set; } // For Task conversations
 }

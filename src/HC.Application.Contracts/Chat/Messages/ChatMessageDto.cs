@@ -22,6 +22,8 @@ public class ChatMessageDto
     public DateTime? PinnedDate { get; set; }
     public Guid? ReplyToMessageId { get; set; }
     public ChatMessageDto ReplyToMessage { get; set; } // Nested reply info
+    public Guid? ForwardedFromMessageId { get; set; } // For forwarded messages
+    public ChatMessageDto ForwardedFromMessage { get; set; } // Nested forwarded message info
     public List<MessageFileDto> Files { get; set; }
     
     // Sender information (for Group/Project/Task conversations)

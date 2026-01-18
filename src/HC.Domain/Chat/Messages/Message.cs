@@ -23,10 +23,12 @@ public class Message : CreationAuditedAggregateRoot<Guid>, IMultiTenant
     public virtual DateTime? PinnedDate { get; protected set; }
     public virtual Guid? PinnedByUserId { get; protected set; }
     public virtual Guid? ReplyToMessageId { get; protected set; }
+    public virtual Guid? ForwardedFromMessageId { get; protected set; } // For forwarded messages
     public virtual Guid? ConversationId { get; protected set; } // For group/project/task conversations
     
     // Navigation
     public virtual Message ReplyToMessage { get; protected set; }
+    public virtual Message ForwardedFromMessage { get; protected set; } // Forwarded from original message
     public virtual ICollection<Message> Replies { get; protected set; }
 
     protected Message()
@@ -75,5 +77,10 @@ public class Message : CreationAuditedAggregateRoot<Guid>, IMultiTenant
     public virtual void SetReplyTo(Guid? replyToMessageId)
     {
         ReplyToMessageId = replyToMessageId;
+    }
+    
+    public virtual void SetForwardedFrom(Guid? forwardedFromMessageId)
+    {
+        ForwardedFromMessageId = forwardedFromMessageId;
     }
 }

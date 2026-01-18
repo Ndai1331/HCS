@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Volo.Abp.Application.Services;
 using HC.Chat.Messages;
+using HC.Chat.Conversations;
 
 namespace HC.Chat.Conversations;
 
@@ -58,4 +59,9 @@ public interface IConversationAppService : IApplicationService
     Task<FileDto> DownloadFileAsync(Guid fileId);
     
     Task DeleteFileAsync(Guid fileId);
+    
+    /// <summary>
+    /// Forward a message to another conversation
+    /// </summary>
+    Task<ChatMessageDto> ForwardMessageAsync(ForwardMessageInput input);
 }

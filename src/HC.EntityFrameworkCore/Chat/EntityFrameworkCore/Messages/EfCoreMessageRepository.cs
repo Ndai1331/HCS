@@ -35,6 +35,7 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
     {
         return await (await GetQueryableAsync())
             .Include(x => x.ReplyToMessage)
+            .Include(x => x.ForwardedFromMessage)
             .FirstOrDefaultAsync(x => x.Id == messageId, GetCancellationToken(cancellationToken));
     }
     

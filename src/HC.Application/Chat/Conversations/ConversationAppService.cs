@@ -1269,6 +1269,106 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         }
     }
     
+    /// <summary>
+    /// Forward a message to another conversation
+    /// </summary>
+    public virtual async Task<ChatMessageDto> ForwardMessageAsync(ForwardMessageInput input)
+    {
+        var currentUserId = CurrentUser.GetId();
+        
+        // Get the original message
+        var originalMessage = await _messageRepository.GetWithReplyAsync(input.MessageId);
+        if (originalMessage == null)
+        {
+            throw new BusinessException("HC.Chat:MessageNotFound");
+        }
+        
+        // Check target conversation exists and user is member
+        var targetConversation = await _conversationRepository.GetWithMembersAsync(input.TargetConversationId);
+        if (targetConversation == null)
+        {
+            throw new BusinessException("HC.Chat:ConversationNotFound");
+        }
+        
+        var isMember = await _conversationRepository.IsUserMemberAsync(input.TargetConversationId, currentUserId);
+        if (!isMember)
+        {
+            throw new BusinessException("HC.Chat:UserNotMember");
+        }
+        
+        var forwardedText = originalMessage.Text;
+        
+        // Add additional comment if provided
+        if (!string.IsNullOrWhiteSpace(input.AdditionalComment))
+        {
+            forwardedText = $"{input.AdditionalComment}\n\n{forwardedText}";
+        }
+        
+        Message newMessage;
+        List<Guid> memberUserIds;
+        
+        using (var uow = UnitOfWorkManager.Begin(requiresNew: true))
+        {
+            // Create forwarded message
+            newMessage = new Message(
+                GuidGenerator.Create(),
+                forwardedText,
+                CurrentTenant.Id,
+                input.TargetConversationId
+            );
+            
+            // Mark as forwarded message
+            newMessage.SetForwardedFrom(input.MessageId);
+            
+            await _messageRepository.InsertAsync(newMessage);
+            
+            // Create UserMessage for all active members
+            var activeMembers = targetConversation.Members.Where(m => m.IsActive).ToList();
+            memberUserIds = activeMembers.Select(m => m.UserId).ToList();
+            
+            foreach (var member in activeMembers)
+            {
+                var side = member.UserId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver;
+                var targetId = activeMembers.FirstOrDefault(m => m.UserId != currentUserId)?.UserId ?? currentUserId;
+                
+                await _userMessageRepository.InsertAsync(
+                    new UserMessage(GuidGenerator.Create(), member.UserId, newMessage.Id, side, targetId, CurrentTenant.Id)
+                );
+            }
+            
+            // Update LastMessage for the conversation
+            var now = Clock.Now;
+            targetConversation.SetLastMessage(forwardedText.Length > 50 ? forwardedText.Substring(0, 50) + "..." : forwardedText, now);
+            await _conversationRepository.UpdateAsync(targetConversation);
+            
+            await uow.CompleteAsync();
+        }
+        
+        // Send real-time notification to all members except sender
+        var senderUser = await _chatUserLookupService.FindByIdAsync(currentUserId);
+        if (senderUser != null)
+        {
+            var messageDto = new ChatMessageRdto
+            {
+                Id = newMessage.Id,
+                ConversationId = input.TargetConversationId,
+                SenderName = senderUser.Name,
+                SenderSurname = senderUser.Surname,
+                SenderUserId = senderUser.Id,
+                SenderUsername = senderUser.UserName,
+                Text = forwardedText
+            };
+            
+            var recipientUserIds = memberUserIds.Where(id => id != currentUserId).ToList();
+            foreach (var recipientUserId in recipientUserIds)
+            {
+                await _realTimeChatMessageSender.SendAsync(recipientUserId, messageDto);
+            }
+        }
+        
+        return await MapToChatMessageDtoAsync(newMessage, ChatMessageSide.Sender, currentUserId);
+    }
+    
     // Helper methods
     private async Task<ConversationDto> MapToConversationDtoAsync(Conversation conversation, Guid currentUserId)
     {
@@ -1383,6 +1483,30 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                     MessageDate = replyTo.CreationTime,
                     IsPinned = replyTo.IsPinned, // Include pin status for pinning from reply preview
                     Side = replyTo.CreatorId == CurrentUser.GetId() ? ChatMessageSide.Sender : ChatMessageSide.Receiver
+                };
+            }
+        }
+        
+        // Load forwarded from message if exists
+        if (message.ForwardedFromMessageId.HasValue)
+        {
+            var forwardedFrom = await _messageRepository.GetAsync(message.ForwardedFromMessageId.Value);
+            if (forwardedFrom != null)
+            {
+                var forwardedSenderUser = forwardedFrom.CreatorId.HasValue 
+                    ? await _chatUserLookupService.FindByIdAsync(forwardedFrom.CreatorId.Value)
+                    : null;
+                
+                dto.ForwardedFromMessage = new ChatMessageDto
+                {
+                    Id = forwardedFrom.Id,
+                    Message = forwardedFrom.Text,
+                    MessageDate = forwardedFrom.CreationTime,
+                    Side = forwardedFrom.CreatorId == CurrentUser.GetId() ? ChatMessageSide.Sender : ChatMessageSide.Receiver,
+                    SenderUserId = forwardedSenderUser?.Id,
+                    SenderName = forwardedSenderUser?.Name,
+                    SenderSurname = forwardedSenderUser?.Surname,
+                    SenderUsername = forwardedSenderUser?.UserName
                 };
             }
         }

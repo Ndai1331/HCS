@@ -11,6 +11,7 @@
 @using HC.Projects
 @using HC.ProjectTasks
 @using HC.ProjectMembers
+@using HC.ProjectTaskAssignments
 @using Microsoft.Extensions.Caching.Memory
 @attribute [Authorize(ChatPermissions.Messaging)]
 @attribute [RequiresFeature(ChatFeatures.Enable)]
@@ -22,12 +23,16 @@
 @inject IProjectTasksAppService ProjectTasksAppService
 @inject IProjectMembersAppService ProjectMembersAppService
 
-@* <link href="_content/Volo.Chat.Blazor/libs/Index.css" rel="stylesheet"/> *@
-
+<link href="_content/Volo.Chat.Blazor/libs/Index.css" rel="stylesheet"/>
 
 <style>
     .dropdown-item {
         padding: 0.5rem;
+    }
+
+    .flatpickr-calendar.static {
+        position: absolute;
+        top: calc(80% + 2px);
     }
 </style>
 
@@ -273,6 +278,29 @@
                                                             </div>
                                                         </div>
                                                     }
+                                                    
+                                                    @* Forwarded message *@
+                                                    @if (message.ForwardedFromMessage != null)
+                                                    {
+                                                        <div class="bg-dark bg-opacity-25 rounded p-2 mb-1 position-relative" style="border-left: 3px solid #17a2b8;">
+                                                            <div class="d-flex align-items-start">
+                                                                <i class="bi bi-forward-fill text-info me-2"></i>
+                                                                <div class="flex-grow-1">
+                                                                    <small class="text-muted d-block">@L["ForwardedFrom"]: 
+                                                                        @if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderName))
+                                                                        {
+                                                                            <span>@message.ForwardedFromMessage.SenderName @message.ForwardedFromMessage.SenderSurname</span>
+                                                                        }
+                                                                        else if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderUsername))
+                                                                        {
+                                                                            <span>@message.ForwardedFromMessage.SenderUsername</span>
+                                                                        }
+                                                                    </small>
+                                                                    <small class="text-truncate d-block">@message.ForwardedFromMessage.Message.TruncateWithPostfix(50, "...")</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
                                                     <div class="bg-primary text-bg-primary card mb-1 px-2 px-lg-3 py-1 py-lg-2 rounded shadow-sm position-relative">
                                                         @if (message.IsSending)
                                                         {
@@ -402,6 +430,29 @@
                                                             </div>
                                                         </div>
                                                     }
+                                                    
+                                                    @* Forwarded message *@
+                                                    @if (message.ForwardedFromMessage != null)
+                                                    {
+                                                        <div class="bg-light rounded p-2 mb-1 position-relative" style="border-left: 3px solid #17a2b8;">
+                                                            <div class="d-flex align-items-start">
+                                                                <i class="bi bi-forward-fill text-info me-2"></i>
+                                                                <div class="flex-grow-1">
+                                                                    <small class="text-muted d-block">@L["ForwardedFrom"]: 
+                                                                        @if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderName))
+                                                                        {
+                                                                            <span>@message.ForwardedFromMessage.SenderName @message.ForwardedFromMessage.SenderSurname</span>
+                                                                        }
+                                                                        else if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderUsername))
+                                                                        {
+                                                                            <span>@message.ForwardedFromMessage.SenderUsername</span>
+                                                                        }
+                                                                    </small>
+                                                                    <small class="text-truncate d-block">@message.ForwardedFromMessage.Message.TruncateWithPostfix(50, "...")</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
                                                     <div class="bg-white shadow rounded py-1 px-2 mb-1 position-relative">
                                                         @if (message.IsSending)
                                                         {
@@ -443,36 +494,38 @@
                                                     <ul class="dropdown-menu" style="">
                                                         <li>
                                                             <a class="dropdown-item" @onclick="async () => await ReplyToMessageAsync(message)">
-                                                                <i class="bi bi-reply"></i> @L["Reply"]
+                                                                <i class="bi bi-reply mx-1"></i> @L["Reply"]
                                                             </a>
                                                         </li>
                                                         <li>
                                                             <a class="dropdown-item" @onclick="async () => await TogglePinMessageAsync(message)">
                                                                 @if (message.IsPinned)
                                                                 {
-                                                                    <i class="bi bi-pin-angle"></i> @L["UnpinMessage"]
+                                                                    <i class="bi bi-pin-angle mx-1"></i> @L["UnpinMessage"]
                                                                 }
                                                                 else
                                                                 {
-                                                                    <i class="bi bi-pin-fill"></i> @L["PinMessage"]
+                                                                    <i class="bi bi-pin-fill mx-1"></i> @L["PinMessage"]
                                                                 }
                                                             </a>
                                                         </li>
                                                         <li>
                                                             <a class="dropdown-item" @onclick="async () => await ForwardMessageAsync(message)">
-                                                                <i class="bi bi-arrow-up-right"></i> @L["Forward"]
+                                                                <i class="bi bi-arrow-up-right mx-1"></i> @L["Forward"]
                                                             </a>
                                                         </li>
                                                         <li>
                                                             <a class="dropdown-item" @onclick="async () => await CreateTaskFromMessageAsync(message)">
-                                                                <i class="bi bi-plus-circle"></i> @L["CreateTaskFromMessage"]
+                                                                <i class="bi bi-plus-circle mx-1"></i> @L["CreateTaskFromMessage"]
                                                             </a>
                                                         </li>
                                                         @if (IsDeletingMessageEnabled(message))
                                                         {
                                                             <li><hr class="dropdown-divider"></li>
                                                             <li>
-                                                                <a class="dropdown-item delete-message-btn text-danger" @onclick="async () => await DeleteMessageAsync(message)">@L["Delete"]</a>
+                                                                <a class="dropdown-item delete-message-btn text-danger" @onclick="async () => await DeleteMessageAsync(message)">
+                                                                    <i class="bi bi-trash mx-1"></i> @L["Delete"]
+                                                                </a>
                                                             </li>
                                                         }
                                                     </ul>
@@ -747,4 +800,503 @@
     </div>
     <div class="modal-backdrop fade show"></div>
 }
+
+@* ==================== Forward Message Modal ==================== *@
+@if (ShowForwardMessageModal)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-arrow-up-right me-2"></i>@L["ForwardMessage"]
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseForwardMessageModal"></button>
+                </div>
+                <div class="modal-body">
+                    @* Message Preview *@
+                    @if (ForwardingMessage != null)
+                    {
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <small class="text-muted d-block mb-1">@L["MessageToForward"]:</small>
+                            <p class="mb-0">@ForwardingMessage.Message.TruncateWithPostfix(200, "...")</p>
+                        </div>
+                    }
+                    
+                    @* Search Conversations *@
+                    <div class="mb-3">
+                        <label class="form-label">@L["SearchConversation"]</label>
+                        <input type="text" 
+                               class="form-control" 
+                               placeholder="@L["SearchInContacts"]"
+                               @bind="ForwardSearchValue"
+                               @bind:event="oninput"
+                               @onkeyup="OnForwardSearchKeyup" />
+                    </div>
+                    
+                    @* Additional Comment *@
+                    <div class="mb-3">
+                        <label class="form-label">@L["AdditionalComment"]</label>
+                        <textarea class="form-control" 
+                                  rows="2" 
+                                  @bind="ForwardAdditionalComment"
+                                  placeholder="@L["OptionalComment"]"></textarea>
+                    </div>
+
+                    @* Conversation List *@
+                    <div class="mb-3">
+                        <label class="form-label">@L["SelectConversation"]</label>
+                        <div class="list-group" style="max-height: 300px; overflow-y: auto;">
+                            @if (IsLoadingForwardConversations)
+                            {
+                                <div class="text-center py-3">
+                                    <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+                                    <span class="ms-2">@L["Loading"]...</span>
+                                </div>
+                            }
+                            else if (ForwardConversationList == null || !ForwardConversationList.Any())
+                            {
+                                <div class="text-center py-3 text-muted">
+                                    <i class="bi bi-chat-left-text fs-4 d-block mb-2"></i>
+                                    @L["NoConversationsFound"]
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var conversation in ForwardConversationList)
+                                {
+                                    <a class="list-group-item list-group-item-action d-flex align-items-center @(SelectedForwardConversation?.ConversationId == conversation.ConversationId ? "active" : "")"
+                                       @onclick="() => SelectForwardConversation(conversation)"
+                                       style="cursor: pointer;">
+                                        @* Conversation Type Icon *@
+                                        <div class="me-3">
+                                            @if (conversation.Type == ConversationType.User)
+                                            {
+                                                <i class="bi bi-person-fill fs-4"></i>
+                                            }
+                                            else if (conversation.Type == ConversationType.Group)
+                                            {
+                                                <i class="bi bi-people-fill fs-4 text-primary"></i>
+                                            }
+                                            else if (conversation.Type == ConversationType.Project)
+                                            {
+                                                <i class="bi bi-folder-fill fs-4 text-success"></i>
+                                            }
+                                            else if (conversation.Type == ConversationType.Task)
+                                            {
+                                                <i class="bi bi-check2-square fs-4 text-warning"></i>
+                                            }
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0">@GetContactDisplayName(conversation)</h6>
+                                            @if (!string.IsNullOrWhiteSpace(conversation.LastMessage))
+                                            {
+                                                <small class="text-muted">@conversation.LastMessage.TruncateWithPostfix(40, "...")</small>
+                                            }
+                                        </div>
+                                        @if (SelectedForwardConversation?.ConversationId == conversation.ConversationId)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        }
+                                    </a>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseForwardMessageModal">
+                        @L["Cancel"]
+                    </button>
+                    <button type="button" 
+                            class="btn btn-primary" 
+                            @onclick="ExecuteForwardMessageAsync"
+                            disabled="@(SelectedForwardConversation == null || IsForwardingMessage)">
+                        @if (IsForwardingMessage)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        <i class="bi bi-arrow-up-right me-1"></i>@L["Forward"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@* ==================== Create Task from Message Modal (100% like ProjectTasks) ==================== *@
+<Modal @bind-Visible="@ShowCreateTaskFromMessageModal">
+    <ModalContent Size="ModalSize.Large" Centered="true">
+        <Form>
+            <ModalHeader>
+                <ModalTitle>@L["CreateTaskFromMessage"]</ModalTitle>
+                <CloseButton Clicked="@CloseCreateTaskFromMessageModal" />
+            </ModalHeader>
+            <ModalBody>
+                <Tabs SelectedTab="@SelectedCreateTaskTab" SelectedTabChanged="@(async (name) => await OnSelectedCreateTaskTabChanged(name))">
+                    <Items>
+                        <Tab Name="general">@L["Tab:GeneralInformation"]</Tab>
+                        <Tab Name="assignments" Disabled="@(!IsTaskGeneralSaved)">@L["Tab:Assignments"]</Tab>
+                    </Items>
+                    <Content>
+                        <TabPanel Name="general">
+                            @* Message Source Preview *@
+                            @if (TaskSourceMessage != null)
+                            {
+                                <Alert Color="Color.Info" Visible="true" Class="mb-3">
+                                    <AlertMessage>
+                                        <i class="bi bi-chat-quote me-1"></i>@L["MessageSource"]:
+                                    </AlertMessage>
+                                    <AlertDescription>
+                                        @TaskSourceMessage.Message.TruncateWithPostfix(300, "...")
+                                    </AlertDescription>
+                                </Alert>
+                            }
+                            
+                            @* Validation Error *@
+                            @if (!string.IsNullOrWhiteSpace(CreateTaskGeneralValidationErrorKey))
+                            {
+                                <Alert Color="Color.Danger">
+                                    <AlertMessage>@L["NotificationError"]!</AlertMessage>
+                                    <AlertDescription>@L[CreateTaskGeneralValidationErrorKey]</AlertDescription>
+                                </Alert>
+                            }
+                            
+                            <Row Class="g-3">
+                                @* Project Selection *@
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Project"] *</FieldLabel>
+                                        <div class="hc-select2-full" style="@(HasCreateTaskFieldError("Project") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                            <Select2 IdSelector="c => c.Id.ToString()"
+                                                     TextSelector="c => c.DisplayName"
+                                                     FilterFunction="GetProjectCollectionLookupAsync"
+                                                     GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                                     Datasource="TaskProjectsCollection"
+                                                     Value="@SelectedTaskProject"
+                                                     OnValueChanged="@(() => { OnTaskProjectChanged(); CreateTaskFieldErrors.Remove("Project"); })"
+                                                     Cache="__MemoryCache"
+                                                     Multiselect="false" />
+                                        </div>
+                                        @if (HasCreateTaskFieldError("Project"))
+                                        {
+                                            <div class="invalid-feedback d-block">@GetCreateTaskFieldError("Project")</div>
+                                        }
+                                    </Field>
+                                </Column>
+                                
+                                @* Parent Task Selection *@
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["ParentTask"]</FieldLabel>
+                                        <div class="hc-select2-full">
+                                            <Select2 IdSelector="c => c.Id"
+                                                     TextSelector="c => c.DisplayName"
+                                                     FilterFunction="GetParentTaskForChatLookupAsync"
+                                                     GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id == id)!"
+                                                     Datasource="ParentTasksForChatCollection"
+                                                     Value="@SelectedTaskParent"
+                                                     OnValueChanged="@(() => {})"
+                                                     Cache="__MemoryCache"
+                                                     Multiselect="false" />
+                                        </div>
+                                    </Field>
+                                </Column>
+                            </Row>
+                            
+                            <Row Class="g-3 mt-1">
+                                @* Code *@
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Code"] *</FieldLabel>
+                                        <TextEdit Text="@NewTaskFromMessage.Code"
+                                                  TextChanged="@((string value) => { NewTaskFromMessage.Code = value; CreateTaskFieldErrors.Remove("Code"); })"
+                                                  MaxLength="50"
+                                                  ReadOnly="true"
+                                                  Disabled="@IsTaskGeneralSaved"
+                                                  Style="@(HasCreateTaskFieldError("Code") ? "border-color: #dc3545;" : "")" />
+                                        @if (HasCreateTaskFieldError("Code"))
+                                        {
+                                            <div class="invalid-feedback d-block">@GetCreateTaskFieldError("Code")</div>
+                                        }
+                                    </Field>
+                                </Column>
+                                
+                                @* Title *@
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Title"] *</FieldLabel>
+                                        <TextEdit Text="@NewTaskFromMessage.Title"
+                                                  TextChanged="@((string value) => { NewTaskFromMessage.Title = value; CreateTaskFieldErrors.Remove("Title"); })"
+                                                  MaxLength="256"
+                                                  Disabled="@IsTaskGeneralSaved"
+                                                  Style="@(HasCreateTaskFieldError("Title") ? "border-color: #dc3545;" : "")" />
+                                        @if (HasCreateTaskFieldError("Title"))
+                                        {
+                                            <div class="invalid-feedback d-block">@GetCreateTaskFieldError("Title")</div>
+                                        }
+                                    </Field>
+                                </Column>
+                                
+                                @* Priority *@
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Priority"] *</FieldLabel>
+                                        <div style="@(HasCreateTaskFieldError("Priority") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                            <Select TValue="ProjectTaskPriority"
+                                                    SelectedValue="@NewTaskFromMessagePriority"
+                                                    SelectedValueChanged="@((ProjectTaskPriority value) => { NewTaskFromMessagePriority = value; CreateTaskFieldErrors.Remove("Priority"); })"
+                                                    Disabled="@IsTaskGeneralSaved">
+                                                <ChildContent>
+                                                    @foreach (var priority in Enum.GetValues<ProjectTaskPriority>())
+                                                    {
+                                                        <SelectItem TValue="ProjectTaskPriority" Value="@priority">
+                                                            @L[$"Enum:ProjectTaskPriority.{priority}"]
+                                                        </SelectItem>
+                                                    }
+                                                </ChildContent>
+                                            </Select>
+                                        </div>
+                                        @if (HasCreateTaskFieldError("Priority"))
+                                        {
+                                            <div class="invalid-feedback d-block">@GetCreateTaskFieldError("Priority")</div>
+                                        }
+                                    </Field>
+                                </Column>
+                                
+                                @* Status *@
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Status"] *</FieldLabel>
+                                        <div style="@(HasCreateTaskFieldError("Status") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                            <Select TValue="ProjectTaskStatus"
+                                                    SelectedValue="@NewTaskFromMessageStatus"
+                                                    SelectedValueChanged="@((ProjectTaskStatus value) => { NewTaskFromMessageStatus = value; CreateTaskFieldErrors.Remove("Status"); })"
+                                                    Disabled="@IsTaskGeneralSaved">
+                                                <ChildContent>
+                                                    @foreach (var status in Enum.GetValues<ProjectTaskStatus>())
+                                                    {
+                                                        <SelectItem TValue="ProjectTaskStatus" Value="@status">
+                                                            @L[$"Enum:ProjectTaskStatus.{status}"]
+                                                        </SelectItem>
+                                                    }
+                                                </ChildContent>
+                                            </Select>
+                                        </div>
+                                        @if (HasCreateTaskFieldError("Status"))
+                                        {
+                                            <div class="invalid-feedback d-block">@GetCreateTaskFieldError("Status")</div>
+                                        }
+                                    </Field>
+                                </Column>
+                                
+                                @* Progress *@
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["ProgressPercent"]</FieldLabel>
+                                        <NumericPicker TValue="int"
+                                                       Value="@NewTaskFromMessage.ProgressPercent"
+                                                       ValueChanged="@((int value) => { NewTaskFromMessage.ProgressPercent = value; CreateTaskFieldErrors.Remove("ProgressPercent"); })"
+                                                       Min="0"
+                                                       Max="100"
+                                                       Decimals="0"
+                                                       Disabled="@IsTaskGeneralSaved"
+                                                       Style="@(HasCreateTaskFieldError("ProgressPercent") ? "border-color: #dc3545;" : "")" />
+                                        @if (HasCreateTaskFieldError("ProgressPercent"))
+                                        {
+                                            <div class="invalid-feedback d-block">@GetCreateTaskFieldError("ProgressPercent")</div>
+                                        }
+                                    </Field>
+                                </Column>
+                            </Row>
+                            
+                            <Row Class="g-3 mt-1">
+                                @* Start Date *@
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["StartDate"]</FieldLabel>
+                                        <Addons>
+                                            <Addon AddonType="AddonType.Body">
+                                                <DatePicker TValue="DateTime"
+                                                    InputMode="DateInputMode.DateTime"
+                                                    Date="@NewTaskFromMessage.StartDate"
+                                                    DateChanged="@(v => NewTaskFromMessage.StartDate = v)"
+                                                    DisplayFormat="dd/MM/yyyy HH:mm"
+                                                    InputFormat="dd/MM/yyyy HH:mm"
+                                                    Disabled="@IsTaskGeneralSaved" />
+                                            </Addon>
+                                            <Addon AddonType="AddonType.End">
+                                                <Button Color="Color.Light" Disabled="@IsTaskGeneralSaved" Clicked="@(() => NewTaskFromMessageStartDateDatePicker?.ToggleAsync())">
+                                                    <Icon Name="IconName.CalendarDay" />
+                                                </Button>
+                                            </Addon>
+                                        </Addons>
+                                    </Field>
+                                </Column>
+                                
+                                @* Due Date *@
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["DueDate"]</FieldLabel>
+                                        <Addons>
+                                            <Addon AddonType="AddonType.Body">
+                                                <DatePicker TValue="DateTime"
+                                                    InputMode="DateInputMode.DateTime"
+                                                    Date="@NewTaskFromMessage.DueDate"
+                                                    DateChanged="@(v => NewTaskFromMessage.DueDate = v)"
+                                                    DisplayFormat="dd/MM/yyyy HH:mm"
+                                                    InputFormat="dd/MM/yyyy HH:mm"
+                                                    Disabled="@IsTaskGeneralSaved" />
+                                            </Addon>
+                                            <Addon AddonType="AddonType.End">
+                                                <Button Color="Color.Light" Disabled="@IsTaskGeneralSaved" Clicked="@(() => NewTaskFromMessageDueDateDatePicker?.ToggleAsync())">
+                                                    <Icon Name="IconName.CalendarDay" />
+                                                </Button>
+                                            </Addon>
+                                        </Addons>
+                                    </Field>
+                                </Column>
+                            </Row>
+                            
+                            <Row Class="g-3 mt-1">
+                                @* Description *@
+                                <Column ColumnSize="ColumnSize.Is12">
+                                    <Field>
+                                        <FieldLabel>@L["Description"]</FieldLabel>
+                                        <MemoEdit @bind-Text="@NewTaskFromMessage.Description" Disabled="@IsTaskGeneralSaved" />
+                                    </Field>
+                                </Column>
+                            </Row>
+                        </TabPanel>
+                        
+                        <TabPanel Name="assignments">
+                            @if (!IsTaskGeneralSaved)
+                            {
+                                <Alert Color="Color.Warning">@L["CreateWizard:SaveGeneralFirst"]</Alert>
+                            }
+                            else
+                            {
+                                <Row Class="g-3 align-items-center">
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <Field>
+                                            <FieldLabel>@L["Assignee"] *</FieldLabel>
+                                            <div class="hc-select2-full">
+                                                <Select2 IdSelector="c => c.Id.ToString()"
+                                                         TextSelector="c => c.DisplayName"
+                                                         FilterFunction="GetIdentityUserCollectionLookupAsync"
+                                                         GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                                         Datasource="IdentityUsersCollection"
+                                                         Value="@CreateTaskAssignmentsUsersToAdd"
+                                                         OnValueChanged="@OnCreateTaskAssignmentUserChanged"
+                                                         Cache="__MemoryCache"
+                                                         Multiselect="false" />
+                                            </div>
+                                        </Field>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                        <Field>
+                                            <FieldLabel>@L["AssignmentRole"] *</FieldLabel>
+                                            <Select TValue="ProjectTaskAssignmentRole" @bind-SelectedValue="CreateTaskAssignmentRole" Class="w-100">
+                                                @foreach (var role in Enum.GetValues<ProjectTaskAssignmentRole>())
+                                                {
+                                                    <SelectItem TValue="ProjectTaskAssignmentRole" Value="@role">
+                                                        @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
+                                                    </SelectItem>
+                                                }
+                                            </Select>
+                                        </Field>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                        <Button Color="Color.Primary" Class="w-100" Clicked="AddTaskAssignmentAsync">
+                                            <Icon Name="IconName.Add" Class="me-1" /> @L["Add"]
+                                        </Button>
+                                    </Column>
+                                </Row>
+                                <Row Class="g-3 mt-1">
+                                    <Column ColumnSize="ColumnSize.Is12">
+                                        <Field>
+                                            <FieldLabel>@L["Note"]</FieldLabel>
+                                            <TextEdit @bind-Text="CreateTaskAssignmentNote" />
+                                        </Field>
+                                    </Column>
+                                </Row>
+                                
+                                <DataGrid TItem="ProjectTaskAssignmentWithNavigationPropertiesDto"
+                                          Data="CreateTaskAssignmentsList"
+                                          Responsive="true"
+                                          ShowPager="false">
+                                    <EmptyTemplate>
+                                        <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                            <Column>
+                                                <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["CreateWizard:NoAssignees"]</Heading>
+                                            </Column>
+                                        </Row>
+                                    </EmptyTemplate>
+                                    <DataGridColumns>
+                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="User.UserName" Caption="@L["UserName"]" />
+                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.AssignmentRole" Caption="@L["AssignmentRole"]">
+                                            <DisplayTemplate>
+                                                @if (Enum.TryParse<ProjectTaskAssignmentRole>(context.ProjectTaskAssignment.AssignmentRole, ignoreCase: true, out var role))
+                                                {
+                                                    @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
+                                                }
+                                                else
+                                                {
+                                                    @context.ProjectTaskAssignment.AssignmentRole
+                                                }
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
+                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.AssignedAt" Caption="@L["AssignedAt"]">
+                                            <DisplayTemplate>
+                                                @context.ProjectTaskAssignment.AssignedAt.ToString("dd/MM/yyyy HH:mm")
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
+                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.Note" Caption="@L["Note"]" />
+                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Caption="@L["Actions"]">
+                                            <DisplayTemplate>
+                                                <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteTaskAssignmentAsync(context))">
+                                                    <Icon Name="IconName.Delete" Class="me-1" /> @L["Delete"]
+                                                </Button>
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
+                                    </DataGridColumns>
+                                </DataGrid>
+                            }
+                        </TabPanel>
+                    </Content>
+                </Tabs>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="@CloseCreateTaskFromMessageModal">
+                    @L["Cancel"]
+                </Button>
+                @if (SelectedCreateTaskTab == "general")
+                {
+                    <Button Color="Color.Primary" 
+                            Disabled="@(IsTaskGeneralSaved || IsSavingTaskGeneral)" 
+                            Clicked="@SaveTaskGeneralInformationAsync">
+                        @if (IsSavingTaskGeneral)
+                        {
+                            <RadarSpinner />
+                        }
+                        else
+                        {
+                            <Icon Name="IconName.Save" Class="me-1" />
+                            @L["CreateWizard:SaveAndContinue"]
+                        }
+                    </Button>
+                }
+                else if (SelectedCreateTaskTab == "assignments")
+                {
+                    <Button Color="Color.Success" 
+                            Clicked="@FinishCreateTaskWizardAsync">
+                        <Icon Name="IconName.Check" Class="me-1" />
+                        @L["Finish"]
+                    </Button>
+                }
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
 

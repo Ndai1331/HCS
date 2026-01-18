@@ -211,4 +211,11 @@ public class ConversationController : ChatController, IConversationAppService
     {
         return _conversationAppService.DeleteFileAsync(id);
     }
+    
+    [HttpPost]
+    [Route("forward-message")]
+    public Task<ChatMessageDto> ForwardMessageAsync([FromBody] ForwardMessageInput input)
+    {
+        return _conversationAppService.ForwardMessageAsync(input);
+    }
 }

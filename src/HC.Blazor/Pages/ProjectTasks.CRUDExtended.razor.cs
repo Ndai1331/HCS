@@ -112,7 +112,7 @@ public partial class ProjectTasks
             }
             
             // Generate next code: T + (maxNumber + 1) with 6 digits padding
-            return $"T{(maxNumber + 1):D6}";
+            return $"T{(maxNumber + 1):D7}";
         }
         catch (Exception ex)
         {
