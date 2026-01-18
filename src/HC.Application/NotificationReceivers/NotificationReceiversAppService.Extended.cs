@@ -77,4 +77,53 @@ public class NotificationReceiversAppService : NotificationReceiversAppServiceBa
             await _notificationReceiverRepository.UpdateAsync(item.NotificationReceiver);
         }
     }
+
+    // Mark a specific notification as read for current user
+    public virtual async Task MarkAsReadAsync(Guid notificationId)
+    {
+        var currentUserId = CurrentUser.Id;
+        if (currentUserId == null)
+        {
+            return;
+        }
+
+        // Find the notification receiver for this notification and current user
+        // Don't filter by IsRead to check if it's already read
+        var input = new GetNotificationReceiversInput
+        {
+            NotificationId = notificationId,
+            IdentityUserId = currentUserId,
+            MaxResultCount = 1,
+            SkipCount = 0
+        };
+
+        var result = await _notificationReceiverRepository.GetListWithNavigationPropertiesAsync(
+            input.FilterText,
+            input.IsRead,
+            input.ReadAtMin,
+            input.ReadAtMax,
+            input.NotificationId,
+            input.IdentityUserId,
+            input.Sorting,
+            input.MaxResultCount,
+            input.SkipCount,
+            input.SourceType
+        );
+
+        var notificationReceiver = result.FirstOrDefault();
+        if (notificationReceiver != null)
+        {
+            // Check if already marked as read
+            if (notificationReceiver.NotificationReceiver.IsRead)
+            {
+                // Already read, no need to update
+                return;
+            }
+
+            // Mark as read
+            notificationReceiver.NotificationReceiver.IsRead = true;
+            notificationReceiver.NotificationReceiver.ReadAt = DateTime.UtcNow;
+            await _notificationReceiverRepository.UpdateAsync(notificationReceiver.NotificationReceiver);
+        }
+    }
 }

@@ -113,4 +113,11 @@ public abstract class NotificationReceiverControllerBase : AbpController
     {
         return _notificationReceiversAppService.MarkAllAsReadAsync(sourceType);
     }
+
+    [HttpPost]
+    [Route("mark-as-read")]
+    public virtual Task MarkAsReadAsync(Guid notificationId)
+    {
+        return _notificationReceiversAppService.MarkAsReadAsync(notificationId);
+    }
 }

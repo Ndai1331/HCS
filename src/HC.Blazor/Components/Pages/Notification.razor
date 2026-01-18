@@ -107,7 +107,7 @@
                 {
                     var notification = item.Notification;
                     var isUnread = !item.NotificationReceiver.IsRead;
-                    <div class="p-2 border-bottom notification-item @(isUnread ? "notification-unread" : "")" style="cursor: pointer;" @onclick="() => ViewNotificationDetail(notification)">
+                    <div class="p-2 border-bottom notification-item @(isUnread ? "notification-unread" : "")" style="cursor: pointer;" @onclick="() => ViewNotificationDetail(notification, isUnread)">
                         <div class="d-flex align-items-start">
                             <div class="flex-shrink-0 me-3">
                                 <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
@@ -123,11 +123,11 @@
                                     }
                                 </div>
                                 <p class="mb-1 small text-muted">@GetLocalizedContent(notification)</p>
-                                <div class="d-flex justify-content-center align-items-center">
+                                <div class="d-flex justify-content-between align-items-center">
                                     <small class="text-muted">@notification.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
                                     @if (!string.IsNullOrEmpty(notification.RelatedId))
                                     {
-                                        <Button Color="Color.Primary" Size="Size.Small" Clicked="() => ViewNotificationDetail(notification)" ClickedStopPropagation="true">
+                                        <Button Color="Color.Primary" Size="Size.Small" Clicked="() => ViewNotificationDetail(notification, isUnread)" ClickedStopPropagation="true">
                                             @L["ViewDetail"]
                                         </Button>
                                     }
@@ -315,8 +315,14 @@
         NavigationManager.NavigateTo("/notification-receivers");
     }
 
-    private void ViewNotificationDetail(NotificationDto notification)
+    private async Task ViewNotificationDetail(NotificationDto notification, bool isUnread)
     {
+        // Mark notification as read only if it's unread
+        if (isUnread)
+        {
+            await MarkNotificationAsReadAsync(notification.Id);
+        }
+
         if (string.IsNullOrEmpty(notification.RelatedId))
             return;
 
@@ -324,6 +330,24 @@
         if (url != "#")
         {
             NavigationManager.NavigateTo(url);
+        }
+    }
+
+    private async Task MarkNotificationAsReadAsync(Guid notificationId)
+    {
+        try
+        {
+            await NotificationReceiversAppService.MarkAsReadAsync(notificationId);
+
+            // Refresh notifications list to update UI
+            await LoadNotificationsAsync();
+
+            // Update unread count
+            await LoadUnreadCountAsync();
+        }
+        catch
+        {
+            // Log error if needed
         }
     }
 
