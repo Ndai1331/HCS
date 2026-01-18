@@ -22,7 +22,15 @@
 @inject IProjectTasksAppService ProjectTasksAppService
 @inject IProjectMembersAppService ProjectMembersAppService
 
-<link href="_content/Volo.Chat.Blazor/libs/Index.css" rel="stylesheet"/>
+@* <link href="_content/Volo.Chat.Blazor/libs/Index.css" rel="stylesheet"/> *@
+
+
+<style>
+    .dropdown-item {
+        padding: 0.5rem;
+    }
+</style>
+
 <div id="chat_wrapper">
     <div class="container-fluid">
         <div class="row">
@@ -306,26 +314,38 @@
                                                     <ul class="dropdown-menu" style="">
                                                         <li>
                                                             <a class="dropdown-item" @onclick="async () => await ReplyToMessageAsync(message)">
-                                                                <i class="bi bi-reply"></i> @L["Reply"]
+                                                                <i class="bi bi-reply mx-1"></i> @L["Reply"]
                                                             </a>
                                                         </li>
                                                         <li>
                                                             <a class="dropdown-item" @onclick="async () => await TogglePinMessageAsync(message)">
                                                                 @if (message.IsPinned)
                                                                 {
-                                                                    <i class="bi bi-pin-angle"></i> @L["UnpinMessage"]
+                                                                    <i class="bi bi-pin-angle mx-1"></i> @L["UnpinMessage"]
                                                                 }
                                                                 else
                                                                 {
-                                                                    <i class="bi bi-pin-fill"></i> @L["PinMessage"]
+                                                                    <i class="bi bi-pin-fill mx-1"></i> @L["PinMessage"]
                                                                 }
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" @onclick="async () => await ForwardMessageAsync(message)">
+                                                                <i class="bi bi-arrow-up-right"></i> @L["Forward"]
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" @onclick="async () => await CreateTaskFromMessageAsync(message)">
+                                                                <i class="bi bi-plus-circle"></i> @L["CreateTaskFromMessage"]
                                                             </a>
                                                         </li>
                                                         @if (IsDeletingMessageEnabled(message))
                                                         {
                                                             <li><hr class="dropdown-divider"></li>
                                                             <li>
-                                                                <a class="dropdown-item delete-message-btn text-danger" @onclick="async () => await DeleteMessageAsync(message)">@L["Delete"]</a>
+                                                                <a class="dropdown-item delete-message-btn text-danger" @onclick="async () => await DeleteMessageAsync(message)">
+                                                                    <i class="bi bi-trash mx-1"></i> @L["Delete"]
+                                                                </a>
                                                             </li>
                                                         }
                                                     </ul>
@@ -436,6 +456,16 @@
                                                                 {
                                                                     <i class="bi bi-pin-fill"></i> @L["PinMessage"]
                                                                 }
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" @onclick="async () => await ForwardMessageAsync(message)">
+                                                                <i class="bi bi-arrow-up-right"></i> @L["Forward"]
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" @onclick="async () => await CreateTaskFromMessageAsync(message)">
+                                                                <i class="bi bi-plus-circle"></i> @L["CreateTaskFromMessage"]
                                                             </a>
                                                         </li>
                                                         @if (IsDeletingMessageEnabled(message))
@@ -717,3 +747,4 @@
     </div>
     <div class="modal-backdrop fade show"></div>
 }
+
