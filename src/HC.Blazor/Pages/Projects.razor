@@ -410,7 +410,7 @@
 </Card>
 @* ************************* CREATE MODAL ************************* *@
 <Modal @ref="CreateProjectModal" Closing="@CreateProjectModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
+    <ModalContent Centered="true" Size="ModalSize.Large">
 @*//<suite-custom-code-block-5>*@
 @*//</suite-custom-code-block-5>*@
         <Form id="CreateProjectForm">
@@ -428,101 +428,123 @@
                     </Alert>
                 }
                 <Form>
-                    <Field>
-                        <FieldLabel>@L["Code"] *</FieldLabel>
-                        <TextEdit Text="@NewProject.Code" 
-                                  TextChanged="@((string value) => { NewProject.Code = value; CreateFieldErrors.Remove("Code"); })"
-                                  MaxLength="ProjectConsts.CodeMaxLength" 
-                                  Autofocus="true"
-                                  ReadOnly="true"
-                                  Style="@(HasCreateFieldError("Code") ? "border-color: #dc3545;" : "")" />
-                        @if (HasCreateFieldError("Code"))
-                        {
-                            <div class="invalid-feedback d-block">@GetCreateFieldError("Code")</div>
-                        }
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Name"] *</FieldLabel>
-                        <TextEdit Text="@NewProject.Name" 
-                                  TextChanged="@((string value) => { NewProject.Name = value; CreateFieldErrors.Remove("Name"); })"
-                                  MaxLength="ProjectConsts.NameMaxLength"
-                                  Style="@(HasCreateFieldError("Name") ? "border-color: #dc3545;" : "")" />
-                        @if (HasCreateFieldError("Name"))
-                        {
-                            <div class="invalid-feedback d-block">@GetCreateFieldError("Name")</div>
-                        }
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Description"]</FieldLabel>
-                        <MemoEdit @bind-Text="@NewProject.Description" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["StartDate"]</FieldLabel>
-                        <Addons>
-                            <Addon AddonType="AddonType.Body">
-                                <DatePicker TValue="DateTime"
-                                            InputMode="DateInputMode.DateTime"
-                                            Date="@NewProject.StartDate"
-                                            DateChanged="@(v => NewProject.StartDate = v)"
-                                            Placeholder="@string.Empty"
-                                            DisplayFormat="dd/MM/yyyy HH:mm"
-                                            InputFormat="dd/MM/yyyy HH:mm"
-                                            @ref="@NewProjectStartDateDatePicker" />
-                            </Addon>
-                            <Addon AddonType="AddonType.End">
-                                <Button Color="Color.Light" Clicked="@(() => NewProjectStartDateDatePicker?.ToggleAsync())">
-                                    <Icon Name="IconName.CalendarDay" />
-                                </Button>
-                            </Addon>
-                        </Addons>
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["EndDate"]</FieldLabel>
-                        <Addons>
-                            <Addon AddonType="AddonType.Body">
-                                <DatePicker TValue="DateTime"
-                                            InputMode="DateInputMode.DateTime"
-                                            Date="@NewProject.EndDate"
-                                            DateChanged="@(v => NewProject.EndDate = v)"
-                                            Placeholder="@string.Empty"
-                                            DisplayFormat="dd/MM/yyyy HH:mm"
-                                            InputFormat="dd/MM/yyyy HH:mm"
-                                            @ref="@NewProjectEndDateDatePicker" />
-                            </Addon>
-                            <Addon AddonType="AddonType.End">
-                                <Button Color="Color.Light" Clicked="@(() => NewProjectEndDateDatePicker?.ToggleAsync())">
-                                    <Icon Name="IconName.CalendarDay" />
-                                </Button>
-                            </Addon>
-                        </Addons>
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Status"] *</FieldLabel>
-                        <Select TValue="ProjectStatus" 
-                                SelectedValue="@NewProject.Status"
-                                SelectedValueChanged="@((ProjectStatus value) => { NewProject.Status = value; })">
-                            <ChildContent>
-                                @foreach (var status in Enum.GetValues<ProjectStatus>())
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Code"] *</FieldLabel>
+                                <TextEdit Text="@NewProject.Code" 
+                                          TextChanged="@((string value) => { NewProject.Code = value; CreateFieldErrors.Remove("Code"); })"
+                                          MaxLength="ProjectConsts.CodeMaxLength" 
+                                          Autofocus="true"
+                                          ReadOnly="true"
+                                          Style="@(HasCreateFieldError("Code") ? "border-color: #dc3545;" : "")" />
+                                @if (HasCreateFieldError("Code"))
                                 {
-                                    <SelectItem TValue="ProjectStatus" Value="@status">
-                                        @L[$"Enum:ProjectStatus.{status}"]
-                                    </SelectItem>
+                                    <div class="invalid-feedback d-block">@GetCreateFieldError("Code")</div>
                                 }
-                            </ChildContent>
-                        </Select>
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Department"]</FieldLabel>
-                        <Select2 IdSelector="c => c.Id.ToString()"
-                                    TextSelector="c => c.DisplayName"
-                                    FilterFunction="GetDepartmentCollectionLookupAsync"
-                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                    Datasource="DepartmentsCollection"
-                                    Value="@SelectedDepartment"
-                                    OnValueChanged="OnDepartmentIdChanged"                
-                                    Cache="__MemoryCache"
-                                    Multiselect="false" />
-                    </Field>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Name"] *</FieldLabel>
+                                <TextEdit Text="@NewProject.Name" 
+                                          TextChanged="@((string value) => { NewProject.Name = value; CreateFieldErrors.Remove("Name"); })"
+                                          MaxLength="ProjectConsts.NameMaxLength"
+                                          Style="@(HasCreateFieldError("Name") ? "border-color: #dc3545;" : "")" />
+                                @if (HasCreateFieldError("Name"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetCreateFieldError("Name")</div>
+                                }
+                            </Field>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Description"]</FieldLabel>
+                                <MemoEdit @bind-Text="@NewProject.Description" />
+                            </Field>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["StartDate"]</FieldLabel>
+                                <Addons>
+                                    <Addon AddonType="AddonType.Body">
+                                        <DatePicker TValue="DateTime"
+                                                    InputMode="DateInputMode.DateTime"
+                                                    Date="@NewProject.StartDate"
+                                                    DateChanged="@(v => NewProject.StartDate = v)"
+                                                    Placeholder="@string.Empty"
+                                                    DisplayFormat="dd/MM/yyyy HH:mm"
+                                                    InputFormat="dd/MM/yyyy HH:mm"
+                                                    @ref="@NewProjectStartDateDatePicker" />
+                                    </Addon>
+                                    <Addon AddonType="AddonType.End">
+                                        <Button Color="Color.Light" Clicked="@(() => NewProjectStartDateDatePicker?.ToggleAsync())">
+                                            <Icon Name="IconName.CalendarDay" />
+                                        </Button>
+                                    </Addon>
+                                </Addons>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["EndDate"]</FieldLabel>
+                                <Addons>
+                                    <Addon AddonType="AddonType.Body">
+                                        <DatePicker TValue="DateTime"
+                                                    InputMode="DateInputMode.DateTime"
+                                                    Date="@NewProject.EndDate"
+                                                    DateChanged="@(v => NewProject.EndDate = v)"
+                                                    Placeholder="@string.Empty"
+                                                    DisplayFormat="dd/MM/yyyy HH:mm"
+                                                    InputFormat="dd/MM/yyyy HH:mm"
+                                                    @ref="@NewProjectEndDateDatePicker" />
+                                    </Addon>
+                                    <Addon AddonType="AddonType.End">
+                                        <Button Color="Color.Light" Clicked="@(() => NewProjectEndDateDatePicker?.ToggleAsync())">
+                                            <Icon Name="IconName.CalendarDay" />
+                                        </Button>
+                                    </Addon>
+                                </Addons>
+                            </Field>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Status"] *</FieldLabel>
+                                <Select TValue="ProjectStatus" 
+                                        SelectedValue="@NewProject.Status"
+                                        SelectedValueChanged="@((ProjectStatus value) => { NewProject.Status = value; })">
+                                    <ChildContent>
+                                        @foreach (var status in Enum.GetValues<ProjectStatus>())
+                                        {
+                                            <SelectItem TValue="ProjectStatus" Value="@status">
+                                                @L[$"Enum:ProjectStatus.{status}"]
+                                            </SelectItem>
+                                        }
+                                    </ChildContent>
+                                </Select>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Department"]</FieldLabel>
+                                <Select2 IdSelector="c => c.Id.ToString()"
+                                            TextSelector="c => c.DisplayName"
+                                            FilterFunction="GetDepartmentCollectionLookupAsync"
+                                            GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                            Datasource="DepartmentsCollection"
+                                            Value="@SelectedDepartment"
+                                            OnValueChanged="OnDepartmentIdChanged"                
+                                            Cache="__MemoryCache"
+                                            Multiselect="false" />
+                            </Field>
+                        </Column>
+                    </Row>
                 </Form>
             </ModalBody>
             <ModalFooter>
@@ -790,7 +812,7 @@
 </style>
 @* ************************* EDIT MODAL ************************* *@
 <Modal @ref="EditProjectModal" Closing="@EditProjectModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
+    <ModalContent Centered="true" Size="ModalSize.Large">
 @*//<suite-custom-code-block-8>*@
 @*//</suite-custom-code-block-8>*@
         <Form id="EditProjectForm">
@@ -808,101 +830,123 @@
                     </Alert>
                 }
                 <Form>
-                    <Field>
-                        <FieldLabel>@L["Code"] *</FieldLabel>
-                        <TextEdit Text="@EditingProject.Code"
-                                  TextChanged="@((string value) => { EditingProject.Code = value; EditFieldErrors.Remove("Code"); })"
-                                  ReadOnly="true"
-                                  MaxLength="ProjectConsts.CodeMaxLength" 
-                                  Autofocus="true"
-                                  Style="@(HasEditFieldError("Code") ? "border-color: #dc3545;" : "")" />
-                        @if (HasEditFieldError("Code"))
-                        {
-                            <div class="invalid-feedback d-block">@GetEditFieldError("Code")</div>
-                        }
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Name"] *</FieldLabel>
-                        <TextEdit Text="@EditingProject.Name" 
-                                  TextChanged="@((string value) => { EditingProject.Name = value; EditFieldErrors.Remove("Name"); })"
-                                  MaxLength="ProjectConsts.NameMaxLength"
-                                  Style="@(HasEditFieldError("Name") ? "border-color: #dc3545;" : "")" />
-                        @if (HasEditFieldError("Name"))
-                        {
-                            <div class="invalid-feedback d-block">@GetEditFieldError("Name")</div>
-                        }
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Description"]</FieldLabel>
-                        <MemoEdit @bind-Text="@EditingProject.Description" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["StartDate"]</FieldLabel>
-                        <Addons>
-                            <Addon AddonType="AddonType.Body">
-                                <DatePicker TValue="DateTime"
-                                            InputMode="DateInputMode.DateTime"
-                                            Date="@EditingProject.StartDate"
-                                            DateChanged="@(v => EditingProject.StartDate = v)"
-                                            Placeholder="@string.Empty"
-                                            DisplayFormat="dd/MM/yyyy HH:mm"
-                                            InputFormat="dd/MM/yyyy HH:mm"
-                                            @ref="@EditingProjectStartDateDatePicker" />
-                            </Addon>
-                            <Addon AddonType="AddonType.End">
-                                <Button Color="Color.Light" Clicked="@(() => EditingProjectStartDateDatePicker?.ToggleAsync())">
-                                    <Icon Name="IconName.CalendarDay" />
-                                </Button>
-                            </Addon>
-                        </Addons>
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["EndDate"]</FieldLabel>
-                        <Addons>
-                            <Addon AddonType="AddonType.Body">
-                                <DatePicker TValue="DateTime"
-                                            InputMode="DateInputMode.DateTime"
-                                            Date="@EditingProject.EndDate"
-                                            DateChanged="@(v => EditingProject.EndDate = v)"
-                                            Placeholder="@string.Empty"
-                                            DisplayFormat="dd/MM/yyyy HH:mm"
-                                            InputFormat="dd/MM/yyyy HH:mm"
-                                            @ref="@EditingProjectEndDateDatePicker" />
-                            </Addon>
-                            <Addon AddonType="AddonType.End">
-                                <Button Color="Color.Light" Clicked="@(() => EditingProjectEndDateDatePicker?.ToggleAsync())">
-                                    <Icon Name="IconName.CalendarDay" />
-                                </Button>
-                            </Addon>
-                        </Addons>
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Status"] *</FieldLabel>
-                        <Select TValue="ProjectStatus" 
-                                SelectedValue="@EditingProject.Status"
-                                SelectedValueChanged="@((ProjectStatus value) => { EditingProject.Status = value; })">
-                            <ChildContent>
-                                @foreach (var status in Enum.GetValues<ProjectStatus>())
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Code"] *</FieldLabel>
+                                <TextEdit Text="@EditingProject.Code"
+                                          TextChanged="@((string value) => { EditingProject.Code = value; EditFieldErrors.Remove("Code"); })"
+                                          ReadOnly="true"
+                                          MaxLength="ProjectConsts.CodeMaxLength" 
+                                          Autofocus="true"
+                                          Style="@(HasEditFieldError("Code") ? "border-color: #dc3545;" : "")" />
+                                @if (HasEditFieldError("Code"))
                                 {
-                                    <SelectItem TValue="ProjectStatus" Value="@status">
-                                        @L[$"Enum:ProjectStatus.{status}"]
-                                    </SelectItem>
+                                    <div class="invalid-feedback d-block">@GetEditFieldError("Code")</div>
                                 }
-                            </ChildContent>
-                        </Select>
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Department"]</FieldLabel>
-                        <Select2 IdSelector="c => c.Id.ToString()"
-                                 TextSelector="c => c.DisplayName"
-                                 FilterFunction="GetDepartmentCollectionLookupAsync"
-                                 GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                 Datasource="DepartmentsCollection"
-                                 Value="@SelectedEditDepartment"
-                                 OnValueChanged="OnEditDepartmentIdChanged"
-                                 Cache="__MemoryCache"
-                                 Multiselect="false" />
-                    </Field>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Name"] *</FieldLabel>
+                                <TextEdit Text="@EditingProject.Name" 
+                                          TextChanged="@((string value) => { EditingProject.Name = value; EditFieldErrors.Remove("Name"); })"
+                                          MaxLength="ProjectConsts.NameMaxLength"
+                                          Style="@(HasEditFieldError("Name") ? "border-color: #dc3545;" : "")" />
+                                @if (HasEditFieldError("Name"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetEditFieldError("Name")</div>
+                                }
+                            </Field>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Description"]</FieldLabel>
+                                <MemoEdit @bind-Text="@EditingProject.Description" />
+                            </Field>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["StartDate"]</FieldLabel>
+                                <Addons>
+                                    <Addon AddonType="AddonType.Body">
+                                        <DatePicker TValue="DateTime"
+                                                    InputMode="DateInputMode.DateTime"
+                                                    Date="@EditingProject.StartDate"
+                                                    DateChanged="@(v => EditingProject.StartDate = v)"
+                                                    Placeholder="@string.Empty"
+                                                    DisplayFormat="dd/MM/yyyy HH:mm"
+                                                    InputFormat="dd/MM/yyyy HH:mm"
+                                                    @ref="@EditingProjectStartDateDatePicker" />
+                                    </Addon>
+                                    <Addon AddonType="AddonType.End">
+                                        <Button Color="Color.Light" Clicked="@(() => EditingProjectStartDateDatePicker?.ToggleAsync())">
+                                            <Icon Name="IconName.CalendarDay" />
+                                        </Button>
+                                    </Addon>
+                                </Addons>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["EndDate"]</FieldLabel>
+                                <Addons>
+                                    <Addon AddonType="AddonType.Body">
+                                        <DatePicker TValue="DateTime"
+                                                    InputMode="DateInputMode.DateTime"
+                                                    Date="@EditingProject.EndDate"
+                                                    DateChanged="@(v => EditingProject.EndDate = v)"
+                                                    Placeholder="@string.Empty"
+                                                    DisplayFormat="dd/MM/yyyy HH:mm"
+                                                    InputFormat="dd/MM/yyyy HH:mm"
+                                                    @ref="@EditingProjectEndDateDatePicker" />
+                                    </Addon>
+                                    <Addon AddonType="AddonType.End">
+                                        <Button Color="Color.Light" Clicked="@(() => EditingProjectEndDateDatePicker?.ToggleAsync())">
+                                            <Icon Name="IconName.CalendarDay" />
+                                        </Button>
+                                    </Addon>
+                                </Addons>
+                            </Field>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Status"] *</FieldLabel>
+                                <Select TValue="ProjectStatus" 
+                                        SelectedValue="@EditingProject.Status"
+                                        SelectedValueChanged="@((ProjectStatus value) => { EditingProject.Status = value; })">
+                                    <ChildContent>
+                                        @foreach (var status in Enum.GetValues<ProjectStatus>())
+                                        {
+                                            <SelectItem TValue="ProjectStatus" Value="@status">
+                                                @L[$"Enum:ProjectStatus.{status}"]
+                                            </SelectItem>
+                                        }
+                                    </ChildContent>
+                                </Select>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Department"]</FieldLabel>
+                                <Select2 IdSelector="c => c.Id.ToString()"
+                                        TextSelector="c => c.DisplayName"
+                                        FilterFunction="GetDepartmentCollectionLookupAsync"
+                                        GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                        Datasource="DepartmentsCollection"
+                                        Value="@SelectedEditDepartment"
+                                        OnValueChanged="OnEditDepartmentIdChanged"
+                                        Cache="__MemoryCache"
+                                        Multiselect="false" />
+                            </Field>
+                        </Column>
+                    </Row>
 
                     <hr />
 
