@@ -48,6 +48,10 @@ public partial class Chat1
     protected string CreateTaskAssignmentNote { get; set; }
     protected List<ProjectTaskAssignmentWithNavigationPropertiesDto> CreateTaskAssignmentsList { get; set; } = new();
     
+    // Documents (like ProjectTasks)
+    protected List<LookupDto<Guid>> CreateTaskDocumentsToAdd { get; set; } = new();
+    protected IReadOnlyList<LookupDto<Guid>> TaskDocumentsLookupCollection { get; set; } = new List<LookupDto<Guid>>();
+    
     /// <summary>
     /// Helper class for parent task selection
     /// </summary>
@@ -431,8 +435,32 @@ public partial class Chat1
     /// </summary>
     private async Task FinishCreateTaskWizardAsync()
     {
-        CloseCreateTaskFromMessageModal();
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            // Collect assignee IDs for notification
+            var assigneeIds = CreateTaskAssignmentsList
+                .Select(a => a.ProjectTaskAssignment.UserId)
+                .ToList();
+            
+            // Publish event for notifications (if any assignees)
+            if (assigneeIds.Any())
+            {
+                // Note: Notification system will be implemented separately
+                // For now, assignees will see the task in their task list
+                _logger.LogInformation($"Task {CreatedTaskId} created with {assigneeIds.Count} assignees");
+            }
+            
+            // Show success message
+            await UiMessageService.Success(L["TaskCreatedSuccessfully"]);
+            
+            // Close modal
+            CloseCreateTaskFromMessageModal();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
     }
     
     /// <summary>

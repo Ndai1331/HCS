@@ -1,5 +1,6 @@
 @page "/Chat"
 @using HC.Localization
+@using Volo.Abp.AspNetCore.Components.Messages
 @using Volo.Abp.Features
 @using Volo.Abp.Timing
 @using HC.Chat
@@ -22,6 +23,8 @@
 @inject IProjectsAppService ProjectsAppService
 @inject IProjectTasksAppService ProjectTasksAppService
 @inject IProjectMembersAppService ProjectMembersAppService
+@inject IUiMessageService UiMessageService
+
 
 <link href="_content/Volo.Chat.Blazor/libs/Index.css" rel="stylesheet"/>
 
@@ -938,6 +941,7 @@
                     <Items>
                         <Tab Name="general">@L["Tab:GeneralInformation"]</Tab>
                         <Tab Name="assignments" Disabled="@(!IsTaskGeneralSaved)">@L["Tab:Assignments"]</Tab>
+                        <Tab Name="documents" Disabled="@(!IsTaskGeneralSaved)">@L["Tab:Documents"]</Tab>
                     </Items>
                     <Content>
                         <TabPanel Name="general">
@@ -1264,6 +1268,20 @@
                                 </DataGrid>
                             }
                         </TabPanel>
+                        
+                        <TabPanel Name="documents">
+                            @if (!IsTaskGeneralSaved)
+                            {
+                                <Alert Color="Color.Warning">@L["CreateWizard:SaveGeneralFirst"]</Alert>
+                            }
+                            else
+                            {
+                                <Alert Color="Color.Info">
+                                    <AlertMessage>@L["DocumentsCanBeAdded"]</AlertMessage>
+                                    <AlertDescription>@L["DocumentsCanBeAddedAfterTaskCreationFromTaskPage"]</AlertDescription>
+                                </Alert>
+                            }
+                        </TabPanel>
                     </Content>
                 </Tabs>
             </ModalBody>
@@ -1288,6 +1306,14 @@
                     </Button>
                 }
                 else if (SelectedCreateTaskTab == "assignments")
+                {
+                    <Button Color="Color.Primary" 
+                            Clicked="@(async () => await OnSelectedCreateTaskTabChanged("documents"))">
+                        <Icon Name="IconName.ArrowRight" Class="me-1" />
+                        @L["Next"]
+                    </Button>
+                }
+                else if (SelectedCreateTaskTab == "documents")
                 {
                     <Button Color="Color.Success" 
                             Clicked="@FinishCreateTaskWizardAsync">
