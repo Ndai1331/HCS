@@ -24,12 +24,17 @@ using Volo.Abp;
 using Volo.Abp.Content;
 using HC.Blazor;
 using Microsoft.Extensions.Logging;
+using HC.Chat.Conversations;
 
 namespace HC.Blazor.Pages;
 
 public partial class Projects : HCComponentBase
 {
     [Inject] private ILogger<Projects>? Logger { get; set; }
+    
+    [Inject]
+    public IConversationAppService ConversationAppService { get; set; }
+
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems = new List<Volo.Abp.BlazoriseUI.BreadcrumbItem>();
 
     protected PageToolbar Toolbar { get; } = new PageToolbar();
@@ -136,6 +141,17 @@ public partial class Projects : HCComponentBase
     private DateTime EditingProjectMemberJoinedAtInModal { get; set; }
     private string EditingProjectMemberConcurrencyStampInModal { get; set; } = string.Empty;
 
+
+    // Create Project Chat modal
+    private bool ShowCreateProjectChatModal { get; set; }
+    private List<LookupDto<Guid>> SelectedProjectChatMembers { get; set; } = new();
+    private Guid? SelectedProjectChatId { get; set; }
+    private string CreateChatProjectName { get; set; } = string.Empty;
+    private string CreateChatName { get; set; } = string.Empty;
+    private ConversationType CreateChatType { get; set; } = ConversationType.Project;
+
+
+    private CreateProjectConversationInput CreateProjectConversationInput { get; set; } = new();
     public Projects()
     {
         NewProject = new ProjectCreateDto();
@@ -191,7 +207,47 @@ public partial class Projects : HCComponentBase
         // Navigate to the project detail page.
         NavigationManager.NavigateTo($"/project-detail/{project.Project.Id}");
     }
+    private async Task CreateProjectChatModalAsync(ProjectWithNavigationPropertiesDto project)
+    {
+        //open modal create Chat group (auto select project.Project.Id)
+        try
+        {
+            //show loading spinner
+            var members = await ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
+            {
+                ProjectId = project.Project.Id,
+                MaxResultCount = 100,
+                SkipCount = 0
+            });
 
+            CreateProjectConversationInput = new CreateProjectConversationInput
+            {
+                ProjectId = project.Project.Id,
+                Name = project.Project.Name,
+                MemberUserIds = members.Items.Select(m => m.User.Id).ToList()
+            };
+            var result = await ConversationAppService.CreateProjectConversationAsync(CreateProjectConversationInput);
+
+            if (result != null)
+            {
+                await UiMessageService.Success(L["ProjectChatCreatedSuccessfully"]);
+            }
+            else
+            {
+                await UiMessageService.Error(L["ProjectChatCreationFailed"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            //hide loading spinner
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    
     private bool RowSelectableHandler(RowSelectableEventArgs<ProjectWithNavigationPropertiesDto> rowSelectableEventArgs) => rowSelectableEventArgs.SelectReason is not DataGridSelectReason.RowClick && CanDeleteProject;
 
     private bool DetailRowTriggerHandler(DetailRowTriggerEventArgs<ProjectWithNavigationPropertiesDto> detailRowTriggerEventArgs)

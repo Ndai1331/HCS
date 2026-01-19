@@ -377,13 +377,14 @@
                             {
                                 <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
                                    title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditProjectModalAsync(context))"
+                                   @onclick="@(() => NavigateToProjectDetail(context))"
                                    style="cursor: pointer;"></i>
                             }
-                            <i class="bi bi-eye-fill hc-action-icon hc-action-view" 
-                               title="@L["Menu:ProjectDetail"]"
-                               @onclick="@(() => NavigateToProjectDetail(context))"
+                            <i class="bi bi-chat-dots-fill hc-action-icon hc-action-view" 
+                               title="@L["Menu:CreateChat"]"
+                               @onclick="@(async () => await CreateProjectChatModalAsync(context))"
                                style="cursor: pointer;"></i>
+
                             <i class="bi bi-card-checklist hc-action-icon hc-action-tasks" 
                                title="@L["Tasks"]"
                                @onclick="@(() => OpenProjectTasksModalAsync(context))"
@@ -989,6 +990,9 @@
 @*//</suite-custom-code-block-10>*@
     </ModalContent>
 </Modal>
+
+
+
 
 @code {
     private DatePicker<DateTime>? NewProjectStartDateDatePicker { get; set; }

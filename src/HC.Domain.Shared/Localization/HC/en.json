@@ -829,6 +829,8 @@
     "ShowChatInfo": "Show chat info",
     "ShowChatMembers": "Show chat members",
     "ShowMediaFiles": "Show media files",
-    "SendAndSign": "Send and sign"
+    "SendAndSign": "Send and sign",
+    "ProjectChatCreatedSuccessfully": "Project chat created successfully",
+    "ProjectChatCreationFailed": "Project chat creation failed"
   }
 }

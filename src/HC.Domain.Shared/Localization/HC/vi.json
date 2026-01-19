@@ -873,6 +873,8 @@
     "HideChatInfo": "Ẩn thông tin chat",
     "HideChatMembers": "Ẩn thành viên chat",
     "HideMediaFiles": "Ẩn tệp media",
-    "SendAndSign": "Gửi và ký"
+    "SendAndSign": "Gửi và ký",
+    "ProjectChatCreatedSuccessfully": "Chat dự án đã được tạo thành công",
+    "ProjectChatCreationFailed": "Chat dự án đã được tạo thất bại"
   }
 }
