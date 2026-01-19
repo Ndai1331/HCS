@@ -67,6 +67,12 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
     public bool SendOnEnter { get; set; } = true; // Default: Enter to send
     
+    public bool ShowInfoBox { get; set; } = false;
+    
+    public bool AccordionChatInfoVisible { get; set; } = false;
+    public bool AccordionChatMembersVisible { get; set; } = false;
+    public bool AccordionMediaFilesVisible { get; set; } = false;
+    
     // Loading state
     public bool IsLoadingMessages { get; set; }
     public bool IsSendingMessage { get; set; } // Loading state for send button (shows spinner but doesn't block)
@@ -1857,6 +1863,19 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             SenderSurname = CurrentUser.SurName,
             SenderUsername = CurrentUser.UserName
         };
+    }
+
+
+    private async Task ShowPinnedMessagesAsync()
+    {
+        ShowInfoBox = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ShowInfoBoxAsync()
+    {
+        ShowInfoBox = !ShowInfoBox;
+        await InvokeAsync(StateHasChanged);
     }
 
     public async ValueTask DisposeAsync()

@@ -43,7 +43,7 @@
     <div class="container-fluid">
         <div class="row">
             <!-- Users box-->
-            <div class="col-12 col-md-5 col-lg-4  d-flex align-items-stretch">
+            <div class="col-12 col-md-3  d-flex align-items-stretch">
                 <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
                     <div class="card-body p-1 p-md-2 p-lg-3" style="display: flex; flex-direction: column; overflow: hidden;">
                         <div class=" mb-2 rounded-2" id="SearchBox">
@@ -188,7 +188,7 @@
                 </div>
             </div>
             <!-- Chat Box-->
-            <div id="chatBox" class="col-12 col-md-7 col-lg-8  d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
+            <div id="chatBox" class="col-12 @(ShowInfoBox ? "col-md-6" : "col-md-9")  d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
                 <div class="card w-100 mb-0" style="height: 100%; display: flex; flex-direction: column;">
                     <div class="card-body p-1 p-md-2 p-lg-3" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
                         <div id="AvatarId" class="px-2 py-1 border mb-2 rounded-2">
@@ -228,6 +228,10 @@
                                             }
                                         }
                                     </h5>
+                                </div>
+
+                                <div class="col-auto pe-0 mx-2">
+                                     <i class="bi bi-info-circle fs-4 text-brand mt-1 cursor-pointer" @onclick="async () => await ShowInfoBoxAsync()" title="@L["ShowInfoBox"]"></i>
                                 </div>
                             </div>
                         </div>
@@ -600,6 +604,64 @@
                     </div>
                 </div>
             </div>
+            <!-- Info box-->
+            @if (ShowInfoBox)
+            {
+                <div class="col-12 col-md-3  d-flex align-items-stretch">
+                    <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
+                        <div class="card-body p-1 p-md-2 p-lg-3" style="display: flex; flex-direction: column; overflow: hidden;">
+                            <h5  class="modal-title m-0">
+                                @if (CurrentChatContact != null)
+                                {
+                                    @if (CurrentChatContact.Type == ConversationType.User)
+                                    {
+                                        @(GetName(CurrentChatContact) + (CurrentChatContact.HasChatPermission ? string.Empty : $" - {L["Volo.Chat:010004"]}"))
+                                    }
+                                    else
+                                    {
+                                        @(CurrentChatContact.ConversationName ?? GetName(CurrentChatContact))
+                                    }
+                                }
+                            </h5>
+
+                            <Accordion>
+                                <AccordionItem @bind-Visible="@AccordionChatInfoVisible">
+                                    <AccordionHeader>
+                                        <Heading Size="HeadingSize.Is5">
+                                            <AccordionToggle>@L["ChatInfo"]</AccordionToggle>
+                                        </Heading>
+                                    </AccordionHeader>
+                                    <AccordionBody>
+                                        <Button class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowPinnedMessagesAsync()">@L["ShowPinnedMessages"]</Button>
+                                    </AccordionBody>
+                                </AccordionItem>
+                                @if(CurrentChatContact.Type != ConversationType.User)
+                                {
+                                    <AccordionItem @bind-Visible="@AccordionChatMembersVisible">
+                                        <AccordionHeader>
+                                            <Heading Size="HeadingSize.Is5">
+                                                <AccordionToggle>@L["ChatMembers"]</AccordionToggle>
+                                            </Heading>
+                                        </AccordionHeader>
+                                        <AccordionBody>
+                                        </AccordionBody>
+                                    </AccordionItem>
+                                }
+                                <AccordionItem @bind-Visible="@AccordionMediaFilesVisible">
+                                    <AccordionHeader>
+                                        <Heading Size="HeadingSize.Is5">
+                                            <AccordionToggle>@L["Files"]</AccordionToggle>
+                                        </Heading>
+                                    </AccordionHeader>
+                                    <AccordionBody>
+                                    </AccordionBody>
+                                </AccordionItem>
+                                
+                            </Accordion>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 </div>

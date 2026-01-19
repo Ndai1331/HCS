@@ -818,6 +818,17 @@
     "DeleteUserDepartment": "Delete User Department",
     "DeleteUserDepartmentConfirmationMessage": "Are you sure you want to delete user department {0}?",
     "NoDepartmentsAssigned": "No departments assigned",
-    "NoUserDepartmentsAssigned": "No user departments assigned"
+    "NoUserDepartmentsAssigned": "No user departments assigned",
+    "ShowInfoBox": "Show info box",
+    "HideInfoBox": "Hide info box",
+    "PinnedMessages": "Pinned messages",
+    "ChatInfo": "Chat info",
+    "ChatMembers": "Chat members",
+    "MediaFiles": "Media files",
+    "ShowPinnedMessages": "Show pinned messages",
+    "ShowChatInfo": "Show chat info",
+    "ShowChatMembers": "Show chat members",
+    "ShowMediaFiles": "Show media files",
+    "SendAndSign": "Send and sign"
   }
 }

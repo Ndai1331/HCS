@@ -858,6 +858,21 @@
     "DeleteUserDepartment": "Xóa phòng ban",
     "DeleteUserDepartmentConfirmationMessage": "Bạn có chắc chắn muốn xoá phòng ban {0}?",
     "NoDepartmentsAssigned": "Không có phòng ban nào được gán",
-    "NoUserDepartmentsAssigned": "Không có phòng ban nào được gán cho người dùng này"
+    "NoUserDepartmentsAssigned": "Không có phòng ban nào được gán cho người dùng này",
+    "ShowInfoBox": "Hiển thị thông tin",
+    "HideInfoBox": "Ẩn thông tin",
+    "PinnedMessages": "Tin nhắn đã ghim",
+    "ChatInfo": "Thông tin chat",
+    "ChatMembers": "Thành viên chat",
+    "MediaFiles": "Tệp media",
+    "ShowPinnedMessages": "Hiển thị tin nhắn đã ghim",
+    "ShowChatInfo": "Hiển thị thông tin chat",
+    "ShowChatMembers": "Hiển thị thành viên chat",
+    "ShowMediaFiles": "Hiển thị tệp media",
+    "HidePinnedMessages": "Ẩn tin nhắn đã ghim",
+    "HideChatInfo": "Ẩn thông tin chat",
+    "HideChatMembers": "Ẩn thành viên chat",
+    "HideMediaFiles": "Ẩn tệp media",
+    "SendAndSign": "Gửi và ký"
   }
 }

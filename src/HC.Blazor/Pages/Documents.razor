@@ -331,14 +331,6 @@
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" Caption="@L["Actions"]" Width="120px">
                     <DisplayTemplate>
                         <div class="hc-action-icons">
-                            <i class="bi bi-send-fill hc-action-icon" 
-                               style="color: #198754; cursor: pointer;"
-                               title="@L["Send"]"
-                               @onclick="@(() => SendDocumentAsync(context))"></i>
-                            <i class="bi bi-pencil-square hc-action-icon" 
-                               style="color: #ffc107; cursor: pointer;"
-                               title="@L["Action.SubmitForSigning"]"
-                               @onclick="@(() => SignDocumentAsync(context))"></i>
                             @if (HasPdfFile(context))
                             {
                                 <i class="bi bi-eye-fill hc-action-icon hc-action-view" 
@@ -363,6 +355,20 @@
                         </div>
 @*//<suite-custom-code-block-4>*@
 @*//</suite-custom-code-block-4>*@
+                    </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" Caption="@L["SendAndSign"]" Width="120px">
+                    <DisplayTemplate>
+                        <div class="hc-action-icons">
+                            <i class="bi bi-send-fill hc-action-icon" 
+                               style="color: #198754; cursor: pointer;"
+                               title="@L["Send"]"
+                               @onclick="@(() => SendDocumentAsync(context))"></i>
+                            <i class="bi bi-pencil-square hc-action-icon" 
+                               style="color: #ffc107; cursor: pointer;"
+                               title="@L["Action.SubmitForSigning"]"
+                               @onclick="@(() => SignDocumentAsync(context))"></i>
+                        </div>
                     </DisplayTemplate>
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"

@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.Application.Dtos;
+using Blazorise.PdfViewer;
 
 namespace HC.Blazor.Pages;
 
@@ -49,6 +50,10 @@ public partial class DocumentDetail : HCComponentBase
     // Document data
     private DocumentCreateDto? DocumentCreateData { get; set; }
     private DocumentUpdateDto? DocumentUpdateData { get; set; }
+
+    // PDF viewer refs
+    private PdfViewer? EditPdfViewerRef { get; set; }
+    private PdfViewer? CreatePdfViewerRef { get; set; }
 
     // Validation helpers using shared ValidationHelper
     private ValidationHelper CreateValidation { get; } = new();
@@ -91,7 +96,7 @@ public partial class DocumentDetail : HCComponentBase
     private IReadOnlyList<DocumentFileWithNavigationPropertiesDto> DocumentFilesList { get; set; } = new List<DocumentFileWithNavigationPropertiesDto>();
 
     // PDF viewer
-    private string? PdfFileUrl { get; set; }
+    private string? PdfFileUrl { get; set; } = "https://pdfobject.com/pdf/sample.pdf";
     private bool IsPdfFile { get; set; }
 
     // PDF Viewer Modal
@@ -555,6 +560,8 @@ public partial class DocumentDetail : HCComponentBase
             var file = e.Files.First();
             await UploadFileAsync(file);
         }
+
+       
     }
 
     // File upload handler (kept for backward compatibility if needed)
@@ -605,8 +612,8 @@ public partial class DocumentDetail : HCComponentBase
                 IsPdfFile = false;
                 PdfFileUrl = null;
             }
-
             await UiMessageService.Success(L["FileUploadedSuccessfully"]);
+
         }
         catch (Exception ex)
         {
@@ -619,6 +626,15 @@ public partial class DocumentDetail : HCComponentBase
         finally
         {
             IsUploading = false;
+
+            if (IsEditMode && EditPdfViewerRef != null)
+            {
+                EditPdfViewerRef.Source = PdfFileUrl ?? "https://pdfobject.com/pdf/sample.pdf"  ;
+            }
+            else if (!IsEditMode && CreatePdfViewerRef != null)
+            {
+                CreatePdfViewerRef.Source = PdfFileUrl ?? "https://pdfobject.com/pdf/sample.pdf";
+            }
             await InvokeAsync(StateHasChanged);
         }
     }

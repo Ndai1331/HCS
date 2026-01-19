@@ -74,7 +74,6 @@ else
             <Form id="DocumentDetailForm" style="position: relative;">
                 @if (IsEditMode && DocumentUpdateData != null)
                 {
-                    @* Manual validation is used (see ValidateEditDocument). *@
                     @if (!string.IsNullOrWhiteSpace(EditDocumentValidationErrorKey))
                     {
                         <Alert Color="Color.Danger">
@@ -298,113 +297,109 @@ else
                                 
                                 <!-- Row 6: Trạng thái hiện tại (12) -->
                                 <Row>
-                                    <Column ColumnSize="ColumnSize.Is12">
+                                   <Column ColumnSize="ColumnSize.Is12">
                                         <Field>
                                             <FieldLabel>@L["CurrentStatus"]</FieldLabel>
                                             <TextEdit @bind-Text="@DocumentUpdateData.CurrentStatus" MaxLength="DocumentConsts.CurrentStatusMaxLength" Disabled="@IsViewMode" />
                                         </Field>
+                                    </Column>
+
+                                    <Column ColumnSize="ColumnSize.Is12">
+                                            @if (!IsViewMode && !DocumentFilesList.Any())
+                                            {
+                                                <Field>
+                                                    <FieldLabel>@L["File"] *</FieldLabel>
+                                                    <FilePicker Multiple="false"
+                                                                Changed="OnFileChanged"
+                                                                ShowMode="FilePickerShowMode.List"
+                                                                Disabled="@(IsEditMode && CurrentDocument != null && DocumentFilesList.Any())"
+                                                                MaxFileSize="52428800"
+                                                                Accept="application/pdf"
+                                                                FilePickerLocalizer="FilePickerLocalizer">
+                                                        <ButtonsTemplate>
+                                                            <Progress Value="@FilePickerProgress" />
+                                                            <Buttons>
+                                                                <Button Clicked="@context.Clear" Color="Color.Warning">
+                                                                    <Icon Name="IconName.Clear" /> @L["Clear"]
+                                                                </Button>
+                                                            </Buttons>
+                                                        </ButtonsTemplate>
+                                                    </FilePicker>
+                                                    @if (IsEditMode && CurrentDocument != null)
+                                                    {
+                                                        <Alert Color="Color.Warning" Dismissible="false" Class="mt-2">
+                                                            <Icon Name="IconName.ExclamationTriangle" Class="me-2" />
+                                                            @L["CannotUploadFileInEditMode"] @L["PleaseDeleteFileFirst"]
+                                                        </Alert>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(UploadedFilePath))
+                                                    {
+                                                        <Alert Color="Color.Success" Dismissible="false" Class="mt-2">
+                                                            <Icon Name="IconName.CheckCircle" Class="me-2" />
+                                                            @L["FileUploadedSuccessfully"]: @System.IO.Path.GetFileName(UploadedFilePath)
+                                                        </Alert>
+                                                    }
+                                                </Field>
+                                            }
+                                            
+                                            @if (DocumentFilesList.Any())
+                                            {
+                                                <div class="mt-3">
+                                                    <Heading Size="HeadingSize.Is6">@L["UploadedFiles"]</Heading>
+                                                    <Table Hoverable="true" Bordered="true" Striped="true">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>@L["Name"]</th>
+                                                                <th>@L["UploadedAt"]</th>
+                                                                <th>@L["IsSigned"]</th>
+                                                                <th>@L["Actions"]</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var file in DocumentFilesList)
+                                                            {
+                                                                <tr>
+                                                                    <td>@file.DocumentFile.Name</td>
+                                                                    <td>@file.DocumentFile.UploadedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                                                    <td>
+                                                                        @if (file.DocumentFile.IsSigned)
+                                                                        {
+                                                                            <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
+                                                                        }
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="d-flex gap-2">
+                                                                            <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => DownloadFileAsync(file.DocumentFile.Path, file.DocumentFile.Name))">
+                                                                                <Icon Name="IconName.Download" Class="me-1" />
+                                                                            </Button>
+                                                                            @if (CanDeleteDocumentFile)
+                                                                            {
+                                                                                <Button Color="Color.Danger" Size="Size.Small" Clicked="@(() => DeleteFileAsync(file))">
+                                                                                    <Icon Name="IconName.Delete" Class="me-1" />
+                                                                                </Button>
+                                                                            }
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </Table>
+                                                </div>
+                                            }
                                     </Column>
                                 </Row>
                             </Column>
                             
                             <!-- Right Column: File Upload and PDF Viewer (6 columns) -->
                             <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                @if (!IsViewMode && !DocumentFilesList.Any())
-                                {
-                                    <Field>
-                                        <FieldLabel>@L["File"] *</FieldLabel>
-                                        <FilePicker Multiple="false"
-                                                    Changed="OnFileChanged"
-                                                    ShowMode="FilePickerShowMode.List"
-                                                    Disabled="@(IsEditMode && CurrentDocument != null && DocumentFilesList.Any())"
-                                                    MaxFileSize="52428800"
-                                                    FilePickerLocalizer="FilePickerLocalizer">
-                                            <ButtonsTemplate>
-                                                <Progress Value="@FilePickerProgress" />
-                                                <Buttons>
-                                                    <Button Clicked="@context.Clear" Color="Color.Warning">
-                                                        <Icon Name="IconName.Clear" /> @L["Clear"]
-                                                    </Button>
-                                                    @if (IsPdfFile && !string.IsNullOrEmpty(PdfFileUrl) && !string.IsNullOrEmpty(UploadedFilePath))
-                                                    {
-                                                        <Button Clicked="OpenPdfViewerModalAsync" Color="Color.Info">
-                                                            <Icon Name="IconName.Eye" /> @L["ViewFile"]
-                                                        </Button>
-                                                    }
-                                                </Buttons>
-                                            </ButtonsTemplate>
-                                        </FilePicker>
-                                        @if (IsEditMode && CurrentDocument != null)
-                                        {
-                                            <Alert Color="Color.Warning" Dismissible="false" Class="mt-2">
-                                                <Icon Name="IconName.ExclamationTriangle" Class="me-2" />
-                                                @L["CannotUploadFileInEditMode"] @L["PleaseDeleteFileFirst"]
-                                            </Alert>
-                                        }
-                                        @if (!string.IsNullOrEmpty(UploadedFilePath))
-                                        {
-                                            <Alert Color="Color.Success" Dismissible="false" Class="mt-2">
-                                                <Icon Name="IconName.CheckCircle" Class="me-2" />
-                                                @L["FileUploadedSuccessfully"]: @System.IO.Path.GetFileName(UploadedFilePath)
-                                            </Alert>
-                                        }
-                                    </Field>
-                                }
-                                
-                                @if (DocumentFilesList.Any())
-                                {
-                                    <div class="mt-3">
-                                        <Heading Size="HeadingSize.Is6">@L["UploadedFiles"]</Heading>
-                                        <Table Hoverable="true" Bordered="true" Striped="true">
-                                            <thead>
-                                                <tr>
-                                                    <th>@L["Name"]</th>
-                                                    <th>@L["UploadedAt"]</th>
-                                                    <th>@L["IsSigned"]</th>
-                                                    <th>@L["Actions"]</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach (var file in DocumentFilesList)
-                                                {
-                                                    <tr>
-                                                        <td>@file.DocumentFile.Name</td>
-                                                        <td>@file.DocumentFile.UploadedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                                                        <td>
-                                                            @if (file.DocumentFile.IsSigned)
-                                                            {
-                                                                <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
-                                                            }
-                                                            else
-                                                            {
-                                                                <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
-                                                            }
-                                                        </td>
-                                                        <td>
-                                                            <div class="d-flex gap-2">
-                                                                @if (IsPdfFileExtension(file.DocumentFile.Name))
-                                                                {
-                                                                    <Button Color="Color.Info" Size="Size.Small" Clicked="@(() => OpenPdfViewerModalForFileAsync(file))">
-                                                                        <Icon Name="IconName.Eye" Class="me-1" />
-                                                                    </Button>
-                                                                }
-                                                                <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => DownloadFileAsync(file.DocumentFile.Path, file.DocumentFile.Name))">
-                                                                    <Icon Name="IconName.Download" Class="me-1" />
-                                                                </Button>
-                                                                @if (CanDeleteDocumentFile)
-                                                                {
-                                                                    <Button Color="Color.Danger" Size="Size.Small" Clicked="@(() => DeleteFileAsync(file))">
-                                                                        <Icon Name="IconName.Delete" Class="me-1" />
-                                                                    </Button>
-                                                                }
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                        </Table>
-                                    </div>
-                                }
+                                <PdfViewerContainer Height="Height.Rem(50)">
+                                    <PdfViewerToolbar />
+                                    <PdfViewer Source="@PdfFileUrl"  @ref="@EditPdfViewerRef" />
+                                </PdfViewerContainer>
                             </Column>
                         </Row>
                         <Row>
@@ -436,9 +431,11 @@ else
                             </Column>
                         </Row>
                 }
+
+                @* CREATE MODE *@
+
                 else if (DocumentCreateData != null)
                 {
-                    @* Manual validation is used (see ValidateCreateDocument). *@
                     @if (!string.IsNullOrWhiteSpace(CreateDocumentValidationErrorKey))
                     {
                         <Alert Color="Color.Danger">
@@ -662,58 +659,58 @@ else
                                 
                                 <!-- Row 6: Trạng thái hiện tại (12) -->
                                 <Row>
-                                    <Column ColumnSize="ColumnSize.Is12">
+                                    @* <Column ColumnSize="ColumnSize.Is12">
                                         <Field>
                                             <FieldLabel>@L["CurrentStatus"]</FieldLabel>
                                             <TextEdit @bind-Text="@DocumentCreateData.CurrentStatus" MaxLength="DocumentConsts.CurrentStatusMaxLength" Disabled="@IsViewMode" />
                                         </Field>
+                                    </Column> *@
+                                    <Column ColumnSize="ColumnSize.Is12">
+                                        @if (!IsViewMode && !DocumentFilesList.Any())
+                                        {
+                                            <Field>
+                                                <FieldLabel>@L["File"] *</FieldLabel>
+                                                <FilePicker Multiple="false"
+                                                            Changed="OnFileChanged"
+                                                            ShowMode="FilePickerShowMode.List"
+                                                            Disabled="@(IsEditMode && CurrentDocument != null && DocumentFilesList.Any())"
+                                                            MaxFileSize="52428800"
+                                                            FilePickerLocalizer="FilePickerLocalizer">
+                                                    <ButtonsTemplate>
+                                                        @* <Progress Value="@FilePickerProgress" /> *@
+                                                        <Buttons>
+                                                            <Button Clicked="@context.Clear" Color="Color.Warning">
+                                                                <Icon Name="IconName.Clear" /> @L["Clear"]
+                                                            </Button>
+                                                        </Buttons>
+                                                    </ButtonsTemplate>
+                                                </FilePicker>
+                                                @if (IsEditMode && CurrentDocument != null)
+                                                {
+                                                    <Alert Color="Color.Warning" Dismissible="false" Class="mt-2">
+                                                        <Icon Name="IconName.ExclamationTriangle" Class="me-2" />
+                                                        @L["CannotUploadFileInEditMode"] @L["PleaseDeleteFileFirst"]
+                                                    </Alert>
+                                                }
+                                                @if (!string.IsNullOrEmpty(UploadedFilePath))
+                                                {
+                                                    <Alert Color="Color.Success" Dismissible="false" Class="mt-2">
+                                                        <Icon Name="IconName.CheckCircle" Class="me-2" />
+                                                        @L["FileUploadedSuccessfully"]: @System.IO.Path.GetFileName(UploadedFilePath)
+                                                    </Alert>
+                                                }
+                                            </Field>
+                                        }
                                     </Column>
                                 </Row>
                             </Column>
                             
                             <!-- Right Column: File Upload and PDF Viewer (6 columns) -->
                             <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                @if (!IsViewMode && !DocumentFilesList.Any())
-                                {
-                                    <Field>
-                                        <FieldLabel>@L["File"] *</FieldLabel>
-                                        <FilePicker Multiple="false"
-                                                    Changed="OnFileChanged"
-                                                    ShowMode="FilePickerShowMode.List"
-                                                    Disabled="@(IsEditMode && CurrentDocument != null && DocumentFilesList.Any())"
-                                                    MaxFileSize="52428800"
-                                                    FilePickerLocalizer="FilePickerLocalizer">
-                                            <ButtonsTemplate>
-                                                @* <Progress Value="@FilePickerProgress" /> *@
-                                                <Buttons>
-                                                    <Button Clicked="@context.Clear" Color="Color.Warning">
-                                                        <Icon Name="IconName.Clear" /> @L["Clear"]
-                                                    </Button>
-                                                    @if (IsPdfFile && !string.IsNullOrEmpty(PdfFileUrl) && !string.IsNullOrEmpty(UploadedFilePath))
-                                                    {
-                                                        <Button Clicked="OpenPdfViewerModalAsync" Color="Color.Info">
-                                                            <Icon Name="IconName.Eye" /> @L["ViewFile"]
-                                                        </Button>
-                                                    }
-                                                </Buttons>
-                                            </ButtonsTemplate>
-                                        </FilePicker>
-                                        @if (IsEditMode && CurrentDocument != null)
-                                        {
-                                            <Alert Color="Color.Warning" Dismissible="false" Class="mt-2">
-                                                <Icon Name="IconName.ExclamationTriangle" Class="me-2" />
-                                                @L["CannotUploadFileInEditMode"] @L["PleaseDeleteFileFirst"]
-                                            </Alert>
-                                        }
-                                        @if (!string.IsNullOrEmpty(UploadedFilePath))
-                                        {
-                                            <Alert Color="Color.Success" Dismissible="false" Class="mt-2">
-                                                <Icon Name="IconName.CheckCircle" Class="me-2" />
-                                                @L["FileUploadedSuccessfully"]: @System.IO.Path.GetFileName(UploadedFilePath)
-                                            </Alert>
-                                        }
-                                    </Field>
-                                }
+                                <PdfViewerContainer Height="Height.Rem(50)">
+                                    <PdfViewerToolbar />
+                                    <PdfViewer Source="@PdfFileUrl"  @ref="@CreatePdfViewerRef" />
+                                </PdfViewerContainer>
                             </Column>
                         </Row>
                         <Row>
@@ -764,7 +761,7 @@ else
         <ModalBody Class="pdf-viewer-modal-body">
             @if (IsPdfFile && !string.IsNullOrEmpty(PdfFileUrl))
             {
-                <PdfViewerContainer Height="Height.Rem(35)">
+                <PdfViewerContainer Height="Height.Rem(50)">
                     <PdfViewerToolbar />
                     <PdfViewer Source="@PdfFileUrl" />
                 </PdfViewerContainer>
