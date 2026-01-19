@@ -1101,7 +1101,7 @@
                                         <FieldLabel>@L["ProgressPercent"]</FieldLabel>
                                         <NumericPicker TValue="int"
                                                        Value="@NewTaskFromMessage.ProgressPercent"
-                                                       ValueChanged="@((int value) => { NewTaskFromMessage.ProgressPercent = value; CreateTaskFieldErrors.Remove("ProgressPercent"); })"
+                                                       ValueChanged="@((int value) => { OnTaskFromMessageProgressPercentChanged(value); })"
                                                        Min="0"
                                                        Max="100"
                                                        Decimals="0"

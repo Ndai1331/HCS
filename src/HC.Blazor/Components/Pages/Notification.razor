@@ -19,6 +19,19 @@
      .bg-pill{
         background-color: #f72585 !important;
      }
+
+     .lpx-badge{
+        display: inline-block;
+        padding: 0.35em 0.65em;
+        font-size: 0.785em;
+        line-height: 1;
+        border-radius: 4px;
+        background-color: #f72585;
+        color: #fff;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+     }
 </style>
 
 <div id="notification-bar">
@@ -41,20 +54,21 @@
 </div>  
 
 <div class="lpx-context-menu" data-lpx-context-menu="notification-bar" 
-        style="max-height: 600px;">
+        style="max-height: 600px; max-width: 280px; right: 80px;">
     <div class="d-flex flex-column h-100">
         @* Header *@
         <div class="p-2 border-bottom">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-start align-items-center">
                 <h6 class="mb-0">@L["Notifications"]</h6>
-                <Button Color="Color.Light" Size="Size.Small" Clicked="RefreshNotificationsAsync">
+                @* <Button Color="Color.Light" Size="Size.Small" Clicked="RefreshNotificationsAsync">
                     <Icon Name="IconName.Sync" />
-                </Button>
+                </Button> *@
+                <span class="lpx-badge ms-2">@(_unreadCount > 99 ? "99+" : _unreadCount.ToString())</span>
             </div>
         </div>
 
         @* Tabs *@
-        <div class="border-bottom notification-tabs">
+        @* <div class="border-bottom notification-tabs">
             <Tabs SelectedTab="@_selectedTab" SelectedTabChanged="@OnTabChanged" Pills="true" FullWidth="true">
                 <Items>
                     <Tab Name="DOCUMENT">
@@ -83,15 +97,15 @@
                     </Tab>
                 </Items>
             </Tabs>
-        </div>
+        </div> *@
 
         @* Notifications List *@
-        <div class="flex-grow-1 overflow-auto" style="max-height: 400px;">
+        <div class="flex-grow-1 overflow-auto" style="max-height: 400px;"> 
             @if (_isLoading)
             {
                 <div class="text-center p-4">
                     <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                        <span class="visually-hidden">@L["Loading"]</span>
                     </div>
                 </div>
             }
@@ -110,7 +124,7 @@
                     <div class="p-2 border-bottom notification-item @(isUnread ? "notification-unread" : "")" style="cursor: pointer;" @onclick="() => ViewNotificationDetail(notification, isUnread)">
                         <div class="d-flex align-items-start">
                             <div class="flex-shrink-0 me-3">
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <div class="rounded-circle @GetSourceTypeColor(notification.SourceType) text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                                     <Icon Name="@GetSourceTypeIcon(notification.SourceType)" />
                                 </div>
                             </div>
@@ -123,7 +137,7 @@
                                     }
                                 </div>
                                 <p class="mb-1 small text-muted">@GetLocalizedContent(notification)</p>
-                                <div class="d-flex justify-content-between align-items-center">
+                                @* <div class="d-flex justify-content-between align-items-center">
                                     <small class="text-muted">@notification.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
                                     @if (!string.IsNullOrEmpty(notification.RelatedId))
                                     {
@@ -131,7 +145,7 @@
                                             @L["ViewDetail"]
                                         </Button>
                                     }
-                                </div>
+                                </div> *@
                             </div>
                         </div>
                     </div>
@@ -152,7 +166,7 @@
                 {
                     <div></div>
                 }
-                <Button Color="Color.Primary" Size="Size.Small" Clicked="NavigateToNotificationsPage">
+                <Button Class="bg-pill text-white" Size="Size.Small" Clicked="NavigateToNotificationsPage">
                     @L["ViewAllNotifications"]
                 </Button>
             </div>
@@ -249,31 +263,31 @@
                 _notifications.Clear();
             }
 
-            var sourceType = GetSourceTypeForTab(_selectedTab);
+            @* var sourceType = GetSourceTypeForTab(_selectedTab); *@
             var input = new GetNotificationReceiversInput
             {
                 IdentityUserId = CurrentUser.Id,
                 MaxResultCount = _pageSize,
                 SkipCount = _skipCount,
-                Sorting = "Notification.CreationTime DESC",
-                SourceType = sourceType ?? ""
+                Sorting = "Notification.CreationTime DESC"
+                @* SourceType = sourceType ?? "" *@
             };
 
             // Filter by SourceType if needed
             var result = await NotificationReceiversAppService.GetListAsync(input);
             
             // Filter by SourceType on client side
-            var filteredItems = result.Items
+            @* var filteredItems = result.Items
                 .Where(x => string.IsNullOrEmpty(sourceType) || x.Notification.SourceType == sourceType)
-                .ToList();
+                .ToList(); *@
 
             if (loadMore)
             {
-                _notifications.AddRange(filteredItems);
+                _notifications.AddRange(result.Items.ToList());
             }
             else
             {
-                _notifications = filteredItems;
+                _notifications = result.Items.ToList();
             }
 
             _skipCount += result.Items.Count; // Use original count for pagination
@@ -378,6 +392,22 @@
             _ => IconName.Bell
         };
     }
+
+    
+    private string GetSourceTypeColor(string sourceType)
+    {
+        return sourceType switch
+        {   
+            "DOCUMENT" => "bg-primary",
+            "WORKFLOW" => "bg-secondary",
+            "PROJECT" => "bg-success",
+            "TASK" => "bg-info",
+            "CALENDAR" => "bg-warning",
+            "CHAT" => "bg-danger",
+            _ => "bg-primary"
+        };
+    }
+
 
     private string GetLocalizedTitle(NotificationDto notification)
     {

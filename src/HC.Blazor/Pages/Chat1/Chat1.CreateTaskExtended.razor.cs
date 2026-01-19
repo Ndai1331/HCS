@@ -464,6 +464,24 @@ public partial class Chat1
     }
     
     /// <summary>
+    /// Handle ProgressPercent change - auto-set status to Done when progress reaches 100%
+    /// </summary>
+    private void OnTaskFromMessageProgressPercentChanged(int value)
+    {
+        NewTaskFromMessage.ProgressPercent = value;
+
+        // Auto-set status to Done when progress reaches 100%
+        if (value == 100)
+        {
+            NewTaskFromMessageStatus = ProjectTaskStatus.DONE;
+            // Also update the DTO string
+            NewTaskFromMessage.Status = ProjectTaskStatus.DONE.ToString();
+        }
+
+        CreateTaskFieldErrors.Remove("ProgressPercent");
+    }
+
+    /// <summary>
     /// Close create task modal (Like ProjectTasks CancelCreateWizardAsync)
     /// </summary>
     private void CloseCreateTaskFromMessageModal()
@@ -473,7 +491,7 @@ public partial class Chat1
         NewTaskFromMessage = new ProjectTaskDto();
         SelectedTaskProject = new List<LookupDto<Guid>>();
         SelectedTaskParent = new List<TaskLookupItem>();
-        
+
         // Reset wizard state
         SelectedCreateTaskTab = "general";
         IsTaskGeneralSaved = false;
@@ -481,13 +499,13 @@ public partial class Chat1
         CreatedTaskId = Guid.Empty;
         CreateTaskFieldErrors.Clear();
         CreateTaskGeneralValidationErrorKey = null;
-        
+
         // Reset assignments
         CreateTaskAssignmentsUsersToAdd = new List<LookupDto<Guid>>();
         CreateTaskAssignmentRole = ProjectTaskAssignmentRole.MAIN;
         CreateTaskAssignmentNote = string.Empty;
         CreateTaskAssignmentsList = new List<ProjectTaskAssignmentWithNavigationPropertiesDto>();
-        
+
         InvokeAsync(StateHasChanged);
     }
 }

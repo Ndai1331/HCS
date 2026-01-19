@@ -961,4 +961,40 @@ public partial class ProjectTasks
 
         return isValid;
     }
+
+    /// <summary>
+    /// Handle ProgressPercent change - auto-set status to Done when progress reaches 100%
+    /// </summary>
+    private void OnNewProjectTaskProgressPercentChanged(int value)
+    {
+        NewProjectTask.ProgressPercent = value;
+
+        // Auto-set status to Done when progress reaches 100%
+        if (value == 100)
+        {
+            NewProjectTaskStatus = ProjectTaskStatus.DONE;
+            // Also update the DTO string
+            NewProjectTask.Status = ProjectTaskStatus.DONE.ToString();
+        }
+
+        CreateFieldErrors.Remove("ProgressPercent");
+    }
+
+    /// <summary>
+    /// Handle ProgressPercent change for editing - auto-set status to Done when progress reaches 100%
+    /// </summary>
+    private void OnEditingProjectTaskProgressPercentChanged(int value)
+    {
+        EditingProjectTask.ProgressPercent = value;
+
+        // Auto-set status to Done when progress reaches 100%
+        if (value == 100)
+        {
+            EditingProjectTaskStatus = ProjectTaskStatus.DONE;
+            // Also update the DTO string
+            EditingProjectTask.Status = ProjectTaskStatus.DONE.ToString();
+        }
+
+        EditFieldErrors.Remove("ProgressPercent");
+    }
 }

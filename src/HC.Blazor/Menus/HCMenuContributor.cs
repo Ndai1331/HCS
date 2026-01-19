@@ -56,11 +56,11 @@ public class HCMenuContributor : IMenuContributor
         context.Menu.AddItem(new ApplicationMenuItem("Workflows", l["Menu:Workflows"], icon: "fa fa-arrow-trend-up", order: 3).AddItem(new ApplicationMenuItem("Workflows.WorkflowDefinitions", l["Menu:WorkflowDefinitions"], url: "/workflow-definitions").RequirePermissions(HCPermissions.WorkflowDefinitions.Default)).AddItem(new ApplicationMenuItem("Workflows.List", l["Menu:WorkflowList"], url: "/workflow-lists").RequirePermissions(HCPermissions.Workflows.Default)));
         context.Menu.AddItem(new ApplicationMenuItem("Projects", l["Menu:Projects"], icon: "fa fa-diagram-project", order: 4).AddItem(new ApplicationMenuItem("Projects.List", l["Menu:ProjectList"], url: "/projects").RequirePermissions(HCPermissions.Projects.Default)).AddItem(new ApplicationMenuItem("Tasks.List", l["Menu:Tasks"], url: "/tasks").RequirePermissions(HCPermissions.Tasks.Default)));
         context.Menu.AddItem(new ApplicationMenuItem("CalendarAndEvents", l["Menu:CalendarAndEvents"], icon: "fa fa-calendar-days", order: 6).AddItem(new ApplicationMenuItem("CalendarAndEvents.CalendarAndEvents", l["Menu:CalendarAndEvents"], url: "/calendar-events").RequirePermissions(HCPermissions.CalendarEvents.Default)));
-        context.Menu.AddItem(new ApplicationMenuItem("Personal", l["Menu:Personal"], icon: "fa fa-users", order: 5)
-        .AddItem(new ApplicationMenuItem("Users.Signatures", l["Menu:Signatures"], url: "/user-signatures").RequirePermissions(HCPermissions.UserSignatures.Default))
-        .AddItem(new ApplicationMenuItem("Users.Departments", l["Menu:Departments"], url: "/user-departments").RequirePermissions(HCPermissions.Departments.Default))
-        .AddItem(new ApplicationMenuItem("Users.Notifications", l["Menu:Notifications"], url: "/notification-receivers").RequirePermissions(HCPermissions.Notifications.Default))
-        .AddItem(new ApplicationMenuItem("Users.Chats", l["Menu:Chats"], url: "/chat").RequirePermissions(ChatPermissions.Messaging)));
+        // context.Menu.AddItem(new ApplicationMenuItem("Personal", l["Menu:Personal"], icon: "fa fa-users", order: 5)
+        // .AddItem(new ApplicationMenuItem("Users.Signatures", l["Menu:Signatures"], url: "/user-signatures").RequirePermissions(HCPermissions.UserSignatures.Default))
+        // .AddItem(new ApplicationMenuItem("Users.Departments", l["Menu:Departments"], url: "/user-departments").RequirePermissions(HCPermissions.Departments.Default))
+        // .AddItem(new ApplicationMenuItem("Users.Notifications", l["Menu:Notifications"], url: "/notification-receivers").RequirePermissions(HCPermissions.Notifications.Default))
+        // .AddItem(new ApplicationMenuItem("Users.Chats", l["Menu:Chats"], url: "/chat").RequirePermissions(ChatPermissions.Messaging)));
 
         context.Menu.AddItem(new ApplicationMenuItem("SurveyResults", l["Menu:SurveyResults"], icon: "fa fa-chart-line", order: 6).AddItem(new ApplicationMenuItem("SurveyResults.SurveyResults", l["Menu:SurveyResults"], url: "/survey-results").RequirePermissions(HCPermissions.SurveyResults.Default)));
         context.Menu.AddItem(new ApplicationMenuItem("MasterDatas", l["Menu:Categories"], icon: "fa fa-layer-group", order: 9).AddItem(new ApplicationMenuItem("MasterDatas.DocumentTypes", l["DocumentTypes"], url: "/document-types").RequirePermissions(HCPermissions.MasterDatas.DocumentTypeDefault)).AddItem(new ApplicationMenuItem("MasterDatas.Sector", l["Sector"], url: "/sectors").RequirePermissions(HCPermissions.MasterDatas.SectorDefault))
@@ -95,11 +95,13 @@ public class HCMenuContributor : IMenuContributor
         var hcResource = context.GetLocalizer<HCResource>();
         var accountResource = context.GetLocalizer<AccountResource>();
         var authServerUrl = _configuration["AuthServer:Authority"] ?? "~";
-        context.Menu.AddItem(new ApplicationMenuItem("Account.Manage", accountResource["MyAccount"], $"{authServerUrl.EnsureEndsWith('/')}Account/Manage", icon: "fa fa-cog", order: 1000, target: "_blank").RequireAuthenticated());
+        // context.Menu.AddItem(new ApplicationMenuItem("Account.Manage", accountResource["MyAccount"], $"{authServerUrl.EnsureEndsWith('/')}Account/Manage", icon: "fa fa-cog", order: 1000, target: "_blank").RequireAuthenticated());
         // context.Menu.AddItem(new ApplicationMenuItem("Account.SecurityLogs", accountResource["MySecurityLogs"], $"{authServerUrl.EnsureEndsWith('/')}Account/SecurityLogs", icon: "fa fa-user-shield", target: "_blank").RequireAuthenticated());
         // context.Menu.AddItem(new ApplicationMenuItem("Account.Sessions", accountResource["Sessions"], url: $"{authServerUrl.EnsureEndsWith('/')}Account/Sessions", icon: "fa fa-clock", target: "_blank").RequireAuthenticated());
+        context.Menu.AddItem(new ApplicationMenuItem("Menu:Personal", hcResource["Menu:Personal"], url: "~/my-profile", icon: "bi-sliders", order: int.MaxValue - 1000).RequireAuthenticated());
         context.Menu.AddItem(new ApplicationMenuItem("Menu:FileManagement", hcResource["Menu:FileManagement"], url: "~/file-management", icon: "fa fa-file-alt", order: int.MaxValue - 1000).RequireAuthenticated());
         context.Menu.AddItem(new ApplicationMenuItem("Menu:Notifications", hcResource["Menu:Notifications"], url: "~/notification-receivers", icon: "fa fa-bell", order: int.MaxValue - 1000).RequireAuthenticated());
+        context.Menu.AddItem(new ApplicationMenuItem("Menu:Chats", hcResource["Menu:Chats"], url: "~/chat", icon: "bi bi-chat-dots-fill", order: int.MaxValue - 1000).RequireAuthenticated());
         context.Menu.AddItem(new ApplicationMenuItem("Account.Logout", uiResource["Logout"], url: "~/Account/Logout", icon: "fa fa-power-off", order: int.MaxValue - 1000).RequireAuthenticated());
         return Task.CompletedTask;
     }

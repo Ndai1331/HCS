@@ -1007,7 +1007,7 @@ else
                                         <FieldLabel>@L["ProgressPercent"]</FieldLabel>
                                         <NumericPicker TValue="int"
                                                        Value="@NewProjectTask.ProgressPercent"
-                                                       ValueChanged="@((int value) => { NewProjectTask.ProgressPercent = value; CreateFieldErrors.Remove("ProgressPercent"); })"
+                                                       ValueChanged="@((int value) => { OnNewProjectTaskProgressPercentChanged(value); CreateFieldErrors.Remove("ProgressPercent"); })"
                                                        Min="ProjectTaskConsts.ProgressPercentMinLength"
                                                        Max="ProjectTaskConsts.ProgressPercentMaxLength"
                                                        Decimals="0"
@@ -1495,7 +1495,7 @@ else
                                         <FieldLabel>@L["ProgressPercent"]</FieldLabel>
                                         <NumericPicker TValue="int"
                                                        Value="@EditingProjectTask.ProgressPercent"
-                                                       ValueChanged="@((int value) => { EditingProjectTask.ProgressPercent = value; EditFieldErrors.Remove("ProgressPercent"); })"
+                                                       ValueChanged="@((int value) => { OnEditingProjectTaskProgressPercentChanged(value); EditFieldErrors.Remove("ProgressPercent"); })"
                                                        Min="ProjectTaskConsts.ProgressPercentMinLength"
                                                        Max="ProjectTaskConsts.ProgressPercentMaxLength"
                                                        Decimals="0"

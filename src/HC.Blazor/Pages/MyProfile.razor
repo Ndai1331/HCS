@@ -1,0 +1,739 @@
+@page "/my-profile"
+@using HC.Permissions;
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Identity
+@using Volo.Abp.AuditLogging.Blazor.Pages.Shared.ErrorRateWidget
+@using Volo.Abp.AuditLogging.Blazor.Pages.Shared.AverageExecutionDurationPerDayWidget
+@using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
+@using Volo.Saas.Host.Blazor.Pages.Shared.Components.SaasLatestTenantsWidget
+@using Volo.Saas.Host.Blazor.Pages.Shared.Components.SaasEditionPercentageWidget
+@inherits HCComponentBase
+@using Volo.Abp.Identity
+@using HC.UserDepartments
+@using HC.UserSignatures
+@using HC.Shared
+@using Blazorise
+@using Blazorise.Components
+@using Blazorise.DataGrid
+@using Volo.Abp.BlazoriseUI
+@using Volo.Abp.BlazoriseUI.Components
+@using BreadcrumbItem = Volo.Abp.BlazoriseUI.BreadcrumbItem
+
+@* ************************* PAGE HEADER ************************* *@
+<PageHeader Title="@L["MyProfile"]" BreadcrumbItems="@BreadcrumbItems">
+</PageHeader>
+<style>
+    .nav-fill > .nav-link, .nav-fill .nav-item {
+        text-align: start;
+    }
+    .dropdown-item {
+        padding: 0.5rem;
+    }
+
+    .flatpickr-calendar.static {
+        position: absolute;
+        top: calc(80% + 2px);
+    }
+</style>
+<Row>
+    <Column ColumnSize="ColumnSize.Is12.OnDesktop.Is4.OnWidescreen">
+        <Card>
+            <CardBody Class="text-center">
+                @{
+                    var srcImg = $"api/account/profile-picture-file/{CurrentUser.Id}";
+                }
+                <div class="position-relative d-inline-block mb-3">
+                    <Image Source="@srcImg" Class="lpx-avatar-img-lg"/>
+                    <button type="button" class="btn btn-sm btn-primary position-absolute" 
+                            style="bottom: 0; right: 0; border-radius: 50%; width: 32px; height: 32px; padding: 0;"
+                            @onclick="TriggerAvatarUploadAsync"
+                            title="@L["ChangeAvatar"]">
+                        <Icon Name="IconName.Edit" IconSize="IconSize.Small" />
+                    </button>
+                    <InputFile id="avatarFileInput" OnChange="HandleAvatarUploadAsync" accept="image/*" style="display: none;" />
+                </div>
+                <div class="border-bottom pb-3 mb-3">
+                      <h3 class="card-title mb-0">@CurrentUser.Name</h3>
+                      <small class="text-muted">@CurrentUser.UserName</small>
+                      <small class="text-muted"><i class="bi bi-geo-alt-fill"></i> @CurrentUser.PhoneNumber</small>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-6 pe-1 d-flex">
+                        <a href="/chat" class="btn btn-sm btn-outline-primary flex-fill mt-1">@L["Chat"]</a>
+                    </div>
+                    <div class="col-6 ps-1 d-flex">
+                        <a href="/notification-receivers" class="btn btn-sm btn-primary flex-fill mt-1">@L["Notification"]</a>
+                    </div>
+                </div>
+            </CardBody>
+        </Card>
+    </Column>
+    <Column ColumnSize="ColumnSize.Is12.OnDesktop.Is8.OnWidescreen">
+        <Card>
+            <CardBody>
+                <Tabs SelectedTab="@SelectedTab" SelectedTabChanged="@OnTabChanged" Pills="true" FullWidth="true">
+                    <Items>
+                        <Tab Name="Profile">
+                            <Icon Name="IconName.User" />
+                            @L["MyProfile"]
+                        </Tab>
+                        <Tab Name="Department">
+                            <Icon Name="IconName.Building" />
+                            @L["Department"]
+                        </Tab>
+                        <Tab Name="UserSignatures">
+                            <Icon Name="IconName.FileAlt" />
+                            @L["UserSignatures"]
+                        </Tab>
+                    </Items>
+                    <Content>
+                        <TabPanel Name="Profile" Class="mt-3">
+                           <!-- #region  -->
+                           <Tabs RenderMode="TabsRenderMode.LazyLoad"
+                                TabPosition="TabPosition.Start"
+                                SelectedTab="@SelectedTabMyProfile" 
+                                SelectedTabChanged="@OnTabChangedMyProfile" 
+                                Pills="true" FullWidth="true">
+                            <Items>
+                                <Tab Name="Profile">
+                                    <Icon Name="IconName.User" />
+                                    @L["MyProfile"]
+                                </Tab>
+                                <Tab Name="Password">
+                                    <Icon Name="IconName.Lock" />
+                                    @L["Password"]
+                                </Tab>
+                            </Items>
+                            <Content>
+                                <TabPanel Name="Profile">
+                                    <Form>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <Field>
+                                                    <FieldLabel>@L["Surname"]</FieldLabel>
+                                                    <TextEdit @bind-Text="@ProfileModel.Surname" />
+                                                </Field>
+                                            </div>
+                                            <div class="col-6">
+                                                <Field>
+                                                    <FieldLabel>@L["Name"]</FieldLabel>
+                                                    <TextEdit @bind-Text="@ProfileModel.Name" />
+                                                </Field>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <Field>
+                                                    <FieldLabel>@L["UserName"]</FieldLabel>
+                                                    <TextEdit @bind-Text="@ProfileModel.UserName" />
+                                                </Field>
+                                            </div>
+                                            <div class="col-6">
+                                                <Field>
+                                                    <FieldLabel>@L["PhoneNumber"]</FieldLabel>
+                                                    <TextEdit @bind-Text="@ProfileModel.PhoneNumber" />
+                                                </Field>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <Field>
+                                                    <FieldLabel>@L["Email"]</FieldLabel>
+                                                    <TextEdit @bind-Text="@ProfileModel.Email" />
+                                                </Field>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <Button Color="Color.Primary" Clicked="SaveProfileAsync">
+                                                <Icon Name="IconName.Save" />
+                                                @L["Save"]
+                                            </Button>
+                                        </div>
+                                    </Form>
+                                </TabPanel>
+                                <TabPanel Name="Password">
+                                    <Form>
+                                        <Field>
+                                            <FieldLabel>@L["CurrentPassword"]</FieldLabel>
+                                            <div class="input-group">
+                                                <TextEdit Role="@(ShowCurrentPassword ? TextRole.Text : TextRole.Password)" @bind-Text="@CurrentPassword"  Class="form-control" />
+                                                <button type="button" class="btn btn-outline-secondary" @onclick="ToggleCurrentPasswordVisibility">
+                                                    <Icon Name="@(ShowCurrentPassword ? IconName.EyeSlash : IconName.Eye)" />
+                                                </button>
+                                            </div>
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel>@L["NewPassword"]</FieldLabel>
+                                            <div class="input-group">
+                                                <TextEdit Role="@(ShowNewPassword ? TextRole.Text : TextRole.Password)" @bind-Text="@NewPassword"  Class="form-control" />
+                                                <button type="button" class="btn btn-outline-secondary" @onclick="ToggleNewPasswordVisibility">
+                                                    <Icon Name="@(ShowNewPassword ? IconName.EyeSlash : IconName.Eye)" />
+                                                </button>
+                                            </div>
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel>@L["ConfirmNewPassword"]</FieldLabel>
+                                            <div class="input-group">
+                                                <TextEdit Role="@(ShowConfirmNewPassword ? TextRole.Text : TextRole.Password)" @bind-Text="@ConfirmNewPassword"  Class="form-control" />
+                                                <button type="button" class="btn btn-outline-secondary" @onclick="ToggleConfirmNewPasswordVisibility">
+                                                    <Icon Name="@(ShowConfirmNewPassword ? IconName.EyeSlash : IconName.Eye)" />
+                                                </button>
+                                            </div>
+                                        </Field>
+                                        <div class="mt-3">
+                                            <Button Color="Color.Primary" Clicked="ChangePasswordAsync">
+                                                <Icon Name="IconName.Lock" />
+                                                @L["ChangePassword"]
+                                            </Button>
+                                        </div>
+                                    </Form>
+                                </TabPanel>
+                            </Content>
+                           </Tabs>
+                        </TabPanel>
+                        <TabPanel Name="Department" Class="mt-3">
+                            <div class="d-flex justify-content-end mb-3">
+                                <Button Color="Color.Primary" Size="Size.Small" Clicked="OpenCreateUserDepartmentModalAsync">
+                                    <Icon Name="IconName.Add" />
+                                    @L["NewUserDepartment"]
+                                </Button>
+                            </div>
+
+                            <Card>
+                                <CardBody>
+                                    <DataGrid TItem="UserDepartmentWithNavigationPropertiesDto"
+                                              Data="UserDepartments"
+                                              ShowPager="false"
+                                              Responsive="true"
+                                              Class="datagrid-detail">
+                                        <LoadingTemplate>
+                                            <Row Class="w-100 align-items-center" Style="height: 150px;">
+                                                <Column>
+                                                   <RadarSpinner />
+                                                </Column>
+                                            </Row>
+                                        </LoadingTemplate>
+                                        <EmptyTemplate>
+                                            <Row Class="w-100 align-items-center" Style="height: 150px;">
+                                                <Column>
+                                                    <Heading Size="HeadingSize.Is4" TextAlignment="TextAlignment.Center">@L["NoDepartmentsAssigned"]</Heading>
+                                                </Column>
+                                            </Row>
+                                        </EmptyTemplate>   
+                                        <DataGridColumns>
+                                            <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto"
+                                                    Field="Department.Name"
+                                                    Caption="@L["Department"]">
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto"
+                                                    Field="UserDepartment.IsPrimary"
+                                                    Caption="@L["IsDepartmentPrimary"]">
+                                                <DisplayTemplate>
+                                                    @if (context.UserDepartment.IsPrimary)
+                                                    {
+                                                        <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
+                                                    }
+                                                </DisplayTemplate>
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto"
+                                                    Field="UserDepartment.IsActive"
+                                                    Caption="@L["IsActive"]">
+                                                <DisplayTemplate>
+                                                    @if (context.UserDepartment.IsActive)
+                                                    {
+                                                        <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
+                                                    }
+                                                </DisplayTemplate>
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto" Caption="@L["Actions"]" Width="120px">
+                                                <DisplayTemplate>
+                                                    <div class="d-flex gap-2">
+                                                        <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
+                                                           title="@L["Edit"]"
+                                                           @onclick="@(() => OpenEditUserDepartmentModalAsync(context))"
+                                                           style="cursor: pointer;"></i>
+                                                        <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
+                                                           title="@L["Delete"]"
+                                                           @onclick="@(() => DeleteUserDepartmentAsync(context))"
+                                                           style="cursor: pointer;"></i>
+                                                    </div>
+                                                </DisplayTemplate>
+                                            </DataGridColumn>
+                                        </DataGridColumns>
+                                    </DataGrid>
+                                </CardBody>
+                            </Card>
+                        </TabPanel>
+                        <TabPanel Name="UserSignatures" Class="mt-3">
+                            <div class="d-flex justify-content-end mb-3">
+                                <Button Color="Color.Primary" Size="Size.Small" Clicked="OpenCreateUserSignatureModalAsync">
+                                    <Icon Name="IconName.Add" />
+                                    @L["NewUserSignature"]
+                                </Button>
+                            </div>
+
+                            <Card>
+                                <CardBody>
+                                    <DataGrid TItem="UserSignatureWithNavigationPropertiesDto"
+                                              Data="UserSignatures"
+                                              ShowPager="false"
+                                              Responsive="true"
+                                              Class="datagrid-detail">
+                                        <LoadingTemplate>
+                                            <Row Class="w-100 align-items-center" Style="height: 150px;">
+                                                <Column>
+                                                   <RadarSpinner />
+                                                </Column>
+                                            </Row>
+                                        </LoadingTemplate>
+                                        <EmptyTemplate>
+                                            <Row Class="w-100 align-items-center" Style="height: 150px;">
+                                                <Column>
+                                                    <Heading Size="HeadingSize.Is4" TextAlignment="TextAlignment.Center">@L["NoSignaturesFound"]</Heading>
+                                                </Column>
+                                            </Row>
+                                        </EmptyTemplate>   
+                                        <DataGridColumns>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
+                                                    Field="UserSignature.SignType"
+                                                    Caption="@L["SignType"]">
+                                                <DisplayTemplate>
+                                                    @L[$"Enum:SignType.{context.UserSignature.SignType}"]
+                                                </DisplayTemplate>
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
+                                                    Field="UserSignature.ProviderCode"
+                                                    Caption="@L["ProviderCode"]">
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
+                                                    Field="UserSignature.SignatureImage"
+                                                    Caption="@L["SignatureImage"]">
+                                                <DisplayTemplate>
+                                                    @if (!string.IsNullOrEmpty(context.UserSignature.SignatureImage))
+                                                    {
+                                                        var imageUrl = GetSignatureImageUrl(context.UserSignature.SignatureImage);
+                                                        <img src="@imageUrl" 
+                                                            alt="@context.UserSignature.SignatureImage" 
+                                                            style="max-width: 100px; max-height: 100px; object-fit: contain; border-radius: 4px;" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">@L["NoImage"]</span>
+                                                    }
+                                                </DisplayTemplate>
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
+                                                    Field="UserSignature.TokenRef"
+                                                    Caption="@L["TokenRef"]">
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
+                                                    Field="UserSignature.ValidFrom"
+                                                    Caption="@L["ValidFrom"]">
+                                                <DisplayTemplate>
+                                                    @(context.UserSignature.ValidFrom?.ToShortDateString() ?? "-")
+                                                </DisplayTemplate>
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
+                                                    Field="UserSignature.ValidTo"
+                                                    Caption="@L["ValidTo"]">
+                                                <DisplayTemplate>
+                                                    @(context.UserSignature.ValidTo?.ToShortDateString() ?? "-")
+                                                </DisplayTemplate>
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
+                                                    Field="UserSignature.IsActive"
+                                                    Caption="@L["IsActive"]">
+                                                <DisplayTemplate>
+                                                    @if (context.UserSignature.IsActive)
+                                                    {
+                                                        <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
+                                                    }
+                                                </DisplayTemplate>
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto" Caption="@L["Actions"]" Width="120px">
+                                                <DisplayTemplate>
+                                                    <div class="d-flex gap-2">
+                                                        <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
+                                                           title="@L["Edit"]"
+                                                           @onclick="@(() => OpenEditUserSignatureModalAsync(context))"
+                                                           style="cursor: pointer;"></i>
+                                                        <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
+                                                           title="@L["Delete"]"
+                                                           @onclick="@(() => DeleteUserSignatureAsync(context))"
+                                                           style="cursor: pointer;"></i>
+                                                    </div>
+                                                </DisplayTemplate>
+                                            </DataGridColumn>
+                                        </DataGridColumns>
+                                    </DataGrid>
+                                </CardBody>
+                            </Card>
+                        </TabPanel>
+                    </Content>
+                </Tabs>
+            </CardBody>
+        </Card>
+    </Column>
+</Row>
+
+@* ************************* CREATE USER SIGNATURE MODAL ************************* *@
+<Modal @ref="CreateUserSignatureModal" Closing="@CreateUserSignatureModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <Form id="CreateUserSignatureForm">
+            <ModalHeader>
+                <ModalTitle>@L["NewUserSignature"]</ModalTitle>
+                <CloseButton Clicked="CloseCreateUserSignatureModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                @if (!string.IsNullOrWhiteSpace(CreateSignatureValidationErrorKey))
+                {
+                    <Alert Color="Color.Danger">
+                        <AlertMessage>@L["NotificationError"]!</AlertMessage>
+                        <AlertDescription>@L[CreateSignatureValidationErrorKey]</AlertDescription>
+                    </Alert>
+                }
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["SignType"] *</FieldLabel>
+                            <Select TValue="SignType?" 
+                                    SelectedValue="@NewSignType"
+                                    SelectedValueChanged="@((SignType? value) => { NewSignType = value; CreateSignatureFieldErrors.Remove("SignType"); })"
+                                    Autofocus="true"
+                                    Style="@(HasCreateSignatureFieldError("SignType") ? "border-color: #dc3545;" : "")">
+                                <ChildContent>
+                                    <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L[""]</SelectItem>
+                                    @foreach (var item in Enum.GetValues<SignType>())
+                                    {
+                                        <SelectItem TValue="SignType?" Value="@item">
+                                            @L[$"Enum:SignType.{item}"]
+                                        </SelectItem>
+                                    }
+                                </ChildContent>
+                            </Select>
+                            @if (HasCreateSignatureFieldError("SignType"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateSignatureFieldError("SignType")</div>
+                            }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ProviderCode"] *</FieldLabel>
+                            <TextEdit Text="@NewUserSignature.ProviderCode" 
+                                    TextChanged="@((string value) => { NewUserSignature.ProviderCode = value; CreateSignatureFieldErrors.Remove("ProviderCode"); })"
+                                    Style="@(HasCreateSignatureFieldError("ProviderCode") ? "border-color: #dc3545;" : "")" />
+                            @if (HasCreateSignatureFieldError("ProviderCode"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateSignatureFieldError("ProviderCode")</div>
+                            }
+                        </Field>
+                    </Column>
+                   
+                    
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ValidFrom"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" 
+                                        InputMode="DateInputMode.Date"
+                                        DisplayFormat="dd/MM/yyyy"
+                                        InputFormat="dd/MM/yyyy"
+                                        Date="@NewUserSignature.ValidFrom"
+                                        DateChanged="@((DateTime? value) => { NewUserSignature.ValidFrom = value; })"
+                                        Placeholder="@string.Empty" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ValidTo"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" 
+                                        InputMode="DateInputMode.Date"
+                                        DisplayFormat="dd/MM/yyyy"
+                                        InputFormat="dd/MM/yyyy"
+                                        Date="@NewUserSignature.ValidTo"
+                                        DateChanged="@((DateTime? value) => { NewUserSignature.ValidTo = value; })"
+                                        Placeholder="@string.Empty" />
+                        </Field>
+                    </Column>
+
+                    <Column ColumnSize="ColumnSize.Is12">
+                        <Field>
+                            <FieldLabel>@L["TokenRef"]</FieldLabel>
+                            <TextEdit @bind-Text="@NewUserSignature.TokenRef" />
+                        </Field>
+                    </Column>
+
+                    <Column ColumnSize="ColumnSize.Is12">
+                        <Field>
+                            <FieldLabel>@L["SignatureImage"] *</FieldLabel>
+                            <FilePicker @ref="CreateSignatureImageFilePicker"
+                                        Multiple="false"
+                                        Changed="OnCreateSignatureImageFileChanged"
+                                        ShowMode="FilePickerShowMode.List"
+                                        MaxFileSize="52428800"
+                                        Accept="image/*">
+                                <ButtonsTemplate>
+                                    <Buttons>
+                                        <Button Clicked="@context.Clear" Color="Color.Warning">
+                                            <Icon Name="IconName.Clear" /> @L["Clear"]
+                                        </Button>
+                                    </Buttons>
+                                </ButtonsTemplate>
+                            </FilePicker>
+                            @if (!string.IsNullOrEmpty(NewUserSignature.SignatureImage))
+                            {
+                                var imageUrl = GetSignatureImageUrl(NewUserSignature.SignatureImage);
+                                <div class="mt-2">
+                                    <img src="@imageUrl" 
+                                         alt="Signature Preview" 
+                                         style="max-width: 300px; max-height: 150px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                                </div>
+                            }
+                            @if (HasCreateSignatureFieldError("SignatureImage"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateSignatureFieldError("SignatureImage")</div>
+                            }
+                        </Field>
+                    </Column>
+
+
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Style="padding-top: 32px;">
+                        <Field>
+                            <Check TValue="bool" @bind-Checked="@NewUserSignature.IsActive">@L["IsActive"]</Check>
+                        </Field>
+                    </Column>
+                </Row>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseCreateUserSignatureModalAsync">
+                    @L["Cancel"]
+                </Button>
+                <SubmitButton Form="CreateUserSignatureForm" Clicked="CreateUserSignatureAsync"/>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+@* ************************* EDIT USER SIGNATURE MODAL ************************* *@
+<Modal @ref="EditUserSignatureModal" Closing="@EditUserSignatureModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <Form id="EditUserSignatureForm">
+            <ModalHeader>
+                <ModalTitle>@L["UpdateUserSignature"]</ModalTitle>
+                <CloseButton Clicked="CloseEditUserSignatureModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                @if (!string.IsNullOrWhiteSpace(EditSignatureValidationErrorKey))
+                {
+                    <Alert Color="Color.Danger">
+                        <AlertMessage>@L["NotificationError"]!</AlertMessage>
+                        <AlertDescription>@L[EditSignatureValidationErrorKey]</AlertDescription>
+                    </Alert>
+                }
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["SignType"] *</FieldLabel>
+                            <Select TValue="SignType?" 
+                                    SelectedValue="@EditingSignType"
+                                    SelectedValueChanged="@((SignType? value) => { EditingSignType = value; EditSignatureFieldErrors.Remove("SignType"); })"
+                                    Autofocus="true"
+                                    Style="@(HasEditSignatureFieldError("SignType") ? "border-color: #dc3545;" : "")">
+                                <ChildContent>
+                                    <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L[""]</SelectItem>
+                                    @foreach (var item in Enum.GetValues<SignType>())
+                                    {
+                                        <SelectItem TValue="SignType?" Value="@item">
+                                            @L[$"Enum:SignType.{item}"]
+                                        </SelectItem>
+                                    }
+                                </ChildContent>
+                            </Select>
+                            @if (HasEditSignatureFieldError("SignType"))
+                            {
+                                <div class="invalid-feedback d-block">@GetEditSignatureFieldError("SignType")</div>
+                            }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ProviderCode"] *</FieldLabel>
+                            <TextEdit Text="@EditingUserSignature.ProviderCode" 
+                                    TextChanged="@((string value) => { EditingUserSignature.ProviderCode = value; EditSignatureFieldErrors.Remove("ProviderCode"); })"
+                                    Style="@(HasEditSignatureFieldError("ProviderCode") ? "border-color: #dc3545;" : "")" />
+                            @if (HasEditSignatureFieldError("ProviderCode"))
+                            {
+                                <div class="invalid-feedback d-block">@GetEditSignatureFieldError("ProviderCode")</div>
+                            }
+                        </Field>
+                    </Column>
+                    
+                 
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ValidFrom"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" 
+                                        InputMode="DateInputMode.Date"
+                                        Date="@EditingUserSignature.ValidFrom"
+                                        DisplayFormat="dd/MM/yyyy"
+                                        InputFormat="dd/MM/yyyy"
+                                        DateChanged="@((DateTime? value) => { EditingUserSignature.ValidFrom = value; })"
+                                        Placeholder="@string.Empty" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ValidTo"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" 
+                                        InputMode="DateInputMode.Date"
+                                        DisplayFormat="dd/MM/yyyy"
+                                        InputFormat="dd/MM/yyyy"
+                                        Date="@EditingUserSignature.ValidTo"
+                                        DateChanged="@((DateTime? value) => { EditingUserSignature.ValidTo = value; })"
+                                        Placeholder="@string.Empty" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12">
+                        <Field>
+                            <FieldLabel>@L["TokenRef"]</FieldLabel>
+                            <TextEdit @bind-Text="@EditingUserSignature.TokenRef" />
+                        </Field>
+                    </Column>
+                    
+                    <Column ColumnSize="ColumnSize.Is12">
+                        <Field>
+                            <FieldLabel>@L["SignatureImage"] *</FieldLabel>
+                            <FilePicker @ref="EditSignatureImageFilePicker"
+                                        Multiple="false"
+                                        Changed="OnEditSignatureImageFileChanged"
+                                        ShowMode="FilePickerShowMode.List"
+                                        MaxFileSize="52428800"
+                                        Accept="image/*">
+                                <ButtonsTemplate>
+                                    <Buttons>
+                                        <Button Clicked="@context.Clear" Color="Color.Warning">
+                                            <Icon Name="IconName.Clear" /> @L["Clear"]
+                                        </Button>
+                                    </Buttons>
+                                </ButtonsTemplate>
+                            </FilePicker>
+                            @if (!string.IsNullOrEmpty(EditingUserSignature.SignatureImage))
+                            {
+                                var imageUrl = GetSignatureImageUrl(EditingUserSignature.SignatureImage);
+                                <div class="mt-2">
+                                    <img src="@imageUrl" 
+                                         alt="Signature Preview" 
+                                         style="max-width: 300px; max-height: 150px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                                </div>
+                            }
+                            @if (HasEditSignatureFieldError("SignatureImage"))
+                            {
+                                <div class="invalid-feedback d-block">@GetEditSignatureFieldError("SignatureImage")</div>
+                            }
+                        </Field>
+                    </Column>
+
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Style="padding-top: 32px;">
+                        <Field>
+                            <Check TValue="bool" @bind-Checked="@EditingUserSignature.IsActive">@L["IsActive"]</Check>
+                        </Field>
+                    </Column>
+                </Row>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseEditUserSignatureModalAsync">
+                    @L["Cancel"]
+                </Button>
+                <SubmitButton Form="EditUserSignatureForm" Clicked="UpdateUserSignatureAsync" />
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+@* ************************* CREATE USER DEPARTMENT MODAL ************************* *@
+<Modal @ref="CreateUserDepartmentModal" Closing="@CreateUserDepartmentModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true">
+        <Form id="CreateUserDepartmentForm">
+            <ModalHeader>
+                <ModalTitle>@L["NewUserDepartment"]</ModalTitle>
+                <CloseButton Clicked="CloseCreateUserDepartmentModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                <Field>
+                    <FieldLabel>@L["Department"] *</FieldLabel>
+                    <Select2 IdSelector="c => c.Id.ToString()"
+                             TextSelector="c => c.DisplayName"
+                             FilterFunction="GetDepartmentCollectionLookupAsync"
+                             GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
+                             Datasource="DepartmentsCollection"
+                             Value="@SelectedDepartmentForCreate"
+                             OnValueChanged="OnDepartmentChangedForCreate"                
+                             Cache="MemoryCache"
+                             Multiselect="false" />
+                </Field>
+                <Field>
+                    <Check TValue="bool" @bind-Checked="@NewUserDepartment.IsPrimary">@L["IsDepartmentPrimary"]</Check>
+                </Field>
+                <Field>
+                    <Check TValue="bool" @bind-Checked="@NewUserDepartment.IsActive">@L["IsActive"]</Check>
+                </Field>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseCreateUserDepartmentModalAsync">
+                    @L["Cancel"]
+                </Button>
+                <SubmitButton Form="CreateUserDepartmentForm" Clicked="CreateUserDepartmentAsync"/>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+@* ************************* EDIT USER DEPARTMENT MODAL ************************* *@
+<Modal @ref="EditUserDepartmentModal" Closing="@EditUserDepartmentModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true">
+        <Form id="EditUserDepartmentForm">
+            <ModalHeader>
+                <ModalTitle>@L["UpdateUserDepartment"]</ModalTitle>
+                <CloseButton Clicked="CloseEditUserDepartmentModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                <Field>
+                    <FieldLabel>@L["Department"] *</FieldLabel>
+                    <Select2 IdSelector="c => c.Id.ToString()"
+                             TextSelector="c => c.DisplayName"
+                             FilterFunction="GetDepartmentCollectionLookupAsync"
+                             GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
+                             Datasource="DepartmentsCollection"
+                             Value="@SelectedDepartmentForEdit"
+                             OnValueChanged="OnDepartmentChangedForEdit"                
+                             Cache="MemoryCache"
+                             Multiselect="false" />
+                </Field>
+                <Field>
+                    <Check TValue="bool" @bind-Checked="@EditingUserDepartment.IsPrimary">@L["IsDepartmentPrimary"]</Check>
+                </Field>
+                <Field>
+                    <Check TValue="bool" @bind-Checked="@EditingUserDepartment.IsActive">@L["IsActive"]</Check>
+                </Field>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseEditUserDepartmentModalAsync">
+                    @L["Cancel"]
+                </Button>
+                <SubmitButton Form="EditUserDepartmentForm" Clicked="UpdateUserDepartmentAsync" />
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
