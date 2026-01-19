@@ -349,7 +349,7 @@
 </Card>
 @* ************************* CREATE MODAL ************************* *@
 <Modal @ref="CreateUserSignatureModal" Closing="@CreateUserSignatureModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
+    <ModalContent Centered="true" Size="ModalSize.Large">
 @*//<suite-custom-code-block-5>*@
 @*//</suite-custom-code-block-5>*@
         <Form id="CreateUserSignatureForm">
@@ -366,85 +366,103 @@
                         <AlertDescription>@L[CreateUserSignatureValidationErrorKey]</AlertDescription>
                     </Alert>
                 }
-                <Field>
-                    <FieldLabel>@L["SignType"] *</FieldLabel>
-                    <Select TValue="SignType?" 
-                            SelectedValue="@NewSignType"
-                            SelectedValueChanged="@((SignType? value) => { NewSignType = value; CreateFieldErrors.Remove("SignType"); })"
-                            Autofocus="true"
-                            Style="@(HasCreateFieldError("SignType") ? "border-color: #dc3545;" : "")">
-                        <ChildContent>
-                            <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L[""]</SelectItem>
-                            @foreach (var item in Enum.GetValues<SignType>())
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["SignType"] *</FieldLabel>
+                            <Select TValue="SignType?" 
+                                    SelectedValue="@NewSignType"
+                                    SelectedValueChanged="@((SignType? value) => { NewSignType = value; CreateFieldErrors.Remove("SignType"); })"
+                                    Autofocus="true"
+                                    Style="@(HasCreateFieldError("SignType") ? "border-color: #dc3545;" : "")">
+                                <ChildContent>
+                                    <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L[""]</SelectItem>
+                                    @foreach (var item in Enum.GetValues<SignType>())
+                                    {
+                                        <SelectItem TValue="SignType?" Value="@item">
+                                            @L[$"Enum:SignType.{item}"]
+                                        </SelectItem>
+                                    }
+                                </ChildContent>
+                            </Select>
+                            @if (HasCreateFieldError("SignType"))
                             {
-                                <SelectItem TValue="SignType?" Value="@item">
-                                    @L[$"Enum:SignType.{item}"]
-                                </SelectItem>
+                                <div class="invalid-feedback d-block">@GetCreateFieldError("SignType")</div>
                             }
-                        </ChildContent>
-                    </Select>
-                    @if (HasCreateFieldError("SignType"))
-                    {
-                        <div class="invalid-feedback d-block">@GetCreateFieldError("SignType")</div>
-                    }
-                </Field>
-                <Field>
-                    <FieldLabel>@L["ProviderCode"] *</FieldLabel>
-                    <TextEdit Text="@NewUserSignature.ProviderCode" 
-                              TextChanged="@((string value) => { NewUserSignature.ProviderCode = value; CreateFieldErrors.Remove("ProviderCode"); })"
-                              Style="@(HasCreateFieldError("ProviderCode") ? "border-color: #dc3545;" : "")" />
-                    @if (HasCreateFieldError("ProviderCode"))
-                    {
-                        <div class="invalid-feedback d-block">@GetCreateFieldError("ProviderCode")</div>
-                    }
-                </Field>
-                <Field>
-                    <FieldLabel>@L["TokenRef"]</FieldLabel>
-                    <TextEdit @bind-Text="@NewUserSignature.TokenRef" />
-                </Field>
-                <Field>
-                    <FieldLabel>@L["SignatureImage"] *</FieldLabel>
-                    <TextEdit Text="@NewUserSignature.SignatureImage" 
-                              TextChanged="@((string value) => { NewUserSignature.SignatureImage = value; CreateFieldErrors.Remove("SignatureImage"); })"
-                              Style="@(HasCreateFieldError("SignatureImage") ? "border-color: #dc3545;" : "")" />
-                    @if (HasCreateFieldError("SignatureImage"))
-                    {
-                        <div class="invalid-feedback d-block">@GetCreateFieldError("SignatureImage")</div>
-                    }
-                </Field>
-                <Field>
-                    <FieldLabel>@L["ValidFrom"]</FieldLabel>
-                    <DatePicker TValue="DateTime?" 
-                                InputMode="DateInputMode.Date"
-                                Date="@NewUserSignature.ValidFrom"
-                                DateChanged="@((DateTime? value) => { NewUserSignature.ValidFrom = value; })"
-                                Placeholder="@string.Empty" />
-                </Field>
-                <Field>
-                    <FieldLabel>@L["ValidTo"]</FieldLabel>
-                    <DatePicker TValue="DateTime?" 
-                                InputMode="DateInputMode.Date"
-                                Date="@NewUserSignature.ValidTo"
-                                DateChanged="@((DateTime? value) => { NewUserSignature.ValidTo = value; })"
-                                Placeholder="@string.Empty" />
-                </Field>
-                <Field>
-                    <Check TValue="bool" @bind-Checked="@NewUserSignature.IsActive">@L["IsActive"]</Check>
-                </Field>
-                @if (IsAdmin)
-                {
-                    <Field>
-                        <FieldLabel>@L["IdentityUser"]</FieldLabel>
-                        <Select TValue="Guid" @bind-SelectedValue="@NewUserSignature.IdentityUserId">
-                            @foreach (var identityUser in IdentityUsersCollection)
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ProviderCode"] *</FieldLabel>
+                            <TextEdit Text="@NewUserSignature.ProviderCode" 
+                                    TextChanged="@((string value) => { NewUserSignature.ProviderCode = value; CreateFieldErrors.Remove("ProviderCode"); })"
+                                    Style="@(HasCreateFieldError("ProviderCode") ? "border-color: #dc3545;" : "")" />
+                            @if (HasCreateFieldError("ProviderCode"))
                             {
-                                <SelectItem TValue="Guid" Value="@(identityUser.Id)">
-                                    @(identityUser.DisplayName)
-                                </SelectItem>
+                                <div class="invalid-feedback d-block">@GetCreateFieldError("ProviderCode")</div>
                             }
-                        </Select>
-                    </Field>
-                }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["TokenRef"]</FieldLabel>
+                            <TextEdit @bind-Text="@NewUserSignature.TokenRef" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["SignatureImage"] *</FieldLabel>
+                            <TextEdit Text="@NewUserSignature.SignatureImage" 
+                                    TextChanged="@((string value) => { NewUserSignature.SignatureImage = value; CreateFieldErrors.Remove("SignatureImage"); })"
+                                    Style="@(HasCreateFieldError("SignatureImage") ? "border-color: #dc3545;" : "")" />
+                            @if (HasCreateFieldError("SignatureImage"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateFieldError("SignatureImage")</div>
+                            }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ValidFrom"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" 
+                                        InputMode="DateInputMode.Date"
+                                        Date="@NewUserSignature.ValidFrom"
+                                        DateChanged="@((DateTime? value) => { NewUserSignature.ValidFrom = value; })"
+                                        Placeholder="@string.Empty" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ValidTo"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" 
+                                        InputMode="DateInputMode.Date"
+                                        Date="@NewUserSignature.ValidTo"
+                                        DateChanged="@((DateTime? value) => { NewUserSignature.ValidTo = value; })"
+                                        Placeholder="@string.Empty" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        @if (IsAdmin)
+                        {
+                            <Field>
+                                <FieldLabel>@L["IdentityUser"]</FieldLabel>
+                                <Select TValue="Guid" @bind-SelectedValue="@NewUserSignature.IdentityUserId">
+                                    @foreach (var identityUser in IdentityUsersCollection)
+                                    {
+                                        <SelectItem TValue="Guid" Value="@(identityUser.Id)">
+                                            @(identityUser.DisplayName)
+                                        </SelectItem>
+                                    }
+                                </Select>
+                            </Field>
+                        }
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Style="padding-top: 32px;">
+                        <Field>
+                            <Check TValue="bool" @bind-Checked="@NewUserSignature.IsActive">@L["IsActive"]</Check>
+                        </Field>
+                    </Column>
+                </Row>
             </ModalBody>
             <ModalFooter>
                 <Button Color="Color.Secondary"
@@ -462,7 +480,7 @@
 </Modal>
 @* ************************* EDIT MODAL ************************* *@
 <Modal @ref="EditUserSignatureModal" Closing="@EditUserSignatureModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
+    <ModalContent Centered="true" Size="ModalSize.Large">
 @*//<suite-custom-code-block-8>*@
 @*//</suite-custom-code-block-8>*@
         <Form id="EditUserSignatureForm">
@@ -479,85 +497,103 @@
                         <AlertDescription>@L[EditUserSignatureValidationErrorKey]</AlertDescription>
                     </Alert>
                 }
-                <Field>
-                    <FieldLabel>@L["SignType"] *</FieldLabel>
-                    <Select TValue="SignType?" 
-                            SelectedValue="@EditingSignType"
-                            SelectedValueChanged="@((SignType? value) => { EditingSignType = value; EditFieldErrors.Remove("SignType"); })"
-                            Autofocus="true"
-                            Style="@(HasEditFieldError("SignType") ? "border-color: #dc3545;" : "")">
-                        <ChildContent>
-                            <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L[""]</SelectItem>
-                            @foreach (var item in Enum.GetValues<SignType>())
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["SignType"] *</FieldLabel>
+                            <Select TValue="SignType?" 
+                                    SelectedValue="@EditingSignType"
+                                    SelectedValueChanged="@((SignType? value) => { EditingSignType = value; EditFieldErrors.Remove("SignType"); })"
+                                    Autofocus="true"
+                                    Style="@(HasEditFieldError("SignType") ? "border-color: #dc3545;" : "")">
+                                <ChildContent>
+                                    <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L[""]</SelectItem>
+                                    @foreach (var item in Enum.GetValues<SignType>())
+                                    {
+                                        <SelectItem TValue="SignType?" Value="@item">
+                                            @L[$"Enum:SignType.{item}"]
+                                        </SelectItem>
+                                    }
+                                </ChildContent>
+                            </Select>
+                            @if (HasEditFieldError("SignType"))
                             {
-                                <SelectItem TValue="SignType?" Value="@item">
-                                    @L[$"Enum:SignType.{item}"]
-                                </SelectItem>
+                                <div class="invalid-feedback d-block">@GetEditFieldError("SignType")</div>
                             }
-                        </ChildContent>
-                    </Select>
-                    @if (HasEditFieldError("SignType"))
-                    {
-                        <div class="invalid-feedback d-block">@GetEditFieldError("SignType")</div>
-                    }
-                </Field>
-                <Field>
-                    <FieldLabel>@L["ProviderCode"] *</FieldLabel>
-                    <TextEdit Text="@EditingUserSignature.ProviderCode" 
-                              TextChanged="@((string value) => { EditingUserSignature.ProviderCode = value; EditFieldErrors.Remove("ProviderCode"); })"
-                              Style="@(HasEditFieldError("ProviderCode") ? "border-color: #dc3545;" : "")" />
-                    @if (HasEditFieldError("ProviderCode"))
-                    {
-                        <div class="invalid-feedback d-block">@GetEditFieldError("ProviderCode")</div>
-                    }
-                </Field>
-                <Field>
-                    <FieldLabel>@L["TokenRef"]</FieldLabel>
-                    <TextEdit @bind-Text="@EditingUserSignature.TokenRef" />
-                </Field>
-                <Field>
-                    <FieldLabel>@L["SignatureImage"] *</FieldLabel>
-                    <TextEdit Text="@EditingUserSignature.SignatureImage" 
-                              TextChanged="@((string value) => { EditingUserSignature.SignatureImage = value; EditFieldErrors.Remove("SignatureImage"); })"
-                              Style="@(HasEditFieldError("SignatureImage") ? "border-color: #dc3545;" : "")" />
-                    @if (HasEditFieldError("SignatureImage"))
-                    {
-                        <div class="invalid-feedback d-block">@GetEditFieldError("SignatureImage")</div>
-                    }
-                </Field>
-                <Field>
-                    <FieldLabel>@L["ValidFrom"]</FieldLabel>
-                    <DatePicker TValue="DateTime?" 
-                                InputMode="DateInputMode.Date"
-                                Date="@EditingUserSignature.ValidFrom"
-                                DateChanged="@((DateTime? value) => { EditingUserSignature.ValidFrom = value; })"
-                                Placeholder="@string.Empty" />
-                </Field>
-                <Field>
-                    <FieldLabel>@L["ValidTo"]</FieldLabel>
-                    <DatePicker TValue="DateTime?" 
-                                InputMode="DateInputMode.Date"
-                                Date="@EditingUserSignature.ValidTo"
-                                DateChanged="@((DateTime? value) => { EditingUserSignature.ValidTo = value; })"
-                                Placeholder="@string.Empty" />
-                </Field>
-                <Field>
-                    <Check TValue="bool" @bind-Checked="@EditingUserSignature.IsActive">@L["IsActive"]</Check>
-                </Field>
-                @if (IsAdmin)
-                {
-                    <Field>
-                        <FieldLabel>@L["IdentityUser"]</FieldLabel>
-                        <Select TValue="Guid" @bind-SelectedValue="@EditingUserSignature.IdentityUserId">
-                            @foreach (var identityUser in IdentityUsersCollection)
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ProviderCode"] *</FieldLabel>
+                            <TextEdit Text="@EditingUserSignature.ProviderCode" 
+                                    TextChanged="@((string value) => { EditingUserSignature.ProviderCode = value; EditFieldErrors.Remove("ProviderCode"); })"
+                                    Style="@(HasEditFieldError("ProviderCode") ? "border-color: #dc3545;" : "")" />
+                            @if (HasEditFieldError("ProviderCode"))
                             {
-                                <SelectItem TValue="Guid" Value="@(identityUser.Id)">
-                                    @(identityUser.DisplayName)
-                                </SelectItem>
+                                <div class="invalid-feedback d-block">@GetEditFieldError("ProviderCode")</div>
                             }
-                        </Select>
-                    </Field>
-                }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["TokenRef"]</FieldLabel>
+                            <TextEdit @bind-Text="@EditingUserSignature.TokenRef" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["SignatureImage"] *</FieldLabel>
+                            <TextEdit Text="@EditingUserSignature.SignatureImage" 
+                                    TextChanged="@((string value) => { EditingUserSignature.SignatureImage = value; EditFieldErrors.Remove("SignatureImage"); })"
+                                    Style="@(HasEditFieldError("SignatureImage") ? "border-color: #dc3545;" : "")" />
+                            @if (HasEditFieldError("SignatureImage"))
+                            {
+                                <div class="invalid-feedback d-block">@GetEditFieldError("SignatureImage")</div>
+                            }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ValidFrom"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" 
+                                        InputMode="DateInputMode.Date"
+                                        Date="@EditingUserSignature.ValidFrom"
+                                        DateChanged="@((DateTime? value) => { EditingUserSignature.ValidFrom = value; })"
+                                        Placeholder="@string.Empty" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ValidTo"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" 
+                                        InputMode="DateInputMode.Date"
+                                        Date="@EditingUserSignature.ValidTo"
+                                        DateChanged="@((DateTime? value) => { EditingUserSignature.ValidTo = value; })"
+                                        Placeholder="@string.Empty" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        @if (IsAdmin)
+                        {
+                            <Field>
+                                <FieldLabel>@L["IdentityUser"]</FieldLabel>
+                                <Select TValue="Guid" @bind-SelectedValue="@EditingUserSignature.IdentityUserId">
+                                    @foreach (var identityUser in IdentityUsersCollection)
+                                    {
+                                        <SelectItem TValue="Guid" Value="@(identityUser.Id)">
+                                            @(identityUser.DisplayName)
+                                        </SelectItem>
+                                    }
+                                </Select>
+                            </Field>
+                        }
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Style="padding-top: 32px;">
+                        <Field>
+                            <Check TValue="bool" @bind-Checked="@EditingUserSignature.IsActive">@L["IsActive"]</Check>
+                        </Field>
+                    </Column>
+                </Row>
             </ModalBody>
             <ModalFooter>
                 <Button Color="Color.Secondary"

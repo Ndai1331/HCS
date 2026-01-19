@@ -31,6 +31,11 @@ public partial class Departments
         set { } // No-op setter for binding (field is disabled)
     }
     
+    private string SelectedDepartmentLeaderUser
+    {
+        get => GetLeaderUserName();
+        set { } // No-op setter for binding (field is disabled)
+    }
     private string SelectedDepartmentCode
     {
         get => SelectedDepartment?.Code ?? "";
@@ -315,6 +320,26 @@ public partial class Departments
             if (parentDto != null)
             {
                 return parentDto.Name ?? "";
+            }
+        }
+
+        return "";
+    }
+
+    private string GetLeaderUserName()
+    {
+        if (SelectedDepartment == null || SelectedDepartment.LeaderUserId == null)
+        {
+            return "";
+        }
+
+        if (Guid.TryParse(SelectedDepartment.LeaderUserId.ToString(), out var leaderUserId))
+        {
+            // Try to find in IdentityUsersCollection first (flattened list)
+            var user = IdentityUsersCollection?.FirstOrDefault(u => u.Id == leaderUserId);
+            if (user != null)
+            {
+                return user.DisplayName ?? "";
             }
         }
 

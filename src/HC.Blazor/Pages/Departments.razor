@@ -34,7 +34,7 @@
 </PageHeader>
 
 <Row>
-    <Column ColumnSize="ColumnSize.Is6">
+    <Column ColumnSize="ColumnSize.Is4">
         <Card>
             <CardHeader>
                 <Row Class="justify-content-between">
@@ -103,7 +103,7 @@
         </Card>
     </Column>
 
-    <Column ColumnSize="ColumnSize.Is6">
+    <Column ColumnSize="ColumnSize.Is8">
         <Card>
             <CardHeader>
                 @if (string.IsNullOrWhiteSpace(SelectedDepartment?.Name))
@@ -116,31 +116,50 @@
                 }
             </CardHeader>
             <CardBody>
-                <Field>
-                    <FieldLabel>@L["ParentDepartment"]</FieldLabel>
-                    <TextEdit @bind-Text="@ParentDepartmentName" Disabled="true" />
-                </Field>
-
-                <Field>
-                    <FieldLabel>@L["Code"]</FieldLabel>
-                    <TextEdit @bind-Text="@SelectedDepartmentCode" Disabled="true" />
-                </Field>
-                <Field>
-                    <FieldLabel>@L["Name"]</FieldLabel>
-                    <TextEdit @bind-Text="@SelectedDepartmentName" Disabled="true" />
-                </Field>
-                <Field>
-                    <FieldLabel>@L["Level"]</FieldLabel>
-                    <NumericEdit TValue="int" @bind-Value="@SelectedDepartmentLevel" Disabled="true" />
-                </Field>
-                <Field>
-                    <FieldLabel>@L["SortOrder"]</FieldLabel>
-                    <NumericEdit TValue="int" @bind-Value="@SelectedDepartmentSortOrder" Disabled="true" />
-                </Field>
-                <Field>
-                    <FieldLabel>@L["IsActive"]</FieldLabel>
-                    <Check TValue="bool" Checked="@(SelectedDepartment?.IsActive ?? false)" Disabled="true" />
-                </Field>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["ParentDepartment"]</FieldLabel>
+                            <TextEdit @bind-Text="@ParentDepartmentName" Disabled="true" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["HeadOfDepartment"]</FieldLabel>
+                            <TextEdit @bind-Text="@SelectedDepartmentLeaderUser" Disabled="true" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Code"]</FieldLabel>
+                            <TextEdit @bind-Text="@SelectedDepartmentCode" Disabled="true" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Name"]</FieldLabel>
+                            <TextEdit @bind-Text="@SelectedDepartmentName" Disabled="true" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Level"]</FieldLabel>
+                            <NumericEdit TValue="int" @bind-Value="@SelectedDepartmentLevel" Disabled="true" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["SortOrder"]</FieldLabel>
+                            <NumericEdit TValue="int" @bind-Value="@SelectedDepartmentSortOrder" Disabled="true" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["IsActive"]</FieldLabel>
+                            <Check TValue="bool" Checked="@(SelectedDepartment?.IsActive ?? false)" Disabled="true" />
+                        </Field>
+                    </Column>
+                </Row>
             </CardBody>
         </Card>
     </Column>
@@ -148,7 +167,7 @@
 
 @* ************************* CREATE MODAL ************************* *@
 <Modal @ref="CreateDepartmentModal" Closing="@CreateDepartmentModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
+    <ModalContent Centered="true" Size="ModalSize.Large">
         <Form id="CreateDepartmentForm">
             <ModalHeader>
                 <ModalTitle>@L["NewDepartment"]</ModalTitle>
@@ -159,6 +178,9 @@
                             Mode="ValidationMode.Auto"
                             Model="@NewDepartment"
                             ValidateOnLoad="false">
+                
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["ParentDepartment"]</FieldLabel>
@@ -176,27 +198,8 @@
                             </Select>
                         </Field>
                     </Validation>
-                    
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["Code"] *</FieldLabel>
-                            <TextEdit @bind-Text="@NewDepartment.Code" MaxLength="DepartmentConsts.CodeMaxLength" Autofocus="true">
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["Name"] *</FieldLabel>
-                            <TextEdit @bind-Text="@NewDepartment.Name">
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Field>
                         <FieldLabel>@L["HeadOfDepartment"]</FieldLabel>
                         <Select2 IdSelector="c => c.Id.ToString()"
@@ -209,6 +212,32 @@
                                     Cache="__MemoryCache"
                                     Multiselect="false" />
                     </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["Code"] *</FieldLabel>
+                            <TextEdit @bind-Text="@NewDepartment.Code" MaxLength="DepartmentConsts.CodeMaxLength" Autofocus="true">
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["Name"] *</FieldLabel>
+                            <TextEdit @bind-Text="@NewDepartment.Name">
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["Level"]</FieldLabel>
@@ -219,6 +248,8 @@
                              </NumericPicker>
                         </Field>
                      </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["SortOrder"]</FieldLabel>
@@ -229,9 +260,13 @@
                              </NumericPicker>
                         </Field>
                      </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Field>
                         <Check TValue="bool" @bind-Checked="@NewDepartment.IsActive">@L["IsActive"]</Check>
                     </Field>
+                    </Column>
+                </Row>
                 </Validations>
             </ModalBody>
             <ModalFooter>
@@ -247,7 +282,7 @@
 
 @* ************************* EDIT MODAL ************************* *@
 <Modal @ref="EditDepartmentModal" Closing="@EditDepartmentModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
+    <ModalContent Centered="true" Size="ModalSize.Large">
         <Form id="EditDepartmentForm">
             <ModalHeader>
                 <ModalTitle>@L["Update"]</ModalTitle>
@@ -258,26 +293,9 @@
                             Mode="ValidationMode.Auto"
                             Model="@EditingDepartment"
                             ValidateOnLoad="false">
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["Code"] *</FieldLabel>
-                            <TextEdit @bind-Text="@EditingDepartment.Code" MaxLength="DepartmentConsts.CodeMaxLength" Autofocus="true">
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["Name"] *</FieldLabel>
-                            <TextEdit @bind-Text="@EditingDepartment.Name">
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
+
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["ParentDepartment"]</FieldLabel>
@@ -295,6 +313,8 @@
                             </Select>
                         </Field>
                     </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Field>
                         <FieldLabel>@L["HeadOfDepartment"]</FieldLabel>
                         <Select TValue="Guid?" @bind-SelectedValue="@EditingDepartment.LeaderUserId">
@@ -307,6 +327,32 @@
                             }
                         </Select>
                     </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["Code"] *</FieldLabel>
+                            <TextEdit @bind-Text="@EditingDepartment.Code" MaxLength="DepartmentConsts.CodeMaxLength" Autofocus="true">
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["Name"] *</FieldLabel>
+                            <TextEdit @bind-Text="@EditingDepartment.Name">
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["Level"]</FieldLabel>
@@ -317,6 +363,8 @@
                              </NumericPicker>
                         </Field>
                      </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["SortOrder"]</FieldLabel>
@@ -327,9 +375,13 @@
                              </NumericPicker>
                         </Field>
                      </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Field>
                         <Check TValue="bool" @bind-Checked="@EditingDepartment.IsActive">@L["IsActive"]</Check>
                     </Field>
+                    </Column>
+                </Row>
                 </Validations>
             </ModalBody>
             <ModalFooter>

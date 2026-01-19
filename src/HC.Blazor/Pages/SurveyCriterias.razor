@@ -300,7 +300,7 @@
 </Card>
 @* ************************* CREATE MODAL ************************* *@
 <Modal @ref="CreateSurveyCriteriaModal" Closing="@CreateSurveyCriteriaModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
+    <ModalContent Centered="true" Size="ModalSize.Large">
 @*//<suite-custom-code-block-5>*@
 @*//</suite-custom-code-block-5>*@
         <Form id="CreateSurveyCriteriaForm">
@@ -313,6 +313,9 @@
                             Mode="ValidationMode.Auto"
                             Model="@NewSurveyCriteria"
                             ValidateOnLoad="false">
+
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["Code"] *</FieldLabel>
@@ -323,6 +326,8 @@
                             </TextEdit>
                         </Field>
                     </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["Name"] *</FieldLabel>
@@ -333,6 +338,33 @@
                             </TextEdit>
                         </Field>
                     </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    <Field>
+                        <FieldLabel>@L["SurveyLocation"]</FieldLabel>
+                        <Select TValue="Guid" @bind-SelectedValue="@NewSurveyCriteria.SurveyLocationId">
+                            @foreach (var surveyLocation in SurveyLocationsCollection)
+                            {
+                                <SelectItem TValue="Guid" Value="@(surveyLocation.Id)">
+                                    @(surveyLocation.DisplayName)
+                                </SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["DisplayOrder"]</FieldLabel>
+                            <NumericPicker TValue="int" @bind-Value="@NewSurveyCriteria.DisplayOrder"  Decimals="0"  >
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                             </NumericPicker>
+                        </Field>
+                     </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
                     <Field>
                         <FieldLabel>@L["Image"] *</FieldLabel>
                         <FilePicker @ref="CreateImageFilePicker"
@@ -357,30 +389,13 @@
                             </div>
                         }
                     </Field>
-                    <Field>
-                        <FieldLabel>@L["SurveyLocation"]</FieldLabel>
-                        <Select TValue="Guid" @bind-SelectedValue="@NewSurveyCriteria.SurveyLocationId">
-                            @foreach (var surveyLocation in SurveyLocationsCollection)
-                            {
-                                <SelectItem TValue="Guid" Value="@(surveyLocation.Id)">
-                                    @(surveyLocation.DisplayName)
-                                </SelectItem>
-                            }
-                        </Select>
-                    </Field>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["DisplayOrder"]</FieldLabel>
-                            <NumericPicker TValue="int" @bind-Value="@NewSurveyCriteria.DisplayOrder"  Decimals="0"  >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                             </NumericPicker>
-                        </Field>
-                     </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Field>
                         <Check TValue="bool" @bind-Checked="@NewSurveyCriteria.IsActive"  >@L["IsActive"]</Check>
                     </Field>
+                    </Column>
+                </Row>
                 </Validations>
             </ModalBody>
             <ModalFooter>
@@ -399,7 +414,7 @@
 </Modal>
 @* ************************* EDIT MODAL ************************* *@
 <Modal @ref="EditSurveyCriteriaModal" Closing="@EditSurveyCriteriaModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
+    <ModalContent Centered="true" Size="ModalSize.Large">
 @*//<suite-custom-code-block-8>*@
 @*//</suite-custom-code-block-8>*@
         <Form id="EditSurveyCriteriaForm">
@@ -412,6 +427,9 @@
                             Mode="ValidationMode.Auto"
                             Model="@EditingSurveyCriteria"
                             ValidateOnLoad="false">
+
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["Code"] *</FieldLabel>
@@ -422,6 +440,8 @@
                             </TextEdit>
                         </Field>
                     </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["Name"] *</FieldLabel>
@@ -432,6 +452,33 @@
                             </TextEdit>
                         </Field>
                     </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    <Field>
+                        <FieldLabel>@L["SurveyLocation"]</FieldLabel>
+                        <Select TValue="Guid" @bind-SelectedValue="@EditingSurveyCriteria.SurveyLocationId">
+                            @foreach (var surveyLocation in SurveyLocationsCollection)
+                            {
+                                <SelectItem TValue="Guid" Value="@(surveyLocation.Id)">
+                                    @(surveyLocation.DisplayName)
+                                </SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["DisplayOrder"]</FieldLabel>
+                            <NumericPicker TValue="int" @bind-Value="@EditingSurveyCriteria.DisplayOrder"  Decimals="0"  >
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                             </NumericPicker>
+                        </Field>
+                     </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
                     <Field>
                         <FieldLabel>@L["Image"] *</FieldLabel>
                         <FilePicker @ref="EditImageFilePicker"
@@ -462,30 +509,13 @@
                             </div>
                         }
                     </Field>
-                    <Field>
-                        <FieldLabel>@L["SurveyLocation"]</FieldLabel>
-                        <Select TValue="Guid" @bind-SelectedValue="@EditingSurveyCriteria.SurveyLocationId">
-                            @foreach (var surveyLocation in SurveyLocationsCollection)
-                            {
-                                <SelectItem TValue="Guid" Value="@(surveyLocation.Id)">
-                                    @(surveyLocation.DisplayName)
-                                </SelectItem>
-                            }
-                        </Select>
-                    </Field>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["DisplayOrder"]</FieldLabel>
-                            <NumericPicker TValue="int" @bind-Value="@EditingSurveyCriteria.DisplayOrder"  Decimals="0"  >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                             </NumericPicker>
-                        </Field>
-                     </Validation>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Field>
                         <Check TValue="bool" @bind-Checked="@EditingSurveyCriteria.IsActive"  >@L["IsActive"]</Check>
                     </Field>
+                    </Column>
+                </Row>
                 </Validations>
             </ModalBody>
             <ModalFooter>
