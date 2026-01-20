@@ -19,4 +19,6 @@ public partial interface ISurveyLocationsAppService : IApplicationService
     Task DeleteByIdsAsync(List<Guid> surveylocationIds);
     Task DeleteAllAsync(GetSurveyLocationsInput input);
     Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync();
+
+    Task<SurveyLocationDto> GetPublicSurveyLocationAsync(Guid id);
 }

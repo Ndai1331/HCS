@@ -85,4 +85,11 @@ public abstract class SurveyLocationControllerBase : AbpController
     {
         return _surveyLocationsAppService.DeleteAllAsync(input);
     }
+
+    [HttpGet]
+    [Route("public/{id}")]
+    public virtual async Task<SurveyLocationDto> GetPublicSurveyLocationAsync([FromRoute] Guid id)
+    {
+        return await _surveyLocationsAppService.GetPublicSurveyLocationAsync(id);
+    }   
 }

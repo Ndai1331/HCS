@@ -85,7 +85,7 @@ public partial class SurveyCollections
     {
         try
         {
-            SurveyLocation = await SurveyLocationsAppService.GetAsync(SurveyLocationId);
+            SurveyLocation = await SurveyLocationsAppService.GetPublicSurveyLocationAsync(SurveyLocationId);
         }
         catch (Exception ex)
         {
@@ -100,26 +100,33 @@ public partial class SurveyCollections
         {
             if (SurveyLocation == null)
             {
+                _logger.LogWarning("SurveyLocation is null, skipping LoadSurveyCriteriasAsync");
                 return;
             }
-            
+
+            _logger.LogInformation($"Loading survey criterias for LocationId: {SurveyLocationId}");
+
             var criterias = await SurveyCriteriasAppService.GetPublicSurveyCriteriasByLocationAsync(SurveyLocationId);
-            
+            _logger.LogInformation($"Loaded {criterias?.Count ?? 0} criterias");
+
             if (criterias == null || !criterias.Any())
             {
                 await UiMessageService.Warn(L["SurveyCollections:NoCriteriaFound"]);
                 SurveyCriterias = new List<SurveyCriteriaWithNavigationPropertiesDto>();
                 return;
             }
-            
+
             SurveyCriterias = criterias.Select(c => new SurveyCriteriaWithNavigationPropertiesDto
             {
                 SurveyCriteria = c,
                 SurveyLocation = SurveyLocation
             }).ToList();
+
+            _logger.LogInformation($"Mapped to {SurveyCriterias.Count} SurveyCriteriaWithNavigationPropertiesDto objects");
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error loading survey criterias");
             await HandleErrorAsync(ex);
             SurveyCriterias = new List<SurveyCriteriaWithNavigationPropertiesDto>();
         }
@@ -145,7 +152,10 @@ public partial class SurveyCollections
             NewSurveySession.SurveyLocationId = SurveyLocationId;
             NewSurveySession.SessionDisplay = GenerateSessionDisplay();
 
+            _logger.LogInformation($"Creating survey session: FullName={NewSurveySession.FullName}, Phone={NewSurveySession.PhoneNumber}, LocationId={NewSurveySession.SurveyLocationId}");
+
             CurrentSurveySession = await SurveySessionsAppService.CreatePublicSurveySessionAsync(NewSurveySession);
+            _logger.LogInformation($"Created survey session with Id: {CurrentSurveySession?.Id}");
             IsSessionCreated = true;
 
             // Initialize ratings for all criteria
@@ -272,7 +282,10 @@ public partial class SurveyCollections
                 SurveySessionId = CurrentSurveySession.Id
             };
 
+            _logger.LogInformation($"Creating survey result: SessionId={surveyResult.SurveySessionId}, CriteriaId={surveyResult.SurveyCriteriaId}, Rating={surveyResult.Rating}");
+
             await SurveyResultsAppService.CreatePublicSurveyResultAsync(surveyResult);
+            _logger.LogInformation("Survey result created successfully");
 
             // Upload file if exists
             if (CriteriaFiles.TryGetValue(criteriaId, out var file))
@@ -346,7 +359,10 @@ public partial class SurveyCollections
                 FileType = System.IO.Path.GetExtension(file.Name).TrimStart('.')
             };
 
+            _logger.LogInformation($"Creating survey file: SessionId={surveyFile.SurveySessionId}, FileName={surveyFile.FileName}, Size={surveyFile.FileSize}");
+
             await SurveyFilesAppService.CreatePublicSurveyFileAsync(surveyFile);
+            _logger.LogInformation("Survey file created successfully");
         }
         catch (Exception ex)
         {

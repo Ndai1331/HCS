@@ -41,7 +41,7 @@ public class SurveyCriteriasAppService : SurveyCriteriasAppServiceBase, ISurveyC
         var queryable = await _surveyCriteriaRepository.GetQueryableAsync();
         var criterias = await AsyncExecuter.ToListAsync(
             queryable
-                .Where(x => x.SurveyLocationId == surveyLocationId && x.IsActive)
+                .Where(x => x.SurveyLocationId == surveyLocationId && x.IsActive && !x.IsDeleted)
                 .OrderBy(x => x.DisplayOrder)
         );
         
