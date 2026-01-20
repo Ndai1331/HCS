@@ -209,30 +209,6 @@ public partial class ProjectDetail : HCComponentBase
     protected string GetStatusText(ProjectTaskStatus status) => L[$"Enum:ProjectTaskStatus.{status}"];
     protected string GetPriorityText(ProjectTaskPriority priority) => L[$"Enum:ProjectTaskPriority.{priority}"];
 
-    protected Color GetStatusBadgeColor(ProjectTaskStatus status)
-    {
-        return status switch
-        {
-            ProjectTaskStatus.TODO => Color.Secondary,
-            ProjectTaskStatus.IN_PROGRESS => Color.Primary,
-            ProjectTaskStatus.WAITING => Color.Warning,
-            ProjectTaskStatus.DONE => Color.Success,
-            ProjectTaskStatus.CANCELLED => Color.Danger,
-            _ => Color.Secondary,
-        };
-    }
-
-    protected Color GetPriorityBadgeColor(ProjectTaskPriority priority)
-    {
-        return priority switch
-        {
-            ProjectTaskPriority.LOW => Color.Secondary,
-            ProjectTaskPriority.MEDIUM => Color.Info,
-            ProjectTaskPriority.HIGH => Color.Warning,
-            ProjectTaskPriority.URGENT => Color.Danger,
-            _ => Color.Secondary,
-        };
-    }
 
     // ---------------------------
     // Members

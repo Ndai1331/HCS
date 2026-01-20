@@ -20,7 +20,12 @@
 
 <PageHeader Title="@PageTitle" BreadcrumbItems="BreadcrumbItems">
 </PageHeader>
-
+<style>
+    .row
+    {
+      margin-top:0px;
+    }   
+</style>
 @if (ProjectTaskId == Guid.Empty)
 {
     <Alert Color="Color.Warning">
@@ -113,451 +118,459 @@ else
     <Card>
         <CardBody>
             <Form id="EditProjectTaskForm">
-                <Tabs SelectedTab="@SelectedEditTab" SelectedTabChanged="@OnSelectedEditTabChanged">
-                    <Items>
-                        <Tab Name="general">
-                            <Icon Name="IconName.Info" Class="me-1" />
-                            @L["Tab:GeneralInformation"]
-                        </Tab>
-                        <Tab Name="assignments">
-                            <Icon Name="IconName.Users" Class="me-1" />
-                            @L["Tab:Assignments"]
-                        </Tab>
-                        <Tab Name="documents">
-                            <Icon Name="IconName.File" Class="me-1" />
-                            @L["Tab:Documents"]
-                        </Tab>
-                    </Items>
-                    <Content>
-                        <TabPanel Name="general">
-                            @if (!string.IsNullOrWhiteSpace(EditGeneralValidationErrorKey))
-                            {
-                                <Alert Color="Color.Danger">
-                                    <AlertMessage>@L["NotificationError"]!</AlertMessage>
-                                    <AlertDescription>@L[EditGeneralValidationErrorKey]</AlertDescription>
-                                </Alert>
-                            }
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
+                        <Card>
+                            <CardBody>
+                                <h5 class="text-brand mb-3"> <Icon Name="IconName.Info" Class="me-1" />
+                                    @L["Tab:GeneralInformation"]</h5>
 
-                            <Row Class="g-3">
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["Project"] *</FieldLabel>
-                                        <div class="hc-select2-full" style="@(HasEditFieldError("Project") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                            <Select2 IdSelector="c => c.Id.ToString()"
-                                                     TextSelector="c => c.DisplayName"
-                                                     FilterFunction="GetProjectCollectionLookupAsync"
-                                                     GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
-                                                     Datasource="ProjectsCollection"
-                                                     Value="@SelectedEditProjectTaskProject"
-                                                     OnValueChanged="@(() => { OnEditProjectTaskProjectChanged(); EditFieldErrors.Remove("Project"); })"
-                                                     Cache="__MemoryCache"
-                                                     Multiselect="false" />
-                                        </div>
-                                        @if (HasEditFieldError("Project"))
-                                        {
-                                            <div class="invalid-feedback d-block">@GetEditFieldError("Project")</div>
-                                        }
-                                    </Field>
-                                </Column>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["ParentTaskId"]</FieldLabel>
-                                        <div class="hc-select2-full">
-                                            <Select2 IdSelector="c => c.Id"
-                                                     TextSelector="c => c.DisplayName"
-                                                     FilterFunction="GetParentTaskCollectionLookupAsync"
-                                                     GetElementById="async (items, id, token) => items.Where(x => x.Id == id).FirstOrDefault()!"
-                                                     Datasource="ParentTasksCollection"
-                                                     Value="@SelectedEditProjectTaskParentTask"
-                                                     OnValueChanged="OnEditProjectTaskParentChanged"
-                                                     Cache="__MemoryCache"
-                                                     Multiselect="false" />
-                                        </div>
-                                    </Field>
-                                </Column>
-                            </Row>
+                                    @if (!string.IsNullOrWhiteSpace(EditGeneralValidationErrorKey))
+                                    {
+                                        <Alert Color="Color.Danger">
+                                            <AlertMessage>@L["NotificationError"]!</AlertMessage>
+                                            <AlertDescription>@L[EditGeneralValidationErrorKey]</AlertDescription>
+                                        </Alert>
+                                    }
 
-                            <Row Class="g-3 mt-1">
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["Code"] *</FieldLabel>
-                                        <TextEdit Text="@EditingProjectTask.Code" 
-                                                  TextChanged="@((string value) => { EditingProjectTask.Code = value; EditFieldErrors.Remove("Code"); })"
-                                                  MaxLength="ProjectTaskConsts.CodeMaxLength" 
-                                                  Autofocus="true"
-                                                  ReadOnly="true"
-                                                  Style="@(HasEditFieldError("Code") ? "border-color: #dc3545;" : "")" />
-                                        @if (HasEditFieldError("Code"))
-                                        {
-                                            <div class="invalid-feedback d-block">@GetEditFieldError("Code")</div>
-                                        }
-                                    </Field>
-                                </Column>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["Title"] *</FieldLabel>
-                                        <TextEdit Text="@EditingProjectTask.Title" 
-                                                  TextChanged="@((string value) => { EditingProjectTask.Title = value; EditFieldErrors.Remove("Title"); })"
-                                                  MaxLength="ProjectTaskConsts.TitleMaxLength"
-                                                  Style="@(HasEditFieldError("Title") ? "border-color: #dc3545;" : "")" />
-                                        @if (HasEditFieldError("Title"))
-                                        {
-                                            <div class="invalid-feedback d-block">@GetEditFieldError("Title")</div>
-                                        }
-                                    </Field>
-                                </Column>
-                            </Row>
-
-                            <Row Class="g-3 mt-1">
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["Priority"] *</FieldLabel>
-                                        <div style="@(HasEditFieldError("Priority") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                            <Select TValue="ProjectTaskPriority"
-                                                    SelectedValue="@EditingProjectTaskPriority"
-                                                    SelectedValueChanged="@((ProjectTaskPriority value) => { OnEditingProjectTaskPriorityChanged(value); EditFieldErrors.Remove("Priority"); })">
-                                                <ChildContent>
-                                                    @foreach (var priority in Enum.GetValues<ProjectTaskPriority>())
-                                                    {
-                                                        <SelectItem TValue="ProjectTaskPriority" Value="@priority">
-                                                            @L[$"Enum:ProjectTaskPriority.{priority}"]
-                                                        </SelectItem>
-                                                    }
-                                                </ChildContent>
-                                            </Select>
-                                        </div>
-                                        @if (HasEditFieldError("Priority"))
-                                        {
-                                            <div class="invalid-feedback d-block">@GetEditFieldError("Priority")</div>
-                                        }
-                                    </Field>
-                                </Column>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["Status"] *</FieldLabel>
-                                        <div style="@(HasEditFieldError("Status") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                            <Select TValue="ProjectTaskStatus"
-                                                    SelectedValue="@EditingProjectTaskStatus"
-                                                    SelectedValueChanged="@((ProjectTaskStatus value) => { OnEditingProjectTaskStatusChanged(value); EditFieldErrors.Remove("Status"); })">
-                                                <ChildContent>
-                                                    @foreach (var status in Enum.GetValues<ProjectTaskStatus>())
-                                                    {
-                                                        <SelectItem TValue="ProjectTaskStatus" Value="@status">
-                                                            @L[$"Enum:ProjectTaskStatus.{status}"]
-                                                        </SelectItem>
-                                                    }
-                                                </ChildContent>
-                                            </Select>
-                                        </div>
-                                        @if (HasEditFieldError("Status"))
-                                        {
-                                            <div class="invalid-feedback d-block">@GetEditFieldError("Status")</div>
-                                        }
-                                    </Field>
-                                </Column>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["ProgressPercent"]</FieldLabel>
-                                        <NumericPicker TValue="int"
-                                                       Value="@EditingProjectTask.ProgressPercent"
-                                                       ValueChanged="@((int value) => { EditingProjectTask.ProgressPercent = value; EditFieldErrors.Remove("ProgressPercent"); })"
-                                                       Min="ProjectTaskConsts.ProgressPercentMinLength"
-                                                       Max="ProjectTaskConsts.ProgressPercentMaxLength"
-                                                       Decimals="0"
-                                                       Style="@(HasEditFieldError("ProgressPercent") ? "border-color: #dc3545;" : "")" />
-                                        @if (HasEditFieldError("ProgressPercent"))
-                                        {
-                                            <div class="invalid-feedback d-block">@GetEditFieldError("ProgressPercent")</div>
-                                        }
-                                    </Field>
-                                </Column>
-                            </Row>
-
-                            <Row Class="g-3 mt-1">
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["StartDate"]</FieldLabel>
-                                        <Addons>
-                                            <Addon AddonType="AddonType.Body">
-                                                <DatePicker TValue="DateTime"
-                                                            InputMode="DateInputMode.DateTime"
-                                                            Date="@EditingProjectTask.StartDate"
-                                                            DateChanged="@(v => EditingProjectTask.StartDate = v)"
-                                                            Placeholder="@string.Empty"
-                                                            DisplayFormat="dd/MM/yyyy HH:mm"
-                                                            InputFormat="dd/MM/yyyy HH:mm"
-                                                            @ref="@EditProjectTaskStartDateDatePicker" />
-                                            </Addon>
-                                            <Addon AddonType="AddonType.End">
-                                                <Button Color="Color.Light" Clicked="@(() => EditProjectTaskStartDateDatePicker?.ToggleAsync())">
-                                                    <Icon Name="IconName.CalendarDay" />
-                                                </Button>
-                                            </Addon>
-                                        </Addons>
-                                    </Field>
-                                </Column>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["DueDate"]</FieldLabel>
-                                        <Addons>
-                                            <Addon AddonType="AddonType.Body">
-                                                <DatePicker TValue="DateTime"
-                                                            InputMode="DateInputMode.DateTime"
-                                                            Date="@EditingProjectTask.DueDate"
-                                                            DateChanged="@(v => EditingProjectTask.DueDate = v)"
-                                                            Placeholder="@string.Empty"
-                                                            DisplayFormat="dd/MM/yyyy HH:mm"
-                                                            InputFormat="dd/MM/yyyy HH:mm"
-                                                            @ref="@EditProjectTaskDueDateDatePicker" />
-                                            </Addon>
-                                            <Addon AddonType="AddonType.End">
-                                                <Button Color="Color.Light" Clicked="@(() => EditProjectTaskDueDateDatePicker?.ToggleAsync())">
-                                                    <Icon Name="IconName.CalendarDay" />
-                                                </Button>
-                                            </Addon>
-                                        </Addons>
-                                    </Field>
-                                </Column>
-                            </Row>
-
-                            <Row Class="g-3 mt-1">
-                                <Column ColumnSize="ColumnSize.Is12">
-                                    <Field>
-                                        <FieldLabel>@L["Description"]</FieldLabel>
-                                        <MemoEdit @bind-Text="@EditingProjectTask.Description" />
-                                    </Field>
-                                </Column>
-                            </Row>
-                        </TabPanel>
-
-                        <TabPanel Name="assignments">
-                            @if (IsLoadingAssignments)
-                            {
-                                <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                    <Column>
-                                        <RadarSpinner />
-                                    </Column>
-                                </Row>
-                            }
-                            else
-                            {
-                                <Row Class="g-3 align-items-center">
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["Assignee"] *</FieldLabel>
-                                            <div class="hc-select2-full">
-                                                <Select2 IdSelector="c => c.Id.ToString()"
-                                                        TextSelector="c => c.DisplayName"
-                                                        FilterFunction="GetAssignmentIdentityUserLookupAsync"
-                                                        GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
-                                                        Datasource="AssignmentIdentityUsersCollection"
-                                                        Value="@EditAssignmentsUsersToAdd"
-                                                        OnValueChanged="OnEditAssignmentUserChanged"
-                                                        Cache="__MemoryCache"
-                                                        Multiselect="false" />
-                                            </div>
-                                        </Field>
-                                    </Column>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["AssignmentRole"] *</FieldLabel>
-                                            <Select TValue="ProjectTaskAssignmentRole" @bind-SelectedValue="EditAssignmentRole" Class="w-100">
-                                                @foreach (var role in Enum.GetValues<ProjectTaskAssignmentRole>())
+                                    <Row Class="g-3">
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                            <Field>
+                                                <FieldLabel>@L["Project"] *</FieldLabel>
+                                                <div class="hc-select2-full" style="@(HasEditFieldError("Project") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                                    <Select2 IdSelector="c => c.Id.ToString()"
+                                                            TextSelector="c => c.DisplayName"
+                                                            FilterFunction="GetProjectCollectionLookupAsync"
+                                                            GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                                            Datasource="ProjectsCollection"
+                                                            Value="@SelectedEditProjectTaskProject"
+                                                            OnValueChanged="@(() => { OnEditProjectTaskProjectChanged(); EditFieldErrors.Remove("Project"); })"
+                                                            Cache="__MemoryCache"
+                                                            Multiselect="false" />
+                                                </div>
+                                                @if (HasEditFieldError("Project"))
                                                 {
-                                                    <SelectItem TValue="ProjectTaskAssignmentRole" Value="@role">
-                                                        @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
-                                                    </SelectItem>
+                                                    <div class="invalid-feedback d-block">@GetEditFieldError("Project")</div>
                                                 }
-                                            </Select>
-                                        </Field>
-                                    </Column>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
-                                        <Button Color="Color.Primary" 
-                                                Class="w-100" 
-                                                Disabled="@IsAddingAssignment"
-                                                Clicked="AddEditAssignmentAsync">
-                                            @if (IsAddingAssignment)
-                                            {
-                                                <RadarSpinner />
-                                            }
-                                            else
-                                            {
-                                                <Icon Name="IconName.Add" Class="me-1" />
-                                                @L["Add"]
-                                            }
-                                        </Button>
-                                    </Column>
-                                </Row>
-                                <Row Class="g-3 mt-1">
-                                    <Column ColumnSize="ColumnSize.Is12">
-                                        <Field>
-                                            <FieldLabel>@L["Note"]</FieldLabel>
-                                            <TextEdit @bind-Text="EditAssignmentNote" />
-                                        </Field>
-                                    </Column>
-                                </Row>
+                                            </Field>
+                                        </Column>
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                            <Field>
+                                                <FieldLabel>@L["ParentTaskId"]</FieldLabel>
+                                                <div class="hc-select2-full">
+                                                    <Select2 IdSelector="c => c.Id"
+                                                            TextSelector="c => c.DisplayName"
+                                                            FilterFunction="GetParentTaskCollectionLookupAsync"
+                                                            GetElementById="async (items, id, token) => items.Where(x => x.Id == id).FirstOrDefault()!"
+                                                            Datasource="ParentTasksCollection"
+                                                            Value="@SelectedEditProjectTaskParentTask"
+                                                            OnValueChanged="OnEditProjectTaskParentChanged"
+                                                            Cache="__MemoryCache"
+                                                            Multiselect="false" />
+                                                </div>
+                                            </Field>
+                                        </Column>
+                                    </Row>
 
-                                <DataGrid TItem="ProjectTaskAssignmentWithNavigationPropertiesDto"
-                                          Data="EditAssignmentsList"
-                                          Responsive="true"
-                                          ShowPager="false">
-                                    <EmptyTemplate>
+                                    <Row Class="g-3 mt-1">
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                            <Field>
+                                                <FieldLabel>@L["Code"] *</FieldLabel>
+                                                <TextEdit Text="@EditingProjectTask.Code" 
+                                                        TextChanged="@((string value) => { EditingProjectTask.Code = value; EditFieldErrors.Remove("Code"); })"
+                                                        MaxLength="ProjectTaskConsts.CodeMaxLength" 
+                                                        Autofocus="true"
+                                                        ReadOnly="true"
+                                                        Style="@(HasEditFieldError("Code") ? "border-color: #dc3545;" : "")" />
+                                                @if (HasEditFieldError("Code"))
+                                                {
+                                                    <div class="invalid-feedback d-block">@GetEditFieldError("Code")</div>
+                                                }
+                                            </Field>
+                                        </Column>
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                            <Field>
+                                                <FieldLabel>@L["Title"] *</FieldLabel>
+                                                <TextEdit Text="@EditingProjectTask.Title" 
+                                                        TextChanged="@((string value) => { EditingProjectTask.Title = value; EditFieldErrors.Remove("Title"); })"
+                                                        MaxLength="ProjectTaskConsts.TitleMaxLength"
+                                                        Style="@(HasEditFieldError("Title") ? "border-color: #dc3545;" : "")" />
+                                                @if (HasEditFieldError("Title"))
+                                                {
+                                                    <div class="invalid-feedback d-block">@GetEditFieldError("Title")</div>
+                                                }
+                                            </Field>
+                                        </Column>
+                                    </Row>
+
+                                    <Row Class="g-3 mt-1">
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Field>
+                                                <FieldLabel>@L["Priority"] *</FieldLabel>
+                                                <div style="@(HasEditFieldError("Priority") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                                    <Select TValue="ProjectTaskPriority"
+                                                            SelectedValue="@EditingProjectTaskPriority"
+                                                            SelectedValueChanged="@((ProjectTaskPriority value) => { OnEditingProjectTaskPriorityChanged(value); EditFieldErrors.Remove("Priority"); })">
+                                                        <ChildContent>
+                                                            @foreach (var priority in Enum.GetValues<ProjectTaskPriority>())
+                                                            {
+                                                                <SelectItem TValue="ProjectTaskPriority" Value="@priority">
+                                                                    @L[$"Enum:ProjectTaskPriority.{priority}"]
+                                                                </SelectItem>
+                                                            }
+                                                        </ChildContent>
+                                                    </Select>
+                                                </div>
+                                                @if (HasEditFieldError("Priority"))
+                                                {
+                                                    <div class="invalid-feedback d-block">@GetEditFieldError("Priority")</div>
+                                                }
+                                            </Field>
+                                        </Column>
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Field>
+                                                <FieldLabel>@L["Status"] *</FieldLabel>
+                                                <div style="@(HasEditFieldError("Status") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                                    <Select TValue="ProjectTaskStatus"
+                                                            SelectedValue="@EditingProjectTaskStatus"
+                                                            SelectedValueChanged="@((ProjectTaskStatus value) => { OnEditingProjectTaskStatusChanged(value); EditFieldErrors.Remove("Status"); })">
+                                                        <ChildContent>
+                                                            @foreach (var status in Enum.GetValues<ProjectTaskStatus>())
+                                                            {
+                                                                <SelectItem TValue="ProjectTaskStatus" Value="@status">
+                                                                    @L[$"Enum:ProjectTaskStatus.{status}"]
+                                                                </SelectItem>
+                                                            }
+                                                        </ChildContent>
+                                                    </Select>
+                                                </div>
+                                                @if (HasEditFieldError("Status"))
+                                                {
+                                                    <div class="invalid-feedback d-block">@GetEditFieldError("Status")</div>
+                                                }
+                                            </Field>
+                                        </Column>
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Field>
+                                                <FieldLabel>@L["ProgressPercent"]</FieldLabel>
+                                                <NumericPicker TValue="int"
+                                                            Value="@EditingProjectTask.ProgressPercent"
+                                                            ValueChanged="@((int value) => { EditingProjectTask.ProgressPercent = value; EditFieldErrors.Remove("ProgressPercent"); })"
+                                                            Min="ProjectTaskConsts.ProgressPercentMinLength"
+                                                            Max="ProjectTaskConsts.ProgressPercentMaxLength"
+                                                            Decimals="0"
+                                                            Style="@(HasEditFieldError("ProgressPercent") ? "border-color: #dc3545;" : "")" />
+                                                @if (HasEditFieldError("ProgressPercent"))
+                                                {
+                                                    <div class="invalid-feedback d-block">@GetEditFieldError("ProgressPercent")</div>
+                                                }
+                                            </Field>
+                                        </Column>
+                                    </Row>
+
+                                    <Row Class="g-3 mt-1">
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                            <Field>
+                                                <FieldLabel>@L["StartDate"]</FieldLabel>
+                                                <Addons>
+                                                    <Addon AddonType="AddonType.Body">
+                                                        <DatePicker TValue="DateTime"
+                                                                    InputMode="DateInputMode.DateTime"
+                                                                    Date="@EditingProjectTask.StartDate"
+                                                                    DateChanged="@(v => EditingProjectTask.StartDate = v)"
+                                                                    Placeholder="@string.Empty"
+                                                                    DisplayFormat="dd/MM/yyyy HH:mm"
+                                                                    InputFormat="dd/MM/yyyy HH:mm"
+                                                                    @ref="@EditProjectTaskStartDateDatePicker" />
+                                                    </Addon>
+                                                    <Addon AddonType="AddonType.End">
+                                                        <Button Color="Color.Light" Clicked="@(() => EditProjectTaskStartDateDatePicker?.ToggleAsync())">
+                                                            <Icon Name="IconName.CalendarDay" />
+                                                        </Button>
+                                                    </Addon>
+                                                </Addons>
+                                            </Field>
+                                        </Column>
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                            <Field>
+                                                <FieldLabel>@L["DueDate"]</FieldLabel>
+                                                <Addons>
+                                                    <Addon AddonType="AddonType.Body">
+                                                        <DatePicker TValue="DateTime"
+                                                                    InputMode="DateInputMode.DateTime"
+                                                                    Date="@EditingProjectTask.DueDate"
+                                                                    DateChanged="@(v => EditingProjectTask.DueDate = v)"
+                                                                    Placeholder="@string.Empty"
+                                                                    DisplayFormat="dd/MM/yyyy HH:mm"
+                                                                    InputFormat="dd/MM/yyyy HH:mm"
+                                                                    @ref="@EditProjectTaskDueDateDatePicker" />
+                                                    </Addon>
+                                                    <Addon AddonType="AddonType.End">
+                                                        <Button Color="Color.Light" Clicked="@(() => EditProjectTaskDueDateDatePicker?.ToggleAsync())">
+                                                            <Icon Name="IconName.CalendarDay" />
+                                                        </Button>
+                                                    </Addon>
+                                                </Addons>
+                                            </Field>
+                                        </Column>
+                                    </Row>
+
+                                    <Row Class="g-3 mt-1">
+                                        <Column ColumnSize="ColumnSize.Is12">
+                                            <Field>
+                                                <FieldLabel>@L["Description"]</FieldLabel>
+                                                <MemoEdit @bind-Text="@EditingProjectTask.Description" />
+                                            </Field>
+                                        </Column>
+                                    </Row>
+                            </CardBody>
+                        </Card>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
+                        <Tabs SelectedTab="@SelectedEditTab" SelectedTabChanged="@OnSelectedEditTabChanged">
+                            <Items>
+                                
+                                <Tab Name="assignments">
+                                    <Icon Name="IconName.Users" Class="me-1" />
+                                    @L["Tab:Assignments"]
+                                </Tab>
+                                <Tab Name="documents">
+                                    <Icon Name="IconName.File" Class="me-1" />
+                                    @L["Tab:Documents"]
+                                </Tab>
+                            </Items>
+                            <Content>
+                              
+                                <TabPanel Name="assignments">
+                                    @if (IsLoadingAssignments)
+                                    {
                                         <Row Class="w-100 align-items-center" Style="height: 120px;">
                                             <Column>
-                                                <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["CreateWizard:NoAssignees"]</Heading>
-                                            </Column>
-                                        </Row>
-                                    </EmptyTemplate>
-                                    <DataGridColumns>
-                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="User.UserName" Caption="@L["UserName"]" />
-                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.AssignmentRole" Caption="@L["AssignmentRole"]">
-                                            <DisplayTemplate>
-                                                @if (Enum.TryParse<ProjectTaskAssignmentRole>(context.ProjectTaskAssignment.AssignmentRole, ignoreCase: true, out var role))
-                                                {
-                                                    @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
-                                                }
-                                                else
-                                                {
-                                                    @context.ProjectTaskAssignment.AssignmentRole
-                                                }
-                                            </DisplayTemplate>
-                                        </DataGridColumn>
-                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.AssignedAt" Caption="@L["AssignedAt"]">
-                                            <DisplayTemplate>
-                                                @context.ProjectTaskAssignment.AssignedAt.ToString("dd/MM/yyyy HH:mm")
-                                            </DisplayTemplate>
-                                        </DataGridColumn>
-                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.Note" Caption="@L["Note"]" />
-                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Caption="@L["Actions"]">
-                                            <DisplayTemplate>
-                                                <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteEditAssignmentAsync(context))">
-                                                    <Icon Name="IconName.Delete" Class="me-1" /> @L["Delete"]
-                                                </Button>
-                                            </DisplayTemplate>
-                                        </DataGridColumn>
-                                    </DataGridColumns>
-                                </DataGrid>
-                            }
-                        </TabPanel>
-
-                        <TabPanel Name="documents">
-                            @if (IsLoadingDocuments)
-                            {
-                                <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                    <Column>
-                                        <RadarSpinner />
-                                    </Column>
-                                </Row>
-                            }
-                            else
-                            {
-                                <Row Class="g-3 align-items-center">
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["Document"]</FieldLabel>
-                                            <div class="hc-select2-full">
-                                                <Select2 IdSelector="c => c.Id.ToString()"
-                                                        TextSelector="c => c.DisplayName"
-                                                        FilterFunction="GetDocumentLookupAsync"
-                                                        GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
-                                                        Datasource="DocumentsLookupCollection"
-                                                        Value="@EditDocumentsToAdd"
-                                                        OnValueChanged="OnEditDocumentChanged"
-                                                        Cache="__MemoryCache"
-                                                        Multiselect="false" />
-                                            </div>
-                                        </Field>
-                                    </Column>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["DocumentPurpose"]</FieldLabel>
-                                            <Select TValue="ProjectTaskDocumentPurpose" @bind-SelectedValue="EditDocumentPurpose" Class="w-100">
-                                                @foreach (var purpose in Enum.GetValues<ProjectTaskDocumentPurpose>())
-                                                {
-                                                    <SelectItem TValue="ProjectTaskDocumentPurpose" Value="@purpose">
-                                                        @L[$"Enum:ProjectTaskDocumentPurpose.{purpose}"]
-                                                    </SelectItem>
-                                                }
-                                            </Select>
-                                        </Field>
-                                    </Column>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
-                                        <Button Color="Color.Primary" 
-                                                Class="w-100" 
-                                                Disabled="@IsAddingDocument"
-                                                Clicked="AddEditDocumentAsync">
-                                            @if (IsAddingDocument)
-                                            {
                                                 <RadarSpinner />
-                                            }
-                                            else
-                                            {
-                                                <Icon Name="IconName.Add" Class="me-1" />
-                                                @L["Add"]
-                                            }
-                                        </Button>
-                                    </Column>
-                                </Row>
-
-                                <DataGrid TItem="ProjectTaskDocumentWithNavigationPropertiesDto"
-                                          Data="EditDocumentsList"
-                                          Responsive="true"
-                                          ShowPager="false">
-                                    <EmptyTemplate>
-                                        <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                            <Column>
-                                                <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["CreateWizard:NoDocuments"]</Heading>
                                             </Column>
                                         </Row>
-                                    </EmptyTemplate>
-                                    <DataGridColumns>
-                                        <DataGridColumn TItem="ProjectTaskDocumentWithNavigationPropertiesDto" Field="Document.Title" Caption="@L["Title"]" />
-                                        <DataGridColumn TItem="ProjectTaskDocumentWithNavigationPropertiesDto" Field="ProjectTaskDocument.DocumentPurpose" Caption="@L["DocumentPurpose"]">
-                                            <DisplayTemplate>
-                                                @if (context.ProjectTaskDocument != null && !string.IsNullOrWhiteSpace(context.ProjectTaskDocument.DocumentPurpose))
-                                                {
-                                                    @if (Enum.TryParse<ProjectTaskDocumentPurpose>(context.ProjectTaskDocument.DocumentPurpose, ignoreCase: true, out var purpose))
+                                    }
+                                    else
+                                    {
+                                        <Row Class="g-3 align-items-center">
+                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                                <Field>
+                                                    <FieldLabel>@L["Assignee"] *</FieldLabel>
+                                                    <div class="hc-select2-full">
+                                                        <Select2 IdSelector="c => c.Id.ToString()"
+                                                                TextSelector="c => c.DisplayName"
+                                                                FilterFunction="GetAssignmentIdentityUserLookupAsync"
+                                                                GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                                                Datasource="AssignmentIdentityUsersCollection"
+                                                                Value="@EditAssignmentsUsersToAdd"
+                                                                OnValueChanged="OnEditAssignmentUserChanged"
+                                                                Cache="__MemoryCache"
+                                                                Multiselect="false" />
+                                                    </div>
+                                                </Field>
+                                            </Column>
+                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                                <Field>
+                                                    <FieldLabel>@L["AssignmentRole"] *</FieldLabel>
+                                                    <Select TValue="ProjectTaskAssignmentRole" @bind-SelectedValue="EditAssignmentRole" Class="w-100">
+                                                        @foreach (var role in Enum.GetValues<ProjectTaskAssignmentRole>())
+                                                        {
+                                                            <SelectItem TValue="ProjectTaskAssignmentRole" Value="@role">
+                                                                @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
+                                                            </SelectItem>
+                                                        }
+                                                    </Select>
+                                                </Field>
+                                            </Column>
+                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                                <Button Color="Color.Primary" 
+                                                        Class="w-100" 
+                                                        Disabled="@IsAddingAssignment"
+                                                        Clicked="AddEditAssignmentAsync">
+                                                    @if (IsAddingAssignment)
                                                     {
-                                                        @L[$"Enum:ProjectTaskDocumentPurpose.{purpose}"]
+                                                        <RadarSpinner />
                                                     }
                                                     else
                                                     {
-                                                        @context.ProjectTaskDocument.DocumentPurpose
+                                                        <Icon Name="IconName.Add" Class="me-1" />
+                                                        @L["Add"]
                                                     }
-                                                }
-                                            </DisplayTemplate>
-                                        </DataGridColumn>
-                                        <DataGridColumn TItem="ProjectTaskDocumentWithNavigationPropertiesDto" Caption="@L["Actions"]">
-                                            <DisplayTemplate>
-                                                <div class="d-flex gap-2">
-                                                    @if (context.Document != null)
-                                                    {
-                                                        @if (DocumentHasPdfFile(context.Document.Id))
+                                                </Button>
+                                            </Column>
+                                        </Row>
+                                        <Row Class="g-3 mt-1">
+                                            <Column ColumnSize="ColumnSize.Is12">
+                                                <Field>
+                                                    <FieldLabel>@L["Note"]</FieldLabel>
+                                                    <TextEdit @bind-Text="EditAssignmentNote" />
+                                                </Field>
+                                            </Column>
+                                        </Row>
+
+                                        <DataGrid TItem="ProjectTaskAssignmentWithNavigationPropertiesDto"
+                                                Data="EditAssignmentsList"
+                                                Responsive="true"
+                                                ShowPager="false">
+                                            <EmptyTemplate>
+                                                <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                                    <Column>
+                                                        <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["CreateWizard:NoAssignees"]</Heading>
+                                                    </Column>
+                                                </Row>
+                                            </EmptyTemplate>
+                                            <DataGridColumns>
+                                                <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="User.UserName" Caption="@L["UserName"]" />
+                                                <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.AssignmentRole" Caption="@L["AssignmentRole"]">
+                                                    <DisplayTemplate>
+                                                        @if (Enum.TryParse<ProjectTaskAssignmentRole>(context.ProjectTaskAssignment.AssignmentRole, ignoreCase: true, out var role))
                                                         {
-                                                            <Button Color="Color.Info" Size="Size.Small" Clicked="@(() => OpenPdfViewerModalForDocumentAsync(context))" Title="@L["ViewFile"]">
-                                                                <Icon Name="IconName.Eye" />
-                                                            </Button>
+                                                            @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
                                                         }
-                                                        <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => DownloadDocumentFileAsync(context))" Title="@L["Download"]">
-                                                            <Icon Name="IconName.Download" />
+                                                        else
+                                                        {
+                                                            @context.ProjectTaskAssignment.AssignmentRole
+                                                        }
+                                                    </DisplayTemplate>
+                                                </DataGridColumn>
+                                                <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.AssignedAt" Caption="@L["AssignedAt"]">
+                                                    <DisplayTemplate>
+                                                        @context.ProjectTaskAssignment.AssignedAt.ToString("dd/MM/yyyy HH:mm")
+                                                    </DisplayTemplate>
+                                                </DataGridColumn>
+                                                <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.Note" Caption="@L["Note"]" />
+                                                <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Caption="@L["Actions"]">
+                                                    <DisplayTemplate>
+                                                        <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteEditAssignmentAsync(context))">
+                                                            <Icon Name="IconName.Delete" Class="me-1" /> @L["Delete"]
                                                         </Button>
+                                                    </DisplayTemplate>
+                                                </DataGridColumn>
+                                            </DataGridColumns>
+                                        </DataGrid>
+                                    }
+                                </TabPanel>
+
+                                <TabPanel Name="documents">
+                                    @if (IsLoadingDocuments)
+                                    {
+                                        <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                            <Column>
+                                                <RadarSpinner />
+                                            </Column>
+                                        </Row>
+                                    }
+                                    else
+                                    {
+                                        <Row Class="g-3 align-items-center">
+                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                                <Field>
+                                                    <FieldLabel>@L["Document"]</FieldLabel>
+                                                    <div class="hc-select2-full">
+                                                        <Select2 IdSelector="c => c.Id.ToString()"
+                                                                TextSelector="c => c.DisplayName"
+                                                                FilterFunction="GetDocumentLookupAsync"
+                                                                GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                                                Datasource="DocumentsLookupCollection"
+                                                                Value="@EditDocumentsToAdd"
+                                                                OnValueChanged="OnEditDocumentChanged"
+                                                                Cache="__MemoryCache"
+                                                                Multiselect="false" />
+                                                    </div>
+                                                </Field>
+                                            </Column>
+                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                                <Field>
+                                                    <FieldLabel>@L["DocumentPurpose"]</FieldLabel>
+                                                    <Select TValue="ProjectTaskDocumentPurpose" @bind-SelectedValue="EditDocumentPurpose" Class="w-100">
+                                                        @foreach (var purpose in Enum.GetValues<ProjectTaskDocumentPurpose>())
+                                                        {
+                                                            <SelectItem TValue="ProjectTaskDocumentPurpose" Value="@purpose">
+                                                                @L[$"Enum:ProjectTaskDocumentPurpose.{purpose}"]
+                                                            </SelectItem>
+                                                        }
+                                                    </Select>
+                                                </Field>
+                                            </Column>
+                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                                <Button Color="Color.Primary" 
+                                                        Class="w-100" 
+                                                        Disabled="@IsAddingDocument"
+                                                        Clicked="AddEditDocumentAsync">
+                                                    @if (IsAddingDocument)
+                                                    {
+                                                        <RadarSpinner />
                                                     }
-                                                    <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteEditDocumentAsync(context))" Title="@L["Delete"]">
-                                                        <Icon Name="IconName.Delete" />
-                                                    </Button>
-                                                </div>
-                                            </DisplayTemplate>
-                                        </DataGridColumn>
-                                    </DataGridColumns>
-                                </DataGrid>
-                            }
-                        </TabPanel>
-                    </Content>
-                </Tabs>
+                                                    else
+                                                    {
+                                                        <Icon Name="IconName.Add" Class="me-1" />
+                                                        @L["Add"]
+                                                    }
+                                                </Button>
+                                            </Column>
+                                        </Row>
+
+                                        <DataGrid TItem="ProjectTaskDocumentWithNavigationPropertiesDto"
+                                                Data="EditDocumentsList"
+                                                Responsive="true"
+                                                ShowPager="false">
+                                            <EmptyTemplate>
+                                                <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                                    <Column>
+                                                        <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["CreateWizard:NoDocuments"]</Heading>
+                                                    </Column>
+                                                </Row>
+                                            </EmptyTemplate>
+                                            <DataGridColumns>
+                                                <DataGridColumn TItem="ProjectTaskDocumentWithNavigationPropertiesDto" Field="Document.Title" Caption="@L["Title"]" />
+                                                <DataGridColumn TItem="ProjectTaskDocumentWithNavigationPropertiesDto" Field="ProjectTaskDocument.DocumentPurpose" Caption="@L["DocumentPurpose"]">
+                                                    <DisplayTemplate>
+                                                        @if (context.ProjectTaskDocument != null && !string.IsNullOrWhiteSpace(context.ProjectTaskDocument.DocumentPurpose))
+                                                        {
+                                                            @if (Enum.TryParse<ProjectTaskDocumentPurpose>(context.ProjectTaskDocument.DocumentPurpose, ignoreCase: true, out var purpose))
+                                                            {
+                                                                @L[$"Enum:ProjectTaskDocumentPurpose.{purpose}"]
+                                                            }
+                                                            else
+                                                            {
+                                                                @context.ProjectTaskDocument.DocumentPurpose
+                                                            }
+                                                        }
+                                                    </DisplayTemplate>
+                                                </DataGridColumn>
+                                                <DataGridColumn TItem="ProjectTaskDocumentWithNavigationPropertiesDto" Caption="@L["Actions"]">
+                                                    <DisplayTemplate>
+                                                        <div class="d-flex gap-2">
+                                                            @if (context.Document != null)
+                                                            {
+                                                                @if (DocumentHasPdfFile(context.Document.Id))
+                                                                {
+                                                                    <Button Color="Color.Info" Size="Size.Small" Clicked="@(() => OpenPdfViewerModalForDocumentAsync(context))" Title="@L["ViewFile"]">
+                                                                        <Icon Name="IconName.Eye" />
+                                                                    </Button>
+                                                                }
+                                                                <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => DownloadDocumentFileAsync(context))" Title="@L["Download"]">
+                                                                    <Icon Name="IconName.Download" />
+                                                                </Button>
+                                                            }
+                                                            <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteEditDocumentAsync(context))" Title="@L["Delete"]">
+                                                                <Icon Name="IconName.Delete" />
+                                                            </Button>
+                                                        </div>
+                                                    </DisplayTemplate>
+                                                </DataGridColumn>
+                                            </DataGridColumns>
+                                        </DataGrid>
+                                    }
+                                </TabPanel>
+                            </Content>
+                        </Tabs>
+                    </Column>
+                </Row>
 
                 <Div Class="mt-4 d-flex justify-content-end gap-2">
                     <Button Color="Color.Secondary" 
-                            Clicked="@(() => NavigationManager.NavigateTo("/project-tasks"))">
+                            Clicked="@(() => NavigationManager.NavigateTo("/tasks"))">
                         <Icon Name="IconName.ArrowLeft" Class="me-1" /> @L["Back"]
                     </Button>
                     <SubmitButton Form="EditProjectTaskForm" 

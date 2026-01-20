@@ -402,9 +402,9 @@
                                                     <DropdownItem Clicked="@EventCallback.Factory.Create(this, async () => await NavigateToProjectTaskDetailAsync(context.ProjectTaskWithNavigationProperties))">
                                                         @L["ViewDetail"]
                                                     </DropdownItem>
-                                                    <DropdownItem Clicked="@EventCallback.Factory.Create(this, async () => await OpenEditProjectTaskModalAsync(context.ProjectTaskWithNavigationProperties))">
+                                                    @* <DropdownItem Clicked="@EventCallback.Factory.Create(this, async () => await OpenEditProjectTaskModalAsync(context.ProjectTaskWithNavigationProperties))">
                                                         @L["Edit"]
-                                                    </DropdownItem>
+                                                    </DropdownItem> *@
                                                     <DropdownItem Clicked="@EventCallback.Factory.Create(this, async () => await DeleteProjectTaskAsync(context.ProjectTaskWithNavigationProperties))">
                                                         @L["Delete"]
                                                     </DropdownItem>

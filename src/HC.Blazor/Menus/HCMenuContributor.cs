@@ -53,7 +53,7 @@ public class HCMenuContributor : IMenuContributor
         context.Menu.Items.Insert(0, new ApplicationMenuItem(HCMenus.Home, l["Menu:Home"], "/", icon: "fas fa-home", order: 1));
         // FileManagement menu is removed from UI (kept as a module dependency).
         context.Menu.AddItem(new ApplicationMenuItem("Documents", l["Menu:Documents"], icon: "fa fa-book", order: 2)
-        .AddItem(new ApplicationMenuItem("Documents.List", l["Menu:DocumentList"], url: "/documents").RequirePermissions(HCPermissions.Documents.Default)));
+        .AddItem(new ApplicationMenuItem("Documents.List", l["Menu:DocumentList"],icon: "bi bi-menu-button-wide-fill", url: "/documents").RequirePermissions(HCPermissions.Documents.Default)));
 
         context.Menu.AddItem(new ApplicationMenuItem("Workflows", l["Menu:Workflows"], icon: "fa fa-arrow-trend-up", order: 3)
         .AddItem(new ApplicationMenuItem("Workflows.WorkflowDefinitions", l["Menu:WorkflowDefinitions"], icon: "bi bi-menu-button-wide-fill", url: "/workflow-definitions").RequirePermissions(HCPermissions.WorkflowDefinitions.Default))
@@ -61,32 +61,31 @@ public class HCMenuContributor : IMenuContributor
 
 
         context.Menu.AddItem(new ApplicationMenuItem("Projects", l["Menu:Projects"], icon: "fa fa-diagram-project", order: 4)
-        .AddItem(new ApplicationMenuItem("Projects.List", l["Menu:ProjectList"], icon: "bi bi-diagram-project", url: "/projects").RequirePermissions(HCPermissions.Projects.Default))
-        .AddItem(new ApplicationMenuItem("Tasks.List", l["Menu:Tasks"], icon: "bi bi-list-task", url: "/tasks").RequirePermissions(HCPermissions.Tasks.Default)));
+        .AddItem(new ApplicationMenuItem("Projects.List", l["Menu:ProjectList"], icon: "bi bi-menu-button-wide-fill", url: "/projects").RequirePermissions(HCPermissions.Projects.Default))
+        .AddItem(new ApplicationMenuItem("Tasks.List", l["Menu:Tasks"], icon: "bi bi-menu-button-wide-fill", url: "/tasks").RequirePermissions(HCPermissions.Tasks.Default)));
 
         context.Menu.AddItem(new ApplicationMenuItem("CalendarAndEvents", l["Menu:CalendarAndEvents"], icon: "fa fa-calendar-days",url: "/calendar-events", order: 6).RequirePermissions(HCPermissions.CalendarEvents.Default));
 
         context.Menu.AddItem(new ApplicationMenuItem("SurveyResults", l["Menu:SurveyResults"], icon: "fa fa-chart-line",url: "/survey-results", order: 6).RequirePermissions(HCPermissions.SurveyResults.Default));
         context.Menu.AddItem(new ApplicationMenuItem("MasterDatas", l["Menu:Categories"], icon: "fa fa-layer-group", order: 9)
-        .AddItem(new ApplicationMenuItem("MasterDatas.DocumentTypes", l["DocumentTypes"], icon: "bi bi-file-earmark-text-fill", url: "/document-types").RequirePermissions(HCPermissions.MasterDatas.DocumentTypeDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.Sector", l["Sector"], icon: "bi bi-building-fill", url: "/sectors").RequirePermissions(HCPermissions.MasterDatas.SectorDefault))
-        // .AddItem(
-        .AddItem(new ApplicationMenuItem("MasterDatas.UrgencyLevel", l["UrgencyLevel"],icon:"bi bi-exclamation-triangle-fill", url: "/urgency-levels").RequirePermissions(HCPermissions.MasterDatas.UrgencyLevelDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.ConfidentialityLevel", l["ConfidentialityLevel"], icon: "bi bi-shield-fill-check", url: "/confidentiality-levels").RequirePermissions(HCPermissions.MasterDatas.ConfidentialityLevelDefault)).
-        AddItem(new ApplicationMenuItem("MasterDatas.ProcessingMethod", l["ProcessingMethod"], icon: "bi bi-gear-fill", url: "/processing-methods").RequirePermissions(HCPermissions.MasterDatas.ProcessingMethodDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.DocumentStatus", l["DocumentStatus"], icon: "bi bi-file-earmark-text-fill", url: "/document-status").RequirePermissions(HCPermissions.MasterDatas.DocumentStatusDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.SigningMethod", l["SigningMethod"], icon: "bi bi-pencil-square", url: "/signing-methods").RequirePermissions(HCPermissions.MasterDatas.SigningMethodDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.EventType", l["EventType"], icon: "bi bi-calendar-event", url: "/even-types").RequirePermissions(HCPermissions.MasterDatas.EventTypeDefault))// .AddItem(new ApplicationMenuItem("MasterDatas.IssuingAuthority", l["IssuingAuthority"], url: "/unit-lists").RequirePermissions(HCPermissions.MasterDatas.UnitDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.Unit", l["Unit"], icon: "bi bi-building-fill", url: "/unit-lists").RequirePermissions(HCPermissions.MasterDatas.UnitDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.Departments", l["Menu:Departments"], icon: "bi bi-building-fill", url: "/departments").RequirePermissions(HCPermissions.MasterDatas.DepartmentDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.Positions", l["Menu:Positions"], icon: "bi bi-person-fill", url: "/positions").RequirePermissions(HCPermissions.MasterDatas.PositionDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.SurveyLocations", l["Menu:SurveyLocations"], icon: "bi bi-map-fill", url: "/survey-locations").RequirePermissions(HCPermissions.MasterDatas.SurveyLocationDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.SurveyCriterias", l["Menu:SurveyCriterias"], icon: "bi bi-list-check", url: "/survey-criterias").RequirePermissions(HCPermissions.MasterDatas.SurveyCriteriaDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.SignatureSettings", l["Menu:SignatureSettings"], icon: "bi bi-pencil-square", url: "/signature-settings").RequirePermissions(HCPermissions.MasterDatas.SignatureSettingsDefault)));
+        .AddItem(new ApplicationMenuItem("MasterDatas.DocumentTypes", l["DocumentTypes"], icon: "bi bi-menu-button-wide-fill", url: "/document-types").RequirePermissions(HCPermissions.MasterDatas.DocumentTypeDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.Sector", l["Sector"], icon: "bi bi-menu-button-wide-fill", url: "/sectors").RequirePermissions(HCPermissions.MasterDatas.SectorDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.UrgencyLevel", l["UrgencyLevel"],icon:"bi bi-menu-button-wide-fill", url: "/urgency-levels").RequirePermissions(HCPermissions.MasterDatas.UrgencyLevelDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.ConfidentialityLevel", l["ConfidentialityLevel"], icon: "bi bi-menu-button-wide-fill", url: "/confidentiality-levels").RequirePermissions(HCPermissions.MasterDatas.ConfidentialityLevelDefault)).
+        AddItem(new ApplicationMenuItem("MasterDatas.ProcessingMethod", l["ProcessingMethod"], icon: "bi bi-menu-button-wide-fill", url: "/processing-methods").RequirePermissions(HCPermissions.MasterDatas.ProcessingMethodDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.DocumentStatus", l["DocumentStatus"], icon: "bi bi-menu-button-wide-fill", url: "/document-status").RequirePermissions(HCPermissions.MasterDatas.DocumentStatusDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.SigningMethod", l["SigningMethod"], icon: "bi bi-menu-button-wide-fill", url: "/signing-methods").RequirePermissions(HCPermissions.MasterDatas.SigningMethodDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.EventType", l["EventType"], icon: "bi bi-menu-button-wide-fill", url: "/even-types").RequirePermissions(HCPermissions.MasterDatas.EventTypeDefault))// .AddItem(new ApplicationMenuItem("MasterDatas.IssuingAuthority", l["IssuingAuthority"], url: "/unit-lists").RequirePermissions(HCPermissions.MasterDatas.UnitDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.Unit", l["Unit"], icon: "bi bi-menu-button-wide-fill", url: "/unit-lists").RequirePermissions(HCPermissions.MasterDatas.UnitDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.Departments", l["Menu:Departments"], icon: "bi bi-menu-button-wide-fill", url: "/departments").RequirePermissions(HCPermissions.MasterDatas.DepartmentDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.Positions", l["Menu:Positions"], icon: "bi bi-menu-button-wide-fill", url: "/positions").RequirePermissions(HCPermissions.MasterDatas.PositionDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.SurveyLocations", l["Menu:SurveyLocations"], icon: "bi bi-menu-button-wide-fill", url: "/survey-locations").RequirePermissions(HCPermissions.MasterDatas.SurveyLocationDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.SurveyCriterias", l["Menu:SurveyCriterias"], icon: "bi bi-menu-button-wide-fill", url: "/survey-criterias").RequirePermissions(HCPermissions.MasterDatas.SurveyCriteriaDefault))
+        .AddItem(new ApplicationMenuItem("MasterDatas.SignatureSettings", l["Menu:SignatureSettings"], icon: "bi bi-menu-button-wide-fill", url: "/signature-settings").RequirePermissions(HCPermissions.MasterDatas.SignatureSettingsDefault)));
         context.Menu.AddItem(new ApplicationMenuItem("Reports", l["Menu:Reports"], icon: "fa fa-chart-area", order: 12).
-        AddItem(new ApplicationMenuItem("Reports.Documents", l["Documents"], icon: "bi bi-file-earmark-text-fill", url: "/reports-documents").RequirePermissions(HCPermissions.Reports.DocumentDefault))
-        .AddItem(new ApplicationMenuItem("Reports.Projects", l["Projects"], icon: "bi bi-diagram-project", url: "/reports-projects").RequirePermissions(HCPermissions.Reports.ProjectDefault))
-        .AddItem(new ApplicationMenuItem("Reports.ProjectTasks", l["ProjectTasks"], icon: "bi bi-list-task", url: "/reports-project-tasks").RequirePermissions(HCPermissions.Reports.ProjectTaskDefault))
+        AddItem(new ApplicationMenuItem("Reports.Documents", l["Documents"], icon: "bi bi-menu-button-wide-fill", url: "/reports-documents").RequirePermissions(HCPermissions.Reports.DocumentDefault))
+        .AddItem(new ApplicationMenuItem("Reports.Projects", l["Projects"], icon: "bi bi-menu-button-wide-fill", url: "/reports-projects").RequirePermissions(HCPermissions.Reports.ProjectDefault))
+        .AddItem(new ApplicationMenuItem("Reports.ProjectTasks", l["ProjectTasks"], icon: "bi bi-menu-button-wide-fill", url: "/reports-project-tasks").RequirePermissions(HCPermissions.Reports.ProjectTaskDefault))
         .AddItem(new ApplicationMenuItem("Reports.Workflows", l["Workflows"], icon: "bi bi-menu-button-wide-fill", url: "/reports-workflows").RequirePermissions(HCPermissions.Reports.WorkflowDefault)));
         //Administration
         var administration = context.Menu.GetAdministration();
@@ -106,6 +105,10 @@ public class HCMenuContributor : IMenuContributor
         // context.Menu.SetSubItemOrder(FileManagementMenuNames.GroupName, 5);
         context.Menu.TryRemoveMenuItem(FileManagementMenuNames.GroupName);
         context.Menu.TryRemoveMenuItem(SaasHostMenus.GroupName);
+        context.Menu.TryRemoveMenuItem(IdentityProMenus.ClaimTypes);
+        context.Menu.TryRemoveMenuItem(IdentityProMenus.OrganizationUnits);
+        context.Menu.TryRemoveMenuItem(IdentityProMenus.SecurityLogs);
+
         return Task.CompletedTask;
     }
 

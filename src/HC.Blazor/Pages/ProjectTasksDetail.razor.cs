@@ -61,7 +61,7 @@ public partial class ProjectTasksDetail : HCComponentBase
     private Guid _loadedProjectTaskId;
 
     // Edit state (similar to modal)
-    private string SelectedEditTab { get; set; } = "general";
+    private string SelectedEditTab { get; set; } = "assignments";
     private ProjectTaskUpdateDto EditingProjectTask { get; set; } = new();
     private string? EditGeneralValidationErrorKey { get; set; }
     private Dictionary<string, string?> EditFieldErrors { get; set; } = new();
