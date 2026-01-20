@@ -30,9 +30,138 @@
 
 @if (ProjectId == Guid.Empty)
 {
-    <Alert Color="Color.Warning">
-        @L["NoDataAvailable"]
-    </Alert>
+    @* CREATE FORM *@
+    <Card>
+        <CardBody>
+            @* Manual validation is used (see ValidateCreateProject). *@
+            @if (!string.IsNullOrWhiteSpace(CreateProjectValidationErrorKey))
+            {
+                <Alert Color="Color.Danger">
+                    <AlertMessage>@L["NotificationError"]!</AlertMessage>
+                    <AlertDescription>@L[CreateProjectValidationErrorKey]</AlertDescription>
+                </Alert>
+            }
+            <Form id="CreateProjectForm">
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Code"] *</FieldLabel>
+                            <TextEdit Text="@NewProject.Code"
+                                      TextChanged="@((string value) => { NewProject.Code = value; CreateFieldErrors.Remove("Code"); })"
+                                      MaxLength="ProjectConsts.CodeMaxLength"
+                                      Autofocus="true"
+                                      ReadOnly="true"
+                                      Style="@(HasCreateFieldError("Code") ? "border-color: #dc3545;" : "")" />
+                            @if (HasCreateFieldError("Code"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateFieldError("Code")</div>
+                            }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Name"] *</FieldLabel>
+                            <TextEdit Text="@NewProject.Name"
+                                      TextChanged="@((string value) => { NewProject.Name = value; CreateFieldErrors.Remove("Name"); })"
+                                      MaxLength="ProjectConsts.NameMaxLength"
+                                      Style="@(HasCreateFieldError("Name") ? "border-color: #dc3545;" : "")" />
+                            @if (HasCreateFieldError("Name"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateFieldError("Name")</div>
+                            }
+                        </Field>
+                    </Column>
+                </Row>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Description"]</FieldLabel>
+                            <MemoEdit @bind-Text="@NewProject.Description" />
+                        </Field>
+                    </Column>
+                </Row>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["StartDate"]</FieldLabel>
+                            <Addons>
+                                <Addon AddonType="AddonType.Body">
+                                    <DatePicker TValue="DateTime"
+                                                InputMode="DateInputMode.DateTime"
+                                                Date="@NewProject.StartDate"
+                                                DateChanged="@(v => NewProject.StartDate = v)"
+                                                Placeholder="@string.Empty"
+                                                DisplayFormat="dd/MM/yyyy HH:mm"
+                                                InputFormat="dd/MM/yyyy HH:mm"
+                                                @ref="@NewProjectStartDateDatePicker" />
+                                </Addon>
+                                <Addon AddonType="AddonType.End">
+                                    <Button Color="Color.Light" Clicked="@(() => NewProjectStartDateDatePicker?.ToggleAsync())">
+                                        <Icon Name="IconName.CalendarDay" />
+                                    </Button>
+                                </Addon>
+                            </Addons>
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["EndDate"]</FieldLabel>
+                            <Addons>
+                                <Addon AddonType="AddonType.Body">
+                                    <DatePicker TValue="DateTime"
+                                                InputMode="DateInputMode.DateTime"
+                                                Date="@NewProject.EndDate"
+                                                DateChanged="@(v => NewProject.EndDate = v)"
+                                                Placeholder="@string.Empty"
+                                                DisplayFormat="dd/MM/yyyy HH:mm"
+                                                InputFormat="dd/MM/yyyy HH:mm"
+                                                @ref="@NewProjectEndDateDatePicker" />
+                                </Addon>
+                                <Addon AddonType="AddonType.End">
+                                    <Button Color="Color.Light" Clicked="@(() => NewProjectEndDateDatePicker?.ToggleAsync())">
+                                        <Icon Name="IconName.CalendarDay" />
+                                    </Button>
+                                </Addon>
+                            </Addons>
+                        </Field>
+                    </Column>
+                </Row>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Status"] *</FieldLabel>
+                            <Select TValue="ProjectStatus"
+                                    SelectedValue="@NewProject.Status"
+                                    SelectedValueChanged="@((ProjectStatus value) => { NewProject.Status = value; })">
+                                <ChildContent>
+                                    @foreach (var status in Enum.GetValues<ProjectStatus>())
+                                    {
+                                        <SelectItem TValue="ProjectStatus" Value="@status">
+                                            @L[$"Enum:ProjectStatus.{status}"]
+                                        </SelectItem>
+                                    }
+                                </ChildContent>
+                            </Select>
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Department"]</FieldLabel>
+                            <Select2 IdSelector="c => c.Id.ToString()"
+                                    TextSelector="c => c.DisplayName"
+                                    FilterFunction="GetDepartmentCollectionLookupAsync"
+                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                    Datasource="DepartmentsCollection"
+                                    Value="@SelectedDepartment"
+                                    OnValueChanged="OnDepartmentIdChanged"
+                                    Cache="__MemoryCache"
+                                    Multiselect="false" />
+                        </Field>
+                    </Column>
+                </Row>
+            </Form>
+        </CardBody>
+    </Card>
 }
 else if (IsLoadingProject)
 {
@@ -54,64 +183,141 @@ else if (CurrentProject is null)
 }
 else
 {
-    @* Top: Project information *@
+    @* EDIT FORM *@
     <Card Class="mb-3">
         <CardBody>
-            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                <div>
-                    <h3 class="mb-1">@CurrentProject.Project.Name</h3>
-                    <div class="text-muted">
-                        <span class="me-2"><i class="fa fa-hashtag me-1"></i>@CurrentProject.Project.Code</span>
-                        @if (CurrentProject.OwnerDepartment is not null)
-                        {
-                            <span class="me-2"><i class="fa fa-building me-1"></i>@CurrentProject.OwnerDepartment.Name</span>
-                        }
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <Badge Color="Color.Primary">@L[$"Enum:ProjectStatus.{CurrentProject.Project.Status}"]</Badge>
-                    <Badge Color="Color.Light">
-                        <i class="fa fa-users me-1"></i>@CurrentProject.ProjectMemberCount
-                    </Badge>
-                    <Badge Color="Color.Light">
-                        <i class="fa fa-list-check me-1"></i>@CurrentProject.ProjectTaskCount
-                    </Badge>
-                </div>
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(CurrentProject.Project.Description))
+            @* Manual validation is used (see ValidateEditProject). *@
+            @if (!string.IsNullOrWhiteSpace(EditProjectValidationErrorKey))
             {
-                <div class="mt-3">
-                    <Field>
-                        <FieldLabel>@L["Description"]</FieldLabel>
-                        <div class="hc-project-desc">
-                            @CurrentProject.Project.Description
-                        </div>
-                    </Field>
-                </div>
+                <Alert Color="Color.Danger">
+                    <AlertMessage>@L["NotificationError"]!</AlertMessage>
+                    <AlertDescription>@L[EditProjectValidationErrorKey]</AlertDescription>
+                </Alert>
             }
-
-            <Row Class="g-3 mt-1">
-                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                    <Field>
-                        <FieldLabel>@L["StartDate"]</FieldLabel>
-                        <div class="hc-project-meta">
-                            <i class="fa fa-calendar-day me-1"></i>@CurrentProject.Project.StartDate.ToString("dd/MM/yyyy HH:mm")
-                        </div>
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                    <Field>
-                        <FieldLabel>@L["EndDate"]</FieldLabel>
-                        <div class="hc-project-meta">
-                            <i class="fa fa-calendar-check me-1"></i>@CurrentProject.Project.EndDate.ToString("dd/MM/yyyy HH:mm")
-                        </div>
-                    </Field>
-                </Column>
-            </Row>
+            <Form id="EditProjectForm">
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Code"] *</FieldLabel>
+                            <TextEdit Text="@EditingProject.Code"
+                                      TextChanged="@((string value) => { EditingProject.Code = value; EditFieldErrors.Remove("Code"); })"
+                                      ReadOnly="true"
+                                      MaxLength="ProjectConsts.CodeMaxLength"
+                                      Autofocus="true"
+                                      Style="@(HasEditFieldError("Code") ? "border-color: #dc3545;" : "")" />
+                            @if (HasEditFieldError("Code"))
+                            {
+                                <div class="invalid-feedback d-block">@GetEditFieldError("Code")</div>
+                            }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Name"] *</FieldLabel>
+                            <TextEdit Text="@EditingProject.Name"
+                                      TextChanged="@((string value) => { EditingProject.Name = value; EditFieldErrors.Remove("Name"); })"
+                                      MaxLength="ProjectConsts.NameMaxLength"
+                                      Style="@(HasEditFieldError("Name") ? "border-color: #dc3545;" : "")" />
+                            @if (HasEditFieldError("Name"))
+                            {
+                                <div class="invalid-feedback d-block">@GetEditFieldError("Name")</div>
+                            }
+                        </Field>
+                    </Column>
+                </Row>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Description"]</FieldLabel>
+                            <MemoEdit @bind-Text="@EditingProject.Description" />
+                        </Field>
+                    </Column>
+                </Row>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["StartDate"]</FieldLabel>
+                            <Addons>
+                                <Addon AddonType="AddonType.Body">
+                                    <DatePicker TValue="DateTime"
+                                                InputMode="DateInputMode.DateTime"
+                                                Date="@EditingProject.StartDate"
+                                                DateChanged="@(v => EditingProject.StartDate = v)"
+                                                Placeholder="@string.Empty"
+                                                DisplayFormat="dd/MM/yyyy HH:mm"
+                                                InputFormat="dd/MM/yyyy HH:mm"
+                                                @ref="@EditingProjectStartDateDatePicker" />
+                                </Addon>
+                                <Addon AddonType="AddonType.End">
+                                    <Button Color="Color.Light" Clicked="@(() => EditingProjectStartDateDatePicker?.ToggleAsync())">
+                                        <Icon Name="IconName.CalendarDay" />
+                                    </Button>
+                                </Addon>
+                            </Addons>
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["EndDate"]</FieldLabel>
+                            <Addons>
+                                <Addon AddonType="AddonType.Body">
+                                    <DatePicker TValue="DateTime"
+                                                InputMode="DateInputMode.DateTime"
+                                                Date="@EditingProject.EndDate"
+                                                DateChanged="@(v => EditingProject.EndDate = v)"
+                                                Placeholder="@string.Empty"
+                                                DisplayFormat="dd/MM/yyyy HH:mm"
+                                                InputFormat="dd/MM/yyyy HH:mm"
+                                                @ref="@EditingProjectEndDateDatePicker" />
+                                </Addon>
+                                <Addon AddonType="AddonType.End">
+                                    <Button Color="Color.Light" Clicked="@(() => EditingProjectEndDateDatePicker?.ToggleAsync())">
+                                        <Icon Name="IconName.CalendarDay" />
+                                    </Button>
+                                </Addon>
+                            </Addons>
+                        </Field>
+                    </Column>
+                </Row>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Status"] *</FieldLabel>
+                            <Select TValue="ProjectStatus"
+                                    SelectedValue="@EditingProject.Status"
+                                    SelectedValueChanged="@((ProjectStatus value) => { EditingProject.Status = value; })">
+                                <ChildContent>
+                                    @foreach (var status in Enum.GetValues<ProjectStatus>())
+                                    {
+                                        <SelectItem TValue="ProjectStatus" Value="@status">
+                                            @L[$"Enum:ProjectStatus.{status}"]
+                                        </SelectItem>
+                                    }
+                                </ChildContent>
+                            </Select>
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Department"]</FieldLabel>
+                            <Select2 IdSelector="c => c.Id.ToString()"
+                                    TextSelector="c => c.DisplayName"
+                                    FilterFunction="GetDepartmentCollectionLookupAsync"
+                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                    Datasource="DepartmentsCollection"
+                                    Value="@SelectedEditDepartment"
+                                    OnValueChanged="OnEditDepartmentIdChanged"
+                                    Cache="__MemoryCache"
+                                    Multiselect="false" />
+                        </Field>
+                    </Column>
+                </Row>
+            </Form>
         </CardBody>
     </Card>
 
+
+@* Start: Bottom: Tasks (left) + Members (right) *@
     <Row Class="g-3">
         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
             <Card>
@@ -160,7 +366,14 @@ else
                             </Row>
                         </EmptyTemplate>
                         <DataGridColumns>
-                            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Code" Caption="@L["Code"]" />
+                            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Code" Caption="@L["Code"]" >
+                                <DisplayTemplate>
+                                    <a target="_blank" href="@($"/project-task-detail/{context.ProjectTask.Id}")">   
+                                       <Icon Name="IconName.Eye" Class="me-1" />  
+                                        <span class="text-brand">#@context.ProjectTask.Code</span>
+                                    </a>
+                                </DisplayTemplate>
+                            </DataGridColumn>
                             <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Title" Caption="@L["Title"]">
                                 <DisplayTemplate>
                                     @if (!string.IsNullOrWhiteSpace(context.ProjectTask.ParentTaskId))
@@ -306,7 +519,15 @@ else
                             </Row>
                         </EmptyTemplate>
                         <DataGridColumns>
-                            <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="User.UserName" Caption="@L["UserName"]" />
+                            <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto"
+                                             Field="User.UserName"
+                                             Caption="@L["Name"]">
+                                <DisplayTemplate>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>@context.User.Surname @context.User.Name</span>
+                                    </div>
+                                </DisplayTemplate>
+                            </DataGridColumn>
                             <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.MemberRole" Caption="@L["MemberRole"]">
                                 <DisplayTemplate>
                                     <Badge Color="Color.Primary">@L[$"Enum:ProjectMemberRole.{context.ProjectMember.MemberRole}"]</Badge>
@@ -352,6 +573,8 @@ else
             </Card>
         </Column>
     </Row>
+
+@* End: Bottom: Tasks (left) + Members (right) *@
 }
 
 <style>

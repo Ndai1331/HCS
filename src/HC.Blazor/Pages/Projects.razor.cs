@@ -192,7 +192,7 @@ public partial class Projects : HCComponentBase
             await DownloadAsExcelAsync();
         }, IconName.Download);
         Toolbar.AddButton(L["NewProject"], async () => {
-            await OpenCreateProjectModalAsync();
+            NavigationManager.NavigateTo("/project-detail");
         }, IconName.Add, requiredPolicyName: HCPermissions.Projects.Create);
         return ValueTask.CompletedTask;
     }

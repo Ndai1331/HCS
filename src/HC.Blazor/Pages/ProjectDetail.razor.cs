@@ -29,12 +29,43 @@ public partial class ProjectDetail : HCComponentBase
 
     protected PageToolbar Toolbar { get; } = new PageToolbar();
 
-    protected string PageTitle => CurrentProject?.Project is null
-        ? L["Projects"]
-        : $"{CurrentProject.Project.Code} - {CurrentProject.Project.Name}";
+    protected string PageTitle
+    {
+        get
+        {
+            if (ProjectId == Guid.Empty)
+                return L["NewProject"];
+            return CurrentProject?.Project is null
+                ? L["Projects"]
+                : $"{CurrentProject.Project.Code} - {CurrentProject.Project.Name}";
+        }
+    }
 
     protected bool IsLoadingProject { get; set; }
     protected ProjectWithNavigationPropertiesDto? CurrentProject { get; set; }
+
+    // Create/Edit Project properties
+    private ProjectCreateDto NewProject { get; set; }
+    private ProjectUpdateDto EditingProject { get; set; }
+
+    // Field-level validation errors
+    private Dictionary<string, string?> CreateFieldErrors { get; set; } = new();
+    private Dictionary<string, string?> EditFieldErrors { get; set; } = new();
+
+    // Validation error keys
+    private string? CreateProjectValidationErrorKey { get; set; }
+    private string? EditProjectValidationErrorKey { get; set; }
+
+    // Department collections
+    private IReadOnlyList<LookupDto<Guid>> DepartmentsCollection { get; set; } = new List<LookupDto<Guid>>();
+    private List<LookupDto<Guid>> SelectedDepartment { get; set; } = new();
+    private List<LookupDto<Guid>> SelectedEditDepartment { get; set; } = new();
+
+    // Date pickers
+    private DatePicker<DateTime>? NewProjectStartDateDatePicker { get; set; }
+    private DatePicker<DateTime>? NewProjectEndDateDatePicker { get; set; }
+    private DatePicker<DateTime>? EditingProjectStartDateDatePicker { get; set; }
+    private DatePicker<DateTime>? EditingProjectEndDateDatePicker { get; set; }
 
     private int PageSize { get; } = LimitedResultRequestDto.DefaultMaxResultCount;
 
@@ -69,6 +100,12 @@ public partial class ProjectDetail : HCComponentBase
 
     private Guid _loadedProjectId;
 
+    public ProjectDetail()
+    {
+        NewProject = new ProjectCreateDto();
+        EditingProject = new ProjectUpdateDto();
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await SetPermissionsAsync();
@@ -92,6 +129,21 @@ public partial class ProjectDetail : HCComponentBase
 
         if (ProjectId == Guid.Empty)
         {
+            // Initialize create mode
+            BreadcrumbItems.Clear();
+            BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Projects"], "/projects"));
+            BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["NewProject"]));
+
+            // Initialize new project
+            NewProject = new ProjectCreateDto
+            {
+                StartDate = DateTime.Now,
+                EndDate = DateTime.Now,
+                Code = await GenerateNextProjectCodeAsync(),
+                Status = ProjectStatus.PLANNING
+            };
+            SelectedDepartment = new List<LookupDto<Guid>>();
+            await GetDepartmentCollectionLookupAsync();
             return;
         }
 
@@ -131,6 +183,17 @@ public partial class ProjectDetail : HCComponentBase
             NavigationManager.NavigateTo("/projects");
             return Task.CompletedTask;
         }, IconName.ArrowLeft);
+
+        // Add Save button for create/edit modes
+        if (ProjectId == Guid.Empty)
+        {
+            Toolbar.AddButton(L["Save"], CreateProjectAsync, IconName.Save, Color.Primary);
+        }
+        else if (CurrentProject != null)
+        {
+            Toolbar.AddButton(L["Save"], UpdateProjectAsync, IconName.Save, Color.Primary);
+        }
+
         return ValueTask.CompletedTask;
     }
 
@@ -140,6 +203,35 @@ public partial class ProjectDetail : HCComponentBase
         try
         {
             CurrentProject = await ProjectsAppService.GetWithNavigationPropertiesAsync(ProjectId);
+
+            // Initialize edit form
+            if (CurrentProject != null)
+            {
+                var mappedProject = ObjectMapper.Map<ProjectDto, ProjectUpdateDto>(CurrentProject.Project);
+                EditingProject = new ProjectUpdateDto
+                {
+                    Code = mappedProject?.Code ?? CurrentProject.Project.Code ?? string.Empty,
+                    Name = mappedProject?.Name ?? CurrentProject.Project.Name ?? string.Empty,
+                    Description = mappedProject?.Description ?? CurrentProject.Project.Description,
+                    StartDate = mappedProject?.StartDate ?? CurrentProject.Project.StartDate,
+                    EndDate = mappedProject?.EndDate ?? CurrentProject.Project.EndDate,
+                    Status = mappedProject?.Status ?? CurrentProject.Project.Status,
+                    OwnerDepartmentId = mappedProject?.OwnerDepartmentId ?? CurrentProject.Project.OwnerDepartmentId,
+                    ConcurrencyStamp = mappedProject?.ConcurrencyStamp ?? CurrentProject.Project.ConcurrencyStamp ?? string.Empty
+                };
+
+                await GetDepartmentCollectionLookupAsync();
+                // Set selected department for Select2
+                if (EditingProject.OwnerDepartmentId.HasValue && DepartmentsCollection != null)
+                {
+                    var selectedDept = DepartmentsCollection.FirstOrDefault(d => d.Id == EditingProject.OwnerDepartmentId.Value);
+                    SelectedEditDepartment = selectedDept != null ? new List<LookupDto<Guid>> { selectedDept } : new List<LookupDto<Guid>>();
+                }
+                else
+                {
+                    SelectedEditDepartment = new List<LookupDto<Guid>>();
+                }
+            }
         }
         finally
         {
@@ -415,6 +507,220 @@ public partial class ProjectDetail : HCComponentBase
         await LoadMembersAsync(page: MembersCurrentPage);
         await LoadProjectAsync();
         await InvokeAsync(StateHasChanged);
+    }
+
+    // -------------------------------
+    // Create/Edit Project Methods
+    // -------------------------------
+
+    // Helper methods to get field errors
+    private string? GetCreateFieldError(string fieldName) => CreateFieldErrors.GetValueOrDefault(fieldName);
+    private string? GetEditFieldError(string fieldName) => EditFieldErrors.GetValueOrDefault(fieldName);
+    private bool HasCreateFieldError(string fieldName) => CreateFieldErrors.ContainsKey(fieldName) && !string.IsNullOrWhiteSpace(CreateFieldErrors[fieldName]);
+    private bool HasEditFieldError(string fieldName) => EditFieldErrors.ContainsKey(fieldName) && !string.IsNullOrWhiteSpace(EditFieldErrors[fieldName]);
+
+    // Manual validation methods
+    private bool ValidateCreateProject()
+    {
+        // Reset error state
+        CreateProjectValidationErrorKey = null;
+        CreateFieldErrors.Clear();
+
+        bool isValid = true;
+
+        // Required: Code
+        if (string.IsNullOrWhiteSpace(NewProject?.Code))
+        {
+            CreateFieldErrors["Code"] = L["CodeRequired"];
+            CreateProjectValidationErrorKey = "CodeRequired";
+            isValid = false;
+        }
+
+        // Required: Name
+        if (string.IsNullOrWhiteSpace(NewProject?.Name))
+        {
+            CreateFieldErrors["Name"] = L["NameRequired"];
+            if (isValid)
+            {
+                CreateProjectValidationErrorKey = "NameRequired";
+            }
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    private bool ValidateEditProject()
+    {
+        // Reset error state
+        EditProjectValidationErrorKey = null;
+        EditFieldErrors.Clear();
+
+        bool isValid = true;
+
+        // Required: Code
+        if (string.IsNullOrWhiteSpace(EditingProject?.Code))
+        {
+            EditFieldErrors["Code"] = L["CodeRequired"];
+            EditProjectValidationErrorKey = "CodeRequired";
+            isValid = false;
+        }
+
+        // Required: Name
+        if (string.IsNullOrWhiteSpace(EditingProject?.Name))
+        {
+            EditFieldErrors["Name"] = L["NameRequired"];
+            if (isValid)
+            {
+                EditProjectValidationErrorKey = "NameRequired";
+            }
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    private async Task CreateProjectAsync()
+    {
+        try
+        {
+            if (!ValidateCreateProject())
+            {
+                await UiMessageService.Warn(L[CreateProjectValidationErrorKey ?? "ValidationError"]);
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            var createdProject = await ProjectsAppService.CreateAsync(NewProject);
+            await UiMessageService.Success(L["SuccessfullyCreated"]);
+
+            // Navigate to the created project detail
+            NavigationManager.NavigateTo($"/project-detail/{createdProject.Id}");
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task UpdateProjectAsync()
+    {
+        try
+        {
+            if (!ValidateEditProject())
+            {
+                await UiMessageService.Warn(L[EditProjectValidationErrorKey ?? "ValidationError"]);
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            await ProjectsAppService.UpdateAsync(ProjectId, EditingProject);
+            await UiMessageService.Success(L["SuccessfullyUpdated"]);
+
+            // Reload project data
+            await LoadProjectAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    // Generate next available Project code (Pxxxxxxx format)
+    private async Task<string> GenerateNextProjectCodeAsync()
+    {
+        try
+        {
+            int maxNumber = 0;
+            const int pageSize = 1000;
+            int skipCount = 0;
+            bool hasMore = true;
+            var foundCodes = new List<string>();
+
+            // Query all projects in batches to find the highest "P" code
+            while (hasMore)
+            {
+                var input = new GetProjectsInput
+                {
+                    MaxResultCount = pageSize,
+                    SkipCount = skipCount,
+                    Sorting = "Project.Code DESC"
+                };
+
+                var result = await ProjectsAppService.GetListAsync(input);
+
+                if (result.Items == null || result.Items.Count == 0)
+                {
+                    hasMore = false;
+                    break;
+                }
+
+                // Iterate through items to find the highest "P" code
+                foreach (var project in result.Items)
+                {
+                    if (!string.IsNullOrWhiteSpace(project.Project.Code))
+                    {
+                        var code = project.Project.Code.Trim();
+
+                        // Check if code starts with "P" (case-insensitive) and has numeric suffix
+                        if (code.StartsWith("P", StringComparison.OrdinalIgnoreCase) && code.Length > 1)
+                        {
+                            // Extract number part after "P"
+                            var numberPart = code.Substring(1);
+
+                            if (int.TryParse(numberPart, out int number))
+                            {
+                                foundCodes.Add(code);
+
+                                if (number > maxNumber)
+                                {
+                                    maxNumber = number;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Check if there are more items to process
+                if (result.Items.Count < pageSize || skipCount + pageSize >= result.TotalCount)
+                {
+                    hasMore = false;
+                }
+                else
+                {
+                    skipCount += pageSize;
+                }
+            }
+
+            var nextCode = $"P{(maxNumber + 1):D7}";
+            return nextCode;
+        }
+        catch (Exception)
+        {
+            // Fallback to P0000001 if error occurs
+            return "P0000001";
+        }
+    }
+
+    private async Task GetDepartmentCollectionLookupAsync(string? newValue = null)
+    {
+        DepartmentsCollection = (await ProjectsAppService.GetDepartmentLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
+    }
+
+    private async Task<List<LookupDto<Guid>>> GetDepartmentCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    {
+        DepartmentsCollection = (await ProjectsAppService.GetDepartmentLookupAsync(new LookupRequestDto { Filter = filter })).Items;
+        return DepartmentsCollection.ToList();
+    }
+
+    protected virtual void OnDepartmentIdChanged()
+    {
+        NewProject.OwnerDepartmentId = SelectedDepartment?.FirstOrDefault()?.Id;
+    }
+
+    protected virtual void OnEditDepartmentIdChanged()
+    {
+        EditingProject.OwnerDepartmentId = SelectedEditDepartment?.FirstOrDefault()?.Id;
     }
 }
 
