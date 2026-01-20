@@ -369,8 +369,7 @@ else
                             <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Code" Caption="@L["Code"]" >
                                 <DisplayTemplate>
                                     <a target="_blank" href="@($"/project-task-detail/{context.ProjectTask.Id}")">   
-                                       <Icon Name="IconName.Eye" Class="me-1" />  
-                                        <span class="text-brand">#@context.ProjectTask.Code</span>
+                                        <span>#@context.ProjectTask.Code</span>
                                     </a>
                                 </DisplayTemplate>
                             </DataGridColumn>
@@ -406,14 +405,14 @@ else
                             <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Status" Caption="@L["Status"]">
                                 <DisplayTemplate>
                                     <Badge Color="@EnumStatusColorHelper.GetProjectTaskStatusBadgeColor(ParseStatus(context.ProjectTask.Status))">
-                                        @GetStatusText(ParseStatus(context.ProjectTask.Status))
+                                        <span class="text-white">@GetStatusText(ParseStatus(context.ProjectTask.Status))</span>
                                     </Badge>
                                 </DisplayTemplate>
                             </DataGridColumn>
                             <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Priority" Caption="@L["Priority"]">
                                 <DisplayTemplate>
                                     <Badge Color="@EnumStatusColorHelper.GetProjectTaskPriorityBadgeColor(ParsePriority(context.ProjectTask.Priority))">
-                                        @GetPriorityText(ParsePriority(context.ProjectTask.Priority))
+                                        <span class="text-white">@GetPriorityText(ParsePriority(context.ProjectTask.Priority))</span>
                                     </Badge>
                                 </DisplayTemplate>
                             </DataGridColumn>
