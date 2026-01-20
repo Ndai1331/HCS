@@ -1,365 +1,89 @@
 @page "/survey-results"
 @attribute [Authorize(HCPermissions.SurveyResults.Default)]
 @using HC.SurveyResults
-@using HC.SurveyResults
+@using HC.SurveyLocations
+@using HC.SurveyCriterias
 @using HC.Localization
 @using HC.Shared
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.Localization
 @using Microsoft.AspNetCore.Components.Web
 @using Blazorise
-@using Blazorise.Components
-@using Blazorise.DataGrid
+@using Blazorise.Charts
 @using Volo.Abp.BlazoriseUI
 @using Volo.Abp.BlazoriseUI.Components
-@using Volo.Abp.ObjectMapping
-@using Volo.Abp.AspNetCore.Components.Messages
-@using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
 @using HC.Permissions
-@using Volo.Abp.AspNetCore.Components.Web
 @using Volo.Abp.AspNetCore.Components
 @using Microsoft.AspNetCore.Components
-@using Volo.Abp.Http.Client
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Volo.Abp.AspNetCore.Components.Web
 @inherits HCComponentBase
 @inject ISurveyResultsAppService SurveyResultsAppService
+@inject ISurveyLocationsAppService SurveyLocationsAppService
 @inject IUiMessageService UiMessageService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
-@inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
-@inject NavigationManager NavigationManager
+
 @* ************************* PAGE HEADER ************************* *@
 <PageHeader Title="@L["SurveyResults"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
 </PageHeader>
-<style>
-    tr.table-row-selectable:hover {
-        cursor: default;
-    }
-</style>
-@* ************************* SEARCH ************************* *@
+
+@* ************************* FILTER ************************* *@
 <Card>
     <CardBody>
-@*//<suite-custom-code-block-1>*@
-@*//</suite-custom-code-block-1>*@
         <Row>
-            <div class="col col-md-8 col-lg-10">
-                <div class="mb-3">
-                    <Form id="SurveyResultSearchForm">
-                        <Addons>
-                            <Addon AddonType="AddonType.Body">
-                                <TextEdit @bind-Text="@Filter.FilterText"
-                                        Autofocus="true"
-                                        Placeholder="@L["Search"]">
-                                </TextEdit>
-                            </Addon>
-                            <Addon AddonType="AddonType.End">
-                                <SubmitButton Form="SurveyResultSearchForm" Clicked="GetSurveyResultsAsync">
-                                    <Icon Name="IconName.Search" Class="me-1"></Icon>@L["Search"]
-                                </SubmitButton>
-                            </Addon>
-                        </Addons>
-                    </Form>
-                </div>
-            </div>
-                   <div class="col-md-4 col-lg-2">
-            <div class="mb-3">
-               <Button Color="Color.Primary" Outline Style="width:100%" id="AdvancedFilterSectionToggler"
-                         Clicked="@(() => ShowAdvancedFilters = !ShowAdvancedFilters)">@L["Filters"]
-                         <i aria-hidden="true" class="fa ms-1 @(!ShowAdvancedFilters ? "fa-angle-down" : "fa-angle-up")"></i>
-               </Button>
-            </div>
-       </div>
-        <div style="display: @(!ShowAdvancedFilters ? "none" : "block")"  class="mt-3">
-            <Row>
-                <Column ColumnSize="ColumnSize.Is3">
-                    <Field>
-                        <FieldLabel>@L["MinRating"]</FieldLabel>
-                        <NumericEdit TValue="int?" 
-             Value="@Filter.RatingMin"
-             ValueChanged="@OnRatingMinChangedAsync" />                       
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is3">
-                    <Field>
-                        <FieldLabel>@L["MaxRating"]</FieldLabel>
-                        <NumericEdit TValue="int?" 
-             Value="@Filter.RatingMax"
-             ValueChanged="@OnRatingMaxChangedAsync" />                       
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is3">
-                    <Field>
-                        <FieldLabel>@L["SurveyCriteria"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.SurveyCriteriaId"
-		SelectedValueChanged="@OnSurveyCriteriaIdChangedAsync">
-<SelectItem></SelectItem>
-@foreach(var item in SurveyCriteriasCollection)
-{
-	<SelectItem TValue="Guid" Value="@item.Id">
-		@item.DisplayName
-	</SelectItem>
-}
-</Select>                       
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is3">
-                    <Field>
-                        <FieldLabel>@L["SurveySession"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.SurveySessionId"
-		SelectedValueChanged="@OnSurveySessionIdChangedAsync">
-<SelectItem></SelectItem>
-@foreach(var item in SurveySessionsCollection)
-{
-	<SelectItem TValue="Guid" Value="@item.Id">
-		@item.DisplayName
-	</SelectItem>
-}
-</Select>                       
-                    </Field>
-                </Column>
-            </Row>
-@*//<suite-custom-code-block-2>*@
-@*//</suite-custom-code-block-2>*@
-        </div>
+            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                <Field>
+                    <FieldLabel>@L["SurveyLocation"]</FieldLabel>
+                    <Select TValue="Guid?" SelectedValue="@SelectedSurveyLocationId" SelectedValueChanged="@OnSurveyLocationChanged">
+                        <SelectItem Value="@((Guid?)null)">@L["All"]</SelectItem>
+                        @foreach (var location in SurveyLocations)
+                        {
+                            <SelectItem Value="@location.Id">@location.Name</SelectItem>
+                        }
+                    </Select>
+                </Field>
+            </Column>
         </Row>
-@*//<suite-custom-code-block-3>*@
-@*//</suite-custom-code-block-3>*@
     </CardBody>
 </Card>
-@* ************************* DATA GRID ************************* *@
-<Card>
-    <CardBody>        
-        <Div  Visibility="@(SelectedSurveyResults.Any() ? Visibility.Visible : Visibility.Invisible)"
-              class="d-flex justify-content-between align-items-center mb-2">
-              <p class="lead mb-0">
-                @if (AllSurveyResultsSelected)
-                {
-                    @L["AllItemsAreSelected", TotalCount]
-                }
-                else
-                {
-                    @if (SelectedSurveyResults.Count > 1)
-                    {
-                        @L["NumberOfItemsOnThisPageAreSelected", SelectedSurveyResults.Count]
-                    }
-                    else
-                    {
-                        @L["OneItemOnThisPageIsSelected"]
-                    }
-                }
-              </p>
-            <div>
-                @if ((SelectedSurveyResults.Count == PageSize || SelectedSurveyResults.Count == SurveyResultList.Count) && TotalCount > SelectedSurveyResults.Count)
-                {
-                    if (!AllSurveyResultsSelected)
-                    {
-                        <Button Clicked="SelectAllItems" Class="mx-1 btn-outline-secondary">@L["SelectAllItems", TotalCount]</Button>
-                    }
-                    else
-                    {
-                        <Button Clicked="ClearSelection" Class="mx-1 btn-outline-secondary">@L["ClearSelection"]</Button>
-                    }
-                }
-                <Button Color="Color.Danger" Class="mx-1" Size="Size.Medium" Clicked="DeleteSelectedSurveyResultsAsync">
-                    <Icon Name="@IconName.Delete" /> @L["Delete"]
-                </Button>
-            </div>
-        </Div>
-        <hr Visibility="@(SelectedSurveyResults.Any() ? Visibility.Visible : Visibility.Invisible)"
-            class="my-1 mx-0" />
-        <DataGrid TItem="SurveyResultWithNavigationPropertiesDto"
-                  @ref="DataGridRef"
-                  Data="SurveyResultList"
-                  SelectionMode="DataGridSelectionMode.Multiple"
-                  SelectedRows="SelectedSurveyResults"
-                  RowSelectable="RowSelectableHandler"
-                  SelectedRowsChanged="SelectedSurveyResultRowsChanged"
-                  ReadData="OnDataGridReadAsync"
-                  TotalItems="TotalCount"
-                  ShowPager="true"
-                  Responsive="true"
-                  PageSize="PageSize"
-                  Class="datagrid-detail">
-            <LoadingTemplate>
-                <Row Class="w-100 align-items-center" Style="height: 150px;">
-                    <Column>
-                       <RadarSpinner />
-                    </Column>
-                </Row>
-            </LoadingTemplate>
-            <EmptyTemplate>
-                <Row Class="w-100 align-items-center" Style="height: 150px;">
-                    <Column>
-                        <Heading Size="HeadingSize.Is4" TextAlignment="TextAlignment.Center">@L["NoDataAvailable"]</Heading>
-                    </Column>
-                </Row>
-            </EmptyTemplate>   
-            <DataGridColumns>
-                @if (CanDeleteSurveyResult && SurveyResultList.Any())
-                {
-                    <DataGridMultiSelectColumn TItem="SurveyResultWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
-                }
-              <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto"
-                      Field="SurveyResult.Rating"
-                      Caption="@L["Rating"]">
-              </DataGridColumn>
-              <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto"
-                      Field="SurveyCriteria.Name"
-                      Caption="@L["SurveyCriteria"]">
-              </DataGridColumn>
-              <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto"
-                      Field="SurveySession.SessionDisplay"
-                      Caption="@L["SurveySession"]">
-              </DataGridColumn>
-                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="@L["Actions"]">
-                    <DisplayTemplate>
-                        <div class="hc-action-icons">
-                            @if (CanEditSurveyResult)
-                            {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditSurveyResultModalAsync(context))"
-                                   style="cursor: pointer;"></i>
-                            }
-                            @if (CanDeleteSurveyResult)
-                            {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteSurveyResultWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
-                            }
-                        </div>
-@*//<suite-custom-code-block-4>*@
-@*//</suite-custom-code-block-4>*@
-                    </DisplayTemplate>
-                </DataGridColumn>
-            </DataGridColumns>
-        </DataGrid>
-    </CardBody>
-</Card>
-@* ************************* CREATE MODAL ************************* *@
-<Modal @ref="CreateSurveyResultModal" Closing="@CreateSurveyResultModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
-@*//<suite-custom-code-block-5>*@
-@*//</suite-custom-code-block-5>*@
-        <Form id="CreateSurveyResultForm">
-            <ModalHeader>
-                <ModalTitle>@L["NewSurveyResult"]</ModalTitle>
-                <CloseButton Clicked="CloseCreateSurveyResultModalAsync" />
-            </ModalHeader>
-            <ModalBody>
-                <Validations @ref="@NewSurveyResultValidations"
-                            Mode="ValidationMode.Auto"
-                            Model="@NewSurveyResult"
-                            ValidateOnLoad="false">
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["Rating"]</FieldLabel>
-                            <NumericPicker TValue="int" @bind-Value="@NewSurveyResult.Rating"  Decimals="0"  Autofocus="true">
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                             </NumericPicker>
-                        </Field>
-                     </Validation>
-                    <Field>
-                        <FieldLabel>@L["SurveyCriteria"]</FieldLabel>
-                        <Select TValue="Guid" @bind-SelectedValue="@NewSurveyResult.SurveyCriteriaId">
-                            @foreach (var surveyCriteria in SurveyCriteriasCollection)
-                            {
-                                <SelectItem TValue="Guid" Value="@(surveyCriteria.Id)">
-                                    @(surveyCriteria.DisplayName)
-                                </SelectItem>
-                            }
-                        </Select>
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["SurveySession"]</FieldLabel>
-                        <Select TValue="Guid" @bind-SelectedValue="@NewSurveyResult.SurveySessionId">
-                            @foreach (var surveySession in SurveySessionsCollection)
-                            {
-                                <SelectItem TValue="Guid" Value="@(surveySession.Id)">
-                                    @(surveySession.DisplayName)
-                                </SelectItem>
-                            }
-                        </Select>
-                    </Field>
-                </Validations>
-            </ModalBody>
-            <ModalFooter>
-                <Button Color="Color.Secondary"
-                        Clicked="CloseCreateSurveyResultModalAsync">
-                    @L["Cancel"]
-                </Button>
-                <SubmitButton Form="CreateSurveyResultForm" Clicked="CreateSurveyResultAsync"/>
-@*//<suite-custom-code-block-6>*@
-@*//</suite-custom-code-block-6>*@
-            </ModalFooter>
-        </Form>
-@*//<suite-custom-code-block-7>*@
-@*//</suite-custom-code-block-7>*@
-    </ModalContent>
-</Modal>
-@* ************************* EDIT MODAL ************************* *@
-<Modal @ref="EditSurveyResultModal" Closing="@EditSurveyResultModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
-@*//<suite-custom-code-block-8>*@
-@*//</suite-custom-code-block-8>*@
-        <Form id="EditSurveyResultForm">
-            <ModalHeader>
-                <ModalTitle>@L["Update"]</ModalTitle>
-                <CloseButton Clicked="CloseEditSurveyResultModalAsync" />
-            </ModalHeader>
-            <ModalBody>
-                <Validations @ref="@EditingSurveyResultValidations"
-                            Mode="ValidationMode.Auto"
-                            Model="@EditingSurveyResult"
-                            ValidateOnLoad="false">
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["Rating"]</FieldLabel>
-                            <NumericPicker TValue="int" @bind-Value="@EditingSurveyResult.Rating"  Decimals="0"  Autofocus="true">
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                             </NumericPicker>
-                        </Field>
-                     </Validation>
-                    <Field>
-                        <FieldLabel>@L["SurveyCriteria"]</FieldLabel>
-                        <Select TValue="Guid" @bind-SelectedValue="@EditingSurveyResult.SurveyCriteriaId">
-                            @foreach (var surveyCriteria in SurveyCriteriasCollection)
-                            {
-                                <SelectItem TValue="Guid" Value="@(surveyCriteria.Id)">
-                                    @(surveyCriteria.DisplayName)
-                                </SelectItem>
-                            }
-                        </Select>
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["SurveySession"]</FieldLabel>
-                        <Select TValue="Guid" @bind-SelectedValue="@EditingSurveyResult.SurveySessionId">
-                            @foreach (var surveySession in SurveySessionsCollection)
-                            {
-                                <SelectItem TValue="Guid" Value="@(surveySession.Id)">
-                                    @(surveySession.DisplayName)
-                                </SelectItem>
-                            }
-                        </Select>
-                    </Field>
-                </Validations>
-            </ModalBody>
-            <ModalFooter>
-                <Button Color="Color.Secondary"
-                        Clicked="CloseEditSurveyResultModalAsync">
-                    @L["Cancel"]
-                </Button>
-                <SubmitButton Form="EditSurveyResultForm" Clicked="UpdateSurveyResultAsync" />
-@*//<suite-custom-code-block-9>*@
-@*//</suite-custom-code-block-9>*@
-            </ModalFooter>
-        </Form>
-@*//<suite-custom-code-block-10>*@
-@*//</suite-custom-code-block-10>*@
-    </ModalContent>
-</Modal>
+
+@if (IsLoading)
+{
+    <Row Class="justify-content-center mt-4">
+        <Column>
+            <RadarSpinner />
+        </Column>
+    </Row>
+}
+else
+{
+    @* ************************* CHARTS ************************* *@
+    <Row Class="mt-4">
+        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+            <Card>
+                <CardHeader>
+                    <CardTitle>
+                        <Icon Name="IconName.ChartPie" Class="me-2" />
+                        @L["RatingDistribution"]
+                    </CardTitle>
+                </CardHeader>
+                <CardBody>
+                    <PieChart @ref="pieChart" TItem="int" />
+                </CardBody>
+            </Card>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+            <Card>
+                <CardHeader>
+                    <CardTitle>
+                        <Icon Name="IconName.ChartBar" Class="me-2" />
+                        @L["CriteriaAverageRating"]
+                    </CardTitle>
+                </CardHeader>
+                <CardBody>
+                    <BarChart @ref="barChart" TItem="double" />
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+}

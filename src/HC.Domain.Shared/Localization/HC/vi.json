@@ -893,6 +893,12 @@
     "SurveyCollections:ThankYouMessage": "Cảm ơn bạn đã cung cấp ý kiến phản hồi",
     "SurveyCollections:YourFeedbackIsImportant": "Ý kiến phản hồi của bạn rất quan trọng đối với chúng tôi",
     "SurveyCollections:SurveyLocationNotFound": "Không tìm thấy khảo sát",
-    "SurveyCollections:Title": "Khảo sát tại"
+    "SurveyCollections:Title": "Khảo sát tại",
+    "RatingDistribution": "Phân bố đánh giá",
+    "CriteriaAverageRating": "Điểm trung bình theo tiêu chí",
+    "RatingCount": "Số lượng đánh giá",
+    "AverageRating": "Điểm trung bình",
+    "Unknown": "Chưa đánh giá",
+    "All": "Tất cả"
   }
 }

@@ -25,4 +25,11 @@ public class SurveyResultController : SurveyResultControllerBase, ISurveyResults
     {
         return _surveyResultsAppService.CreatePublicSurveyResultAsync(input);
     }
+
+    [HttpGet]
+    [Route("public/statistics")]
+    public virtual Task<SurveyResultStatisticsDto> GetStatisticsByLocationAsync(Guid? surveyLocationId)
+    {
+        return _surveyResultsAppService.GetStatisticsByLocationAsync(surveyLocationId);
+    }
 }

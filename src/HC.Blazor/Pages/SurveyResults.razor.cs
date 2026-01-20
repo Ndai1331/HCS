@@ -2,244 +2,66 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Globalization;
-using System.IO;
-using System.Web;
 using Blazorise;
-using Blazorise.DataGrid;
-using Volo.Abp.BlazoriseUI.Components;
+using Blazorise.Charts;
 using Microsoft.AspNetCore.Authorization;
-using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.SurveyResults;
+using HC.SurveyLocations;
 using HC.Permissions;
 using HC.Shared;
-using Microsoft.AspNetCore.Components.Forms;
-using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using Volo.Abp;
-using Volo.Abp.Content;
+using Microsoft.AspNetCore.Components;
 
 namespace HC.Blazor.Pages;
 
 public partial class SurveyResults
 {
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems = new List<Volo.Abp.BlazoriseUI.BreadcrumbItem>();
-
     protected PageToolbar Toolbar { get; } = new PageToolbar();
-    protected bool ShowAdvancedFilters { get; set; }
 
-    public DataGrid<SurveyResultWithNavigationPropertiesDto> DataGridRef { get; set; }
+    protected bool IsLoading { get; set; } = true;
+    protected List<SurveyLocationDto> SurveyLocations { get; set; } = new();
+    protected Guid? SelectedSurveyLocationId { get; set; }
 
-    private IReadOnlyList<SurveyResultWithNavigationPropertiesDto> SurveyResultList { get; set; }
+    protected PieChart<int> pieChart { get; set; } = default!;
+    protected BarChart<double> barChart { get; set; } = default!;
 
-    private int PageSize { get; } = LimitedResultRequestDto.DefaultMaxResultCount;
-    private int CurrentPage { get; set; } = 1;
-    private string CurrentSorting { get; set; } = string.Empty;
-    private int TotalCount { get; set; }
-
-    private bool CanCreateSurveyResult { get; set; }
-
-    private bool CanEditSurveyResult { get; set; }
-
-    private bool CanDeleteSurveyResult { get; set; }
-
-    private SurveyResultCreateDto NewSurveyResult { get; set; }
-
-    private Validations NewSurveyResultValidations { get; set; } = new();
-    private SurveyResultUpdateDto EditingSurveyResult { get; set; }
-
-    private Validations EditingSurveyResultValidations { get; set; } = new();
-    private Guid EditingSurveyResultId { get; set; }
-
-    private Modal CreateSurveyResultModal { get; set; } = new();
-    private Modal EditSurveyResultModal { get; set; } = new();
-    private GetSurveyResultsInput Filter { get; set; }
-
-    private DataGridEntityActionsColumn<SurveyResultWithNavigationPropertiesDto> EntityActionsColumn { get; set; } = new();
-
-    protected string SelectedCreateTab = "surveyResult-create-tab";
-    protected string SelectedEditTab = "surveyResult-edit-tab";
-    private SurveyResultWithNavigationPropertiesDto? SelectedSurveyResult;
-
-    private IReadOnlyList<LookupDto<Guid>> SurveyCriteriasCollection { get; set; } = new List<LookupDto<Guid>>();
-    private IReadOnlyList<LookupDto<Guid>> SurveySessionsCollection { get; set; } = new List<LookupDto<Guid>>();
-    private List<SurveyResultWithNavigationPropertiesDto> SelectedSurveyResults { get; set; } = new();
-    private bool AllSurveyResultsSelected { get; set; }
-
-    public SurveyResults()
-    {
-        NewSurveyResult = new SurveyResultCreateDto();
-        EditingSurveyResult = new SurveyResultUpdateDto();
-        Filter = new GetSurveyResultsInput
-        {
-            MaxResultCount = PageSize,
-            SkipCount = (CurrentPage - 1) * PageSize,
-            Sorting = CurrentSorting
-        };
-        SurveyResultList = new List<SurveyResultWithNavigationPropertiesDto>();
-    }
-
+    [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
+    
     protected override async Task OnInitializedAsync()
     {
-        await SetPermissionsAsync();
-        await GetSurveyCriteriaCollectionLookupAsync();
-        await GetSurveySessionCollectionLookupAsync();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await SetBreadcrumbItemsAsync();
-            await SetToolbarItemsAsync();
-            await InvokeAsync(StateHasChanged);
-        }
+        await SetToolbarItemsAsync();
+        await SetBreadcrumbItemsAsync();
+        await LoadSurveyLocationsAsync();
+        IsLoading = false;
     }
 
     protected virtual ValueTask SetBreadcrumbItemsAsync()
     {
-        BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["SurveyResults"]));
+        BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Menu:SurveyResults"]));
         return ValueTask.CompletedTask;
     }
 
     protected virtual ValueTask SetToolbarItemsAsync()
     {
-        Toolbar.AddButton(L["ExportToExcel"], async () => {
+        Toolbar.AddButton(L["ExportToExcel"], async () =>
+        {
             await DownloadAsExcelAsync();
         }, IconName.Download);
-        Toolbar.AddButton(L["NewSurveyResult"], async () => {
-            await OpenCreateSurveyResultModalAsync();
-        }, IconName.Add, requiredPolicyName: HCPermissions.SurveyResults.Create);
+
         return ValueTask.CompletedTask;
     }
 
-    private void ToggleDetails(SurveyResultWithNavigationPropertiesDto surveyResult)
-    {
-        DataGridRef.ToggleDetailRow(surveyResult, true);
-    }
-
-    private bool RowSelectableHandler(RowSelectableEventArgs<SurveyResultWithNavigationPropertiesDto> rowSelectableEventArgs) => rowSelectableEventArgs.SelectReason is not DataGridSelectReason.RowClick && CanDeleteSurveyResult;
-
-    private bool DetailRowTriggerHandler(DetailRowTriggerEventArgs<SurveyResultWithNavigationPropertiesDto> detailRowTriggerEventArgs)
-    {
-        detailRowTriggerEventArgs.Toggleable = false;
-        detailRowTriggerEventArgs.DetailRowTriggerType = DetailRowTriggerType.Manual;
-        return true;
-    }
-
-    private async Task SetPermissionsAsync()
-    {
-        CanCreateSurveyResult = await AuthorizationService.IsGrantedAsync(HCPermissions.SurveyResults.Create);
-        CanEditSurveyResult = await AuthorizationService.IsGrantedAsync(HCPermissions.SurveyResults.Edit);
-        CanDeleteSurveyResult = await AuthorizationService.IsGrantedAsync(HCPermissions.SurveyResults.Delete);
-    }
-
-    private async Task GetSurveyResultsAsync()
-    {
-        Filter.MaxResultCount = PageSize;
-        Filter.SkipCount = (CurrentPage - 1) * PageSize;
-        Filter.Sorting = CurrentSorting;
-        var result = await SurveyResultsAppService.GetListAsync(Filter);
-        SurveyResultList = result.Items;
-        TotalCount = (int)result.TotalCount;
-        await ClearSelection();
-    }
-
-    protected virtual async Task SearchAsync()
-    {
-        CurrentPage = 1;
-        await GetSurveyResultsAsync();
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task DownloadAsExcelAsync()
-    {
-        var token = (await SurveyResultsAppService.GetDownloadTokenAsync()).Token;
-        var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("HC") ?? await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-        var culture = CultureInfo.CurrentUICulture.Name ?? CultureInfo.CurrentCulture.Name;
-        if (!culture.IsNullOrEmpty())
-        {
-            culture = "&culture=" + culture;
-        }
-
-        await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-        NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/survey-results/as-excel-file?DownloadToken={token}&FilterText={HttpUtility.UrlEncode(Filter.FilterText)}{culture}&RatingMin={Filter.RatingMin}&RatingMax={Filter.RatingMax}&SurveyCriteriaId={Filter.SurveyCriteriaId}&SurveySessionId={Filter.SurveySessionId}", forceLoad: true);
-    }
-
-    private async Task OnDataGridReadAsync(DataGridReadDataEventArgs<SurveyResultWithNavigationPropertiesDto> e)
-    {
-        CurrentSorting = e.Columns.Where(c => c.SortDirection != SortDirection.Default).Select(c => c.Field + (c.SortDirection == SortDirection.Descending ? " DESC" : "")).JoinAsString(",");
-        CurrentPage = e.Page;
-        await GetSurveyResultsAsync();
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task OpenCreateSurveyResultModalAsync()
-    {
-        NewSurveyResult = new SurveyResultCreateDto
-        {
-            SurveyCriteriaId = SurveyCriteriasCollection.Select(i => i.Id).FirstOrDefault(),
-            SurveySessionId = SurveySessionsCollection.Select(i => i.Id).FirstOrDefault(),
-        };
-        SelectedCreateTab = "surveyResult-create-tab";
-        await NewSurveyResultValidations.ClearAll();
-        await CreateSurveyResultModal.Show();
-    }
-
-    private async Task CloseCreateSurveyResultModalAsync()
-    {
-        NewSurveyResult = new SurveyResultCreateDto
-        {
-            SurveyCriteriaId = SurveyCriteriasCollection.Select(i => i.Id).FirstOrDefault(),
-            SurveySessionId = SurveySessionsCollection.Select(i => i.Id).FirstOrDefault(),
-        };
-        await CreateSurveyResultModal.Hide();
-    }
-
-    private async Task OpenEditSurveyResultModalAsync(SurveyResultWithNavigationPropertiesDto input)
-    {
-        SelectedEditTab = "surveyResult-edit-tab";
-        var surveyResult = await SurveyResultsAppService.GetWithNavigationPropertiesAsync(input.SurveyResult.Id);
-        EditingSurveyResultId = surveyResult.SurveyResult.Id;
-        EditingSurveyResult = ObjectMapper.Map<SurveyResultDto, SurveyResultUpdateDto>(surveyResult.SurveyResult);
-        await EditingSurveyResultValidations.ClearAll();
-        await EditSurveyResultModal.Show();
-    }
-
-    private async Task DeleteSurveyResultAsync(SurveyResultWithNavigationPropertiesDto input)
+    protected virtual async Task LoadSurveyLocationsAsync()
     {
         try
         {
-            await SurveyResultsAppService.DeleteAsync(input.SurveyResult.Id);
-            await GetSurveyResultsAsync();
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-
-    private async Task DeleteSurveyResultWithConfirmationAsync(SurveyResultWithNavigationPropertiesDto input)
-    {
-        if (await UiMessageService.Confirm(L["DeleteConfirmationMessage"].Value))
-        {
-            await DeleteSurveyResultAsync(input);
-        }
-    }
-
-    private async Task CreateSurveyResultAsync()
-    {
-        try
-        {
-            if (await NewSurveyResultValidations.ValidateAll() == false)
+            var result = await SurveyLocationsAppService.GetListAsync(new GetSurveyLocationsInput
             {
-                return;
-            }
-
-            await SurveyResultsAppService.CreateAsync(NewSurveyResult);
-            await GetSurveyResultsAsync();
-            await CloseCreateSurveyResultModalAsync();
+                MaxResultCount = 1000
+            });
+            SurveyLocations = result.Items.ToList();
         }
         catch (Exception ex)
         {
@@ -247,116 +69,141 @@ public partial class SurveyResults
         }
     }
 
-    private async Task CloseEditSurveyResultModalAsync()
+    protected virtual async Task OnSurveyLocationChanged(Guid? locationId)
     {
-        await EditSurveyResultModal.Hide();
+        SelectedSurveyLocationId = locationId;
+        await LoadChartsAsync();
     }
 
-    private async Task UpdateSurveyResultAsync()
+    protected virtual async Task LoadChartsAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            // Get survey results statistics
+            var stats = await SurveyResultsAppService.GetStatisticsByLocationAsync(SelectedSurveyLocationId);
+
+            // Update PieChart - Rating distribution
+            await UpdatePieChartAsync(stats.RatingDistribution);
+
+            // Update BarChart - Criteria average rating
+            await UpdateBarChartAsync(stats.CriteriaAverageRatings);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    protected virtual async Task UpdatePieChartAsync(Dictionary<int, int> ratingDistribution)
+    {
+        await pieChart.Clear();
+
+        var labels = new List<string>();
+        var data = new List<int>();
+        var backgroundColors = new List<string>();
+
+        // Define colors for each rating (0-5 stars)
+        var colors = new Dictionary<int, string>
+        {
+            { 0, ChartColor.FromRgba(189, 189, 189, 0.8f) }, // Gray for Unknown
+            { 1, ChartColor.FromRgba(244, 67, 54, 0.8f) },   // Red
+            { 2, ChartColor.FromRgba(255, 152, 0, 0.8f) },   // Orange
+            { 3, ChartColor.FromRgba(156, 39, 176, 0.8f) },  // Purple
+            { 4, ChartColor.FromRgba(255, 235, 59, 0.8f) },  // Yellow
+            { 5, ChartColor.FromRgba(233, 30, 99, 0.8f) }    // Pink
+        };
+
+        foreach (var kvp in ratingDistribution.OrderBy(x => x.Key))
+        {
+            var labelKey = kvp.Key == 0 ? "Unknown" : $"{kvp.Key} Star";
+            labels.Add(L[labelKey]);
+            data.Add(kvp.Value);
+            backgroundColors.Add(colors.GetValueOrDefault(kvp.Key, ChartColor.FromRgba(128, 128, 128, 0.8f)));
+        }
+
+        var dataset = new PieChartDataset<int>
+        {
+            Label = L["RatingCount"],
+            Data = data,
+            BackgroundColor = backgroundColors
+        };
+
+        await pieChart.AddLabelsDatasetsAndUpdate(labels.ToArray(), dataset);
+    }
+
+    protected virtual async Task UpdateBarChartAsync(Dictionary<string, double> criteriaRatings)
+    {
+        await barChart.Clear();
+
+        var labels = criteriaRatings.Keys.ToArray();
+        var data = criteriaRatings.Values.ToList();
+
+        var dataset = new BarChartDataset<double>
+        {
+            Label = L["AverageRating"],
+            Data = data,
+            BackgroundColor = new List<string> 
+            { 
+                ChartColor.FromRgba(54, 162, 235, 0.6f) 
+            },
+            BorderColor = new List<string> 
+            { 
+                ChartColor.FromRgba(54, 162, 235, 1f) 
+            },
+            BorderWidth = 1
+        };
+
+        var options = new BarChartOptions
+        {
+            Scales = new ChartScales
+            {
+                Y = new ChartAxis
+                {
+                    Min = 0,
+                    Max = 5,
+                    Ticks = new ChartAxisTicks
+                    {
+                        StepSize = 0.5
+                    }
+                }
+            },
+            Plugins = new ChartPlugins
+            {
+                Legend = new ChartLegend
+                {
+                    Display = false
+                }
+            }
+        };
+
+        await barChart.SetOptions(options);
+        await barChart.AddLabelsDatasetsAndUpdate(labels, dataset);
+        await barChart.Update();
+    }
+
+    protected virtual async Task DownloadAsExcelAsync()
     {
         try
         {
-            if (await EditingSurveyResultValidations.ValidateAll() == false)
+            var filter = new SurveyResultExcelDownloadDto
             {
-                return;
-            }
+                FilterText = string.Empty
+            };
 
-            await SurveyResultsAppService.UpdateAsync(EditingSurveyResultId, EditingSurveyResult);
-            await GetSurveyResultsAsync();
-            await EditSurveyResultModal.Hide();
+            var remoteStreamContent = await SurveyResultsAppService.GetListAsExcelFileAsync(filter);
+            var fileStream = remoteStreamContent.GetStream();
+            var fileName = $"survey_results_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(((System.IO.MemoryStream)fileStream).ToArray()));
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
         }
-    }
-
-    private void OnSelectedCreateTabChanged(string name)
-    {
-        SelectedCreateTab = name;
-    }
-
-    private void OnSelectedEditTabChanged(string name)
-    {
-        SelectedEditTab = name;
-    }
-
-    protected virtual async Task OnRatingMinChangedAsync(int? ratingMin)
-    {
-        Filter.RatingMin = ratingMin;
-        await SearchAsync();
-    }
-
-    protected virtual async Task OnRatingMaxChangedAsync(int? ratingMax)
-    {
-        Filter.RatingMax = ratingMax;
-        await SearchAsync();
-    }
-
-    protected virtual async Task OnSurveyCriteriaIdChangedAsync(Guid? surveyCriteriaId)
-    {
-        Filter.SurveyCriteriaId = surveyCriteriaId;
-        await SearchAsync();
-    }
-
-    protected virtual async Task OnSurveySessionIdChangedAsync(Guid? surveySessionId)
-    {
-        Filter.SurveySessionId = surveySessionId;
-        await SearchAsync();
-    }
-
-    private async Task GetSurveyCriteriaCollectionLookupAsync(string? newValue = null)
-    {
-        SurveyCriteriasCollection = (await SurveyResultsAppService.GetSurveyCriteriaLookupAsync(new LookupRequestDto { Filter = newValue, IsActive = true })).Items;
-    }
-
-    private async Task GetSurveySessionCollectionLookupAsync(string? newValue = null)
-    {
-        SurveySessionsCollection = (await SurveyResultsAppService.GetSurveySessionLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
-    }
-
-    private Task SelectAllItems()
-    {
-        AllSurveyResultsSelected = true;
-        return Task.CompletedTask;
-    }
-
-    private Task ClearSelection()
-    {
-        AllSurveyResultsSelected = false;
-        SelectedSurveyResults.Clear();
-        return Task.CompletedTask;
-    }
-
-    private Task SelectedSurveyResultRowsChanged()
-    {
-        if (SelectedSurveyResults.Count != PageSize)
-        {
-            AllSurveyResultsSelected = false;
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private async Task DeleteSelectedSurveyResultsAsync()
-    {
-        var message = AllSurveyResultsSelected ? L["DeleteAllRecords"].Value : L["DeleteSelectedRecords", SelectedSurveyResults.Count].Value;
-        if (!await UiMessageService.Confirm(message))
-        {
-            return;
-        }
-
-        if (AllSurveyResultsSelected)
-        {
-            await SurveyResultsAppService.DeleteAllAsync(Filter);
-        }
-        else
-        {
-            await SurveyResultsAppService.DeleteByIdsAsync(SelectedSurveyResults.Select(x => x.SurveyResult.Id).ToList());
-        }
-
-        SelectedSurveyResults.Clear();
-        AllSurveyResultsSelected = false;
-        await GetSurveyResultsAsync();
     }
 }

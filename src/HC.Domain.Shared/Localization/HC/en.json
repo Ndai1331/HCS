@@ -849,6 +849,12 @@
     "SurveyCollections:ThankYouMessage": "Thank you for your feedback",
     "SurveyCollections:YourFeedbackIsImportant": "Your feedback is important to us",
     "SurveyCollections:SurveyLocationNotFound": "Survey location not found",
-    "SurveyCollections:Title": "Survey at"
+    "SurveyCollections:Title": "Survey at",
+    "RatingDistribution": "Rating Distribution",
+    "CriteriaAverageRating": "Average Rating by Criteria",
+    "RatingCount": "Rating Count",
+    "AverageRating": "Average Rating",
+    "Unknown": "Unknown",
+    "All": "All"
   }
 }
