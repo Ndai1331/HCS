@@ -1,0 +1,269 @@
+@page "/survey-collections/{SurveyLocationId:guid}"
+@using HC.SurveySessions
+@using HC.SurveyLocations
+@using HC.SurveyCriterias
+@using HC.SurveyResults
+@using HC.SurveyFiles
+@using HC.Localization
+@using HC.Shared
+@using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.Components.Web
+@using Blazorise
+@using Blazorise.Components
+@using Blazorise.DataGrid
+@using Volo.Abp.BlazoriseUI
+@using Volo.Abp.BlazoriseUI.Components
+@using Volo.Abp.ObjectMapping
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
+@using Volo.Abp.AspNetCore.Components.Web
+@using Volo.Abp.AspNetCore.Components
+@using Microsoft.AspNetCore.Components
+@using Volo.Abp.Http.Client
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+@layout HC.Blazor.Components.Layout.EmptyLayout
+@inherits HCComponentBase
+@inject ISurveySessionsAppService SurveySessionsAppService
+@inject ISurveyLocationsAppService SurveyLocationsAppService
+@inject ISurveyCriteriasAppService SurveyCriteriasAppService
+@inject ISurveyResultsAppService SurveyResultsAppService
+@inject ISurveyFilesAppService SurveyFilesAppService
+@inject IUiMessageService UiMessageService
+@inject AbpBlazorMessageLocalizerHelper<HCResource> LH
+@inject NavigationManager NavigationManager
+
+
+<PageHeader Title="@PageTitle" />
+
+@if (IsLoading)
+{
+    <Row Class="justify-content-center">
+        <Column>
+            <RadarSpinner />
+        </Column>
+    </Row>
+}
+else if (SurveyLocation == null)
+{
+    <Alert Color="Color.Danger">
+        <AlertMessage>@L["SurveyCollections:SurveyLocationNotFound"]</AlertMessage>
+    </Alert>
+}
+else
+{
+    @if (!IsSessionCreated)
+    {
+        <!-- Session Creation Form -->
+        <Card Class="mb-4">
+            <CardHeader>
+                <CardTitle>
+                    <Icon Name="IconName.User" Class="me-2" />
+                    @L["SurveyCollections:EnterInformation"]
+                </CardTitle>
+            </CardHeader>
+            <CardBody>
+                <Form id="SurveySessionForm">
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["FullName"] *</FieldLabel>
+                                <TextEdit @bind-Text="NewSurveySession.FullName"
+                                         Autofocus="true" />
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["PhoneNumber"] *</FieldLabel>
+                                <TextEdit @bind-Text="NewSurveySession.PhoneNumber" />
+                            </Field>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["PatientCode"]</FieldLabel>
+                                <TextEdit @bind-Text="NewSurveySession.PatientCode" />
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["DeviceType"]</FieldLabel>
+                                <Select TValue="DeviceType?"
+                                        SelectedValue="@NewSurveySession.DeviceType"
+                                        SelectedValueChanged="@((DeviceType? value) => { NewSurveySession.DeviceType = value; })">
+                                    <SelectItem TValue="DeviceType?"></SelectItem>
+                                    @foreach (var deviceType in Enum.GetValues<DeviceType>())
+                                    {
+                                        <SelectItem TValue="DeviceType?" Value="@deviceType">
+                                            @L[$"Enum:DeviceType.{deviceType}"]
+                                        </SelectItem>
+                                    }
+                                </Select>
+                            </Field>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12">
+                            <Field>
+                                <FieldLabel>@L["Note"]</FieldLabel>
+                                <MemoEdit @bind-Text="@NewSurveySession.Note" Rows="3" />
+                            </Field>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12" Class="text-center">
+                            <Button Color="Color.Primary"
+                                    Size="Size.Large"
+                                    Clicked="CreateSurveySessionAsync">
+                                <Icon Name="IconName.Play" Class="me-2" />
+                                @L["SurveyCollections:StartSurvey"]
+                            </Button>
+                        </Column>
+                    </Row>
+                </Form>
+            </CardBody>
+        </Card>
+    }
+    else
+    {
+        <!-- Survey Steps UI -->
+        <Steps @ref="StepsRef"
+               SelectedStep="@SelectedStep"
+               SelectedStepChanged="@OnSelectedStepChanged">
+            <Items>
+                @foreach (var (criteria, index) in SurveyCriterias.Select((c, i) => (c, i)))
+                {
+                    var stepNumber = index + 1;
+                    var stepName = $"step{stepNumber}";
+                    <Step Name="@stepName" Completed="@IsStepCompleted(criteria.SurveyCriteria.Id)">
+                        <Marker>
+                            <Icon Name="IconName.Star" />
+                        </Marker>
+                        <Caption>
+                            @criteria.SurveyCriteria.Name
+                        </Caption>
+                    </Step>
+                }
+                <Step Name="stepFinal" Completed="@IsAllStepsCompleted">
+                    <Marker>
+                        <Icon Name="IconName.CheckCircle" />
+                    </Marker>
+                    <Caption>
+                        @L["SurveyCollections:Complete"]
+                    </Caption>
+                </Step>
+            </Items>
+            <Content>
+                @foreach (var (criteria, index) in SurveyCriterias.Select((c, i) => (c, i)))
+                {
+                    var stepNumber = index + 1;
+                    var stepName = $"step{stepNumber}";
+                    <StepPanel Name="@stepName">
+                        <Card Class="mb-4">
+                            <CardHeader>
+                                <CardTitle>
+                                    <Icon Name="IconName.Star" Class="me-2" />
+                                    @criteria.SurveyCriteria.Name
+                                </CardTitle>
+                            </CardHeader>
+                            <CardBody>
+                                @if (!string.IsNullOrEmpty(criteria.SurveyCriteria.Image))
+                                {
+                                    <Row Class="mb-4">
+                                        <Column ColumnSize="ColumnSize.Is12" Class="text-center">
+                                            <img src="@GetImageUrl(criteria.SurveyCriteria.Image)"
+                                                 alt="@criteria.SurveyCriteria.Name"
+                                                 style="max-width: 300px; max-height: 300px; object-fit: contain; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+                                        </Column>
+                                    </Row>
+                                }
+
+                                <Row Class="mb-4">
+                                    <Column ColumnSize="ColumnSize.Is12" Class="text-center">
+                                        <Field>
+                                            <FieldLabel>@L["SurveyCollections:Rating"] *</FieldLabel>
+                                            <div class="rating-stars d-flex justify-content-center">
+                                                @for (int star = 1; star <= 5; star++)
+                                                {
+                                                    var currentStar = star;
+                                                    <i class="@(GetRatingForCriteria(criteria.SurveyCriteria.Id) >= currentStar ? "bi bi-star-fill text-warning" : "bi bi-star text-muted")"
+                                                       style="font-size: 2rem; cursor: pointer; margin: 0 2px;"
+                                                       @onclick="@(() => SetRatingForCriteria(criteria.SurveyCriteria.Id, currentStar))"></i>
+                                                }
+                                            </div>
+                                            @if (GetRatingForCriteria(criteria.SurveyCriteria.Id) == 0)
+                                            {
+                                                <div class="text-danger small mt-1">@L["SurveyCollections:PleaseSelectRating"]</div>
+                                            }
+                                        </Field>
+                                    </Column>
+                                </Row>
+
+                                <Row>
+                                    <Column ColumnSize="ColumnSize.Is12">
+                                        <Field>
+                                            <FieldLabel>@L["SurveyCollections:UploadPhoto"]</FieldLabel>
+                                            <FilePicker Multiple="false"
+                                                       Changed="@(async (files) => await OnFileChangedAsync(criteria.SurveyCriteria.Id, files))"
+                                                       ShowMode="FilePickerShowMode.List"
+                                                       MaxFileSize="52428800"
+                                                       Accept="image/*">
+                                                <ButtonsTemplate>
+                                                    <Buttons>
+                                                        <Button Clicked="@(() => ClearFileForCriteria(criteria.SurveyCriteria.Id))"
+                                                                Color="Color.Warning"
+                                                                Size="Size.Small">
+                                                            <Icon Name="IconName.Clear" /> @L["Clear"]
+                                                        </Button>
+                                                    </Buttons>
+                                                </ButtonsTemplate>
+                                            </FilePicker>
+                                            @if (!string.IsNullOrEmpty(GetUploadedFileNameForCriteria(criteria.SurveyCriteria.Id)))
+                                            {
+                                                <Alert Color="Color.Success" Dismissible="false" Class="mt-2">
+                                                    <Icon Name="IconName.CheckCircle" Class="me-2" />
+                                                    @L["FileUploadedSuccessfully"]: @GetUploadedFileNameForCriteria(criteria.SurveyCriteria.Id)
+                                                </Alert>
+                                            }
+                                        </Field>
+                                    </Column>
+                                </Row>
+
+                                <Row Class="mt-4">
+                                    <Column ColumnSize="ColumnSize.Is12" Class="text-center">
+                                        <Button Color="Color.Primary"
+                                                Size="Size.Large"
+                                                Clicked="@(async () => await SaveCurrentStepAsync(criteria.SurveyCriteria.Id))"
+                                                Disabled="@IsSubmitting">
+                                            <Icon Name="IconName.Save" Class="me-2" />
+                                            @L["SurveyCollections:RateAndContinue"]
+                                        </Button>
+                                    </Column>
+                                </Row>
+                            </CardBody>
+                        </Card>
+                    </StepPanel>
+                }
+
+                <StepPanel Name="stepFinal">
+                    <Card Class="mb-4">
+                        <CardBody>
+                            <Row>
+                                <Column ColumnSize="ColumnSize.Is12" Class="text-center">
+                                    <div class="py-5">
+                                        <Icon Name="IconName.CheckCircle" IconSize="IconSize.x5" TextColor="TextColor.Success" />
+                                        <h2 class="mt-4 mb-3">@L["SurveyCollections:ThankYou"]</h2>
+                                        <p class="lead">@L["SurveyCollections:ThankYouMessage"]</p>
+                                        <p class="text-muted">@L["SurveyCollections:YourFeedbackIsImportant"]</p>
+                                    </div>
+                                </Column>
+                            </Row>
+                        </CardBody>
+                    </Card>
+                </StepPanel>
+            </Content>
+        </Steps>
+    }
+}

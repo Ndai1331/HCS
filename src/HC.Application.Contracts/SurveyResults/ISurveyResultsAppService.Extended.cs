@@ -1,6 +1,9 @@
+using System.Threading.Tasks;
+
 namespace HC.SurveyResults;
 
 public partial interface ISurveyResultsAppService
 {
-    //Write your custom code here...
+    // Public API - No authorization required
+    Task<SurveyResultDto> CreatePublicSurveyResultAsync(SurveyResultCreateDto input);
 }

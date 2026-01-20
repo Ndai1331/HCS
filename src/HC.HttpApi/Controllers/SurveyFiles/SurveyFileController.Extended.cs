@@ -18,4 +18,11 @@ public class SurveyFileController : SurveyFileControllerBase, ISurveyFilesAppSer
     public SurveyFileController(ISurveyFilesAppService surveyFilesAppService) : base(surveyFilesAppService)
     {
     }
+
+    [HttpPost]
+    [Route("public")]
+    public virtual Task<SurveyFileDto> CreatePublicSurveyFileAsync(SurveyFileCreateDto input)
+    {
+        return _surveyFilesAppService.CreatePublicSurveyFileAsync(input);
+    }
 }

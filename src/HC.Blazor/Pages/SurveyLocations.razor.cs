@@ -13,6 +13,7 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.SurveyLocations;
 using HC.Permissions;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 namespace HC.Blazor.Pages;
 
 public partial class SurveyLocations
@@ -57,6 +58,8 @@ public partial class SurveyLocations
 
     private List<SurveyLocationDto> SelectedSurveyLocations { get; set; } = new();
     private bool AllSurveyLocationsSelected { get; set; }
+
+    [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
 
     public SurveyLocations()
     {
@@ -333,5 +336,12 @@ public partial class SurveyLocations
         SelectedSurveyLocations.Clear();
         AllSurveyLocationsSelected = false;
         await GetSurveyLocationsAsync();
+    }
+
+    private async Task CopySurveyLocationToClipboardAsync(SurveyLocationDto input)
+    {
+        await JSRuntime.InvokeVoidAsync("copyToClipboard", $"/survey-collections/{input.Id}");
+        await UiMessageService.Success(L["SurveyLocationCopiedToClipboard"].Value);
+        await InvokeAsync(StateHasChanged);
     }
 }

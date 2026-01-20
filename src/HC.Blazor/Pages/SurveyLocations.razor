@@ -217,6 +217,10 @@
                                    @onclick="@(() => OpenEditSurveyLocationModalAsync(context))"
                                    style="cursor: pointer;"></i>
                             }
+                            <i class="bi bi-clipboard hc-action-icon hc-action-copy" 
+                                title="@L["Copy"]"
+                                @onclick="@(async () => await CopySurveyLocationToClipboardAsync(context))"
+                                style="cursor: pointer;"></i>
                             @if (CanDeleteSurveyLocation)
                             {
                                 <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 

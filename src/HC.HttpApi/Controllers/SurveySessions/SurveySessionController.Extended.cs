@@ -18,4 +18,11 @@ public class SurveySessionController : SurveySessionControllerBase, ISurveySessi
     public SurveySessionController(ISurveySessionsAppService surveySessionsAppService) : base(surveySessionsAppService)
     {
     }
+
+    [HttpPost]
+    [Route("public")]
+    public virtual Task<SurveySessionDto> CreatePublicSurveySessionAsync(SurveySessionCreateDto input)
+    {
+        return _surveySessionsAppService.CreatePublicSurveySessionAsync(input);
+    }
 }

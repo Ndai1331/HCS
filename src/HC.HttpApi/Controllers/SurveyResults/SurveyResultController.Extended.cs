@@ -18,4 +18,11 @@ public class SurveyResultController : SurveyResultControllerBase, ISurveyResults
     public SurveyResultController(ISurveyResultsAppService surveyResultsAppService) : base(surveyResultsAppService)
     {
     }
+
+    [HttpPost]
+    [Route("public")]
+    public virtual Task<SurveyResultDto> CreatePublicSurveyResultAsync(SurveyResultCreateDto input)
+    {
+        return _surveyResultsAppService.CreatePublicSurveyResultAsync(input);
+    }
 }

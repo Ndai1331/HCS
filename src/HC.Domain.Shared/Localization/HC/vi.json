@@ -876,6 +876,23 @@
     "HideMediaFiles": "Ẩn tệp media",
     "SendAndSign": "Gửi và ký",
     "ProjectChatCreatedSuccessfully": "Chat dự án đã được tạo thành công",
-    "ProjectChatCreationFailed": "Chat dự án đã được tạo thất bại"
+    "ProjectChatCreationFailed": "Chat dự án đã được tạo thất bại",
+    "SurveyLocationCopiedToClipboard": "Đã sao chép đường dẫn khảo sát vào clipboard",
+    "Copy": "Sao chép",
+    "SurveyCollections:Rating": "Đánh giá",
+    "SurveyCollections:PleaseSelectRating": "Vui lòng chọn đánh giá",
+    "SurveyCollections:RateAndContinue": "Đánh giá và tiếp tục",
+    "SurveyCollections:RatingSaved": "Đánh giá đã được lưu",
+    "SurveyCollections:ThankYouForYourFeedback": "Cảm ơn bạn đã cung cấp ý kiến phản hồi",
+    "SurveyCollections:StartSurvey": "Bắt đầu khảo sát",
+    "SurveyCollections:Complete": "Hoàn thành",
+    "SurveyCollections:NoCriteriaFound": "Không tìm thấy tiêu chí khảo sát nào cho địa điểm này",
+    "SurveyCollections:EnterInformation": "Nhập thông tin của bạn",
+    "SurveyCollections:UploadPhoto": "Tải ảnh lên (nếu có)",
+    "SurveyCollections:ThankYou": "Cảm ơn",
+    "SurveyCollections:ThankYouMessage": "Cảm ơn bạn đã cung cấp ý kiến phản hồi",
+    "SurveyCollections:YourFeedbackIsImportant": "Ý kiến phản hồi của bạn rất quan trọng đối với chúng tôi",
+    "SurveyCollections:SurveyLocationNotFound": "Không tìm thấy khảo sát",
+    "SurveyCollections:Title": "Khảo sát tại"
   }
 }

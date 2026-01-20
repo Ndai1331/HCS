@@ -1,6 +1,10 @@
+using System;
+using System.Threading.Tasks;
+
 namespace HC.SurveyFiles;
 
 public partial interface ISurveyFilesAppService
 {
-    //Write your custom code here...
+    // Public API - No authorization required
+    Task<SurveyFileDto> CreatePublicSurveyFileAsync(SurveyFileCreateDto input);
 }

@@ -1,6 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace HC.SurveyCriterias;
 
 public partial interface ISurveyCriteriasAppService
 {
-    //Write your custom code here...
+    // Public API - No authorization required
+    Task<List<SurveyCriteriaDto>> GetPublicSurveyCriteriasByLocationAsync(Guid surveyLocationId);
 }

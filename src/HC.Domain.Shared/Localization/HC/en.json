@@ -832,6 +832,23 @@
     "ShowMediaFiles": "Show media files",
     "SendAndSign": "Send and sign",
     "ProjectChatCreatedSuccessfully": "Project chat created successfully",
-    "ProjectChatCreationFailed": "Project chat creation failed"
+    "ProjectChatCreationFailed": "Project chat creation failed",
+    "SurveyLocationCopiedToClipboard": "Survey location copied to clipboard",
+    "Copy": "Copy",
+    "SurveyCollections:Rating": "Rating",
+    "SurveyCollections:PleaseSelectRating": "Please select rating",
+    "SurveyCollections:RateAndContinue": "Rate and continue",
+    "SurveyCollections:RatingSaved": "Rating saved",
+    "SurveyCollections:ThankYouForYourFeedback": "Thank you for your feedback",
+    "SurveyCollections:StartSurvey": "Start survey",
+    "SurveyCollections:Complete": "Complete",
+    "SurveyCollections:NoCriteriaFound": "No criteria found for this location",
+    "SurveyCollections:EnterInformation": "Enter information",
+    "SurveyCollections:UploadPhoto": "Upload photo (if available)",
+    "SurveyCollections:ThankYou": "Thank you",
+    "SurveyCollections:ThankYouMessage": "Thank you for your feedback",
+    "SurveyCollections:YourFeedbackIsImportant": "Your feedback is important to us",
+    "SurveyCollections:SurveyLocationNotFound": "Survey location not found",
+    "SurveyCollections:Title": "Survey at"
   }
 }

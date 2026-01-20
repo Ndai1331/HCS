@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
@@ -17,5 +18,12 @@ public class SurveyCriteriaController : SurveyCriteriaControllerBase, ISurveyCri
 {
     public SurveyCriteriaController(ISurveyCriteriasAppService surveyCriteriasAppService) : base(surveyCriteriasAppService)
     {
+    }
+
+    [HttpGet]
+    [Route("public/by-location/{surveyLocationId}")]
+    public virtual Task<List<SurveyCriteriaDto>> GetPublicSurveyCriteriasByLocationAsync(Guid surveyLocationId)
+    {
+        return _surveyCriteriasAppService.GetPublicSurveyCriteriasByLocationAsync(surveyLocationId);
     }
 }
