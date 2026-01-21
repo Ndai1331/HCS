@@ -141,8 +141,24 @@
 
             await JSRuntime.InvokeVoidAsync("loadChartJsWithDatalabels");
             
-            // Wait a bit to ensure plugin is fully loaded
-            await Task.Delay(200);
+            // Wait a bit to ensure plugin is fully loaded and registered
+            await Task.Delay(300);
+            
+            // Ensure plugin is registered after loading
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+                    try {
+                        if (!Chart.registry.plugins.get('datalabels')) {
+                            Chart.register(ChartDataLabels);
+                        }
+                    } catch (e) {
+                        console.log('ChartDataLabels registration:', e.message);
+                    }
+                }
+            ");
+            
+            // Wait a bit more after registration
+            await Task.Delay(100);
 
             await JSRuntime.InvokeVoidAsync("eval", @"
                 if (typeof window.createBarChartHelper === 'undefined') {
@@ -185,6 +201,46 @@
                         
                         try {
                             console.log('Creating bar chart with', labels.length, 'labels and', data.length, 'data points');
+                            
+                            // First, check if ChartDataLabels is available and registered
+                            const plugins = [];
+                            const pluginsConfig = {
+                                legend: {
+                                    display: false
+                                },
+                                title: {
+                                    display: !!title,
+                                    text: title || '',
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.parsed.y || 0;
+                                        }
+                                    }
+                                }
+                            };
+                            
+                            // Only add datalabels config if plugin is available
+                            if (typeof ChartDataLabels !== 'undefined') {
+                                plugins.push(ChartDataLabels);
+                                pluginsConfig.datalabels = {
+                                    anchor: 'end',
+                                    align: 'top',
+                                    formatter: function(value) {
+                                        return value !== null && value !== undefined ? value : '';
+                                    },
+                                    color: '#000000',
+                                    font: {
+                                        weight: 'bold',
+                                        size: 11
+                                    },
+                                    padding: 4,
+                                    display: 'auto'
+                                };
+                            }
+                            
                             const chart = new Chart(ctx, {
                                 type: 'bar',
                                 data: {
@@ -200,37 +256,7 @@
                                 options: {
                                     responsive: true,
                                     maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: {
-                                            display: false
-                                        },
-                                        title: {
-                                            display: !!title,
-                                            text: title || '',
-                                            position: 'top'
-                                        },
-                                        tooltip: {
-                                            callbacks: {
-                                                label: function(context) {
-                                                    return context.parsed.y || 0;
-                                                }
-                                            }
-                                        },
-                                        datalabels: {
-                                            anchor: 'end',
-                                            align: 'top',
-                                            formatter: function(value) {
-                                                return value !== null && value !== undefined ? value : '';
-                                            },
-                                            color: '#000000',
-                                            font: {
-                                                weight: 'bold',
-                                                size: 11
-                                            },
-                                            padding: 4,
-                                            display: 'auto'
-                                        }
-                                    },
+                                    plugins: pluginsConfig,
                                     scales: {
                                         y: {
                                             beginAtZero: true,
@@ -246,7 +272,8 @@
                                             }
                                         }
                                     }
-                                }
+                                },
+                                plugins: plugins
                         });
                         
                         window.chartInstances[canvasId] = chart;

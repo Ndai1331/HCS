@@ -88,43 +88,82 @@
 
             // Load Chart.js and datalabels plugin if needed
             await JSRuntime.InvokeVoidAsync("eval", @"
-                if (typeof window.loadChartJs === 'undefined') {
-                    window.loadChartJs = function() {
+                if (typeof window.loadChartJsWithDatalabels === 'undefined') {
+                    window.loadChartJsWithDatalabels = function() {
                         return new Promise((resolve, reject) => {
+                            // Nếu đã có Chart + ChartDataLabels thì chỉ cần đảm bảo đã register
                             if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+                                try {
+                                    if (!Chart.registry.plugins.get('datalabels')) {
+                                        Chart.register(ChartDataLabels);
+                                    }
+                                } catch { /* ignore */ }
                                 resolve();
                                 return;
                             }
-                            
+
+                            const ensureRegister = () => {
+                                try {
+                                    if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+                                        if (!Chart.registry.plugins.get('datalabels')) {
+                                            Chart.register(ChartDataLabels);
+                                        }
+                                    }
+                                } catch { /* ignore */ }
+                            };
+
+                            const loadDatalabels = () => {
+                                const datalabelsScript = document.createElement('script');
+                                datalabelsScript.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js';
+                                datalabelsScript.onload = () => {
+                                    ensureRegister();
+                                    resolve();
+                                };
+                                datalabelsScript.onerror = () => reject(new Error('Failed to load Chart.js datalabels plugin'));
+                                document.head.appendChild(datalabelsScript);
+                            };
+
                             const loadChart = () => {
                                 if (typeof Chart !== 'undefined') {
-                                    const script = document.createElement('script');
-                                    script.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js';
-                                    script.onload = () => resolve();
-                                    script.onerror = () => reject(new Error('Failed to load Chart.js datalabels plugin'));
-                                    document.head.appendChild(script);
-                                } else {
-                                    const chartScript = document.createElement('script');
-                                    chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
-                                    chartScript.onload = () => {
-                                        const datalabelsScript = document.createElement('script');
-                                        datalabelsScript.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js';
-                                        datalabelsScript.onload = () => resolve();
-                                        datalabelsScript.onerror = () => reject(new Error('Failed to load Chart.js datalabels plugin'));
-                                        document.head.appendChild(datalabelsScript);
-                                    };
-                                    chartScript.onerror = () => reject(new Error('Failed to load Chart.js'));
-                                    document.head.appendChild(chartScript);
+                                    loadDatalabels();
+                                    return;
                                 }
+
+                                const chartScript = document.createElement('script');
+                                chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+                                chartScript.onload = () => {
+                                    loadDatalabels();
+                                };
+                                chartScript.onerror = () => reject(new Error('Failed to load Chart.js'));
+                                document.head.appendChild(chartScript);
                             };
-                            
+
                             loadChart();
                         });
                     };
                 }
             ");
 
-            await JSRuntime.InvokeVoidAsync("loadChartJs");
+            await JSRuntime.InvokeVoidAsync("loadChartJsWithDatalabels");
+            
+            // Wait a bit to ensure plugin is fully loaded and registered
+            await Task.Delay(300);
+            
+            // Ensure plugin is registered after loading
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+                    try {
+                        if (!Chart.registry.plugins.get('datalabels')) {
+                            Chart.register(ChartDataLabels);
+                        }
+                    } catch (e) {
+                        console.log('ChartDataLabels registration:', e.message);
+                    }
+                }
+            ");
+            
+            // Wait a bit more after registration
+            await Task.Delay(100);
 
             // Ensure helper functions exist
             await JSRuntime.InvokeVoidAsync("eval", @"
@@ -168,6 +207,51 @@
                         const backgroundColorWithOpacity = colors.map(color => convertToRgba(color, 1.0));
                         const borderColorWithOpacity = colors.map(color => convertToRgba(color, 1));
                         
+                        // First, check if ChartDataLabels is available and registered
+                        const plugins = [];
+                        const pluginsConfig = {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    usePointStyle: true
+                                }
+                            },
+                            title: {
+                                display: title != null && title !== '',
+                                text: title || '',
+                                position: 'top'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return label + ': ' + value + ' (' + percentage + '%)';
+                                    }
+                                }
+                            }
+                        };
+                        
+                        // Only add datalabels config if plugin is available
+                        if (typeof ChartDataLabels !== 'undefined') {
+                            plugins.push(ChartDataLabels);
+                            pluginsConfig.datalabels = {
+                                color: '#ffffff',
+                                font: {
+                                    weight: 'bold',
+                                    size: 12
+                                },
+                                formatter: function(value, context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return percentage + '%';
+                                }
+                            };
+                        }
+                        
                         const chart = new Chart(ctx, {
                             type: chartType,
                             data: {
@@ -182,45 +266,9 @@
                             options: {
                                 responsive: true,
                                 maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'bottom',
-                                        labels: {
-                                            padding: 15,
-                                            usePointStyle: true
-                                        }
-                                    },
-                                    title: {
-                                        display: title != null && title !== '',
-                                        text: title || '',
-                                        position: 'top'
-                                    },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function(context) {
-                                                const label = context.label || '';
-                                                const value = context.parsed || 0;
-                                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                                return label + ': ' + value + ' (' + percentage + '%)';
-                                            }
-                                        }
-                                    },
-                                    datalabels: {
-                                        color: '#ffffff',
-                                        font: {
-                                            weight: 'bold',
-                                            size: 12
-                                        },
-                                        formatter: function(value, context) {
-                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                            return percentage + '%';
-                                        }
-                                    }
-                                }
+                                plugins: pluginsConfig
                             },
-                            plugins: typeof ChartDataLabels !== 'undefined' ? [ChartDataLabels] : []
+                            plugins: plugins
                         });
                         
                         window.chartInstances[canvasId] = chart;
