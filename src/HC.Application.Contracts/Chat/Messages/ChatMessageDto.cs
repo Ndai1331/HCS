@@ -7,7 +7,7 @@ public class ChatMessageDto
 {
     public Guid Id { get; set; }
     
-    public string Message { get; set; }
+    public string? Message { get; set; }
 
     public DateTime MessageDate { get; set; }
 
@@ -28,9 +28,9 @@ public class ChatMessageDto
     
     // Sender information (for Group/Project/Task conversations)
     public Guid? SenderUserId { get; set; }
-    public string SenderName { get; set; }
-    public string SenderSurname { get; set; }
-    public string SenderUsername { get; set; }
+    public string? SenderName { get; set; }
+    public string? SenderSurname { get; set; }
+    public string? SenderUsername { get; set; }
     
     // UI state for optimistic updates
     public bool IsSending { get; set; } // Indicates message is being sent (shows spinner)
