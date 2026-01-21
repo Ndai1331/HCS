@@ -1,0 +1,336 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div style="position: relative; height: 300px;">
+    <canvas id="@ChartId" width="400" height="300"></canvas>
+</div>
+
+@code
+{
+    [Parameter] public string ChartId { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public List<string> Labels { get; set; } = new();
+    [Parameter] public List<double> Data { get; set; } = new();
+    [Parameter] public List<string> BackgroundColors { get; set; } = new();
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? XAxisLabel { get; set; }
+    [Parameter] public string? YAxisLabel { get; set; }
+
+    private IJSObjectReference? _chartModule;
+    private IJSObjectReference? _chartInstance;
+    private bool _chartRendered = false;
+    private int _lastLabelsCount = 0;
+    private int _lastDataCount = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Labels.Count > 0 && Data.Count > 0 && Labels.Count == Data.Count)
+        {
+            if (_chartInstance == null && !_chartRendered)
+            {
+                await Task.Delay(200);
+                await RenderChart();
+                _chartRendered = true;
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Labels.Count > 0 && Data.Count > 0 && Labels.Count == Data.Count)
+        {
+            var labelsChanged = _lastLabelsCount != Labels.Count;
+            var dataChanged = _lastDataCount != Data.Count;
+            
+            _lastLabelsCount = Labels.Count;
+            _lastDataCount = Data.Count;
+
+            if (_chartInstance != null && (labelsChanged || dataChanged))
+            {
+                await Task.Delay(200);
+                await UpdateChart();
+            }
+            else if (_chartInstance == null && !_chartRendered)
+            {
+                _chartRendered = false;
+            }
+        }
+    }
+
+    private async Task RenderChart()
+    {
+        if (Labels.Count == 0 || Data.Count == 0 || Labels.Count != Data.Count)
+        {
+            return;
+        }
+
+        try
+        {
+            var canvasExists = await JSRuntime.InvokeAsync<bool>("eval", 
+                $"document.getElementById('{ChartId}') !== null");
+            
+            if (!canvasExists)
+            {
+                await Task.Delay(200);
+                canvasExists = await JSRuntime.InvokeAsync<bool>("eval", 
+                    $"document.getElementById('{ChartId}') !== null");
+                if (!canvasExists)
+                {
+                    Console.WriteLine($"Canvas with id {ChartId} not found");
+                    return;
+                }
+            }
+
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                if (typeof window.loadChartJs === 'undefined') {
+                    window.loadChartJs = function() {
+                        return new Promise((resolve, reject) => {
+                            if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+                                resolve();
+                                return;
+                            }
+                            
+                            const loadChart = () => {
+                                if (typeof Chart !== 'undefined') {
+                                    const script = document.createElement('script');
+                                    script.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js';
+                                    script.onload = () => resolve();
+                                    script.onerror = () => reject(new Error('Failed to load Chart.js datalabels plugin'));
+                                    document.head.appendChild(script);
+                                } else {
+                                    const chartScript = document.createElement('script');
+                                    chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+                                    chartScript.onload = () => {
+                                        const datalabelsScript = document.createElement('script');
+                                        datalabelsScript.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js';
+                                        datalabelsScript.onload = () => resolve();
+                                        datalabelsScript.onerror = () => reject(new Error('Failed to load Chart.js datalabels plugin'));
+                                        document.head.appendChild(datalabelsScript);
+                                    };
+                                    chartScript.onerror = () => reject(new Error('Failed to load Chart.js'));
+                                    document.head.appendChild(chartScript);
+                                }
+                            };
+                            
+                            loadChart();
+                        });
+                    };
+                }
+            ");
+
+            await JSRuntime.InvokeVoidAsync("loadChartJs");
+
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                if (typeof window.createLineChartHelper === 'undefined') {
+                    window.createLineChartHelper = function(canvasId, labels, data, colors, title, xAxisLabel, yAxisLabel) {
+                        const canvas = document.getElementById(canvasId);
+                        if (!canvas) {
+                            console.error('Canvas with id ' + canvasId + ' not found');
+                            return null;
+                        }
+
+                        const ctx = canvas.getContext('2d');
+                        
+                        if (window.chartInstances && window.chartInstances[canvasId]) {
+                            window.chartInstances[canvasId].destroy();
+                        }
+                        
+                        if (!window.chartInstances) {
+                            window.chartInstances = {};
+                        }
+                        
+                        // Convert hex color to rgba with lower opacity
+                        const convertToRgba = (color, opacity) => {
+                            if (color.startsWith('rgba')) {
+                                return color.replace(/[\d\.]+\)$/g, opacity + ')');
+                            }
+                            if (color.startsWith('rgb')) {
+                                return color.replace('rgb', 'rgba').replace(')', ', ' + opacity + ')');
+                            }
+                            // Hex color
+                            const hex = color.replace('#', '');
+                            const r = parseInt(hex.substring(0, 2), 16);
+                            const g = parseInt(hex.substring(2, 4), 16);
+                            const b = parseInt(hex.substring(4, 6), 16);
+                            return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + opacity + ')';
+                        };
+                        
+                        const defaultColor = colors.length > 0 ? colors[0] : '#3498db';
+                        const backgroundColor = convertToRgba(defaultColor, 0.1);
+                        const borderColor = convertToRgba(defaultColor, 1);
+                        
+                        const chart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: yAxisLabel || 'Count',
+                                    data: data,
+                                    backgroundColor: backgroundColor,
+                                    borderColor: borderColor,
+                                    borderWidth: 2,
+                                    fill: true,
+                                    tension: 0.4,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    },
+                                    title: {
+                                        display: title != null && title !== '',
+                                        text: title || '',
+                                        position: 'top'
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return context.parsed.y || 0;
+                                            }
+                                        }
+                                    },
+                                    datalabels: {
+                                        anchor: 'end',
+                                        align: 'top',
+                                        formatter: function(value) {
+                                            return value;
+                                        },
+                                        color: '#333',
+                                        font: {
+                                            weight: 'bold',
+                                            size: 11
+                                        },
+                                        padding: 4
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        title: {
+                                            display: yAxisLabel != null && yAxisLabel !== '',
+                                            text: yAxisLabel || ''
+                                        }
+                                    },
+                                    x: {
+                                        title: {
+                                            display: xAxisLabel != null && xAxisLabel !== '',
+                                            text: xAxisLabel || ''
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: typeof ChartDataLabels !== 'undefined' ? [ChartDataLabels] : []
+                        });
+                        
+                        window.chartInstances[canvasId] = chart;
+                        return chart;
+                    };
+                    
+                    window.updateLineChartHelper = function(canvasId, labels, data, colors) {
+                        if (window.chartInstances && window.chartInstances[canvasId]) {
+                            const chart = window.chartInstances[canvasId];
+                            
+                            // Convert hex color to rgba with lower opacity
+                            const convertToRgba = (color, opacity) => {
+                                if (color.startsWith('rgba')) {
+                                    return color.replace(/[\d\.]+\)$/g, opacity + ')');
+                                }
+                                if (color.startsWith('rgb')) {
+                                    return color.replace('rgb', 'rgba').replace(')', ', ' + opacity + ')');
+                                }
+                                // Hex color
+                                const hex = color.replace('#', '');
+                                const r = parseInt(hex.substring(0, 2), 16);
+                                const g = parseInt(hex.substring(2, 4), 16);
+                                const b = parseInt(hex.substring(4, 6), 16);
+                                return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + opacity + ')';
+                            };
+                            
+                            chart.data.labels = labels;
+                            chart.data.datasets[0].data = data;
+                            if (colors.length > 0) {
+                                const defaultColor = colors[0];
+                                chart.data.datasets[0].backgroundColor = convertToRgba(defaultColor, 0.1);
+                                chart.data.datasets[0].borderColor = convertToRgba(defaultColor, 1);
+                            }
+                            chart.update();
+                        }
+                    };
+                }
+            ");
+
+            var defaultColors = new List<string>
+            {
+                "#3498db", "#2ecc71", "#e74c3c", "#f39c12", "#9b59b6",
+                "#1abc9c", "#34495e", "#e67e22", "#95a5a6", "#16a085"
+            };
+
+            var colors = BackgroundColors.Count > 0 ? BackgroundColors : defaultColors.Take(1).ToList();
+
+            await JSRuntime.InvokeVoidAsync("createLineChartHelper",
+                ChartId,
+                Labels.ToArray(),
+                Data.ToArray(),
+                colors.ToArray(),
+                Title,
+                XAxisLabel,
+                YAxisLabel);
+            
+            _chartRendered = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error rendering chart: {ex.Message}");
+            _chartRendered = false;
+        }
+    }
+
+    private async Task UpdateChart()
+    {
+        if (Labels.Count == 0 || Data.Count == 0 || Labels.Count != Data.Count)
+        {
+            return;
+        }
+
+        try
+        {
+            var defaultColors = new List<string>
+            {
+                "#3498db", "#2ecc71", "#e74c3c", "#f39c12", "#9b59b6",
+                "#1abc9c", "#34495e", "#e67e22", "#95a5a6", "#16a085"
+            };
+
+            var colors = BackgroundColors.Count > 0 ? BackgroundColors : defaultColors.Take(1).ToList();
+
+            await JSRuntime.InvokeVoidAsync("updateLineChartHelper",
+                ChartId,
+                Labels.ToArray(),
+                Data.ToArray(),
+                colors.ToArray());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating chart: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("destroyChartHelper", ChartId);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (Exception)
+        {
+        }
+    }
+}
+

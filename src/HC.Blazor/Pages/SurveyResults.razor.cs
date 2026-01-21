@@ -3,15 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Blazorise;
-using Blazorise.Charts;
-using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.SurveyResults;
 using HC.SurveyLocations;
-using HC.Permissions;
-using HC.Shared;
 using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace HC.Blazor.Pages;
 
@@ -20,17 +17,60 @@ public partial class SurveyResults
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems = new List<Volo.Abp.BlazoriseUI.BreadcrumbItem>();
     protected PageToolbar Toolbar { get; } = new PageToolbar();
 
+    protected SurveyResultStatisticsDto? Statistics { get; set; } = null;
+
     protected bool IsLoading { get; set; } = true;
+    protected bool HasError { get; set; } = false;
     protected List<SurveyLocationDto> SurveyLocations { get; set; } = new();
     protected Guid? SelectedSurveyLocationId { get; set; }
-
-    protected PieChart<int> pieChart { get; set; } = default!;
-    protected BarChart<double> barChart { get; set; } = default!;
+    protected string pieChartId { get; set; } = string.Empty;
+    protected string barChartId { get; set; } = string.Empty;
+    protected Dictionary<int, int> RatingDistribution { get; set; } = new();
+    protected Dictionary<string, double> CriteriaAverageRatings { get; set; } = new();
 
     [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
-    
+    [Inject] private ILogger<SurveyResults> _logger { get; set; } = null!;
+
+    protected List<string> RatingDistributionLabels => new List<string>
+    {
+        L["0StarRating"],
+        L["1StarRating"],
+        L["2StarRating"],
+        L["3StarRating"],
+        L["4StarRating"],
+        L["5StarRating"]
+    };
+    protected List<double> RatingDistributionData 
+    {
+        get
+        {
+            if (Statistics?.RatingDistribution == null) return new();
+            var stats = Statistics.RatingDistribution;
+            return new List<double>
+            {
+                (double)(stats.GetValueOrDefault(0)),
+                (double)(stats.GetValueOrDefault(1)),
+                (double)(stats.GetValueOrDefault(2)),
+                (double)(stats.GetValueOrDefault(3)),
+                (double)(stats.GetValueOrDefault(4)),
+                (double)(stats.GetValueOrDefault(5))
+            };
+        }
+    }
+    protected List<string> RatingDistributionColors => new List<string>
+    {
+       "#e74c3c", "#f39c12", "#9b59b6",  "#3498db", "#2ecc71", 
+        "#1abc9c", "#34495e", "#e67e22", "#95a5a6", "#16a085"
+    };
+
+    protected List<string> CriteriaAverageRatingsLabels => Statistics?.CriteriaAverageRatings?.Keys.ToList() ?? new();
+    protected List<double> CriteriaAverageRatingsData => Statistics?.CriteriaAverageRatings?.Values.ToList() ?? new();
+    protected List<string> CriteriaAverageRatingsColors => Statistics?.CriteriaAverageRatings?.Keys.Count() > 0 ?
+    Enumerable.Repeat("#3498db", Statistics.CriteriaAverageRatings.Keys.Count()).ToList() : new();
     protected override async Task OnInitializedAsync()
     {
+        pieChartId = $"ratingDistributionChart-{Guid.NewGuid()}";
+        barChartId = $"criteriaAverageRatingChart-{Guid.NewGuid()}";
         await SetToolbarItemsAsync();
         await SetBreadcrumbItemsAsync();
         await LoadSurveyLocationsAsync();
@@ -77,113 +117,22 @@ public partial class SurveyResults
 
     protected virtual async Task LoadChartsAsync()
     {
-        IsLoading = true;
         try
         {
-            // Get survey results statistics
-            var stats = await SurveyResultsAppService.GetStatisticsByLocationAsync(SelectedSurveyLocationId);
-
-            // Update PieChart - Rating distribution
-            await UpdatePieChartAsync(stats.RatingDistribution);
-
-            // Update BarChart - Criteria average rating
-            await UpdateBarChartAsync(stats.CriteriaAverageRatings);
+            IsLoading = true;
+            HasError = false;
+            Statistics = await SurveyResultsAppService.GetStatisticsByLocationAsync(SelectedSurveyLocationId);
         }
         catch (Exception ex)
         {
+            HasError = true;
             await HandleErrorAsync(ex);
         }
         finally
         {
             IsLoading = false;
+            await InvokeAsync(StateHasChanged);
         }
-    }
-
-    protected virtual async Task UpdatePieChartAsync(Dictionary<int, int> ratingDistribution)
-    {
-        await pieChart.Clear();
-
-        var labels = new List<string>();
-        var data = new List<int>();
-        var backgroundColors = new List<string>();
-
-        // Define colors for each rating (0-5 stars)
-        var colors = new Dictionary<int, string>
-        {
-            { 0, ChartColor.FromRgba(189, 189, 189, 0.8f) }, // Gray for Unknown
-            { 1, ChartColor.FromRgba(244, 67, 54, 0.8f) },   // Red
-            { 2, ChartColor.FromRgba(255, 152, 0, 0.8f) },   // Orange
-            { 3, ChartColor.FromRgba(156, 39, 176, 0.8f) },  // Purple
-            { 4, ChartColor.FromRgba(255, 235, 59, 0.8f) },  // Yellow
-            { 5, ChartColor.FromRgba(233, 30, 99, 0.8f) }    // Pink
-        };
-
-        foreach (var kvp in ratingDistribution.OrderBy(x => x.Key))
-        {
-            var labelKey = kvp.Key == 0 ? "Unknown" : $"{kvp.Key} Star";
-            labels.Add(L[labelKey]);
-            data.Add(kvp.Value);
-            backgroundColors.Add(colors.GetValueOrDefault(kvp.Key, ChartColor.FromRgba(128, 128, 128, 0.8f)));
-        }
-
-        var dataset = new PieChartDataset<int>
-        {
-            Label = L["RatingCount"],
-            Data = data,
-            BackgroundColor = backgroundColors
-        };
-
-        await pieChart.AddLabelsDatasetsAndUpdate(labels.ToArray(), dataset);
-    }
-
-    protected virtual async Task UpdateBarChartAsync(Dictionary<string, double> criteriaRatings)
-    {
-        await barChart.Clear();
-
-        var labels = criteriaRatings.Keys.ToArray();
-        var data = criteriaRatings.Values.ToList();
-
-        var dataset = new BarChartDataset<double>
-        {
-            Label = L["AverageRating"],
-            Data = data,
-            BackgroundColor = new List<string> 
-            { 
-                ChartColor.FromRgba(54, 162, 235, 0.6f) 
-            },
-            BorderColor = new List<string> 
-            { 
-                ChartColor.FromRgba(54, 162, 235, 1f) 
-            },
-            BorderWidth = 1
-        };
-
-        var options = new BarChartOptions
-        {
-            Scales = new ChartScales
-            {
-                Y = new ChartAxis
-                {
-                    Min = 0,
-                    Max = 5,
-                    Ticks = new ChartAxisTicks
-                    {
-                        StepSize = 0.5
-                    }
-                }
-            },
-            Plugins = new ChartPlugins
-            {
-                Legend = new ChartLegend
-                {
-                    Display = false
-                }
-            }
-        };
-
-        await barChart.SetOptions(options);
-        await barChart.AddLabelsDatasetsAndUpdate(labels, dataset);
-        await barChart.Update();
     }
 
     protected virtual async Task DownloadAsExcelAsync()

@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using Blazorise;
 using Blazorise.Bootstrap5;
-using Blazorise.Charts;
 using Blazorise.Icons.FontAwesome;
 using Medallion.Threading;
 using Medallion.Threading.Redis;

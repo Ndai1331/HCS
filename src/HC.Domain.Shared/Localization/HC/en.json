@@ -855,6 +855,13 @@
     "RatingCount": "Rating Count",
     "AverageRating": "Average Rating",
     "Unknown": "Unknown",
-    "All": "All"
+    "0StarRating": "0 star",
+    "1StarRating": "1 star",
+    "2StarRating": "2 star",
+    "3StarRating": "3 star",
+    "4StarRating": "4 star",
+    "5StarRating": "5 star",
+    "Criteria": "Criteria",
+    "RatingDistributionTotal": "Total Rating"
   }
 }
