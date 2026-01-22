@@ -4,14 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using HC.Blazor;
 using HC.Blazor.Components.Chat;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
-using Volo.Abp.Localization;
 using HC.Chat.Authorization;
 using HC.Chat.Conversations;
 using HC.Chat.Messages;
@@ -22,8 +20,6 @@ using HC.ProjectTasks;
 using HC.ProjectMembers;
 using HC.ProjectTaskAssignments;
 using HC.Shared;
-using Microsoft.Extensions.Caching.Memory;
-using Volo.Abp.Application.Dtos;
 using HC.Blazor.Extensions;
 using Microsoft.Extensions.Logging;
 
@@ -69,9 +65,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     
     public bool ShowInfoBox { get; set; } = false;
     
-    public bool AccordionChatInfoVisible { get; set; } = false;
-    public bool AccordionChatMembersVisible { get; set; } = false;
-    public bool AccordionMediaFilesVisible { get; set; } = false;
     
     // Loading state
     public bool IsLoadingMessages { get; set; }

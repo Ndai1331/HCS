@@ -14,6 +14,7 @@
 @using HC.ProjectMembers
 @using HC.ProjectTaskAssignments
 @using Microsoft.Extensions.Caching.Memory
+@using HC.Blazor.Pages.Chat1.InfomationConversations
 @attribute [Authorize(ChatPermissions.Messaging)]
 @attribute [RequiresFeature(ChatFeatures.Enable)]
 @inherits HCComponentBase
@@ -74,12 +75,12 @@
                                         <button type="button" class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowCreateGroupModalAsync()" title="@L["CreateGroup"]">
                                             <i class="bi bi-people"></i> @L["Group"]
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-success" @onclick="async () => await ShowCreateProjectModalAsync()" title="@L["CreateProject"]">
+                                        @*<button type="button" class="btn btn-sm btn-outline-success" @onclick="async () => await ShowCreateProjectModalAsync()" title="@L["CreateProject"]">
                                             <i class="bi bi-folder"></i> @L["Project"]
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-warning" @onclick="async () => await ShowCreateTaskModalAsync()" title="@L["CreateTask"]">
+                                        </button> 
+                                         <button type="button" class="btn btn-sm btn-outline-warning" @onclick="async () => await ShowCreateTaskModalAsync()" title="@L["CreateTask"]">
                                             <i class="bi bi-check2-square"></i> @L["Task"]
-                                        </button>
+                                        </button> *@
                                     </div>
                                 </div>
                             </div>
@@ -607,7 +608,7 @@
             <!-- Info box-->
             @if (ShowInfoBox)
             {
-                <div class="col-12 col-md-3  d-flex align-items-stretch">
+                @* <div class="col-12 col-md-3  d-flex align-items-stretch">
                     <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
                         <div class="card-body p-1 p-md-2 p-lg-3" style="display: flex; flex-direction: column; overflow: hidden;">
                             <h5  class="modal-title m-0">
@@ -660,13 +661,23 @@
                             </Accordion>
                         </div>
                     </div>
-                </div>
+                </div> *@
+
+                //Tạo component Infobox ở đây
+
+                <InfoBox 
+                    CurrentChatContact="@CurrentChatContact"
+                    ShowPinnedMessagesAsync="@ShowPinnedMessagesAsync"
+                    ShowInfoBoxAsync="@ShowInfoBoxAsync"
+                    GetName="@GetName"
+                    GetContactDisplayName="@GetContactDisplayName"
+                    CanvasElementReferences="@CanvasElementReferences"
+                />
             }
         </div>
     </div>
 </div>
 
-@* Create Direct Conversation Modal *@
 @if (ShowCreateDirectModal)
 {
     <div class="modal fade show" style="display: block;" tabindex="-1">
@@ -990,7 +1001,6 @@
     <div class="modal-backdrop fade show"></div>
 }
 
-@* ==================== Create Task from Message Modal (100% like ProjectTasks) ==================== *@
 <Modal @bind-Visible="@ShowCreateTaskFromMessageModal">
     <ModalContent Size="ModalSize.Large" Centered="true">
         <Form>
