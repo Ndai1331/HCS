@@ -907,7 +907,6 @@
     "5StarRating": "5 sao",
     "Criteria": "Tiêu chí",
     "RatingDistributionTotal": "Tổng số đánh giá",
-    "All": "Tất cả",
     "ActiveProjects": "Dự án đang hoạt động",
     "TasksStatistics": "Thống kê công việc",
     "UpcomingEvents": "Sự kiện sắp tới",
@@ -917,6 +916,8 @@
     "NoTasks": "Không có công việc",
     "NoUpcomingEvents": "Không có sự kiện sắp tới",
     "NoRecentDocuments": "Không có tài liệu gần đây",
-    "NoRecentNotifications": "Không có thông báo gần đây"
+    "NoRecentNotifications": "Không có thông báo gần đây",
+    "LeaveConversation": "Rời khỏi cuộc trò chuyện",
+    "DeleteConversation": "Xóa cuộc trò chuyện"
   }
 }

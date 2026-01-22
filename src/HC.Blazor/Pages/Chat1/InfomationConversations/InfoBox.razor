@@ -14,6 +14,7 @@
 @using HC.ProjectMembers
 @using HC.ProjectTaskAssignments
 @using Microsoft.Extensions.Caching.Memory
+@using HC.Chat.Users
 @attribute [Authorize(ChatPermissions.Messaging)]
 @attribute [RequiresFeature(ChatFeatures.Enable)]
 @inherits HCComponentBase
@@ -29,7 +30,7 @@
 <Column Size="ColumnSize.Is12.OnMobile.Is3.OnDesktop" class="col-12 col-md-3 d-flex align-items-stretch">
     <Card Class="w-100 mb-3 mb-md-0" Style="height: 100vh; display: flex; flex-direction: column;">
         <CardBody Class="p-2" Style="display: flex; flex-direction: column; overflow: hidden;">
-            <Div Class="mt-1 text-center">
+            <Div Class="mt-1 mb-2 d-flex justify-content-center">
                 @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
                 {
                     <canvas @ref="CanvasElementReferences[CurrentChatContact]" class="canvas-avatar mx-auto rounded-circle" Width="30" Height="30"></canvas>
@@ -58,7 +59,8 @@
                         <i class="bi bi-check2-square fs-4 text-warning"></i>
                     </a>
                 }
-
+            </Div>
+            <Div Class="mb-2 text-center">
                 <Heading Size="HeadingSize.Is5">
                     @if (CurrentChatContact != null)
                     {
@@ -71,7 +73,8 @@
                     }
                 </Heading>  
             </Div>
-            <Accordion>
+            
+            <Accordion >
                 <AccordionItem @bind-Visible="@AccordionChatInfoVisible">
                     <AccordionHeader>
                         <Heading Size="HeadingSize.Is5">
@@ -84,13 +87,31 @@
                 </AccordionItem>
                 @if(CurrentChatContact.Type != ConversationType.User)
                 {
-                    <AccordionItem @bind-Visible="@AccordionChatMembersVisible">
+                    <AccordionItem  @onclick="async () => await LoadMembersAsync()" @bind-Visible="@AccordionChatMembersVisible">
                         <AccordionHeader>
                             <Heading Size="HeadingSize.Is5">
                                 <AccordionToggle>@L["ChatMembers"]</AccordionToggle>
                             </Heading>
                         </AccordionHeader>
                         <AccordionBody>
+                            @if(IsLoadingMembers)
+                            {
+                                <div class="d-flex justify-content-center">
+                                    <RadarSpinner />
+                                </div>
+                            }
+                            else
+                            {
+                                <Div>
+                                    @foreach(var member in Members)
+                                    {
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <canvas id="member-avatar-@member.UserId" class="canvas-avatar rounded-circle" Width="30" Height="30"></canvas>
+                                            <span>@member.UserInfo?.Surname @member.UserInfo?.Name</span>
+                                        </div>
+                                    }       
+                                </Div>
+                            }
                         </AccordionBody>
                     </AccordionItem>
                 }

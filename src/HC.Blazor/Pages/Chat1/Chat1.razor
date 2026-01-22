@@ -46,7 +46,7 @@
             <!-- Users box-->
             <div class="col-12 col-md-3  d-flex align-items-stretch">
                 <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
-                    <div class="card-body p-1 p-md-2 p-lg-3" style="display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden;">
                         <div class=" mb-2 rounded-2" id="SearchBox">
                             <div class="row">
                                 <div class="col">
@@ -92,25 +92,22 @@
                                     {
                                         <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2 @(ChatContactsActive.ContainsKey(chatContact) ? ChatContactsActive[chatContact] : string.Empty)">
                                             <div class="media" @onclick="async () => await SetActiveAsync(chatContact)" >
-                                                @* Conversation Type Icon *@
-                                                <div class="me-2">
-                                                    @if (chatContact.Type == ConversationType.User)
-                                                    {
-                                                        <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="40" Height="40"></canvas>
-                                                    }
-                                                    else if (chatContact.Type == ConversationType.Group)
-                                                    {
-                                                        <i class="bi bi-people-fill fs-4 text-primary"></i>
-                                                    }
-                                                    else if (chatContact.Type == ConversationType.Project)
-                                                    {
-                                                        <i class="bi bi-folder-fill fs-4 text-success"></i>
-                                                    }
-                                                    else if (chatContact.Type == ConversationType.Task)
-                                                    {
-                                                        <i class="bi bi-check2-square fs-4 text-warning"></i>
-                                                    }
-                                                </div>
+                                                @if (chatContact.Type == ConversationType.User)
+                                                {
+                                                    <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="20" Height="20"></canvas>
+                                                }
+                                                else if (chatContact.Type == ConversationType.Group)
+                                                {
+                                                    <i class="bi bi-people-fill fs-4 text-primary"></i>
+                                                }
+                                                else if (chatContact.Type == ConversationType.Project)
+                                                {
+                                                    <i class="bi bi-folder-fill fs-4 text-success"></i>
+                                                }
+                                                else if (chatContact.Type == ConversationType.Task)
+                                                {
+                                                    <i class="bi bi-check2-square fs-4 text-warning"></i>
+                                                }
                                                 <div class="media-body ms-2">
                                                     <div class="d-flex align-items-center justify-content-between mb-1">
                                                         <h6 class="mb-0 me-1">
@@ -122,26 +119,26 @@
                                                             {
                                                                 <i class="bi bi-pin-fill text-warning me-1" title="@L["Pinned"]"></i>
                                                             }
-                                                            @GetContactDisplayName(chatContact)
+                                                            @(GetContactDisplayName(chatContact).TruncateWithPostfix(36,"..."))
                                                         </h6>
-                                                        @if (chatContact.LastMessageDate != null)
-                                                        {
-                                                            <div class="d-inline">
-                                                                <small class="lh-1 d-block last-message-date">@Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("d")</small>
-                                                                <small class="lh-1 d-block last-message-date">@Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("t")</small>
-                                                            </div>
-                                                        }
+                                                        
                                                     </div>
-                                                    <p class="mb-0 small last-message">@chatContact.LastMessage.TruncateWithPostfix(36,"...")</p>
-                                                    @if (chatContact.Type != ConversationType.User && chatContact.MemberCount > 0)
+                                                    <p class="d-flex justify-content-between gap-1 mb-0 small last-message">
+                                                        @if(!string.IsNullOrEmpty(chatContact.LastMessage))
+                                                        {
+                                                            <span class="text-muted">@chatContact.LastMessage?.TruncateWithPostfix(36,"...")</span>
+                                                            <span class="text-muted"> @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("d") @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("t")</span>
+                                                        }
+                                                    </p>
+                                                    @* @if (chatContact.Type != ConversationType.User && chatContact.MemberCount > 0)
                                                     {
                                                         <small class="text-muted"><i class="bi bi-people"></i> @chatContact.MemberCount @L["Member"]</small>
-                                                    }
+                                                    } *@
                                                 </div>
                                             </div>
-                                            <div class="dropdown position-absolute bottom-0 end-0">
+                                            <div class="dropdown position-absolute top-0 end-0">
                                                 <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="lpx-caret bi-chevron-down" aria-hidden="true"></i>
+                                                    <i class="lpx-caret bi-three-dots" aria-hidden="true"></i>
                                                 </button>
                                                 <ul class="dropdown-menu">
                                                     @if (chatContact.Type != ConversationType.User)
@@ -155,6 +152,17 @@
                                                                 else
                                                                 {
                                                                     <i class="bi bi-pin-fill"></i> @L["PinConversation"]
+                                                                }
+                                                            </a>
+
+                                                            <a class="dropdown-item" @onclick="async () => await TogglePinConversationAsync(chatContact)">
+                                                                @if (chatContact.MemberRole == "MEMBER")
+                                                                {
+                                                                    <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
+                                                                }
+                                                                else if (chatContact.MemberRole == "ADMIN")
+                                                                {
+                                                                    <i class="bi bi-trash"></i> @L["DeleteConversation"]
                                                                 }
                                                             </a>
                                                         </li>
@@ -191,7 +199,7 @@
             <!-- Chat Box-->
             <div id="chatBox" class="col-12 @(ShowInfoBox ? "col-md-6" : "col-md-9")  d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
                 <div class="card w-100 mb-0" style="height: 100%; display: flex; flex-direction: column;">
-                    <div class="card-body p-1 p-md-2 p-lg-3" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
+                    <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
                         <div id="AvatarId" class="px-2 py-1 border mb-2 rounded-2">
                             <div class="row">
                                 <div class="col-auto pe-0">
@@ -610,7 +618,7 @@
             {
                 @* <div class="col-12 col-md-3  d-flex align-items-stretch">
                     <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
-                        <div class="card-body p-1 p-md-2 p-lg-3" style="display: flex; flex-direction: column; overflow: hidden;">
+                        <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden;">
                             <h5  class="modal-title m-0">
                                 @if (CurrentChatContact != null)
                                 {
