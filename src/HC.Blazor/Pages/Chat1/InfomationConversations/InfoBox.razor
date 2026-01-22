@@ -15,6 +15,9 @@
 @using HC.ProjectTaskAssignments
 @using Microsoft.Extensions.Caching.Memory
 @using HC.Chat.Users
+@using Volo.Abp.BlazoriseUI
+@using Blazorise
+
 @attribute [Authorize(ChatPermissions.Messaging)]
 @attribute [RequiresFeature(ChatFeatures.Enable)]
 @inherits HCComponentBase
@@ -25,6 +28,25 @@
 @inject IProjectTasksAppService ProjectTasksAppService
 @inject IProjectMembersAppService ProjectMembersAppService
 @inject IUiMessageService UiMessageService
+
+<style> 
+    .accordion-button,
+    .accordion-body{
+        padding:12px 6px !important;
+        hover: background-color: #f8f9fa !important;
+        &:hover {
+            background-color: #f8f9fa !important;
+        }
+    }
+
+    .accordion-button::after{
+        background-size:16px !important; 
+    }
+
+    .accordion-item {
+        border:none !important;
+    }
+</style>
 
 
 <Column Size="ColumnSize.Is12.OnMobile.Is3.OnDesktop" class="col-12 col-md-3 d-flex align-items-stretch">
@@ -385,21 +407,138 @@
 </Column>
 
 
-<style> 
-    .accordion-button,
-    .accordion-body{
-        padding:12px 6px !important;
-        hover: background-color: #f8f9fa !important;
-        &:hover {
-            background-color: #f8f9fa !important;
-        }
-    }
+@* ************************* PINNED MESSAGES MODAL ************************* *@
+<Modal @ref="PinnedMessagesModal" Closing="@PinnedMessagesModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true" Size="ModalSize.Default">
+        <ModalHeader>
+            <ModalTitle>@L["PinnedMessages"]</ModalTitle>
+            <CloseButton Clicked="ClosePinnedMessagesModalAsync" />
+        </ModalHeader>
+        <ModalBody Class="overflow-y-auto" Style="max-height: 50vh;">
+            @foreach (var message in PinnedMessages)
+            {
+                if (message.SenderUserId == CurrentUserId)
+                {
+                    <div class="media w-75 mw-65 w-lp-auto mb-2 ms-auto position-relative">
+                        <div class="media-body position-relative ">
+                            @if (message.ReplyToMessage != null)
+                            {
+                                <div class="bg-dark bg-opacity-25 rounded p-2 mb-1 position-relative" style="border-left: 3px solid #0d6efd; cursor: pointer;">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">@L["ReplyingTo"]:</small>
+                                            <small class="text-truncate d-block">@message.ReplyToMessage.Message.TruncateWithPostfix(50, "...")</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            
+                            @if (message.ForwardedFromMessage != null)
+                            {
+                                <div class="bg-dark bg-opacity-25 rounded p-2 mb-1 position-relative" style="border-left: 3px solid #17a2b8;">
+                                    <div class="d-flex align-items-start">
+                                        <i class="bi bi-forward-fill text-info me-2"></i>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">@L["ForwardedFrom"]: 
+                                                @if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderName))
+                                                {
+                                                    <span>@message.ForwardedFromMessage.SenderName @message.ForwardedFromMessage.SenderSurname</span>
+                                                }
+                                                else if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderUsername))
+                                                {
+                                                    <span>@message.ForwardedFromMessage.SenderUsername</span>
+                                                }
+                                            </small>
+                                            <small class="text-truncate d-block">@message.ForwardedFromMessage.Message.TruncateWithPostfix(50, "...")</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            <div class="bg-primary text-bg-primary mb-1 px-2 px-lg-3 py-1  rounded shadow-sm position-relative">
+                                @if (message.IsSending)
+                                {
+                                    <div class="position-absolute top-0 end-0 p-1">
+                                        <span class="spinner-border spinner-border-sm text-light" role="status" aria-hidden="true"></span>
+                                    </div>
+                                }
+                                <p class="mb-0 message-text text-small">@message.Message</p>
+                                @* Message Files *@
+                                @if (message.Files != null && message.Files.Any())
+                                {
+                                    <div class="mt-2">
+                                        @foreach (var file in message.Files)
+                                        {
+                                            <div class="d-flex align-items-center mb-1 p-1 bg-dark bg-opacity-25 rounded">
+                                                <i class="bi bi-file-earmark me-2"></i>
+                                                <small class="flex-grow-1 text-truncate">@file.FileName</small>
+                                                <button class="btn btn-sm btn-link text-light p-0 ms-2" @onclick="async () => await DownloadFileAsync(file.Id)" title="@L["DownloadFile"]">
+                                                    <i class="bi bi-download"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <p class="left m-0 message-date small text-muted" style="opacity: 0.35; width: 150px; left: -110px; top: 1px; ">@Clock.ConvertToUserTime(message.MessageDate)</p>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="media w-75 mw-65 w-lp-auto mb-2 position-relative">
+                        <div class="media-body position-relative ms-2">
+                            <div class="mb-1">
+                                <small class="text-muted fw-bold">
+                                    @if (!string.IsNullOrEmpty(message.SenderName) || !string.IsNullOrEmpty(message.SenderSurname))
+                                    {
+                                        @($"{message.SenderSurname} {message.SenderName}".Trim())
+                                    }
+                                    else if (!string.IsNullOrEmpty(message.SenderUsername))
+                                    {
+                                        @message.SenderUsername
+                                    }
+                                    else
+                                    {
+                                        @L["UnknownUser"]
+                                    }
+                                </small>
+                            </div>
+                            <div class="bg-white shadow rounded py-1 px-2 mb-1 position-relative">
+                                @if (message.IsSending)
+                                {
+                                    <div class="position-absolute top-0 end-0 p-1">
+                                        <span class="spinner-border spinner-border-sm text-muted" role="status" aria-hidden="true"></span>
+                                    </div>
+                                }
+                                <p class="text-small mb-0 text-black">@message.Message</p>
+                                @if (message.Files != null && message.Files.Any())
+                                {
+                                    <div class="mt-2">
+                                        @foreach (var file in message.Files)
+                                        {
+                                            <div class="d-flex align-items-center mb-1 p-1 bg-white rounded border">
+                                                <i class="bi bi-file-earmark me-2"></i>
+                                                <small class="flex-grow-1 text-truncate">@file.FileName</small>
+                                                <button class="btn btn-sm btn-link p-0 ms-2" @onclick="async () => await DownloadFileAsync(file.Id)" title="@L["DownloadFile"]">
+                                                    <i class="bi bi-download"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <p class="small text-muted position-absolute m-0" style="opacity: 0.35; width: 100px; right: -110px; top: 1px;">@Clock.ConvertToUserTime(message.MessageDate)</p>
+                        </div>
+                    </div>
+                }
+            }
 
-    .accordion-button::after{
-        background-size:16px !important; 
-    }
-
-    .accordion-item {
-        border:none !important;
-    }
-</style>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary"
+                    Clicked="ClosePinnedMessagesModalAsync">
+                @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>

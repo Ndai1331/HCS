@@ -614,71 +614,15 @@
             <!-- Info box-->
             @if (ShowInfoBox)
             {
-                @* <div class="col-12 col-md-3  d-flex align-items-stretch">
-                    <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
-                        <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden;">
-                            <h5  class="modal-title m-0">
-                                @if (CurrentChatContact != null)
-                                {
-                                    @if (CurrentChatContact.Type == ConversationType.User)
-                                    {
-                                        @(GetName(CurrentChatContact) + (CurrentChatContact.HasChatPermission ? string.Empty : $" - {L["Volo.Chat:010004"]}"))
-                                    }
-                                    else
-                                    {
-                                        @(CurrentChatContact.ConversationName ?? GetName(CurrentChatContact))
-                                    }
-                                }
-                            </h5>
-
-                            <Accordion>
-                                <AccordionItem @bind-Visible="@AccordionChatInfoVisible">
-                                    <AccordionHeader>
-                                        <Heading Size="HeadingSize.Is5">
-                                            <AccordionToggle>@L["ChatInfo"]</AccordionToggle>
-                                        </Heading>
-                                    </AccordionHeader>
-                                    <AccordionBody>
-                                        <Button class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowPinnedMessagesAsync()">@L["ShowPinnedMessages"]</Button>
-                                    </AccordionBody>
-                                </AccordionItem>
-                                @if(CurrentChatContact.Type != ConversationType.User)
-                                {
-                                    <AccordionItem @bind-Visible="@AccordionChatMembersVisible">
-                                        <AccordionHeader>
-                                            <Heading Size="HeadingSize.Is5">
-                                                <AccordionToggle>@L["ChatMembers"]</AccordionToggle>
-                                            </Heading>
-                                        </AccordionHeader>
-                                        <AccordionBody>
-                                        </AccordionBody>
-                                    </AccordionItem>
-                                }
-                                <AccordionItem @bind-Visible="@AccordionMediaFilesVisible">
-                                    <AccordionHeader>
-                                        <Heading Size="HeadingSize.Is5">
-                                            <AccordionToggle>@L["Files"]</AccordionToggle>
-                                        </Heading>
-                                    </AccordionHeader>
-                                    <AccordionBody>
-                                    </AccordionBody>
-                                </AccordionItem>
-                                
-                            </Accordion>
-                        </div>
-                    </div>
-                </div> *@
-
-                //Tạo component Infobox ở đây
-
+               
                 <InfoBox 
                     CurrentChatContact="@CurrentChatContact"
-                    ShowPinnedMessagesAsync="@ShowPinnedMessagesAsync"
                     ShowInfoBoxAsync="@ShowInfoBoxAsync"
                     GetName="@GetName"
                     GetContactDisplayName="@GetContactDisplayName"
                     CanvasElementReferences="@CanvasElementReferences"
                     CurrentUserId="@CurrentUser.Id"
+                    DownloadFileAsync ="@DownloadFileAsync"
                 />
             }
         </div>

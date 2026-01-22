@@ -27,7 +27,8 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
         // Get pinned messages by ConversationId - much simpler and more accurate
         return await (await GetDbSetAsync())
             .Where(m => m.ConversationId == conversationId && m.IsPinned)
-            .OrderByDescending(m => m.PinnedDate)
+            // .OrderByDescending(m => m.PinnedDate)
+            .OrderByDescending(m => m.CreationTime)
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
     

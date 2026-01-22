@@ -26,6 +26,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Volo.Abp.Application.Dtos;
 using HC.Blazor.Extensions;
 using Microsoft.Extensions.Logging;
+using Blazorise;
 
 
 namespace HC.Blazor.Pages.Chat1.InfomationConversations;
@@ -40,11 +41,10 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     public ChatContactDto CurrentChatContact { get; set; }
 
     [Parameter]
-    public Func<Task> ShowPinnedMessagesAsync { get; set; } = null!;
-
-    [Parameter]
     public Func<Task> ShowInfoBoxAsync { get; set; } = null!;
-
+     
+    [Parameter]
+    public Func<Guid, Task> DownloadFileAsync { get; set; } = null!;
 
     public bool AccordionChatInfoVisible { get; set; } = false;
     public bool AccordionChatMembersVisible { get; set; } = false;
@@ -75,9 +75,11 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private bool IsLoadingMembers { get; set; } = false;
     private ChatContactDto? _previousChatContact;
 
+    private Modal? PinnedMessagesModal { get; set; }
 
     private string SelectedTabMediaFiles { get; set; } = "images";
 
+    private List<ChatMessageDto> PinnedMessages {get;set;} = new();
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
@@ -165,6 +167,17 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         await InvokeAsync(StateHasChanged);
     }
 
+    private async Task ShowPinnedMessagesAsync()
+    {
+        PinnedMessages = await ConversationService.GetPinnedMessagesAsync(CurrentChatContact!.ConversationId!.Value);
+        await PinnedMessagesModal?.Show();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ClosePinnedMessagesModalAsync(){
+        await PinnedMessagesModal?.Hide();
+        await InvokeAsync(StateHasChanged);
+    }
 
     private async Task OnSelectedTabMediaFilesChanged(string name)
     {

@@ -1454,13 +1454,13 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             IsPinned = message.IsPinned,
             PinnedDate = message.PinnedDate,
             ReplyToMessageId = message.ReplyToMessageId,
+            SenderUserId = message.CreatorId,
             Files = new List<MessageFileDto>()
         };
         
-        // Load sender information if provided (for Group/Project/Task conversations)
-        if (senderUserId.HasValue)
+        if (senderUserId.HasValue || message.CreatorId.HasValue)
         {
-            var senderUser = await _chatUserLookupService.FindByIdAsync(senderUserId.Value);
+            var senderUser = senderUserId.HasValue ? await _chatUserLookupService.FindByIdAsync(senderUserId.Value) : await _chatUserLookupService.FindByIdAsync(message.CreatorId.Value);
             if (senderUser != null)
             {
                 dto.SenderUserId = senderUser.Id;

@@ -1867,12 +1867,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     }
 
 
-    private async Task ShowPinnedMessagesAsync()
-    {
-        ShowInfoBox = false;
-        await InvokeAsync(StateHasChanged);
-    }
-
     private async Task ShowInfoBoxAsync()
     {
         ShowInfoBox = !ShowInfoBox;
