@@ -75,7 +75,7 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private bool IsLoadingMembers { get; set; } = false;
     private ChatContactDto? _previousChatContact;
 
-    private Modal? PinnedMessagesModal { get; set; }
+    private Modal PinnedMessagesModal { get; set; } = new();
 
     private string SelectedTabMediaFiles { get; set; } = "images";
 
@@ -169,13 +169,15 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
     private async Task ShowPinnedMessagesAsync()
     {
+        await BlockUiService.Block(selectors: "#chat_wrapper", busy: true  );
         PinnedMessages = await ConversationService.GetPinnedMessagesAsync(CurrentChatContact!.ConversationId!.Value);
-        await PinnedMessagesModal?.Show();
+        await PinnedMessagesModal.Show();
+        await BlockUiService.UnBlock();
         await InvokeAsync(StateHasChanged);
     }
 
     private async Task ClosePinnedMessagesModalAsync(){
-        await PinnedMessagesModal?.Hide();
+        await PinnedMessagesModal.Hide();
         await InvokeAsync(StateHasChanged);
     }
 
