@@ -1,0 +1,392 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div style="position: relative; height: 300px;">
+    <canvas id="@ChartId" width="400" height="300"></canvas>
+</div>
+
+@code
+{
+    [Parameter] public string ChartId { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public List<string> Labels { get; set; } = new();
+    [Parameter] public List<double> Data { get; set; } = new();
+    [Parameter] public List<string> BackgroundColors { get; set; } = new();
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? XAxisLabel { get; set; }
+    [Parameter] public string? YAxisLabel { get; set; }
+
+    private IJSObjectReference? _chartModule;
+    private IJSObjectReference? _chartInstance;
+    private bool _chartRendered = false;
+    private int _lastLabelsCount = 0;
+    private int _lastDataCount = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Labels.Count > 0 && Data.Count > 0 && Labels.Count == Data.Count)
+        {
+            if (_chartInstance == null && !_chartRendered)
+            {
+                await Task.Delay(200);
+                await RenderChart();
+                _chartRendered = true;
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Labels.Count > 0 && Data.Count > 0 && Labels.Count == Data.Count)
+        {
+            var labelsChanged = _lastLabelsCount != Labels.Count;
+            var dataChanged = _lastDataCount != Data.Count;
+            
+            _lastLabelsCount = Labels.Count;
+            _lastDataCount = Data.Count;
+
+            if (_chartInstance != null && (labelsChanged || dataChanged))
+            {
+                await Task.Delay(200);
+                await UpdateChart();
+            }
+            else if (_chartInstance == null && !_chartRendered)
+            {
+                _chartRendered = false;
+            }
+        }
+    }
+
+    private async Task RenderChart()
+    {
+        if (Labels.Count == 0 || Data.Count == 0 || Labels.Count != Data.Count)
+        {
+            return;
+        }
+
+        try
+        {
+            var canvasExists = await JSRuntime.InvokeAsync<bool>("eval", 
+                $"document.getElementById('{ChartId}') !== null");
+            
+            if (!canvasExists)
+            {
+                await Task.Delay(200);
+                canvasExists = await JSRuntime.InvokeAsync<bool>("eval", 
+                    $"document.getElementById('{ChartId}') !== null");
+                if (!canvasExists)
+                {
+                    Console.WriteLine($"Canvas with id {ChartId} not found");
+                    return;
+                }
+            }
+
+            // Load Chart.js and datalabels plugin if needed
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                if (typeof window.loadChartJsWithDatalabels === 'undefined') {
+                    window.loadChartJsWithDatalabels = function() {
+                        return new Promise((resolve, reject) => {
+                            // Nếu đã có Chart + ChartDataLabels thì chỉ cần đảm bảo đã register
+                            if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+                                try {
+                                    if (!Chart.registry.plugins.get('datalabels')) {
+                                        Chart.register(ChartDataLabels);
+                                    }
+                                } catch { /* ignore */ }
+                                resolve();
+                                return;
+                            }
+
+                            const ensureRegister = () => {
+                                try {
+                                    if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+                                        if (!Chart.registry.plugins.get('datalabels')) {
+                                            Chart.register(ChartDataLabels);
+                                        }
+                                    }
+                                } catch { /* ignore */ }
+                            };
+
+                            const loadDatalabels = () => {
+                                const datalabelsScript = document.createElement('script');
+                                datalabelsScript.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js';
+                                datalabelsScript.onload = () => {
+                                    ensureRegister();
+                                    resolve();
+                                };
+                                datalabelsScript.onerror = () => reject(new Error('Failed to load Chart.js datalabels plugin'));
+                                document.head.appendChild(datalabelsScript);
+                            };
+
+                            const loadChart = () => {
+                                if (typeof Chart !== 'undefined') {
+                                    loadDatalabels();
+                                    return;
+                                }
+
+                                const chartScript = document.createElement('script');
+                                chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+                                chartScript.onload = () => {
+                                    loadDatalabels();
+                                };
+                                chartScript.onerror = () => reject(new Error('Failed to load Chart.js'));
+                                document.head.appendChild(chartScript);
+                            };
+
+                            loadChart();
+                        });
+                    };
+                }
+            ");
+
+            await JSRuntime.InvokeVoidAsync("loadChartJsWithDatalabels");
+            
+            // Wait a bit to ensure plugin is fully loaded and registered
+            await Task.Delay(300);
+            
+            // Ensure plugin is registered after loading
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+                    try {
+                        if (!Chart.registry.plugins.get('datalabels')) {
+                            Chart.register(ChartDataLabels);
+                        }
+                    } catch (e) {
+                        console.log('ChartDataLabels registration:', e.message);
+                    }
+                }
+            ");
+            
+            // Wait a bit more after registration
+            await Task.Delay(100);
+
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                if (typeof window.createBarChartHelper === 'undefined') {
+                    window.createBarChartHelper = function(canvasId, labels, data, colors, title, xAxisLabel, yAxisLabel) {
+                        const canvas = document.getElementById(canvasId);
+                        if (!canvas) {
+                            console.error('Canvas with id ' + canvasId + ' not found');
+                            return null;
+                        }
+
+                        const ctx = canvas.getContext('2d');
+                        
+                        if (window.chartInstances && window.chartInstances[canvasId]) {
+                            window.chartInstances[canvasId].destroy();
+                        }
+                        
+                        if (!window.chartInstances) {
+                            window.chartInstances = {};
+                        }
+                        
+                        // Convert hex/rgb colors to rgba with opacity
+                        const convertToRgba = (color, opacity) => {
+                            if (color.startsWith('rgba')) {
+                                return color.replace(/[\d\.]+\)$/g, opacity + ')');
+                            }
+                            if (color.startsWith('rgb')) {
+                                return color.replace('rgb', 'rgba').replace(')', ', ' + opacity + ')');
+                            }
+                            // Hex color
+                            const hex = color.replace('#', '');
+                            const r = parseInt(hex.substring(0, 2), 16);
+                            const g = parseInt(hex.substring(2, 4), 16);
+                            const b = parseInt(hex.substring(4, 6), 16);
+                            return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + opacity + ')';
+                        };
+                        
+                        // Apply opacity to all colors (1.0 for background, 1.0 for border)
+                        const backgroundColorWithOpacity = colors.map(color => convertToRgba(color, 1.0));
+                        const borderColorWithOpacity = colors.map(color => convertToRgba(color, 1));
+                        
+                        try {
+                            console.log('Creating bar chart with', labels.length, 'labels and', data.length, 'data points');
+                            
+                            // First, check if ChartDataLabels is available and registered
+                            const plugins = [];
+                            const pluginsConfig = {
+                                legend: {
+                                    display: false
+                                },
+                                title: {
+                                    display: !!title,
+                                    text: title || '',
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.parsed.y || 0;
+                                        }
+                                    }
+                                }
+                            };
+                            
+                            // Only add datalabels config if plugin is available
+                            if (typeof ChartDataLabels !== 'undefined') {
+                                plugins.push(ChartDataLabels);
+                                pluginsConfig.datalabels = {
+                                    anchor: 'end',
+                                    align: 'top',
+                                    formatter: function(value) {
+                                        return value !== null && value !== undefined ? value : '';
+                                    },
+                                    color: '#000000',
+                                    font: {
+                                        weight: 'bold',
+                                        size: 11
+                                    },
+                                    padding: 4,
+                                    display: 'auto'
+                                };
+                            }
+                            
+                            const chart = new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: labels,
+                                    datasets: [{
+                                        label: yAxisLabel || 'Count',
+                                        data: data,
+                                        backgroundColor: backgroundColorWithOpacity,
+                                        borderColor: borderColorWithOpacity,
+                                        borderWidth: 2
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: pluginsConfig,
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            title: {
+                                                display: !!yAxisLabel,
+                                                text: yAxisLabel || ''
+                                            }
+                                        },
+                                        x: {
+                                            title: {
+                                                display: !!xAxisLabel,
+                                                text: xAxisLabel || ''
+                                            }
+                                        }
+                                    }
+                                },
+                                plugins: plugins
+                        });
+                        
+                        window.chartInstances[canvasId] = chart;
+                        console.log('Bar chart created successfully');
+                        return chart;
+                        } catch (error) {
+                            console.error('Error creating bar chart:', error);
+                            console.error('Error stack:', error.stack);
+                            return null;
+                        }
+                    };
+                    
+                    window.updateBarChartHelper = function(canvasId, labels, data, colors) {
+                        if (window.chartInstances && window.chartInstances[canvasId]) {
+                            const chart = window.chartInstances[canvasId];
+                            
+                            // Convert hex/rgb colors to rgba with opacity
+                            const convertToRgba = (color, opacity) => {
+                                if (color.startsWith('rgba')) {
+                                    return color.replace(/[\d\.]+\)$/g, opacity + ')');
+                                }
+                                if (color.startsWith('rgb')) {
+                                    return color.replace('rgb', 'rgba').replace(')', ', ' + opacity + ')');
+                                }
+                                // Hex color
+                                const hex = color.replace('#', '');
+                                const r = parseInt(hex.substring(0, 2), 16);
+                                const g = parseInt(hex.substring(2, 4), 16);
+                                const b = parseInt(hex.substring(4, 6), 16);
+                                return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + opacity + ')';
+                            };
+                            
+                            // Apply opacity to all colors (1.0 for background, 1.0 for border)
+                            const backgroundColorWithOpacity = colors.map(color => convertToRgba(color, 1.0));
+                            const borderColorWithOpacity = colors.map(color => convertToRgba(color, 1));
+                            
+                            chart.data.labels = labels;
+                            chart.data.datasets[0].data = data;
+                            chart.data.datasets[0].backgroundColor = backgroundColorWithOpacity;
+                            chart.data.datasets[0].borderColor = borderColorWithOpacity;
+                            chart.update();
+                        }
+                    };
+                }
+            ");
+
+            var defaultColors = new List<string>
+            {
+                "#3498db", "#2ecc71", "#e74c3c", "#f39c12", "#9b59b6",
+                "#1abc9c", "#34495e", "#e67e22", "#95a5a6", "#16a085"
+            };
+
+            var colors = BackgroundColors.Count > 0 ? BackgroundColors : defaultColors.Take(Labels.Count).ToList();
+
+            await JSRuntime.InvokeVoidAsync("createBarChartHelper",
+                ChartId,
+                Labels.ToArray(),
+                Data.ToArray(),
+                colors.ToArray(),
+                Title,
+                XAxisLabel,
+                YAxisLabel);
+            
+            _chartRendered = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error rendering chart: {ex.Message}");
+            _chartRendered = false;
+        }
+    }
+
+    private async Task UpdateChart()
+    {
+        if (Labels.Count == 0 || Data.Count == 0 || Labels.Count != Data.Count)
+        {
+            return;
+        }
+
+        try
+        {
+            var defaultColors = new List<string>
+            {
+                "#3498db", "#2ecc71", "#e74c3c", "#f39c12", "#9b59b6",
+                "#1abc9c", "#34495e", "#e67e22", "#95a5a6", "#16a085"
+            };
+
+            var colors = BackgroundColors.Count > 0 ? BackgroundColors : defaultColors.Take(Labels.Count).ToList();
+
+            await JSRuntime.InvokeVoidAsync("updateBarChartHelper",
+                ChartId,
+                Labels.ToArray(),
+                Data.ToArray(),
+                colors.ToArray());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating chart: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("destroyChartHelper", ChartId);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (Exception)
+        {
+        }
+    }
+}
+

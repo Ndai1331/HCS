@@ -9,7 +9,6 @@
 @using Microsoft.Extensions.Localization
 @using Microsoft.AspNetCore.Components.Web
 @using Blazorise
-@using Blazorise.Charts
 @using Volo.Abp.BlazoriseUI
 @using Volo.Abp.BlazoriseUI.Components
 @using HC.Permissions
@@ -17,6 +16,7 @@
 @using Microsoft.AspNetCore.Components
 @using Volo.Abp.AspNetCore.Components.Messages
 @using Volo.Abp.AspNetCore.Components.Web
+@using HC.Blazor.Components.Charts
 @inherits HCComponentBase
 @inject ISurveyResultsAppService SurveyResultsAppService
 @inject ISurveyLocationsAppService SurveyLocationsAppService
@@ -27,6 +27,52 @@
 <PageHeader Title="@L["SurveyResults"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
 </PageHeader>
 
+<style>
+    .stat-block {
+        @* border: 1px solid #ececec; *@
+        border-radius: 4px;
+        background: #fafbfc;
+        padding: 24px 20px 14px 20px;
+        min-width: 230px;
+    }
+    .stat-title {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 18px;
+        color: #182c4c;
+    }
+    .stat-list {
+        list-style: none;
+        padding-left: 0;
+        margin-bottom: 0;
+    }
+    .stat-list-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+        font-size: 15px;
+    }
+    .stat-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 12px;
+    }
+    .dot-primary {
+        background: #f72585;
+        border: 1.5px solid #f72585;
+    }
+    .dot-secondary {
+        background: #007bff;
+        border: 1.5px solid #007bff;
+    }
+    .stat-value {
+        font-weight: 700;
+        margin-left: auto;
+        font-size: 15px;
+    }
+</style>
 @* ************************* FILTER ************************* *@
 <Card>
     <CardBody>
@@ -59,7 +105,7 @@ else
 {
     @* ************************* CHARTS ************************* *@
     <Row Class="mt-4">
-        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+        <Column ColumnSize="ColumnSize.Is12">
             <Card>
                 <CardHeader>
                     <CardTitle>
@@ -68,11 +114,61 @@ else
                     </CardTitle>
                 </CardHeader>
                 <CardBody>
-                    <PieChart @ref="pieChart" TItem="int" />
+                    <div class="d-flex justify-content-center">
+                        <PieChart ChartId="@pieChartId"
+                            Labels="@RatingDistributionLabels"
+                            Data="@RatingDistributionData"
+                            BackgroundColors="@RatingDistributionColors"
+                            IsDoughnut="true"
+                        />
+                        <div class="stat-block">
+                        <div class="stat-title">@L["RatingDistributionTotal"]</div>
+                        <ul class="stat-list">
+                            <li class="stat-list-item">
+                                <span class="stat-dot dot-primary text-brand"></span>
+                                @L["RatingDistributionTotal"]
+                                <span class="stat-value text-brand">@RatingDistributionData.Sum()</span>
+                            </li>
+                            <li class="stat-list-item">
+                                <span class="stat-dot dot-secondary"></span>
+                                @L["0StarRating"]
+                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[0] : 0)</span>
+                            </li>
+                            <li class="stat-list-item">
+                                <span class="stat-dot dot-secondary"></span>
+                                @L["1StarRating"]
+                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[1] : 0)</span>
+                            </li>
+                            <li class="stat-list-item">
+                                <span class="stat-dot dot-secondary"></span>
+                                @L["2StarRating"]
+                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[2] : 0)</span>
+                            </li>
+                            <li class="stat-list-item">
+                                <span class="stat-dot dot-secondary"></span>
+                                @L["3StarRating"]
+                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[3] : 0)</span>
+                            </li>
+                            <li class="stat-list-item">
+                                <span class="stat-dot dot-secondary"></span>
+                                @L["4StarRating"]
+                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[4] : 0)</span>
+                            </li>
+                            <li class="stat-list-item">
+                                <span class="stat-dot dot-secondary"></span>
+                                @L["5StarRating"]
+                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[5] : 0)</span>
+                            </li>
+                        </ul>
+                        </div>
+                    </div>
                 </CardBody>
             </Card>
         </Column>
-        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+    </Row>
+
+    <Row Class="mt-4">
+        <Column ColumnSize="ColumnSize.Is12">
             <Card>
                 <CardHeader>
                     <CardTitle>
@@ -81,7 +177,12 @@ else
                     </CardTitle>
                 </CardHeader>
                 <CardBody>
-                    <BarChart @ref="barChart" TItem="double" />
+                   <BarChart ChartId="@barChartId"
+                                    Labels="@CriteriaAverageRatingsLabels"
+                                    Data="@CriteriaAverageRatingsData"
+                                    BackgroundColors="@CriteriaAverageRatingsColors"
+                                    XAxisLabel="@L["Criteria"]"
+                                    YAxisLabel="@L["AverageRating"]" />
                 </CardBody>
             </Card>
         </Column>

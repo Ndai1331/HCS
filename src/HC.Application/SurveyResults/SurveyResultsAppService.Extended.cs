@@ -89,6 +89,7 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
 
         try
         {
+            _logger.LogInformation($"GetStatisticsByLocationAsync Getting survey result statistics for location {surveyLocationId}");
             var queryable = await _surveyResultRepository.GetQueryableAsync();
             var sessionQueryable = await _surveySessionRepository.GetQueryableAsync();
             var criteriaQueryable = await _surveyCriteriaRepository.GetQueryableAsync();
@@ -104,13 +105,16 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
                            criteria.Name,
                            criteria.Code
                        };
-
+            _logger.LogInformation($"GetStatisticsByLocationAsync Query: {JsonSerializer.Serialize(query)}");
             var data = await AsyncExecuter.ToListAsync(query);
 
+            _logger.LogInformation($"GetStatisticsByLocationAsync Data: {JsonSerializer.Serialize(data)}");
             // Calculate rating distribution
             statistics.RatingDistribution = data
                 .GroupBy(x => x.Rating)
                 .ToDictionary(g => g.Key, g => g.Count());
+
+            _logger.LogInformation($"GetStatisticsByLocationAsync Rating Distribution: {JsonSerializer.Serialize(statistics.RatingDistribution)}");
 
             // Ensure all ratings 0-5 are present
             for (int i = 0; i <= 5; i++)
@@ -120,7 +124,7 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
                     statistics.RatingDistribution[i] = 0;
                 }
             }
-
+            _logger.LogInformation($"GetStatisticsByLocationAsync Rating Distribution: {JsonSerializer.Serialize(statistics.RatingDistribution)}");
             // Calculate criteria average ratings
             statistics.CriteriaAverageRatings = data
                 .GroupBy(x => x.Name)
@@ -131,7 +135,7 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
                 })
                 .OrderBy(x => x.CriteriaName)
                 .ToDictionary(x => x.CriteriaName, x => Math.Round(x.AverageRating, 1));
-
+            _logger.LogInformation($"GetStatisticsByLocationAsync Criteria Average Ratings: {JsonSerializer.Serialize(statistics.CriteriaAverageRatings)}");
             return statistics;
         }
         catch (Exception ex)
