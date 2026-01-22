@@ -115,19 +115,29 @@
                                                     <i class="lpx-caret bi-three-dots" aria-hidden="true"></i>
                                                 </button>
                                                 <ul class="dropdown-menu">
-
-                                                    @if(member.Role == "ADMIN")
-                                                    {
-                                                            <li>
-                                                                <a class="dropdown-item" @onclick="async () => await RemoveMemberAsync(member)">
-                                                                    <i class="bi bi-trash"></i> @L["Remove"]
-                                                                    
-                                                                </a>
-                                                            </li>
-                                                    }else{
-                                                         <li>
+                                                   @if(member.Id != CurrentUserId)
+                                                   {
+                                                        <li>
+                                                            <a class="dropdown-item" @onclick="async () => await RemoveMemberAsync(member)">
+                                                                <i class="bi bi-chat-left-text"></i> @L["SendMessage"]
+                                                            </a>
+                                                        </li>
+                                                   }
+                                                   
+                                                    @if(member.Id == CurrentUserId && member.Role == "MEMBER")
+                                                    {   
+                                 
+                                                        <li>
                                                             <a class="dropdown-item" @onclick="async () => await RemoveMemberAsync(member)">
                                                                 <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                    @if(member.Role == "ADMIN" && member.Id == CurrentUserId)
+                                                    {
+                                                        <li>
+                                                            <a class="dropdown-item" @onclick="async () => await RemoveMemberAsync(member)">
+                                                                <i class="bi bi-trash"></i> @L["Remove"]
                                                             </a>
                                                         </li>
                                                     }

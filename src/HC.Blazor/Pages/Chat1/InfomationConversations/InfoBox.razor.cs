@@ -89,7 +89,8 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
     private List<ConversationMemberDto> Members { get; set; } = new();
 
-
+    [Parameter]
+    public Guid? CurrentUserId { get; set; }
     private bool IsLoadingMembers { get; set; } = false;
 
     protected override async Task OnParametersSetAsync()

@@ -1346,10 +1346,11 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
     }
 
-    private async Task LeaveConversationAsync(ChatContactDto contact)
+    private async Task RemoveMemberAsync(ChatContactDto contact)
     {
-        // await ConversationAppService.LeaveConversationAsync(contact.ConversationId.Value);
-        // await GetContactsAsync();
+        await ConversationAppService.RemoveMemberAsync(new RemoveMemberInput { 
+            ConversationId = contact.ConversationId.Value,
+             UserId = contact.UserId });
         await InvokeAsync(StateHasChanged);
     }
     

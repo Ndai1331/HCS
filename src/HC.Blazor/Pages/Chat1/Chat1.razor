@@ -158,7 +158,7 @@
                                                         @if (chatContact.MemberRole == "MEMBER")
                                                         {
                                                             <li>    
-                                                                <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(chatContact)">
+                                                                <a class="dropdown-item" @onclick="async () => await RemoveMemberAsync(chatContact)">
                                                                         <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
                                                                 </a>
                                                             </li>
@@ -678,6 +678,7 @@
                     GetName="@GetName"
                     GetContactDisplayName="@GetContactDisplayName"
                     CanvasElementReferences="@CanvasElementReferences"
+                    CurrentUserId="@CurrentUser.Id"
                 />
             }
         </div>
