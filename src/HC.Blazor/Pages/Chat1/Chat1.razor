@@ -94,19 +94,19 @@
                                             <div class="media" @onclick="async () => await SetActiveAsync(chatContact)" >
                                                 @if (chatContact.Type == ConversationType.User)
                                                 {
-                                                    <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="20" Height="20"></canvas>
+                                                    <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="24" Height="24"></canvas>
                                                 }
                                                 else if (chatContact.Type == ConversationType.Group)
                                                 {
-                                                    <i class="bi bi-people-fill fs-4 text-primary"></i>
+                                                    <i class="bi bi-people-fill fs-3 text-primary"></i>
                                                 }
                                                 else if (chatContact.Type == ConversationType.Project)
                                                 {
-                                                    <i class="bi bi-folder-fill fs-4 text-success"></i>
+                                                    <i class="bi bi-folder-fill fs-3 text-success"></i>
                                                 }
                                                 else if (chatContact.Type == ConversationType.Task)
                                                 {
-                                                    <i class="bi bi-check2-square fs-4 text-warning"></i>
+                                                    <i class="bi bi-check2-square fs-3 text-warning"></i>
                                                 }
                                                 <div class="media-body ms-2">
                                                     <div class="d-flex align-items-center justify-content-between mb-1">
@@ -154,20 +154,18 @@
                                                                     <i class="bi bi-pin-fill"></i> @L["PinConversation"]
                                                                 }
                                                             </a>
-
-                                                            <a class="dropdown-item" @onclick="async () => await TogglePinConversationAsync(chatContact)">
-                                                                @if (chatContact.MemberRole == "MEMBER")
-                                                                {
-                                                                    <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
-                                                                }
-                                                                else if (chatContact.MemberRole == "ADMIN")
-                                                                {
-                                                                    <i class="bi bi-trash"></i> @L["DeleteConversation"]
-                                                                }
-                                                            </a>
                                                         </li>
+                                                        @if (chatContact.MemberRole == "MEMBER")
+                                                        {
+                                                            <li>    
+                                                                <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(chatContact)">
+                                                                        <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
+                                                                </a>
+                                                            </li>
+                                                        }
+
                                                     }
-                                                    @if (IsDeletingConversationEnabled())
+                                                    @if (IsDeletingConversationEnabled() && chatContact.MemberRole == "ADMIN")
                                                     {
                                                         <li>
                                                             <a class="dropdown-item delete-conversation-btn" @onclick="async () => await DeleteConversationAsync()">@L["Delete"]</a>
@@ -197,7 +195,7 @@
                 </div>
             </div>
             <!-- Chat Box-->
-            <div id="chatBox" class="col-12 @(ShowInfoBox ? "col-md-6" : "col-md-9")  d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
+            <div id="chatBox" class="col-12 @(ShowInfoBox ? "col-md-6" : "col-md-9") p-0 d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
                 <div class="card w-100 mb-0" style="height: 100%; display: flex; flex-direction: column;">
                     <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
                         <div id="AvatarId" class="px-2 py-1 border mb-2 rounded-2">

@@ -77,9 +77,9 @@
             <Accordion >
                 <AccordionItem @bind-Visible="@AccordionChatInfoVisible">
                     <AccordionHeader>
-                        <Heading Size="HeadingSize.Is5">
-                            <AccordionToggle>@L["ChatInfo"]</AccordionToggle>
-                        </Heading>
+                        <Span>
+                            <AccordionToggle Class="fw-bolder">@L["ChatInfo"]</AccordionToggle>
+                        </Span>
                     </AccordionHeader>
                     <AccordionBody>
                         <Button class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowPinnedMessagesAsync()">@L["ShowPinnedMessages"]</Button>
@@ -89,9 +89,9 @@
                 {
                     <AccordionItem  @onclick="async () => await LoadMembersAsync()" @bind-Visible="@AccordionChatMembersVisible">
                         <AccordionHeader>
-                            <Heading Size="HeadingSize.Is5">
-                                <AccordionToggle>@L["ChatMembers"]</AccordionToggle>
-                            </Heading>
+                            <Span>
+                                <AccordionToggle Class="fw-bolder">@L["ChatMembers"]</AccordionToggle>
+                            </Span>
                         </AccordionHeader>
                         <AccordionBody>
                             @if(IsLoadingMembers)
@@ -117,9 +117,9 @@
                 }
                 <AccordionItem @bind-Visible="@AccordionMediaFilesVisible">
                     <AccordionHeader>
-                        <Heading Size="HeadingSize.Is5">
-                            <AccordionToggle>@L["Files"]</AccordionToggle>
-                        </Heading>
+                        <Span>
+                            <AccordionToggle Class="fw-bolder">@L["Files"]</AccordionToggle>
+                        </Span>
                     </AccordionHeader>
                     <AccordionBody>
                     </AccordionBody>
@@ -129,3 +129,23 @@
         </CardBody>
     </Card>
 </Column>
+
+
+<style> 
+    .accordion-button,
+    .accordion-body{
+        padding:12px 6px !important;
+        hover: background-color: #f8f9fa !important;
+        &:hover {
+            background-color: #f8f9fa !important;
+        }
+    }
+
+    .accordion-button::after{
+        background-size:16px !important; 
+    }
+
+    .accordion-item {
+        border:none !important;
+    }
+</style>

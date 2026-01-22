@@ -1345,6 +1345,13 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await HandleErrorAsync(ex);
         }
     }
+
+    private async Task LeaveConversationAsync(ChatContactDto contact)
+    {
+        // await ConversationAppService.LeaveConversationAsync(contact.ConversationId.Value);
+        // await GetContactsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
     
     private async Task ReplyToMessageAsync(ChatMessageDto message)
     {
