@@ -899,6 +899,16 @@
     "RatingCount": "Số lượng đánh giá",
     "AverageRating": "Điểm trung bình",
     "Unknown": "Chưa đánh giá",
-    "All": "Tất cả"
+    "All": "Tất cả",
+    "ActiveProjects": "Dự án đang hoạt động",
+    "TasksStatistics": "Thống kê công việc",
+    "UpcomingEvents": "Sự kiện sắp tới",
+    "RecentDocuments": "Tài liệu gần đây",
+    "RecentNotifications": "Thông báo gần đây",
+    "NoActiveProjects": "Không có dự án đang hoạt động",
+    "NoTasks": "Không có công việc",
+    "NoUpcomingEvents": "Không có sự kiện sắp tới",
+    "NoRecentDocuments": "Không có tài liệu gần đây",
+    "NoRecentNotifications": "Không có thông báo gần đây"
   }
 }
