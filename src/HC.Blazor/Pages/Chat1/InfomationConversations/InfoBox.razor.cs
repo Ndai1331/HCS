@@ -172,4 +172,18 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         await InvokeAsync(StateHasChanged);
     }
 
+    private async Task RemoveMemberAsync(ConversationMemberDto member)
+    {
+        await ConversationService.RemoveMemberAsync(new RemoveMemberInput { ConversationId = CurrentChatContact.ConversationId.Value, UserId = member.UserId });
+        await LoadMembersAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+     
+    private async Task LeaveConversationAsync(ConversationMemberDto member)
+    {
+        // await ConversationAppService.LeaveConversationAsync(contact.ConversationId.Value);
+        // await GetContactsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
 }
