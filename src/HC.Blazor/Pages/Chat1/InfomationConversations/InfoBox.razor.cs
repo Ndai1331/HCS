@@ -47,26 +47,7 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
 
     public bool AccordionChatInfoVisible { get; set; } = false;
-    private bool _accordionChatMembersVisible = false;
-    public bool AccordionChatMembersVisible
-    {
-        get => _accordionChatMembersVisible;
-        set
-        {
-            if (_accordionChatMembersVisible != value)
-            {
-                _accordionChatMembersVisible = value;
-                if (value && CurrentChatContact?.Type != ConversationType.User && Members.Count == 0)
-                {
-                    _ = LoadMembersAsync();
-                }
-                else if (value && CurrentChatContact?.Type != ConversationType.User && Members.Any())
-                {
-                    _ = CreateMemberAvatarsAsync();
-                }
-            }
-        }
-    }
+    public bool AccordionChatMembersVisible { get; set; } = false;
     public bool AccordionMediaFilesVisible { get; set; } = false;
 
     [Parameter]
@@ -92,13 +73,22 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     [Parameter]
     public Guid? CurrentUserId { get; set; }
     private bool IsLoadingMembers { get; set; } = false;
+    private ChatContactDto? _previousChatContact;
+
+
+    private string SelectedTabMediaFiles { get; set; } = "images";
 
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
-        if (CurrentChatContact?.Type != ConversationType.User && AccordionChatMembersVisible)
+
+        // Chỉ load members khi CurrentChatContact thay đổi và không phải chat cá nhân
+        if (CurrentChatContact != null &&
+            CurrentChatContact.Type != ConversationType.User &&
+            (_previousChatContact == null || _previousChatContact.ConversationId != CurrentChatContact.ConversationId))
         {
             await LoadMembersAsync();
+            _previousChatContact = CurrentChatContact;
         }
     }
 
@@ -106,7 +96,7 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     {
         await base.OnAfterRenderAsync(firstRender);
 
-        // Tạo avatar khi accordion members được mở và chưa có avatar
+        // Tạo avatar khi accordion members được mở và đã có members sẵn
         if (!firstRender && AccordionChatMembersVisible && Members.Any() && !IsLoadingMembers)
         {
             await CreateMemberAvatarsAsync();
@@ -140,29 +130,7 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         IsLoadingMembers = true;
         if (CurrentChatContact is not null && CurrentChatContact.Type != ConversationType.User)
         {
-            var data = await ConversationService.GetMembersAsync(CurrentChatContact.ConversationId.Value);
-            Members = data;
-
-            // Đợi DOM render xong trước khi tạo avatar
-            await Task.Delay(200);
-
-            foreach (var member in Members)
-            {
-                try
-                {
-                    var canvasId = $"member-avatar-{member.UserId}";
-                    var displayName = !string.IsNullOrEmpty(member.UserInfo.Name) || !string.IsNullOrEmpty(member.UserInfo.Surname)
-                            ? $"{member.UserInfo.Name} {member.UserInfo.Surname}".Trim()
-                            : member.UserInfo.Username ?? "";
-
-                    await JsRuntime.SafeInvokeVoidAsync("VoloChatAvatarManager.createCanvasForUserById", canvasId, member.UserInfo.Username, displayName);
-                }
-                catch (Exception ex)
-                {
-                    // Log lỗi nhưng không làm dừng quá trình
-                    Console.WriteLine($"Error creating avatar for member {member.UserId}: {ex.Message}");
-                }
-            }
+            Members = await ConversationService.GetMembersAsync(CurrentChatContact.ConversationId.Value);
         }
         else
         {
@@ -184,6 +152,23 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     {
         // await ConversationAppService.LeaveConversationAsync(contact.ConversationId.Value);
         // await GetContactsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task AddMemberAsync()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task FindMessageAsync()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    private async Task OnSelectedTabMediaFilesChanged(string name)
+    {
+        SelectedTabMediaFiles = name;
         await InvokeAsync(StateHasChanged);
     }
 

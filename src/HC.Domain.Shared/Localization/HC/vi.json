@@ -918,6 +918,13 @@
     "NoRecentDocuments": "Không có tài liệu gần đây",
     "NoRecentNotifications": "Không có thông báo gần đây",
     "LeaveConversation": "Rời khỏi cuộc trò chuyện",
-    "DeleteConversation": "Xóa cuộc trò chuyện"
+    "DeleteConversation": "Xóa cuộc trò chuyện",
+    "AddMember": "Thêm thành viên",
+    "FindMessage": "Tìm tin nhắn",
+    "TotalMembers": "Tổng số thành viên",
+    "TotalMessages": "Tổng số tin nhắn",
+    "SendMessage": "Gửi tin nhắn",
+    "Images": "Ảnh",
+    "Files": "Tệp"
   }
 }

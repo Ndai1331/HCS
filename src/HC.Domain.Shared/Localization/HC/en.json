@@ -874,7 +874,14 @@
     "NoRecentDocuments": "No recent documents",
     "NoRecentNotifications": "No recent notifications",
     "LeaveConversation": "Leave conversation",
-    "DeleteConversation": "Delete conversation"
+    "DeleteConversation": "Delete conversation",
+    "AddMember": "Add member",
+    "FindMessage": "Find message",
+    "TotalMembers": "Total members",
+    "TotalMessages": "Total messages",
+    "SendMessage": "Send message",
+    "Images": "Images",
+    "Files": "Files"
 
   }
 }

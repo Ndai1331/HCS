@@ -61,17 +61,37 @@
                 }
             </Div>
             <Div Class="mb-2 text-center">
-                <Heading Size="HeadingSize.Is5">
+                <Heading Size="HeadingSize.Is5" Class="text-brand">
                     @if (CurrentChatContact != null)
                     {
                         @if (CurrentChatContact.Type == ConversationType.User)
                         {
-                            @(GetName(CurrentChatContact) + (CurrentChatContact.HasChatPermission ? string.Empty : $" - {L["Volo.Chat:010004"]}"))
+                            @(GetName(CurrentChatContact))
                         }else{
                             @(CurrentChatContact.ConversationName ?? GetName(CurrentChatContact))
                         }
                     }
                 </Heading>  
+            </Div>
+
+
+
+            <Div Class="mb-2  d-flex justify-content-center align-items-center">
+                @if(CurrentChatContact.Type != ConversationType.User)
+                {
+                    <Div Class="mx-2 mb-2 text-center">
+                        <div class="d-inline-block bg-light px-1 rounded-4 text-black-50" @onclick="async () => await AddMemberAsync()">
+                            <i class="bi bi-people-fill fs-4"></i>
+                        </div>
+                        <span class="d-block">@L["AddMember"]</span>    
+                    </Div>
+                }
+                <Div Class="mx-2 mb-2 text-center">
+                    <div class="d-inline-block bg-light px-1 rounded-4 text-black-50" @onclick="async () => await FindMessageAsync()">
+                    <i class="bi bi-search fs-4"></i>
+                    </div>
+                    <span class="d-block">@L["FindMessage"]</span>
+                </Div>
             </Div>
             
             <Accordion >
@@ -82,7 +102,10 @@
                         </Span>
                     </AccordionHeader>
                     <AccordionBody>
-                        <Button class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowPinnedMessagesAsync()">@L["ShowPinnedMessages"]</Button>
+                        <Button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"  @onclick="async () => await ShowPinnedMessagesAsync()">
+                            <i class="bi bi-pin-angle-fill fs-5"></i>
+                            <span class="d-block ms-2"> @L["ShowPinnedMessages"]</span>
+                        </Button>
                     </AccordionBody>
                 </AccordionItem>
                 @if(CurrentChatContact.Type != ConversationType.User)
@@ -123,7 +146,7 @@
                                                             </a>
                                                         </li>
                                                    }
-                                                   
+
                                                     @if(member.Id == CurrentUserId && member.Role == "MEMBER")
                                                     {   
                                  
@@ -157,6 +180,200 @@
                         </Span>
                     </AccordionHeader>
                     <AccordionBody>
+                        <Tabs SelectedTab="@SelectedTabMediaFiles" SelectedTabChanged="@(async (name) => await OnSelectedTabMediaFilesChanged(name))">
+                            <Items>
+                                <Tab Name="images">
+                                    <Icon Name="IconName.Image" Class="me-1" />
+                                    @L["Images"]
+                                </Tab>
+                                <Tab Name="files">
+                                    <Icon Name="IconName.File" Class="me-1" />
+                                    @L["Files"]
+                                </Tab>
+                            </Items>
+                            <Content>
+                                <TabPanel Name="images">
+                                    <Row>
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 30px; height: 30px; top: 8px; right: 8px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 17px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 30px; height: 30px; top: 8px; right: 8px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 17px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 30px; height: 30px; top: 8px; right: 8px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 17px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 30px; height: 30px; top: 8px; right: 8px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 17px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 30px; height: 30px; top: 8px; right: 8px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 17px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 30px; height: 30px; top: 8px; right: 8px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 17px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 30px; height: 30px; top: 8px; right: 8px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 17px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 30px; height: 30px; top: 8px; right: 8px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 17px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+
+                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                                            <Card Class="shadow-sm p-0">
+                                                <CardBody Class="p-0">
+                                                    <Div Class="position-relative">
+                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                        </CardImage>
+                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                    </Div>
+                                                </CardBody>
+                                            </Card>
+                                        </Column>
+                                    </Row>  
+                                </TabPanel>
+                                <TabPanel Name="files">
+
+
+                                    <div class="d-flex align-items-center mb-1 p-1 bg-dark bg-opacity-25 rounded">
+                                            <i class="bi bi-file-earmark me-2"></i>
+                                            <small class="flex-grow-1 text-truncate">ABC</small>
+                                            <button class="btn btn-sm btn-link text-light p-0 ms-2" title="@L["DownloadFile"]">
+                                                <i class="bi bi-cloud-download-fill"></i>
+                                            </button>
+                                        </div>
+
+
+
+                                    <div class="d-flex align-items-center mb-1 p-1 bg-dark bg-opacity-25 rounded">
+                                            <i class="bi bi-file-earmark me-2"></i>
+                                            <small class="flex-grow-1 text-truncate">ABCÁDSADS</small>
+                                            <button class="btn btn-sm btn-link text-light p-0 ms-2" title="@L["DownloadFile"]">
+                                                <i class="bi bi-cloud-download-fill"></i>
+                                            </button>
+                                        </div>
+                                </TabPanel>
+                            </Content>
+                        </Tabs>
                     </AccordionBody>
                 </AccordionItem>
                 
