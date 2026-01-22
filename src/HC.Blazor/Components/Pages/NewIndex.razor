@@ -1,0 +1,443 @@
+﻿@page "/new-index"
+@attribute [Authorize(HCPermissions.Workflows.Default)]
+@using HC.Workflows
+@using HC.Projects
+@using HC.ProjectTasks
+@using HC.CalendarEvents
+@using HC.Documents
+@using HC.NotificationReceivers
+@using HC.Localization
+@using HC.Shared
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.Components.Web
+@using Blazorise
+@using Blazorise.Components
+@using Blazorise.DataGrid
+@using Volo.Abp.BlazoriseUI
+@using Volo.Abp.BlazoriseUI.Components
+@using Volo.Abp.ObjectMapping
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
+@using HC.Permissions
+@using Volo.Abp.AspNetCore.Components.Web
+@using Volo.Abp.AspNetCore.Components
+@using Microsoft.AspNetCore.Components
+@using Volo.Abp.Http.Client
+@inherits HCComponentBase
+@inject IWorkflowsAppService WorkflowsAppService
+@inject IUiMessageService UiMessageService
+@inject AbpBlazorMessageLocalizerHelper<HCResource> LH
+@inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
+@inject NavigationManager NavigationManager
+
+<Row>
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+        <Row>
+
+            @* ===== ACTIVE PROJECTS ===== *@
+            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
+                <Card Class="overflow-hidden bg-primary text-white w-100">
+                    <CardHeader>
+                        <Row>
+                            <Column>
+                                <Heading Size="HeadingSize.Is4" TextColor="TextColor.White">
+                                    Active Projects
+                                </Heading>
+                                <small class="text-muted">
+                                    3 of 4 projects are active now.
+                                </small>
+                            </Column>
+                        </Row>
+                    </CardHeader>
+
+                    <CardBody>
+
+                        @* Project item *@
+                        <div class="mt-3">
+                            <h5 class="mb-1 text-white">Mobile App</h5>
+                            <Row class="align-items-center">
+                                <Column>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-brand"
+                                             style="width:70%"></div>
+                                    </div>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.IsAuto">
+                                    <span class="text-muted">%70</span>
+                                </Column>
+                            </Row>
+                        </div>
+
+                        <div class="mt-3">
+                            <h5 class="mb-1 text-white">My Book Store</h5>
+                            <Row class="align-items-center">
+                                <Column>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-warning"
+                                             style="width:52%"></div>
+                                    </div>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.IsAuto">
+                                    <span class="text-muted">%52</span>
+                                </Column>
+                            </Row>
+                        </div>
+
+                        <div class="mt-3">
+                            <h5 class="mb-1 text-white">Questions &amp; Answers</h5>
+                            <Row class="align-items-center">
+                                <Column>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success"
+                                             style="width:15%"></div>
+                                    </div>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.IsAuto">
+                                    <span class="text-muted">%15</span>
+                                </Column>
+                            </Row>
+                        </div>
+
+                        <Button Color="Color.Light" Class="w-100 mt-4">
+                            <Icon Name="IconName.Add" Class="me-1" />
+                            Add New Project
+                        </Button>
+
+                    </CardBody>
+                </Card>
+            </Column>
+
+            @* ===== TASKS & ISSUES ===== *@
+            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
+                <Card Class="overflow-hidden w-100">
+                    <CardHeader>
+                        <Heading Size="HeadingSize.Is4">
+                            Tasks &amp; Issues
+                        </Heading>
+                    </CardHeader>
+
+                    <CardBody>
+
+                        @* Chart giữ nguyên *@
+                        <div id="chart1" class="d-flex justify-content-center" style="min-height: 187px;">
+                            <div id="apexcharts2h82xou5" class="apexcharts-canvas apexcharts2h82xou5 apexcharts-theme-" style="width: 220px; height: 187px;">
+                                <svg id="SvgjsSvg1028" width="220" height="187" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev" class="apexcharts-svg" xmlns:data="ApexChartsNS" transform="translate(0, 0)">
+                                <foreignObject x="0" y="0" width="220" height="187">
+                                    <div class="apexcharts-legend" xmlns="http://www.w3.org/1999/xhtml">
+                                    </div>
+                                    <style type="text/css">
+                                     @* .apexcharts-flip-y { transform: scaleY(-1) translateY(-100%); transform-origin: top; transform-box: fill-box; } .apexcharts-flip-x { transform: scaleX(-1); transform-origin: center; transform-box: fill-box; } .apexcharts-legend { display: flex; overflow: auto; padding: 0 10px; } .apexcharts-legend.apx-legend-position-bottom, .apexcharts-legend.apx-legend-position-top { flex-wrap: wrap } .apexcharts-legend.apx-legend-position-right, .apexcharts-legend.apx-legend-position-left { flex-direction: column; bottom: 0; } .apexcharts-legend.apx-legend-position-bottom.apexcharts-align-left, .apexcharts-legend.apx-legend-position-top.apexcharts-align-left, .apexcharts-legend.apx-legend-position-right, .apexcharts-legend.apx-legend-position-left { justify-content: flex-start; } .apexcharts-legend.apx-legend-position-bottom.apexcharts-align-center, .apexcharts-legend.apx-legend-position-top.apexcharts-align-center { justify-content: center; } .apexcharts-legend.apx-legend-position-bottom.apexcharts-align-right, .apexcharts-legend.apx-legend-position-top.apexcharts-align-right { justify-content: flex-end; } .apexcharts-legend-series { cursor: pointer; line-height: normal; display: flex; align-items: center; } .apexcharts-legend-text { position: relative; font-size: 14px; } .apexcharts-legend-text *, .apexcharts-legend-marker * { pointer-events: none; } .apexcharts-legend-marker { position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-right: 1px; } .apexcharts-legend-series.apexcharts-no-click { cursor: auto; } .apexcharts-legend .apexcharts-hidden-zero-series, .apexcharts-legend .apexcharts-hidden-null-series { display: none !important; } .apexcharts-inactive-legend { opacity: 0.45; *@ }
+                                    </style>
+                                </foreignObject>
+                                <g id="SvgjsG1030" class="apexcharts-inner apexcharts-graphical" transform="translate(18.33333333333333, 0)"><defs id="SvgjsDefs1029"><clipPath id="gridRectMask2h82xou5"><rect id="SvgjsRect1031" width="183.33333333333334" height="183.33333333333334" x="0" y="0" rx="0" ry="0" opacity="1" stroke-width="0" stroke="none" stroke-dasharray="0" fill="#fff"></rect></clipPath><clipPath id="gridRectBarMask2h82xou5"><rect id="SvgjsRect1032" width="189.33333333333334" height="189.33333333333334" x="-3" y="-3" rx="0" ry="0" opacity="1" stroke-width="0" stroke="none" stroke-dasharray="0" fill="#fff"></rect></clipPath><clipPath id="gridRectMarkerMask2h82xou5"><rect id="SvgjsRect1033" width="183.33333333333334" height="183.33333333333334" x="0" y="0" rx="0" ry="0" opacity="1" stroke-width="0" stroke="none" stroke-dasharray="0" fill="#fff"></rect></clipPath><clipPath id="forecastMask2h82xou5"></clipPath><clipPath id="nonForecastMask2h82xou5"></clipPath></defs><g id="SvgjsG1036" class="apexcharts-pie"><g id="SvgjsG1037" transform="translate(0, 0) scale(1)"><circle id="SvgjsCircle1038" r="54.230081300813005" cx="91.66666666666667" cy="91.66666666666667" fill="transparent"></circle><g id="SvgjsG1039" class="apexcharts-slices"><g id="SvgjsG1040" class="apexcharts-series apexcharts-pie-series" seriesName="series-1" rel="1" data:realIndex="0"><path id="SvgjsPath1041" d="M 91.66666666666667 8.235772357723576 A 83.4308943089431 83.4308943089431 0 0 1 140.70611592703546 159.16367801850174 L 123.54230868590638 135.53972404535943 A 54.230081300813005 54.230081300813005 0 0 0 91.66666666666667 37.43658536585367 L 91.66666666666667 8.235772357723576 z " fill="var(--lpx-primary)" fill-opacity="1" stroke-opacity="1" stroke-linecap="butt" stroke-width="2" stroke-dasharray="0" class="apexcharts-pie-area apexcharts-donut-slice-0" index="0" j="0" data:angle="144" data:startAngle="0" data:strokeWidth="2" data:value="40" data:pathOrig="M 91.66666666666667 8.235772357723576 A 83.4308943089431 83.4308943089431 0 0 1 140.70611592703546 159.16367801850174 L 123.54230868590638 135.53972404535943 A 54.230081300813005 54.230081300813005 0 0 0 91.66666666666667 37.43658536585367 L 91.66666666666667 8.235772357723576 z " stroke="var(--lpx-card-bg)"></path></g><g id="SvgjsG1042" class="apexcharts-series apexcharts-pie-series" seriesName="series-2" rel="2" data:realIndex="1"><path id="SvgjsPath1043" d="M 140.70611592703546 159.16367801850174 A 83.4308943089431 83.4308943089431 0 0 1 12.319170973814096 117.44823086403018 L 40.09079446631251 108.42468339495295 A 54.230081300813005 54.230081300813005 0 0 0 123.54230868590638 135.53972404535943 L 140.70611592703546 159.16367801850174 z " fill="var(--lpx-success)" fill-opacity="1" stroke-opacity="1" stroke-linecap="butt" stroke-width="2" stroke-dasharray="0" class="apexcharts-pie-area apexcharts-donut-slice-1" index="0" j="1" data:angle="108" data:startAngle="144" data:strokeWidth="2" data:value="30" data:pathOrig="M 140.70611592703546 159.16367801850174 A 83.4308943089431 83.4308943089431 0 0 1 12.319170973814096 117.44823086403018 L 40.09079446631251 108.42468339495295 A 54.230081300813005 54.230081300813005 0 0 0 123.54230868590638 135.53972404535943 L 140.70611592703546 159.16367801850174 z " stroke="var(--lpx-card-bg)"></path></g><g id="SvgjsG1044" class="apexcharts-series apexcharts-pie-series" seriesName="series-3" rel="3" data:realIndex="2"><path id="SvgjsPath1045" d="M 12.319170973814096 117.44823086403018 A 83.4308943089431 83.4308943089431 0 0 1 12.319170973814096 65.88510246930315 L 40.09079446631251 74.90864993838038 A 54.230081300813005 54.230081300813005 0 0 0 40.09079446631251 108.42468339495295 L 12.319170973814096 117.44823086403018 z " fill="var(--lpx-warning)" fill-opacity="1" stroke-opacity="1" stroke-linecap="butt" stroke-width="2" stroke-dasharray="0" class="apexcharts-pie-area apexcharts-donut-slice-2" index="0" j="2" data:angle="36" data:startAngle="252" data:strokeWidth="2" data:value="10" data:pathOrig="M 12.319170973814096 117.44823086403018 A 83.4308943089431 83.4308943089431 0 0 1 12.319170973814096 65.88510246930315 L 40.09079446631251 74.90864993838038 A 54.230081300813005 54.230081300813005 0 0 0 40.09079446631251 108.42468339495295 L 12.319170973814096 117.44823086403018 z " stroke="var(--lpx-card-bg)"></path></g><g id="SvgjsG1046" class="apexcharts-series apexcharts-pie-series" seriesName="series-4" rel="4" data:realIndex="3"><path id="SvgjsPath1047" d="M 12.319170973814096 65.88510246930315 A 83.4308943089431 83.4308943089431 0 0 1 91.65210522870484 8.235773628448754 L 91.65720173199148 37.436586191825036 A 54.230081300813005 54.230081300813005 0 0 0 40.09079446631251 74.90864993838038 L 12.319170973814096 65.88510246930315 z " fill="var(--lpx-brand)" fill-opacity="1" stroke-opacity="1" stroke-linecap="butt" stroke-width="2" stroke-dasharray="0" class="apexcharts-pie-area apexcharts-donut-slice-3" index="0" j="3" data:angle="72" data:startAngle="288" data:strokeWidth="2" data:value="20" data:pathOrig="M 12.319170973814096 65.88510246930315 A 83.4308943089431 83.4308943089431 0 0 1 91.65210522870484 8.235773628448754 L 91.65720173199148 37.436586191825036 A 54.230081300813005 54.230081300813005 0 0 0 40.09079446631251 74.90864993838038 L 12.319170973814096 65.88510246930315 z " stroke="var(--lpx-card-bg)"></path></g></g></g></g>
+                                @* <line id="SvgjsLine1048" x1="0" y1="0" x2="183.33333333333334" y2="0" stroke="#b6b6b6" stroke-dasharray="0" stroke-width="1" stroke-linecap="butt" class="apexcharts-ycrosshairs"></line>
+                                <line id="SvgjsLine1049" x1="0" y1="0" x2="183.33333333333334" y2="0" stroke-dasharray="0" stroke-width="0" stroke-linecap="butt" class="apexcharts-ycrosshairs-hidden"></line> *@
+                                </g><g id="SvgjsG1034" class="apexcharts-datalabels-group" transform="translate(0, 0) scale(1)"></g><g id="SvgjsG1035" class="apexcharts-datalabels-group" transform="translate(0, 0) scale(1)"></g></svg>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <div class="d-flex align-items-baseline mb-1">
+                                <span class="bg-primary me-2 p-1 rounded-circle"></span>
+                                <span><span class="text-primary me-2">%40</span> Open</span>
+                            </div>
+
+                            <div class="d-flex align-items-baseline mb-1">
+                                <span class="bg-success me-2 p-1 rounded-circle"></span>
+                                <span><span class="text-success me-2">%30</span> In Progress</span>
+                            </div>
+
+                            <div class="d-flex align-items-baseline mb-1">
+                                <span class="bg-warning me-2 p-1 rounded-circle"></span>
+                                <span><span class="text-warning me-2">%10</span> Waiting for Review</span>
+                            </div>
+
+                            <div class="d-flex align-items-baseline mb-1">
+                                <span class="bg-brand me-2 p-1 rounded-circle"></span>
+                                <span><span class="text-brand me-2">%20</span> Done</span>
+                            </div>
+                        </div>
+
+                    </CardBody>
+                </Card>
+            </Column>
+
+        </Row>
+    </Column>
+
+    <!-- Calendar -->
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
+        <Card Class="w-100 overflow-hidden">
+            <CardHeader>
+                <Heading Size="HeadingSize.Is4">Calendar</Heading>
+                <small class="text-muted d-block">Total 424,567 deliveries</small>
+            </CardHeader>
+
+            <CardBody>
+                <!-- Tabs -->
+                <Tabs SelectedTab="@SelectedDayTab"
+                    SelectedTabChanged="@(tab => SelectedDayTab = tab)"
+                    Class="mb-3 d-flex justify-content-between">
+
+                    <Items>
+                        @foreach (var tab in DayTabs)
+                        {
+                            <Tab Name="@tab.Key" Style="padding: 0.675rem 1.25rem;">
+                                <div class="text-center">
+                                    <span class="d-block mb-1 text-muted">@tab.Day</span>
+                                    <strong>@tab.Date</strong>
+                                </div>
+                            </Tab>
+                        }
+                    </Items>
+
+                    <Content>
+                        @foreach (var tab in DayTabs)
+                        {
+                            <TabPanel Name="@tab.Key">
+                                <table class="table mb-0">
+                                    <tbody>
+                                        @foreach (var ev in EventsByDay[tab.Key])
+                                        {
+                                            <tr>
+                                                <td class="ps-0">
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="me-2 rounded-3"
+                                                            style="width:3px;height:66px;
+                                                                    background-color:@(ev.IsBrand ? "var(--bs-primary)" : "var(--bs-secondary)")">
+                                                        </span>
+
+                                                        <div>
+                                                            <h5 class="mb-1">@ev.Time</h5>
+                                                            <h6 class="text-muted fw-normal mb-0">@ev.Title</h6>
+                                                            <small class="text-muted">
+                                                                Lead by <span class="text-primary">@ev.LeadBy</span>
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                <td class="text-end">
+                                                    <Button Color="Color.Light" Size="Size.Small">
+                                                        View
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </TabPanel>
+                        }
+                    </Content>
+                </Tabs>
+            </CardBody>
+        </Card>
+    </Column>
+
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="d-flex">
+        <Card Class="w-100">
+
+            <CardHeader>
+                <Heading Size="HeadingSize.Is4">Documents</Heading>
+                <small class="text-muted d-block text-truncate">
+                    Card description is here (small, text-muted)
+                </small>
+            </CardHeader>
+
+            <CardBody>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <tbody>
+                            @foreach (var task in Tasks)
+                            {
+                                <tr>
+                                    <td class="ps-0">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-3 me-2 flex-center text-white @task.BgClass"
+                                                style="width:36px;height:36px">
+                                                <h4 class="mb-0">@task.ShortName</h4>
+                                            </div>
+
+                                            <div>
+                                                <h6 class="mb-0 text-dark">@task.Name</h6>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td class="pt-2" style="width:140px">
+                                        <div class="progress mt-1">
+                                            <div class="progress-bar @task.BgClass"
+                                                role="progressbar"
+                                                style="width:@($"{task.Progress}%")"
+                                                aria-valuenow="@task.Progress"
+                                                aria-valuemin="0"
+                                                aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td class="text-end pt-2" style="width:50px">
+                                        <small class="text-muted">%@(task.Progress)</small>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </CardBody>
+
+        </Card>
+    </Column>
+
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Class="d-flex">
+        <Card Class="w-100">
+
+            <CardHeader>
+                <Heading Size="HeadingSize.Is4">Notifications</Heading>
+                <small class="text-muted d-block text-truncate">
+                    Update 37 minutes ago
+                </small>
+            </CardHeader>
+
+            <CardBody>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>ITEM</th>
+                                <th>BUDGET</th>
+                                <th>PROGRESS</th>
+                                <th>STATUS</th>
+                                <th>VIEW</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var project in Projects)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="@project.Avatar"
+                                                class="rounded-2 me-2"
+                                                style="width:40px"
+                                                alt="" />
+
+                                            <div>
+                                                <h6 class="mb-0">@project.Name</h6>
+                                                <span class="text-muted">@project.Owner</span>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <span>$@project.Budget</span>
+                                    </td>
+
+                                    <td>
+                                        <div class="badge soft @project.ProgressClass">
+                                            %@project.Progress
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <div class="badge soft @project.StatusClass">
+                                            @project.Status
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <Button Color="Color.Dark"
+                                                Class="grey px-1 py-0">
+                                            <i class="bi bi-arrow-right fs-5"></i>
+                                        </Button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </CardBody>
+
+        </Card>
+    </Column>
+</Row>
+
+@code {
+    // Calendar
+    private string SelectedDayTab = "fr-20";
+
+    private readonly List<CalendarDayTab> DayTabs = new()
+    {
+        new("fr-20", "Fr", 20),
+        new("sa-20", "Sa", 21),
+        new("su-20", "Su", 22),
+        new("tu-20", "Tu", 23),
+        new("we-20", "We", 24),
+        new("th-20", "Th", 25),
+        new("fri-20", "Fri", 26),
+    };
+
+    private readonly Dictionary<string, List<DayEvent>> EventsByDay = new()
+    {
+        ["fr-20"] = SampleEvents(),
+        ["sa-20"] = SampleEvents(),
+        ["su-20"] = SampleEvents(),
+        ["tu-20"] = SampleEvents(),
+        ["we-20"] = SampleEvents(),
+        ["th-20"] = SampleEvents(),
+        ["fri-20"] = SampleEvents(),
+    };
+
+    private static List<DayEvent> SampleEvents() => new()
+    {
+        new("10:20 - 11:00 AM", "9 Degree Project Estimation Meeting", "Peter Marcus", true),
+        new("13:20 - 14:00 AM", "9 Degree Project Estimation Meeting", "Mark Morris", false),
+    };
+
+    record CalendarDayTab(string Key, string Day, int Date);
+    record DayEvent(string Time, string Title, string LeadBy, bool IsBrand);
+
+    // Documents
+    private List<TaskProgress> Tasks = new()
+    {
+        new("R", "Research", 50, "bg-success"),
+        new("P", "Phase 2.6 QA", 87, "bg-brand"),
+        new("U", "UI Design", 32, "bg-primary"),
+        new("D", "Development", 44, "bg-secondary"),
+        new("P", "Phase 2.6 QA", 87, "bg-brand"),
+        new("D", "Development", 44, "bg-secondary"),
+    };
+
+    record TaskProgress(
+        string ShortName,
+        string Name,
+        int Progress,
+        string BgClass
+    );
+
+    // Notifications
+    private List<ProjectStat> Projects = new()
+    {
+        new("Mivy App", "Jane Cooper", "user-01.png", 630, 9.2, "In Process", "bg-success", "bg-primary"),
+        new("Avionica", "Davis Kenter", "user-02.png", 630, 4.2, "Pending", "bg-brand", "bg-warning"),
+        new("Charto CRM", "Jocelyn Geidt", "user-03.png", 320, 1.2, "In Process", "bg-success", "bg-primary"),
+        new("Tower Hill", "Carla Bator", "user-04.png", 420, 9.2, "Completed", "bg-success", "bg-success"),
+        new("3 Degree", "Craig Vetrovs", "user-05.png", 560, 0.2, "In Process", "bg-brand", "bg-primary"),
+    };
+
+    record ProjectStat(
+        string Name,
+        string Owner,
+        string AvatarFile,
+        decimal Budget,
+        double Progress,
+        string Status,
+        string ProgressClass,
+        string StatusClass
+    )
+    {
+        public string Avatar => $"https://x.leptontheme.com/assets/img/avatars/{AvatarFile}";
+    }
+}

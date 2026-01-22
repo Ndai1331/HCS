@@ -862,6 +862,17 @@
     "4StarRating": "4 star",
     "5StarRating": "5 star",
     "Criteria": "Criteria",
-    "RatingDistributionTotal": "Total Rating"
+    "RatingDistributionTotal": "Total Rating",
+    "All": "All",
+    "ActiveProjects": "Active Projects",
+    "TasksStatistics": "Tasks Statistics",
+    "UpcomingEvents": "Upcoming Events",
+    "RecentDocuments": "Recent Documents",
+    "RecentNotifications": "Recent Notifications",
+    "NoActiveProjects": "No active projects",
+    "NoTasks": "No tasks",
+    "NoUpcomingEvents": "No upcoming events",
+    "NoRecentDocuments": "No recent documents",
+    "NoRecentNotifications": "No recent notifications"
   }
 }
