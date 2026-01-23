@@ -22,6 +22,7 @@ using HC.ProjectTaskAssignments;
 using HC.Shared;
 using HC.Blazor.Extensions;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.Http.Client;
 
 
 namespace HC.Blazor.Pages.Chat1;
@@ -132,6 +133,10 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
     private DotNetObjectReference<Chat1>? _objRef;
 
+    [Inject]
+    private IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider { get; set; } = default!;
+
+    private string? _apiBaseUrl;
     [JSInvokable]
     public async Task HandleSignalRMessage(object messageData)
     {
@@ -472,6 +477,9 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
         HasSearchingPermission = await AuthorizationService.IsGrantedAsync(ChatPermissions.Searching);
 
+        // Get API base URL for image URLs
+        var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
+        _apiBaseUrl = remoteService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
         // Initialize SignalR connection for real-time chat
         try
         {
@@ -1982,5 +1990,15 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         {
             await asyncDisposable.DisposeAsync();
         }
+    }
+
+
+    private string GetImageUrl(string imagePath)
+    {
+        if (string.IsNullOrEmpty(imagePath))
+            return string.Empty;
+            
+        var baseUrl = _apiBaseUrl ?? string.Empty;
+        return $"{baseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
     }
 }

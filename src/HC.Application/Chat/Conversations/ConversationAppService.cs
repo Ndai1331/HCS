@@ -1412,6 +1412,33 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         }
         return messDto;
     }
+
+
+
+    public virtual async Task<List<MessageFileDto>> FindMediaAndFileInConversationAsync(FindMediaAndFileInConversationInput input)
+    {
+        var files = await _messageFileRepository.GetByConversationIdAndFileTypeAsync(
+            input.ConversationId,input.FileType,
+            fileName: input.FileName,
+            maxResultCount: input.MaxResultCount,
+            skipCount: input.SkipCount
+        );
+        List<MessageFileDto> fileDto = new ();
+        foreach (var f in files)
+        {
+            fileDto.Add(new MessageFileDto
+            {
+                Id = f.Id,
+                MessageId = f.MessageId,
+                FileName = f.FileName,
+                ContentType = f.ContentType,
+                FilePath = f.FilePath,
+                FileSize = f.FileSize,
+                FileExtension = f.FileExtension,
+            });
+        }
+        return fileDto;
+    }
     
     #region helpers
     // Helper methods
@@ -1567,6 +1594,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                 FileName = file.FileName,
                 ContentType = file.ContentType,
                 FileSize = file.FileSize,
+                FilePath = file.FilePath,
                 FileExtension = file.FileExtension,
                 DownloadUrl = $"/api/chat/files/{file.Id}/download",
                 CreationTime = file.CreationTime

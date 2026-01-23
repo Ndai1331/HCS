@@ -7,13 +7,20 @@ using Microsoft.EntityFrameworkCore;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using HC.Chat.Messages;
+using HC.Chat.Conversations;
+using HC.Chat.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace HC.Chat.EntityFrameworkCore.Messages;
 
 public class EfCoreMessageFileRepository : EfCoreRepository<IChatDbContext, MessageFile, Guid>, IMessageFileRepository
-{
-    public EfCoreMessageFileRepository(IDbContextProvider<IChatDbContext> dbContextProvider) : base(dbContextProvider)
+{   
+    private readonly ILogger<EfCoreMessageFileRepository> _logger;
+    public EfCoreMessageFileRepository(
+        IDbContextProvider<IChatDbContext> dbContextProvider, 
+        ILogger<EfCoreMessageFileRepository> logger) : base(dbContextProvider)
     {
+        _logger = logger;
     }
     
     public virtual async Task<List<MessageFile>> GetByMessageIdAsync(Guid messageId, CancellationToken cancellationToken = default)
@@ -43,5 +50,29 @@ public class EfCoreMessageFileRepository : EfCoreRepository<IChatDbContext, Mess
         return await (await GetQueryableAsync())
             .Include(x => x.Message)
             .FirstOrDefaultAsync(x => x.Id == fileId, GetCancellationToken(cancellationToken));
+    }
+
+
+    public virtual async Task<List<MessageFile>> GetByConversationIdAndFileTypeAsync(Guid conversationId, FileMediaType fileType, int maxResultCount = 10, int skipCount = 0, string fileName = "", CancellationToken cancellationToken = default)
+    {
+        List<string> fileExtensions = new();
+        fileExtensions = FileHelper.GetFileExtensions(fileType);
+
+        _logger.LogInformation($"FileExtensions: {string.Join(", ", fileExtensions)}");
+        _logger.LogInformation($"FileName: {fileName}");
+        _logger.LogInformation($"ConversationId: {conversationId}");
+        _logger.LogInformation($"MaxResultCount: {maxResultCount}");
+        _logger.LogInformation($"SkipCount: {skipCount}");
+
+
+    return await (await GetQueryableAsync())
+        .Include(x => x.Message)
+        .Where(x => 
+        x.Message.ConversationId == conversationId 
+        && fileExtensions.Contains(x.FileExtension) 
+        && (!string.IsNullOrEmpty(fileName) ? x.FileName.Contains(fileName) : true))
+        .OrderBy(x => x.CreationTime)
+        .PageBy(skipCount, maxResultCount)
+        .ToListAsync(GetCancellationToken(cancellationToken));
     }
 }

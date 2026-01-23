@@ -28,7 +28,9 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
     [Parameter]
     public Func<Task> ShowInfoBoxAsync { get; set; } = null!;
-
+    
+    [Parameter]
+    public Func<string, string> GetImageUrl { get; set; } = null!;
     [Parameter]
     public Func<ConversationMemberDto, Task> SendMessageToMemberAsync { get; set; } = null!;
     [Parameter]
@@ -54,8 +56,8 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private int SkipImagesCount { get; set; }
     private int SkipFilesCount { get; set; }
 
-    private string SearchMediaAndFileValue { get; set; } = "";
-    private List<ChatMessageDto> FoundMediaAndFiles { get; set; } = new();
+    private List<MessageFileDto> FoundMedias { get; set; } = new();
+    private List<MessageFileDto> FoundFiles { get; set; } = new();
     private bool IsLoadingMediaAndFiles { get; set; }
 
     private Dictionary<string, bool> ShowDivs = new()
@@ -191,7 +193,28 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     }
 
     private async Task ClosePinnedMessagesModalAsync() => await CloseModalAsync(PinnedMessagesModal);
-    private async Task OnSelectedTabMediaFilesChanged(string name) => await SetPropertyAsync(() => SelectedTabMediaFiles = name);
+    private async Task OnSelectedTabMediaFilesChanged(string name)
+    {
+        SelectedTabMediaFiles = name;
+        
+        // Auto load data when tab changes
+        if (name == "images")
+        {
+            SkipImagesCount = 0;
+            FoundMedias.Clear();
+            ShowLoadMoreImages = false;
+        }
+        else if (name == "files")
+        {
+            SkipFilesCount = 0;
+            FoundFiles.Clear();
+            ShowLoadMoreFiles = false;
+        }
+        
+        var fileType = name == "images" ? FileMediaType.Image : FileMediaType.File;
+        await InvokeAsync(StateHasChanged);
+        await SearchMediaAndFileAsync(fileType);
+    }
 
     private async Task ShowModalAddMembersAsync(Guid conversationId)
     {
@@ -263,23 +286,24 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         }
     }
 
-    // Handle input clear (when user clicks the X button in search input)
-    private async Task OnSearchInputChangeAsync()
-    {
-        // Nếu input trống (user click X để clear), reset danh sách tìm kiếm
-        if (string.IsNullOrWhiteSpace(SearchMessageValue))
-        {
-            FoundMessages.Clear();
-            SkipFindMessageCount = 0;
-            ShowLoadMoreFoundMessages = false;
-            await InvokeAsync(StateHasChanged);
-        }
-    }
+
 
     private async Task LoadMoreFoundMessagesAsync()
     {
         SkipFindMessageCount += MaxResultCount;
         await SearchMessagesAsync();
+    }
+
+    private async Task LoadMoreImagesAsync()
+    {
+        SkipImagesCount += MaxResultCount;
+        await SearchMediaAndFileAsync(FileMediaType.Image);
+    }
+
+    private async Task LoadMoreFilesAsync()
+    {
+        SkipFilesCount += MaxResultCount;
+        await SearchMediaAndFileAsync(FileMediaType.File);
     }
 
     private async Task SearchMessagesAsync()
@@ -312,6 +336,49 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         await BlockUiService.UnBlock();
     }
 
+    private async Task SearchMediaAndFileAsync(FileMediaType fileType)
+    {
+        await BlockUiService.Block(selectors: "#found_media_and_files", busy: true);
+        var mediaAndFiles = await ConversationService.FindMediaAndFileInConversationAsync(new FindMediaAndFileInConversationInput
+        {
+            ConversationId = CurrentChatContact!.ConversationId!.Value,
+            FileName = "", // Load all files/images without filtering by name
+            FileType = fileType,
+            MaxResultCount = MaxResultCount,
+            SkipCount = fileType == FileMediaType.Image ? SkipImagesCount : SkipFilesCount
+        });
+
+        switch (fileType)
+        {
+            case FileMediaType.Image:
+                if (SkipImagesCount > 0)
+                {
+                    FoundMedias.AddRange(mediaAndFiles);
+                }
+                else
+                {
+                    FoundMedias.Clear();
+                    FoundMedias.AddRange(mediaAndFiles);
+                }
+                ShowLoadMoreImages = mediaAndFiles.Count >= MaxResultCount;
+                break;
+            case FileMediaType.File:
+                if (SkipFilesCount > 0)
+                {
+                    FoundFiles.AddRange(mediaAndFiles);
+                }
+                else
+                {
+                    FoundFiles.Clear();
+                    FoundFiles.AddRange(mediaAndFiles);
+                }
+                ShowLoadMoreFiles = mediaAndFiles.Count >= MaxResultCount;
+                break;
+        }
+
+        await InvokeAsync(StateHasChanged);
+        await BlockUiService.UnBlock();
+    }   
 
 
     private async Task CloseFindMessageAsync()
@@ -326,8 +393,8 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private async Task CloseMediaAndFileAsync()
     {
         await SetActiveDivAsync("Infobox");
-        SearchMediaAndFileValue = "";
-        FoundMediaAndFiles.Clear();
+        FoundMedias.Clear();
+        FoundFiles.Clear();
         ShowLoadMoreImages = false;
         ShowLoadMoreFiles = false;
         SkipImagesCount = 0;
@@ -347,13 +414,6 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         await InvokeAsync(StateHasChanged);
     }
 
-    // Helper method to check if file is an image
-    private bool IsImageFile(string fileName)
-    {
-        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico" };
-        var extension = System.IO.Path.GetExtension(fileName).ToLower();
-        return imageExtensions.Contains(extension);
-    }
 
     // Helper method to get file URL from API
     private string GetFileUrl(DocumentFileDto file)
@@ -366,125 +426,14 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     {
         await SetActiveDivAsync("MediaAndFile");
         SelectedTabMediaFiles = "images";
+        await SearchMediaAndFileAsync(FileMediaType.Image);
     }
 
     private async Task ShowFilesAsync()
     {
         await SetActiveDivAsync("MediaAndFile");
         SelectedTabMediaFiles = "files";
-    }
-
-    private async Task LoadMoreImagesAsync()
-    {
-        SkipImagesCount += MaxResultCount;
-        await SearchMediaAndFilesAsync();
-    }
-
-    private async Task LoadMoreFilesAsync()
-    {
-        SkipFilesCount += MaxResultCount;
-        await SearchMediaAndFilesAsync();
-    }
-
-    // Find Media and File functionality
-    private async Task FindMediaAndFileAsync()
-    {
-        await SetActiveDivAsync("MediaAndFile");
-        SearchMediaAndFileValue = "";
-        FoundMediaAndFiles.Clear();
-        SkipImagesCount = 0;
-        SkipFilesCount = 0;
-        ShowLoadMoreImages = false;
-        ShowLoadMoreFiles = false;
-        SelectedTabMediaFiles = "images";
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task OnSearchMediaAndFileKeyupAsync(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(SearchMediaAndFileValue))
-        {
-            FoundMediaAndFiles.Clear();
-            ShowLoadMoreImages = false;
-            ShowLoadMoreFiles = false;
-            SkipImagesCount = 0;
-            SkipFilesCount = 0;
-            await InvokeAsync(StateHasChanged);
-            await SearchMediaAndFilesAsync();
-        }
-        else if (e.Key == "Escape")
-        {
-            await CloseMediaAndFileAsync();
-        }
-    }
-
-    // Handle input clear for media and file search
-    private async Task OnSearchMediaAndFileInputChangeAsync()
-    {
-        if (string.IsNullOrWhiteSpace(SearchMediaAndFileValue))
-        {
-            FoundMediaAndFiles.Clear();
-            SkipImagesCount = 0;
-            SkipFilesCount = 0;
-            ShowLoadMoreImages = false;
-            ShowLoadMoreFiles = false;
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private async Task SearchMediaAndFilesAsync()
-    {
-        await BlockUiService.Block(selectors: "#found_media_and_files", busy: true);
-        IsLoadingMediaAndFiles = true;
-
-        try
-        {
-            // For now, we'll filter the found messages by files that match the search criteria
-            // In a real scenario, you might want to implement a dedicated API endpoint
-            var skipCount = SelectedTabMediaFiles == "images" ? SkipImagesCount : SkipFilesCount;
-            var allMessages = await ConversationService.FindMessagesInConversationAsync(new FindMessageInConversationInput
-            {
-                ConversationId = CurrentChatContact!.ConversationId!.Value,
-                MessageText = SearchMediaAndFileValue,
-                MaxResultCount = MaxResultCount * 5,  // Get more to filter
-                SkipCount = 0
-            });
-
-            // Filter messages with files
-            var filteredMessages = allMessages
-                .Where(m => m.Files != null && m.Files.Any())
-                .ToList();
-
-            // Chỉ AddRange nếu đang Load More
-            if ((SelectedTabMediaFiles == "images" && SkipImagesCount > 0) || 
-                (SelectedTabMediaFiles == "files" && SkipFilesCount > 0))
-            {
-                FoundMediaAndFiles.AddRange(filteredMessages.Skip(skipCount).Take(MaxResultCount).ToList());
-            }
-            else
-            {
-                FoundMediaAndFiles.Clear();
-                FoundMediaAndFiles.AddRange(filteredMessages.Skip(skipCount).Take(MaxResultCount).ToList());
-            }
-
-            // Set load more flag dựa vào tab hiện tại
-            if (SelectedTabMediaFiles == "images")
-            {
-                ShowLoadMoreImages = SkipImagesCount + MaxResultCount < filteredMessages.Count;
-            }
-            else
-            {
-                ShowLoadMoreFiles = SkipFilesCount + MaxResultCount < filteredMessages.Count;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error searching media and files: {ex.Message}");
-        }
-
-        IsLoadingMediaAndFiles = false;
-        await InvokeAsync(StateHasChanged);
-        await BlockUiService.UnBlock();
+        await SearchMediaAndFileAsync(FileMediaType.File);
     }
 
 }

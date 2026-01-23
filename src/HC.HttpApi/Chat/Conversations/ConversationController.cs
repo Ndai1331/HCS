@@ -226,4 +226,11 @@ public class ConversationController : ChatController, IConversationAppService
     {
         return _conversationAppService.FindMessagesInConversationAsync(input);
     }
+
+    [HttpPost]
+    [Route("find-media-and-file-in-conversation")]
+    public Task<List<MessageFileDto>> FindMediaAndFileInConversationAsync([FromBody] FindMediaAndFileInConversationInput input)
+    {
+        return _conversationAppService.FindMediaAndFileInConversationAsync(input);
+    }
 }
