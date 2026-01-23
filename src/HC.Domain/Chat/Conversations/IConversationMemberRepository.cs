@@ -11,6 +11,7 @@ public interface IConversationMemberRepository : IBasicRepository<ConversationMe
     Task<List<ConversationMember>> GetByConversationIdAsync(Guid conversationId, CancellationToken cancellationToken = default);
     
     Task<List<ConversationMember>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<List<ConversationMember>> GetByUserIdsAsync(List<Guid> userIds, ConversationType type, CancellationToken cancellationToken = default);
     
     Task<List<ConversationMember>> GetPinnedByUserIdAsync(Guid userId, CancellationToken cancellationToken = default); // Get user's pinned conversations
     

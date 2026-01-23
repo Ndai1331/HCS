@@ -112,17 +112,11 @@ public class ConversationController : ChatController, IConversationAppService
     
     [HttpPost]
     [Route("{id}/members")]
-    public Task AddMemberAsync(Guid id, [FromBody] AddMemberInput input)
-    {
-        input.ConversationId = id;
-        return ((IConversationAppService)this).AddMemberAsync(input);
-    }
-    
-    Task IConversationAppService.AddMemberAsync(AddMemberInput input)
+    public Task<string> AddMemberAsync([FromBody] AddMemberInput input)
     {
         return _conversationAppService.AddMemberAsync(input);
     }
-    
+
     [HttpDelete]
     [Route("{id}/members/{userId}")]
     public Task RemoveMemberAsync(Guid id, Guid userId)
@@ -217,5 +211,12 @@ public class ConversationController : ChatController, IConversationAppService
     public Task<ChatMessageDto> ForwardMessageAsync([FromBody] ForwardMessageInput input)
     {
         return _conversationAppService.ForwardMessageAsync(input);
+    }
+
+    [HttpPost]
+    [Route("find-conversation")]
+    public Task<ConversationDto> FindConversationAsync([FromBody] FindConversationInput input)
+    {
+        return _conversationAppService.FindConversationAsync(input);
     }
 }

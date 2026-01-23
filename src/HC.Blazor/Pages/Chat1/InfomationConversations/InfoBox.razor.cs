@@ -4,28 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using HC.Blazor;
-using HC.Blazor.Components.Chat;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
-using Volo.Abp.Localization;
-using HC.Chat.Authorization;
+using HC.ProjectMembers;
 using HC.Chat.Conversations;
 using HC.Chat.Messages;
-using HC.Chat.Settings;
 using HC.Chat.Users;
-using HC.Projects;
-using HC.ProjectTasks;
-using HC.ProjectMembers;
-using HC.ProjectTaskAssignments;
 using HC.Shared;
-using Microsoft.Extensions.Caching.Memory;
-using Volo.Abp.Application.Dtos;
 using HC.Blazor.Extensions;
-using Microsoft.Extensions.Logging;
 using Blazorise;
 
 
@@ -36,15 +22,22 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     [Inject]
     public IJSRuntime JsRuntime { get; set; }
 
-    
     [Parameter]
     public ChatContactDto CurrentChatContact { get; set; }
 
     [Parameter]
     public Func<Task> ShowInfoBoxAsync { get; set; } = null!;
-     
+
+    [Parameter]
+    public Func<ConversationMemberDto, Task> SendMessageToMemberAsync { get; set; } = null!;
     [Parameter]
     public Func<Guid, Task> DownloadFileAsync { get; set; } = null!;
+    [Parameter]
+    public Func<AddMemberInput, Task> AddMembersAsync { get; set; } = null!;
+    [Parameter]
+    public Func<RemoveMemberInput, Task> RemoveMemberAsync { get; set; } = null!;
+    [Parameter]
+    public Func<RemoveMemberInput, Task> LeaveConversationAsync { get; set; } = null!;
 
     public bool AccordionChatInfoVisible { get; set; } = false;
     public bool AccordionChatMembersVisible { get; set; } = false;
@@ -57,11 +50,11 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     public Func<ChatContactDto, string> GetName { get; set; } = null!;
     [Parameter]
     public Func<ChatContactDto, string> GetContactDisplayName { get; set; } = null!;
-    [Parameter]
     public IReadOnlyList<LookupDto<Guid>> IdentityUsersCollection { get; set; } = null!;
+
     [Parameter]
     public List<LookupDto<Guid>> SelectedDirectUser { get; set; } = null!;
-    public List<LookupDto<Guid>> SelectedMembers { get; set; } = null!;
+    public List<LookupDto<Guid>> SelectedMembersToAddConversation { get; set; } = new();
     [Parameter]
     public List<LookupDto<Guid>> SelectedProject { get; set; } = null!;
     public List<LookupDto<Guid>> SelectedTask { get; set; } = null!;
@@ -76,10 +69,16 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private ChatContactDto? _previousChatContact;
 
     private Modal PinnedMessagesModal { get; set; } = new();
+    private Modal AddMembersModal { get; set; } = new();
+
+    AddMemberInput AddMembersInput { get; set; } = new();
 
     private string SelectedTabMediaFiles { get; set; } = "images";
 
+    private bool IsCurrentUserAdmin { get; set; } = false;
+
     private List<ChatMessageDto> PinnedMessages {get;set;} = new();
+
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
@@ -88,10 +87,9 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         if (CurrentChatContact != null &&
             CurrentChatContact.Type != ConversationType.User &&
             (_previousChatContact == null || _previousChatContact.ConversationId != CurrentChatContact.ConversationId))
-        {
-            await LoadMembersAsync();
+            await LoadConversationMembersAsync();
+            CheckIsCurrentUserAdminAsync();
             _previousChatContact = CurrentChatContact;
-        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -127,7 +125,7 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         }
     }
 
-    private async Task LoadMembersAsync()
+    private async Task LoadConversationMembersAsync()
     {
         IsLoadingMembers = true;
         if (CurrentChatContact is not null && CurrentChatContact.Type != ConversationType.User)
@@ -142,26 +140,6 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         IsLoadingMembers = false;
         await InvokeAsync(StateHasChanged);
     }
-
-    private async Task RemoveMemberAsync(ConversationMemberDto member)
-    {
-        await ConversationService.RemoveMemberAsync(new RemoveMemberInput { ConversationId = CurrentChatContact.ConversationId.Value, UserId = member.UserId });
-        await LoadMembersAsync();
-        await InvokeAsync(StateHasChanged);
-    }
-     
-    private async Task LeaveConversationAsync(ConversationMemberDto member)
-    {
-        // await ConversationAppService.LeaveConversationAsync(contact.ConversationId.Value);
-        // await GetContactsAsync();
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task AddMemberAsync()
-    {
-        await InvokeAsync(StateHasChanged);
-    }
-
     private async Task FindMessageAsync()
     {
         await InvokeAsync(StateHasChanged);
@@ -187,4 +165,59 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         await InvokeAsync(StateHasChanged);
     }
 
+    private async Task ShowModalAddMembersAsync(Guid conversationId)
+    {
+        AddMembersInput.ConversationId = conversationId;
+        SelectedMembersToAddConversation = new();
+        await AddMembersModal.Show();
+    }
+
+    private async Task CloseAddMembersModalAsync()
+    {
+        await AddMembersModal.Hide();
+    }
+
+    private void CheckIsCurrentUserAdminAsync()
+    {
+        IsCurrentUserAdmin = Members.Any(m => m.UserId == CurrentUserId && m.Role == "ADMIN");
+    }
+
+    private async Task<List<LookupDto<Guid>>> GetIdentityUserCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    {
+        var allUsers = (await ProjectMembersAppService.GetIdentityUserLookupAsync(new LookupRequestDto { Filter = filter })).Items;
+        var currentUserId = CurrentUser.Id ?? Guid.Empty;
+        // Filter out current user
+        IdentityUsersCollection = allUsers.Where(u => u.Id != currentUserId).ToList();
+        return IdentityUsersCollection.ToList();
+    }
+
+    private async Task RemoveMemberFromInfoBoxAsync(RemoveMemberInput input)
+    {
+        if(RemoveMemberAsync != null)
+        {
+            await RemoveMemberAsync(input);
+            await LoadConversationMembersAsync();
+        }
+    }
+
+    private async Task LeaveConversationFromInfoBoxAsync(RemoveMemberInput input)
+    {
+        if(LeaveConversationAsync != null)
+        {
+            await LeaveConversationAsync(input);
+            await LoadConversationMembersAsync();
+        }
+    }
+
+    private async Task AddMembersToInfoBoxAsync()
+    {
+        if(AddMembersAsync != null)
+        {
+            await CloseAddMembersModalAsync();
+            await AddMembersAsync(new AddMemberInput { 
+                ConversationId = CurrentChatContact.ConversationId!.Value, 
+                UserIds = SelectedMembersToAddConversation.Select(x => x.Id).ToList() ?? new List<Guid>() });
+            await LoadConversationMembersAsync();
+        }
+    }
 }

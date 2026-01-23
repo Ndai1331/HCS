@@ -29,7 +29,14 @@ public class EfCoreConversationMemberRepository : EfCoreRepository<IChatDbContex
             .Where(x => x.UserId == userId && x.IsActive)
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
-    
+
+    public virtual async Task<List<ConversationMember>> GetByUserIdsAsync(List<Guid> userIds, ConversationType type, CancellationToken cancellationToken = default)
+    {
+        return await (await GetDbSetAsync())
+            .Include(x => x.Conversation)
+            .Where(x => userIds.Contains(x.UserId) && x.IsActive && x.Conversation.Type == type)
+            .ToListAsync(GetCancellationToken(cancellationToken));
+    }
     public virtual async Task<List<ConversationMember>> GetPinnedByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await (await GetDbSetAsync())

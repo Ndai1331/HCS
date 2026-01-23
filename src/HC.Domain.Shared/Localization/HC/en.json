@@ -881,7 +881,9 @@
     "TotalMessages": "Total messages",
     "SendMessage": "Send message",
     "Images": "Images",
-    "Files": "Files"
+    "Files": "Files",
+    "FailedToSendMessage": "Failed to send message",
+    "FailedToSendMessageDescription": "Failed to send message: {0}"
 
   }
 }

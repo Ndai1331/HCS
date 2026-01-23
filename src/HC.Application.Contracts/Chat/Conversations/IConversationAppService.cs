@@ -34,7 +34,7 @@ public interface IConversationAppService : IApplicationService
     
     Task UnpinConversationAsync(Guid conversationId);
     
-    Task AddMemberAsync(AddMemberInput input);
+    Task<string> AddMemberAsync(AddMemberInput input);
     
     Task RemoveMemberAsync(RemoveMemberInput input);
     
@@ -64,4 +64,7 @@ public interface IConversationAppService : IApplicationService
     /// Forward a message to another conversation
     /// </summary>
     Task<ChatMessageDto> ForwardMessageAsync(ForwardMessageInput input);
+
+
+    Task<ConversationDto> FindConversationAsync(FindConversationInput input);
 }

@@ -925,6 +925,9 @@
     "TotalMessages": "Tổng số tin nhắn",
     "SendMessage": "Gửi tin nhắn",
     "Images": "Ảnh",
-    "Files": "Tệp"
+    "Files": "Tệp",
+    "FailedToSendMessage": "Gửi tin nhắn thất bại",
+    "FailedToSendMessageDescription": "Gửi tin nhắn thất bại: {0}"
+    
   }
 }

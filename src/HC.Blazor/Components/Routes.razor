@@ -5,46 +5,84 @@
 @using Volo.Abp.AspNetCore.Components.Web.LeptonXTheme.Components
 @using Volo.Abp.AspNetCore.Components.Web.LeptonXTheme.Components.ApplicationLayout
 @using Volo.Abp.AspNetCore.Components.Web.Theming.Routing
+@using Microsoft.AspNetCore.Components
 @inject IOptions<AbpRouterOptions> RouterOptions
 @inject IOptions<LeptonXThemeBlazorOptions> LayoutOptions
 @inject IStringLocalizer<AbpUiResource> UiLocalizer
 
 <CascadingAuthenticationState>
-    <Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="RouterOptions.Value.AdditionalAssemblies">
-        <Found Context="routeData">
-            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@LayoutOptions.Value.Layout">
-                <Authorizing>
-                    @UiLocalizer["Authorizing"]
-                </Authorizing>
-                <NotAuthorized>
-                    @if (context.User?.Identity?.IsAuthenticated != true)
-                    {
-                        <RedirectToLogin/>
-                    }
-                    else
-                    {
+    <ErrorBoundary @ref="_errorBoundary">
+        <ChildContent>
+            <Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="RouterOptions.Value.AdditionalAssemblies">
+                <Found Context="routeData">
+                    <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@LayoutOptions.Value.Layout">
+                        <Authorizing>
+                            @UiLocalizer["Authorizing"]
+                        </Authorizing>
+                        <NotAuthorized>
+                            @if (context.User?.Identity?.IsAuthenticated != true)
+                            {
+                                <RedirectToLogin/>
+                            }
+                            else
+                            {
+                                <ErrorView
+                                    Title="@UiLocalizer["403Message"]"
+                                    HttpStatusCode="403"
+                                    Message="@UiLocalizer["403MessageDetail"]"/>
+                            }
+                        </NotAuthorized>
+                    </AuthorizeRouteView>
+                </Found>
+                <NotFound>
+                    <LayoutView Layout="@LayoutOptions.Value.Layout">
                         <ErrorView
-                            Title="@UiLocalizer["403Message"]"
-                            HttpStatusCode="403"
-                            Message="@UiLocalizer["403MessageDetail"]"/>
-                    }
-                </NotAuthorized>
-            </AuthorizeRouteView>
-        </Found>
-        <NotFound>
-            <LayoutView Layout="@LayoutOptions.Value.Layout">
-                <ErrorView
-                    Title="@UiLocalizer["404Message"]"
-                    HttpStatusCode="404"
-                    Message="@UiLocalizer["404MessageDetail"]"/>
-            </LayoutView>
-        </NotFound>
-    </Router>
+                            Title="@UiLocalizer["404Message"]"
+                            HttpStatusCode="404"
+                            Message="@UiLocalizer["404MessageDetail"]"/>
+                    </LayoutView>
+                </NotFound>
+            </Router>
+        </ChildContent>
+        <ErrorContent Context="exception">
+            @HandleGlobalException(exception)
+        </ErrorContent>
+    </ErrorBoundary>
 </CascadingAuthenticationState>
 
 @code {
+    private ErrorBoundary _errorBoundary = default!;
+    [Inject] private HC.Blazor.Services.GlobalExceptionHandler GlobalExceptionHandler { get; set; } = default!;
+
     protected override async Task OnInitializedAsync()
     {
         await LayoutOptions.SetAsync();
+    }
+
+    private RenderFragment HandleGlobalException(Exception exception)
+    {
+        // Handle global exceptions
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await GlobalExceptionHandler.HandleExceptionAsync(exception);
+            }
+            catch
+            {
+                // If global handler fails, show default error
+            }
+        });
+
+        return @<div class="alert alert-danger m-3">
+            <h4>@UiLocalizer["Error"]</h4>
+            <p>@exception.Message</p>
+            <button class="btn btn-primary" @onclick="RecoverFromError">@UiLocalizer["Retry"]</button>
+        </div>;
+    }
+
+    private void RecoverFromError()
+    {
+        _errorBoundary?.Recover();
     }
 }

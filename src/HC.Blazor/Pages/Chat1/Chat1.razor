@@ -15,6 +15,7 @@
 @using HC.ProjectTaskAssignments
 @using Microsoft.Extensions.Caching.Memory
 @using HC.Blazor.Pages.Chat1.InfomationConversations
+@using Volo.Abp.AspNetCore.Components.BlockUi
 @attribute [Authorize(ChatPermissions.Messaging)]
 @attribute [RequiresFeature(ChatFeatures.Enable)]
 @inherits HCComponentBase
@@ -25,7 +26,7 @@
 @inject IProjectTasksAppService ProjectTasksAppService
 @inject IProjectMembersAppService ProjectMembersAppService
 @inject IUiMessageService UiMessageService
-
+@inject IBlockUiService BlockUiService
 
 <link href="_content/Volo.Chat.Blazor/libs/Index.css" rel="stylesheet"/>
 
@@ -158,7 +159,7 @@
                                                         @if (chatContact.MemberRole == "MEMBER")
                                                         {
                                                             <li>    
-                                                                <a class="dropdown-item" @onclick="async () => await RemoveMemberAsync(chatContact)">
+                                                                <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(new RemoveMemberInput { ConversationId = chatContact.ConversationId.Value, UserId = CurrentUser.Id.Value })">
                                                                         <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
                                                                 </a>
                                                             </li>
@@ -622,7 +623,11 @@
                     GetContactDisplayName="@GetContactDisplayName"
                     CanvasElementReferences="@CanvasElementReferences"
                     CurrentUserId="@CurrentUser.Id"
+                    AddMembersAsync="@AddMembersAsync"
+                    RemoveMemberAsync="@RemoveMemberAsync"
+                    LeaveConversationAsync="@LeaveConversationAsync"
                     DownloadFileAsync ="@DownloadFileAsync"
+                    SendMessageToMemberAsync="@SendMessageToMemberAsync"
                 />
             }
         </div>
