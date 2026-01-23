@@ -873,6 +873,12 @@
     "NoTasks": "No tasks",
     "NoUpcomingEvents": "No upcoming events",
     "NoRecentDocuments": "No recent documents",
-    "NoRecentNotifications": "No recent notifications"
+    "NoRecentNotifications": "No recent notifications",
+    "View": "View",
+    "Of": "of",
+    "Total": "Total",
+    "CalenderEvents": "calendar events",
+    "Read": "Read",
+    "Unread": "Unread"
   }
 }

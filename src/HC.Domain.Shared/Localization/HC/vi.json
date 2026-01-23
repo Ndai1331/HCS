@@ -917,6 +917,12 @@
     "NoTasks": "Không có công việc",
     "NoUpcomingEvents": "Không có sự kiện sắp tới",
     "NoRecentDocuments": "Không có tài liệu gần đây",
-    "NoRecentNotifications": "Không có thông báo gần đây"
+    "NoRecentNotifications": "Không có thông báo gần đây",
+    "View": "Xem",
+    "Of": "trong",
+    "Total": "Tổng cộng",
+    "CalenderEvents": "sự kiện",
+    "Read": "Đã đọc",
+    "Unread": "Chưa đọc"
   }
 }
