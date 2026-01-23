@@ -927,7 +927,9 @@
     "Images": "Ảnh",
     "Files": "Tệp",
     "FailedToSendMessage": "Gửi tin nhắn thất bại",
-    "FailedToSendMessageDescription": "Gửi tin nhắn thất bại: {0}"
+    "FailedToSendMessageDescription": "Gửi tin nhắn thất bại: {0}",
+    "SearchMessage": "Tìm tin nhắn",
+    "EnterToFindMessage": "Nhấn Enter để tìm tin nhắn"
     
   }
 }

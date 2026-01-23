@@ -23,7 +23,7 @@ public class GlobalExceptionHandler
         _authenticationStateProvider = authenticationStateProvider;
     }
 
-    public async Task HandleExceptionAsync(Exception exception)
+    public async Task HandleAuthErrorExceptionAsync(Exception exception)
     {
         if (exception is AbpRemoteCallException remoteCallException &&
             (remoteCallException.Message.Contains("Unauthorized") ||

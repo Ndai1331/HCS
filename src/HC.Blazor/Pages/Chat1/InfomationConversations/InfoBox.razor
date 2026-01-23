@@ -113,7 +113,66 @@
 <Column Size="ColumnSize.Is12.OnMobile.Is3.OnDesktop" class="col-12 col-md-3 d-flex align-items-stretch">
     <Card Class="w-100 mb-3 mb-md-0" Style="height: 100vh; display: flex; flex-direction: column;">
         <CardBody Class="p-2" Style="display: flex; flex-direction: column; overflow: hidden;">
-            <Div Class="mt-1 mb-2 d-flex justify-content-center">
+            @if(ShowFindMessage)
+            {
+                <Div Class="mt-1 mb-1 d-flex justify-content-center">
+                    <input type="search" 
+                    class="form-control form-control-sm"
+                    placeholder="@L["SearchMessage"].Value"
+                    aria-label="@L["SearchMessage"].Value"
+                    autocomplete="off"
+                    spellcheck="false"
+                    aria-autocomplete="list"
+                    role="combobox"
+                    aria-expanded="false"
+                    aria-owns="algolia-autocomplete-listbox-0"
+                    dir="auto"
+                    @bind="SearchMessageValue" 
+                    @bind:event="oninput"
+                    @onkeydown="@(async e => await OnSearchMessageKeyupAsync(e))"/>
+                </Div>
+
+                <Div Class="mb-2 text-center">
+                    <span class="text-muted">
+                        @L["EnterToFindMessage"]
+                    </span>  
+                </Div>
+
+                <Div Class="mb-2 text-center" id="found_messages">
+                    @foreach(var message in FoundMessages)
+                    {
+                        <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2
+                        bg-white shadow rounded py-1 px-2 mb-1 position-relative">
+                            <div class="media">
+                                <div class="media-body ms-2">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <h6 class="mb-0 me-1">
+                                            @(message.SenderSurname + " " + message.SenderName)
+                                        </h6>
+                                    </div>
+                                    <p class="d-flex justify-content-between gap-1 mb-0 small last-message">
+                                        <span class="text-muted">@message.Message</span>
+                                        <span class="text-muted"> @Clock.ConvertToUserTime(message.MessageDate).ToString("d") @Clock.ConvertToUserTime(message.MessageDate).ToString("t")</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </Div>
+                
+
+                @if(ShowLoadMoreFoundMessages)
+                {
+                    <Div Class="mb-2 text-center">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="async () => await LoadMoreFoundMessagesAsync()">
+                            @L["LoadMore"]
+                        </button>
+                    </Div>
+                }
+
+            }else
+            {
+                <Div Class="mt-1 mb-2 d-flex justify-content-center">
                 @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
                 {
                     <canvas @ref="CanvasElementReferences[CurrentChatContact]" class="canvas-avatar mx-auto rounded-circle" Width="30" Height="30"></canvas>
@@ -157,8 +216,6 @@
                 </Heading>  
             </Div>
 
-
-
             <Div Class="mb-2  d-flex justify-content-center align-items-center">
                 @if(CurrentChatContact.Type != ConversationType.User)
                 {
@@ -173,7 +230,9 @@
                     </Div>
                 }
                 <Div Class="mx-2 mb-2 text-center">
-                    <div class="d-inline-block bg-light px-1 rounded-4 text-black-50 hover-bg-brand-light" @onclick="async () => await FindMessageAsync()">
+                    <div class="d-inline-block bg-light px-1 rounded-4 text-black-50 hover-bg-brand-light" 
+                    
+                    @onclick="async () => await FindMessageAsync()">
                     <i class="bi bi-search fs-4"></i>
                     </div>
                     <span class="d-block">@L["FindMessage"]</span>
@@ -468,6 +527,8 @@
                 </AccordionItem>
                 
             </Accordion>
+
+            }
         </CardBody>
     </Card>
 </Column>

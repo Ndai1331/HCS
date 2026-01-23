@@ -13,6 +13,7 @@ using HC.Chat.Users;
 using HC.Shared;
 using HC.Blazor.Extensions;
 using Blazorise;
+using Microsoft.AspNetCore.Components.Web;
 
 
 namespace HC.Blazor.Pages.Chat1.InfomationConversations;
@@ -42,6 +43,11 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     public bool AccordionChatInfoVisible { get; set; } = false;
     public bool AccordionChatMembersVisible { get; set; } = false;
     public bool AccordionMediaFilesVisible { get; set; } = false;
+
+    private int MaxResultCount { get; set; } = 10;
+    private int SkipFindMessageCount { get; set; } = 0;
+    private bool ShowLoadMoreFoundMessages { get; set; } = false;
+    private List<ChatMessageDto> FoundMessages { get; set; } = new();
 
     [Parameter]
     public Dictionary<ChatContactDto, ElementReference> CanvasElementReferences { get; set; } = null!;
@@ -76,7 +82,8 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private string SelectedTabMediaFiles { get; set; } = "images";
 
     private bool IsCurrentUserAdmin { get; set; } = false;
-
+    private bool ShowFindMessage { get; set; } = false;
+    private string SearchMessageValue { get; set; } = string.Empty;
     private List<ChatMessageDto> PinnedMessages {get;set;} = new();
 
     protected override async Task OnParametersSetAsync()
@@ -142,6 +149,10 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     }
     private async Task FindMessageAsync()
     {
+        ShowFindMessage = true;
+        FoundMessages.Clear();
+        SkipFindMessageCount = 0;
+        ShowLoadMoreFoundMessages = false;
         await InvokeAsync(StateHasChanged);
     }
 
@@ -219,5 +230,72 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
                 UserIds = SelectedMembersToAddConversation.Select(x => x.Id).ToList() ?? new List<Guid>() });
             await LoadConversationMembersAsync();
         }
+    }
+
+    private async Task OnSearchMessageKeyupAsync(KeyboardEventArgs e)
+    {
+        if(e.Key == "Enter")
+        {
+            FoundMessages.Clear();
+            ShowLoadMoreFoundMessages = false;
+            SkipFindMessageCount = 0;
+
+            await BlockUiService.Block(selectors: "#find_message", busy: true  );
+
+            var listMessages = await ConversationService.FindMessagesInConversationAsync(new FindMessageInConversationInput 
+            { ConversationId = CurrentChatContact!.ConversationId!.Value,
+             MessageText = SearchMessageValue,
+             MaxResultCount = MaxResultCount,
+             SkipCount = SkipFindMessageCount });
+
+            if(listMessages.Count > 0)
+            {
+                FoundMessages.AddRange(listMessages);
+                if(listMessages.Count < MaxResultCount)
+                {
+                    ShowLoadMoreFoundMessages = false;
+                }
+                else
+                {
+                    ShowLoadMoreFoundMessages = true;
+                }
+            }
+            else
+            {
+                ShowLoadMoreFoundMessages = false;
+            }
+
+            await InvokeAsync(StateHasChanged);
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    private async Task LoadMoreFoundMessagesAsync()
+    {
+        SkipFindMessageCount += MaxResultCount;
+
+        var listMessages = await ConversationService.FindMessagesInConversationAsync(new FindMessageInConversationInput 
+            { ConversationId = CurrentChatContact!.ConversationId!.Value,
+             MessageText = SearchMessageValue,
+             MaxResultCount = MaxResultCount,
+             SkipCount = SkipFindMessageCount }) ;
+
+        if(listMessages.Count > 0)
+        {
+            FoundMessages.AddRange(listMessages);
+            if(listMessages.Count < MaxResultCount)
+            {
+                ShowLoadMoreFoundMessages = false;
+            }
+            else
+            {
+                ShowLoadMoreFoundMessages = true;
+            }
+        }
+        else
+        {
+            ShowLoadMoreFoundMessages = false;
+        }
+        await InvokeAsync(StateHasChanged);
     }
 }

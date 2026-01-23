@@ -67,4 +67,6 @@ public interface IConversationAppService : IApplicationService
 
 
     Task<ConversationDto> FindConversationAsync(FindConversationInput input);
+
+    Task<List<ChatMessageDto>> FindMessagesInConversationAsync(FindMessageInConversationInput input);
 }

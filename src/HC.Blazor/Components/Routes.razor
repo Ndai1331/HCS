@@ -66,18 +66,20 @@
         {
             try
             {
-                await GlobalExceptionHandler.HandleExceptionAsync(exception);
+                await GlobalExceptionHandler.HandleAuthErrorExceptionAsync(exception);
             }
-            catch
+            catch(Exception ex)
             {
-                // If global handler fails, show default error
+                // lỗi khác
             }
         });
 
         return @<div class="alert alert-danger m-3">
             <h4>@UiLocalizer["Error"]</h4>
             <p>@exception.Message</p>
-            <button class="btn btn-primary" @onclick="RecoverFromError">@UiLocalizer["Retry"]</button>
+            <button class="btn btn-primary" 
+            @onclick="RecoverFromError">@UiLocalizer["Retry"]
+            </button>
         </div>;
     }
 

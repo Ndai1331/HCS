@@ -883,7 +883,9 @@
     "Images": "Images",
     "Files": "Files",
     "FailedToSendMessage": "Failed to send message",
-    "FailedToSendMessageDescription": "Failed to send message: {0}"
+    "FailedToSendMessageDescription": "Failed to send message: {0}",
+    "SearchMessage": "Search message",
+    "EnterToFindMessage": "Press Enter to find message"
 
   }
 }

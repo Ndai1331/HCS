@@ -219,4 +219,11 @@ public class ConversationController : ChatController, IConversationAppService
     {
         return _conversationAppService.FindConversationAsync(input);
     }
+
+    [HttpPost]
+    [Route("find-messages-in-conversation")]
+    public Task<List<ChatMessageDto>> FindMessagesInConversationAsync([FromBody] FindMessageInConversationInput input)
+    {
+        return _conversationAppService.FindMessagesInConversationAsync(input);
+    }
 }

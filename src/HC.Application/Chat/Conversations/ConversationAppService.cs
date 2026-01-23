@@ -1395,7 +1395,25 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         }
         return await MapToConversationDtoAsync(conversations.First().Conversation, conversations.First().UserId);
     }
+
+
+    public virtual async Task<List<ChatMessageDto>> FindMessagesInConversationAsync(FindMessageInConversationInput input)
+    {
+        var messages = await _messageRepository.GetMessagesInConversationAsync(
+            conversationId: input.ConversationId,
+            messageText: input.MessageText,
+            maxResultCount: input.MaxResultCount,
+            skipCount: input.SkipCount
+        );
+        List<ChatMessageDto> messDto =  new ();
+        foreach (var m in messages)
+        {
+            messDto.Add(await MapToChatMessageDtoAsync(m, ChatMessageSide.Sender));
+        }
+        return messDto;
+    }
     
+    #region helpers
     // Helper methods
     private async Task<ConversationDto> MapToConversationDtoAsync(Conversation conversation, Guid currentUserId)
     {
@@ -1557,4 +1575,6 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         
         return dto;
     }
+    
+    #endregion
 }
