@@ -113,29 +113,267 @@
 <Column Size="ColumnSize.Is12.OnMobile.Is3.OnDesktop" class="col-12 col-md-3 d-flex align-items-stretch">
     <Card Class="w-100 mb-3 mb-md-0" Style="height: 100vh; display: flex; flex-direction: column;">
         <CardBody Class="p-2" Style="display: flex; flex-direction: column; overflow: hidden;">
-            @if(ShowFindMessage)
+            @{
+                var activeDiv = ShowDivs.FirstOrDefault(x => x.Value).Key;
+            }
+
+            @switch (activeDiv)
             {
-                 <Div Class="mt-1 mb-1 d-flex justify-content-start">
-                    <button class="btn btn-sm btn-outline-light" @onclick="async () => await CloseFindMessageAsync()">    
+                case "Infobox":
+                    <Div Class="mt-1 mb-2 d-flex justify-content-center">
+                    @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
+                    {
+                        <canvas @ref="CanvasElementReferences[CurrentChatContact]" class="canvas-avatar mx-auto rounded-circle" Width="30" Height="30"></canvas>
+                    }
+                    else if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.Group)
+                    {
+                        <a href="javascript:void(0)" 
+                            Class="bg-light border border-2 rounded-circle d-flex justify-content-center align-items-center text-decoration-none" 
+                            Style="width: 30px; height: 30px">
+                            <i class="bi bi-people-fill fs-4 text-primary"></i>
+                        </a>
+                    }
+                    else if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.Project)
+                    {
+                        <a href="javascript:void(0)" 
+                            Class="bg-light border border-2 rounded-circle d-flex justify-content-center align-items-center text-decoration-none" 
+                            Style="width: 30px; height: 30px">
+                            <i class="bi bi-folder-fill fs-4 text-success"></i>
+                        </a>
+                    }
+                    else if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.Task)
+                    {
+                        <a href="javascript:void(0)" 
+                            Class="bg-light border border-2 rounded-circle d-flex justify-content-center align-items-center text-decoration-none" 
+                            Style="width: 30px; height: 30px">
+                            <i class="bi bi-check2-square fs-4 text-warning"></i>
+                        </a>
+                    }
+                </Div>
+                <Div Class="mb-2 text-center">
+                    <Heading Size="HeadingSize.Is5" Class="text-brand">
+                        @if (CurrentChatContact != null)
+                        {
+                            @if (CurrentChatContact.Type == ConversationType.User)
+                            {
+                                @(GetName(CurrentChatContact))
+                            }else{
+                                @(CurrentChatContact.ConversationName ?? GetName(CurrentChatContact))
+                            }
+                        }
+                    </Heading>  
+                </Div>
+
+                <Div Class="mb-2  d-flex justify-content-center align-items-center">
+                    @if(CurrentChatContact.Type != ConversationType.User)
+                    {
+                        <Div Class="mx-2 mb-2 text-center">
+                            <div class="d-inline-block bg-light px-1 rounded-4 text-black-50
+                            hover-bg-brand-light
+                            "
+                            @onclick="async () => await ShowModalAddMembersAsync(CurrentChatContact.ConversationId.Value)">
+                                <i class="bi bi-people-fill fs-4"></i>
+                            </div>
+                            <span class="d-block">@L["AddMember"]</span>    
+                        </Div>
+                    }
+                    <Div Class="mx-2 mb-2 text-center">
+                        <div class="d-inline-block bg-light px-1 rounded-4 text-black-50 hover-bg-brand-light" 
+                        
+                        @onclick="async () => await FindMessageAsync()">
+                        <i class="bi bi-search fs-4"></i>
+                        </div>
+                        <span class="d-block">@L["FindMessage"]</span>
+                    </Div>
+                </Div>
+                
+                <Accordion >
+                    <AccordionItem @bind-Visible="@AccordionChatInfoVisible">
+                        <AccordionHeader>
+                            <Span>
+                                <AccordionToggle Class="fw-bolder">@L["ChatInfo"]</AccordionToggle>
+                            </Span>
+                        </AccordionHeader>
+                        <AccordionBody>
+                            <Button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"  @onclick="async () => await ShowPinnedMessagesAsync()">
+                                <i class="bi bi-pin-angle-fill fs-5"></i>
+                                <span class="d-block ms-2"> @L["ShowPinnedMessages"]</span>
+                            </Button>
+                        </AccordionBody>
+                    </AccordionItem>
+                    @if(CurrentChatContact.Type != ConversationType.User)
+                    {
+                        <AccordionItem @bind-Visible="@AccordionChatMembersVisible">
+                            <AccordionHeader>
+                                <Span>
+                                    <AccordionToggle Class="fw-bolder">@L["ChatMembers"]</AccordionToggle>
+                                </Span>
+                            </AccordionHeader>
+                            <AccordionBody>
+                                @if(IsLoadingMembers)
+                                {
+                                    <div class="d-flex justify-content-center">
+                                        <RadarSpinner />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <Div>
+                                        @foreach(var member in Members)
+                                        {
+                                            <Div Class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <canvas id="member-avatar-@member.UserId" class="canvas-avatar rounded-circle" Width="30" Height="30"></canvas>
+                                                    <span>@member.UserInfo?.Surname @member.UserInfo?.Name</span>
+                                                </div>
+                                                <div class="dropdown d-flex align-items-center gap-2">
+                                                    <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <i class="lpx-caret bi-three-dots" aria-hidden="true"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                    @if(member.UserId != CurrentUserId)
+                                                    {
+                                                            <li>
+                                                                <a class="dropdown-item"
+                                                                @onclick="async () => await SendMessageToMemberAsync( new ConversationMemberDto { UserId = member.UserId, ConversationId = CurrentChatContact.ConversationId.Value })">
+                                                                    <i class="bi bi-chat-left-text"></i> @L["SendMessage"]
+                                                                </a>
+                                                            </li>
+                                                    }
+
+                                                        @if(member.UserId == CurrentUserId)
+                                                        {   
+                                    
+                                                            <li>
+                                                                <a class="dropdown-item" @onclick="async () => await LeaveConversationFromInfoBoxAsync(new RemoveMemberInput { ConversationId = CurrentChatContact.ConversationId.Value, UserId = member.UserId })">
+                                                                    <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
+                                                                </a>
+                                                            </li>
+                                                        }
+
+                                                        @if(IsCurrentUserAdmin && member.UserId != CurrentUserId)
+                                                        {
+                                                            <li>
+                                                                <a class="dropdown-item" @onclick="async () => await RemoveMemberFromInfoBoxAsync(new RemoveMemberInput { ConversationId = CurrentChatContact.ConversationId.Value, UserId = member.UserId })">
+                                                                    <i class="bi bi-trash"></i> @L["Delete"]
+                                                                </a>
+                                                            </li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            </Div> 
+                                        }       
+                                    </Div>
+                                }
+                            </AccordionBody>
+                        </AccordionItem>
+                    }
+                    <AccordionItem @bind-Visible="@AccordionMediaFilesVisible">
+                        <AccordionHeader>
+                            <Span>
+                                <AccordionToggle Class="fw-bolder">@L["Files"]</AccordionToggle>
+                            </Span>
+                        </AccordionHeader>
+                        <AccordionBody>
+
+                            <Button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center" 
+                             @onclick="async () => await ShowImagesAsync()">
+                                <i class="bi bi-image fs-5"></i>
+                                <span class="d-block ms-2"> @L["Images"]</span>
+                            </Button>
+
+
+                            <Button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center" 
+                             @onclick="async () => await ShowFilesAsync()">
+                                <i class="bi bi-file-earmark-fill fs-5"></i>
+                                <span class="d-block ms-2"> @L["Files"]</span>
+                            </Button>
+
+                        </AccordionBody>
+                    </AccordionItem>
+                    
+                </Accordion>
+                    break;
+                case "FindMessage":
+                        <Div Class="mt-1 mb-1 d-flex justify-content-start">
+                            <button class="btn btn-sm btn-outline-light" @onclick="async () => await CloseFindMessageAsync()">    
+                                <i class="bi bi-arrow-left fs-5 text-brand"></i>
+                            </button>
+                        </Div> 
+
+                        <Div Class="mt-1 mb-1 d-flex justify-content-center">
+                            <input type="search" 
+                            class="form-control form-control-sm"
+                            placeholder="@L["SearchMessage"].Value"
+                            aria-label="@L["SearchMessage"].Value"
+                            autocomplete="off"
+                            spellcheck="false"
+                            aria-autocomplete="list"
+                            role="combobox"
+                            aria-expanded="false"
+                            aria-owns="algolia-autocomplete-listbox-0"
+                            dir="auto"
+                            @bind="SearchMessageValue"
+                            @onkeydown="@(async e => await OnSearchMessageKeyupAsync(e))"/>
+                        </Div>
+
+                        <Div Class="mb-2 text-center">
+                            <span class="text-muted">
+                                @L["EnterToFindMessage"]
+                            </span>  
+                        </Div>
+
+                        <Div Class="mb-2 text-center overflow-y-auto" id="found_messages">
+                            @foreach(var message in FoundMessages)
+                            {
+                                <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2
+                                bg-white shadow rounded py-1 px-2 mb-1 position-relative">
+                                    <div class="media">
+                                        <div class="media-body ms-2">
+                                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                                <h6 class="mb-0 me-1">
+                                                    @(message.SenderSurname + " " + message.SenderName)
+                                                </h6>
+                                            </div>
+                                            <p class="d-flex justify-content-between gap-1 mb-0 small last-message">
+                                                <span class="text-muted text-start">@message.Message</span>
+                                                <span class="text-muted"> @Clock.ConvertToUserTime(message.MessageDate).ToString("d") @Clock.ConvertToUserTime(message.MessageDate).ToString("t")</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </a>
+                            }
+                        </Div>
+                        
+
+                        @if(ShowLoadMoreFoundMessages)
+                        {
+                            <Div Class="mb-2 text-center">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="async () => await LoadMoreFoundMessagesAsync()">
+                                    @L["LoadMore"]
+                                </button>
+                            </Div>
+                        }
+                    break;
+                case "MediaAndFile":
+
+
+                <Div Class="mt-1 mb-1 d-flex justify-content-start">
+                    <button class="btn btn-sm btn-outline-light" @onclick="async () => await CloseMediaAndFileAsync()">    
                         <i class="bi bi-arrow-left fs-5 text-brand"></i>
                     </button>
-                </Div> 
+                </Div>
 
                 <Div Class="mt-1 mb-1 d-flex justify-content-center">
                     <input type="search" 
-                    class="form-control form-control-sm"
-                    placeholder="@L["SearchMessage"].Value"
-                    aria-label="@L["SearchMessage"].Value"
-                    autocomplete="off"
-                    spellcheck="false"
-                    aria-autocomplete="list"
-                    role="combobox"
-                    aria-expanded="false"
-                    aria-owns="algolia-autocomplete-listbox-0"
-                    dir="auto"
-                    @bind="SearchMessageValue" 
-                    @bind:event="oninput"
-                    @onkeydown="@(async e => await OnSearchMessageKeyupAsync(e))"/>
+                        class="form-control form-control-sm"
+                        placeholder="@L["SearchFile"].Value"
+                        aria-label="@L["SearchFile"].Value"
+                        autocomplete="off"
+                        spellcheck="false"
+                        @bind="SearchMediaAndFileValue"
+                        @oninput="@(async () => await OnSearchMediaAndFileInputChangeAsync())"
+                        @onkeydown="@(async e => await OnSearchMediaAndFileKeyupAsync(e))"/>
                 </Div>
 
                 <Div Class="mb-2 text-center">
@@ -144,396 +382,226 @@
                     </span>  
                 </Div>
 
-                <Div Class="mb-2 text-center overflow-y-auto" id="found_messages">
-                    @foreach(var message in FoundMessages)
-                    {
-                        <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2
-                        bg-white shadow rounded py-1 px-2 mb-1 position-relative">
-                            <div class="media">
-                                <div class="media-body ms-2">
-                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                        <h6 class="mb-0 me-1">
-                                            @(message.SenderSurname + " " + message.SenderName)
-                                        </h6>
-                                    </div>
-                                    <p class="d-flex justify-content-between gap-1 mb-0 small last-message">
-                                        <span class="text-muted">@message.Message</span>
-                                        <span class="text-muted"> @Clock.ConvertToUserTime(message.MessageDate).ToString("d") @Clock.ConvertToUserTime(message.MessageDate).ToString("t")</span>
-                                    </p>
-                                </div>
-                            </div>
-                        </a>
-                    }
-                </Div>
-                
+                <Div Class="mb-2 text-center overflow-y-auto" id="found_media_and_files">
+                    <Tabs SelectedTab="@SelectedTabMediaFiles" SelectedTabChanged="@(async (name) => await OnSelectedTabMediaFilesChanged(name))">
+                        <Items>
+                            <Tab Name="images">
+                                <Icon Name="IconName.Image" Class="me-1" />
+                                @L["Images"]
+                            </Tab>
+                            <Tab Name="files">
+                                <Icon Name="IconName.File" Class="me-1" />
+                                @L["Files"]
+                            </Tab>
+                        </Items>
+                        <Content>
+                            <TabPanel Name="images" Class="overflow-y-auto" Style="max-height: 50vh;">
+                                <Row>
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                    <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
 
-                @if(ShowLoadMoreFoundMessages)
-                {
-                    <Div Class="mb-2 text-center">
-                        <button class="btn btn-sm btn-outline-primary" @onclick="async () => await LoadMoreFoundMessagesAsync()">
-                            @L["LoadMore"]
-                        </button>
-                    </Div>
-                }
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                    <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
 
-            }else
-            {
-                <Div Class="mt-1 mb-2 d-flex justify-content-center">
-                @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
-                {
-                    <canvas @ref="CanvasElementReferences[CurrentChatContact]" class="canvas-avatar mx-auto rounded-circle" Width="30" Height="30"></canvas>
-                }
-                else if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.Group)
-                {
-                    <a href="javascript:void(0)" 
-                        Class="bg-light border border-2 rounded-circle d-flex justify-content-center align-items-center text-decoration-none" 
-                        Style="width: 30px; height: 30px">
-                        <i class="bi bi-people-fill fs-4 text-primary"></i>
-                    </a>
-                }
-                else if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.Project)
-                {
-                    <a href="javascript:void(0)" 
-                        Class="bg-light border border-2 rounded-circle d-flex justify-content-center align-items-center text-decoration-none" 
-                        Style="width: 30px; height: 30px">
-                        <i class="bi bi-folder-fill fs-4 text-success"></i>
-                    </a>
-                }
-                else if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.Task)
-                {
-                    <a href="javascript:void(0)" 
-                        Class="bg-light border border-2 rounded-circle d-flex justify-content-center align-items-center text-decoration-none" 
-                        Style="width: 30px; height: 30px">
-                        <i class="bi bi-check2-square fs-4 text-warning"></i>
-                    </a>
-                }
-            </Div>
-            <Div Class="mb-2 text-center">
-                <Heading Size="HeadingSize.Is5" Class="text-brand">
-                    @if (CurrentChatContact != null)
-                    {
-                        @if (CurrentChatContact.Type == ConversationType.User)
-                        {
-                            @(GetName(CurrentChatContact))
-                        }else{
-                            @(CurrentChatContact.ConversationName ?? GetName(CurrentChatContact))
-                        }
-                    }
-                </Heading>  
-            </Div>
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                    <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
+                                </Row>  
 
-            <Div Class="mb-2  d-flex justify-content-center align-items-center">
-                @if(CurrentChatContact.Type != ConversationType.User)
-                {
-                    <Div Class="mx-2 mb-2 text-center">
-                        <div class="d-inline-block bg-light px-1 rounded-4 text-black-50
-                        hover-bg-brand-light
-                        "
-                         @onclick="async () => await ShowModalAddMembersAsync(CurrentChatContact.ConversationId.Value)">
-                            <i class="bi bi-people-fill fs-4"></i>
-                        </div>
-                        <span class="d-block">@L["AddMember"]</span>    
-                    </Div>
-                }
-                <Div Class="mx-2 mb-2 text-center">
-                    <div class="d-inline-block bg-light px-1 rounded-4 text-black-50 hover-bg-brand-light" 
-                    
-                    @onclick="async () => await FindMessageAsync()">
-                    <i class="bi bi-search fs-4"></i>
-                    </div>
-                    <span class="d-block">@L["FindMessage"]</span>
-                </Div>
-            </Div>
-            
-            <Accordion >
-                <AccordionItem @bind-Visible="@AccordionChatInfoVisible">
-                    <AccordionHeader>
-                        <Span>
-                            <AccordionToggle Class="fw-bolder">@L["ChatInfo"]</AccordionToggle>
-                        </Span>
-                    </AccordionHeader>
-                    <AccordionBody>
-                        <Button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"  @onclick="async () => await ShowPinnedMessagesAsync()">
-                            <i class="bi bi-pin-angle-fill fs-5"></i>
-                            <span class="d-block ms-2"> @L["ShowPinnedMessages"]</span>
-                        </Button>
-                    </AccordionBody>
-                </AccordionItem>
-                @if(CurrentChatContact.Type != ConversationType.User)
-                {
-                    <AccordionItem @bind-Visible="@AccordionChatMembersVisible">
-                        <AccordionHeader>
-                            <Span>
-                                <AccordionToggle Class="fw-bolder">@L["ChatMembers"]</AccordionToggle>
-                            </Span>
-                        </AccordionHeader>
-                        <AccordionBody>
-                            @if(IsLoadingMembers)
-                            {
-                                <div class="d-flex justify-content-center">
-                                    <RadarSpinner />
-                                </div>
-                            }
-                            else
-                            {
-                                <Div>
-                                    @foreach(var member in Members)
-                                    {
-                                        <Div Class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <canvas id="member-avatar-@member.UserId" class="canvas-avatar rounded-circle" Width="30" Height="30"></canvas>
-                                                <span>@member.UserInfo?.Surname @member.UserInfo?.Name</span>
-                                            </div>
-                                            <div class="dropdown d-flex align-items-center gap-2">
-                                                 <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="lpx-caret bi-three-dots" aria-hidden="true"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                   @if(member.UserId != CurrentUserId)
-                                                   {
-                                                        <li>
-                                                            <a class="dropdown-item"
-                                                            @onclick="async () => await SendMessageToMemberAsync( new ConversationMemberDto { UserId = member.UserId, ConversationId = CurrentChatContact.ConversationId.Value })">
-                                                                <i class="bi bi-chat-left-text"></i> @L["SendMessage"]
-                                                            </a>
-                                                        </li>
-                                                   }
+                                <Row>
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                    <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
 
-                                                    @if(member.UserId == CurrentUserId)
-                                                    {   
-                                 
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await LeaveConversationFromInfoBoxAsync(new RemoveMemberInput { ConversationId = CurrentChatContact.ConversationId.Value, UserId = member.UserId })">
-                                                                <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
-                                                            </a>
-                                                        </li>
-                                                    }
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                    <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
 
-                                                    @if(IsCurrentUserAdmin && member.UserId != CurrentUserId)
-                                                    {
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await RemoveMemberFromInfoBoxAsync(new RemoveMemberInput { ConversationId = CurrentChatContact.ConversationId.Value, UserId = member.UserId })">
-                                                                <i class="bi bi-trash"></i> @L["Delete"]
-                                                            </a>
-                                                        </li>
-                                                    }
-                                                </ul>
-                                            </div>
-                                        </Div> 
-                                    }       
-                                </Div>
-                            }
-                        </AccordionBody>
-                    </AccordionItem>
-                }
-                <AccordionItem @bind-Visible="@AccordionMediaFilesVisible">
-                    <AccordionHeader>
-                        <Span>
-                            <AccordionToggle Class="fw-bolder">@L["Files"]</AccordionToggle>
-                        </Span>
-                    </AccordionHeader>
-                    <AccordionBody>
-                        <Tabs SelectedTab="@SelectedTabMediaFiles" SelectedTabChanged="@(async (name) => await OnSelectedTabMediaFilesChanged(name))">
-                            <Items>
-                                <Tab Name="images">
-                                    <Icon Name="IconName.Image" Class="me-1" />
-                                    @L["Images"]
-                                </Tab>
-                                <Tab Name="files">
-                                    <Icon Name="IconName.File" Class="me-1" />
-                                    @L["Files"]
-                                </Tab>
-                            </Items>
-                            <Content>
-                                <TabPanel Name="images" Class="overflow-y-auto" Style="max-height: 50vh;">
-                                    <Row>
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                    <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
+                                </Row>  
 
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
+                                <Row>
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                    <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
 
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
-                                    </Row>  
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                    <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
 
-                                    <Row>
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                    <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
+                                </Row>  
 
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
+                                <Row>
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
 
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
-                                    </Row>  
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="text-brand bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
 
-                                    <Row>
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
+                                    <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
+                                        <Card Class="shadow-sm p-0 mb-1">
+                                            <CardBody Class="p-0">
+                                                <Div Class="position-relative">
+                                                    <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
+                                                    </CardImage>
+                                                    <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
+                                                        <i class="text-brand bi bi-cloud-download-fill" style="height: 20px"></i></span>
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
+                                </Row>  
 
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
 
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
-                                    </Row>  
-
-                                    <Row>
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                      <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
-
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                     <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="text-brand bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
-
-                                        <Column Size="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="mx-1 p-0">
-                                            <Card Class="shadow-sm p-0 mb-1">
-                                                <CardBody Class="p-0">
-                                                    <Div Class="position-relative">
-                                                        <CardImage Source="https://x.leptontheme.com/assets/img/backgrounds/bg-01.png" Alt="Placeholder image" Class="card-image-full">
-                                                        </CardImage>
-                                                        <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px">
-                                                            <i class="text-brand bi bi-cloud-download-fill" style="height: 20px"></i></span>
-                                                    </Div>
-                                                </CardBody>
-                                            </Card>
-                                        </Column>
-                                    </Row>  
-                                </TabPanel>
-                                <TabPanel Name="files" Class="overflow-y-auto" Style="max-height: 50vh;">
-                                    <div class="d-flex align-items-center mb-1 p-1 bg-primary text-white  rounded">
-                                        <i class="bi bi-file-earmark me-2"></i>
-                                        <small class="flex-grow-1 text-truncate">ABC</small>
-                                        <button class="btn btn-sm btn-link text-white p-0 ms-2" title="@L["DownloadFile"]">
-                                            <i class="bi bi-cloud-download-fill"></i>
+                                @if(ShowLoadMoreImages)
+                                {
+                                    <Div Class="mb-2 text-center">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="async () => await LoadMoreImagesAsync()">
+                                            @L["LoadMore"]  
                                         </button>
-                                    </div>
+                                    </Div>
+                                }
+                            </TabPanel>
+                            <TabPanel Name="files" Class="overflow-y-auto" Style="max-height: 50vh;">
+                                <div class="d-flex align-items-center mb-1 p-1 bg-primary text-white  rounded">
+                                    <i class="bi bi-file-earmark me-2"></i>
+                                    <small class="flex-grow-1 text-truncate">ABC</small>
+                                    <button class="btn btn-sm btn-link text-white p-0 ms-2" title="@L["DownloadFile"]">
+                                        <i class="bi bi-cloud-download-fill"></i>
+                                    </button>
+                                </div>
 
-                                    <div class="d-flex align-items-center mb-1 p-1 bg-primary text-white  rounded">
-                                        <i class="bi bi-file-earmark me-2"></i>
-                                        <small class="flex-grow-1 text-truncate">ABCÁDSADS</small>
-                                        <button class="btn btn-sm btn-link text-white p-0 ms-2" title="@L["DownloadFile"]">
-                                            <i class="bi bi-cloud-download-fill"></i>
+                                <div class="d-flex align-items-center mb-1 p-1 bg-primary text-white  rounded">
+                                    <i class="bi bi-file-earmark me-2"></i>
+                                    <small class="flex-grow-1 text-truncate">ABCÁDSADS</small>
+                                    <button class="btn btn-sm btn-link text-white p-0 ms-2" title="@L["DownloadFile"]">
+                                        <i class="bi bi-cloud-download-fill"></i>
+                                    </button>
+                                </div>
+
+                                @if(ShowLoadMoreFiles)
+                                {
+                                    <Div Class="mb-2 text-center">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="async () => await LoadMoreFilesAsync()">
+                                            @L["LoadMore"]  
                                         </button>
-                                    </div>
-                                </TabPanel>
-                            </Content>
-                        </Tabs>
-                    </AccordionBody>
-                </AccordionItem>
-                
-            </Accordion>
+                                    </Div>
+                                }
+                            </TabPanel>
+                        </Content>
+                    </Tabs>
+                </Div>
 
+             
+                break;
             }
         </CardBody>
     </Card>
