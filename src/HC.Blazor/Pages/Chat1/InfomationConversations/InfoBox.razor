@@ -115,6 +115,12 @@
         <CardBody Class="p-2" Style="display: flex; flex-direction: column; overflow: hidden;">
             @if(ShowFindMessage)
             {
+                 <Div Class="mt-1 mb-1 d-flex justify-content-start">
+                    <button class="btn btn-sm btn-outline-light" @onclick="async () => await CloseFindMessageAsync()">    
+                        <i class="bi bi-arrow-left fs-5 text-brand"></i>
+                    </button>
+                </Div> 
+
                 <Div Class="mt-1 mb-1 d-flex justify-content-center">
                     <input type="search" 
                     class="form-control form-control-sm"
@@ -138,7 +144,7 @@
                     </span>  
                 </Div>
 
-                <Div Class="mb-2 text-center" id="found_messages">
+                <Div Class="mb-2 text-center overflow-y-auto" id="found_messages">
                     @foreach(var message in FoundMessages)
                     {
                         <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2

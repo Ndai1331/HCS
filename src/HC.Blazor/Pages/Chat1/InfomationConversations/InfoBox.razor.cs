@@ -96,7 +96,9 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
             (_previousChatContact == null || _previousChatContact.ConversationId != CurrentChatContact.ConversationId))
             await LoadConversationMembersAsync();
             CheckIsCurrentUserAdminAsync();
+            await CloseFindMessageAsync();
             _previousChatContact = CurrentChatContact;
+
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -240,7 +242,7 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
             ShowLoadMoreFoundMessages = false;
             SkipFindMessageCount = 0;
 
-            await BlockUiService.Block(selectors: "#find_message", busy: true  );
+            await BlockUiService.Block(selectors: "#found_messages", busy: true  );
 
             var listMessages = await ConversationService.FindMessagesInConversationAsync(new FindMessageInConversationInput 
             { ConversationId = CurrentChatContact!.ConversationId!.Value,
@@ -296,6 +298,18 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         {
             ShowLoadMoreFoundMessages = false;
         }
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+
+    private async Task CloseFindMessageAsync()
+    {
+        ShowFindMessage = false;
+        SearchMessageValue=string.Empty;
+        FoundMessages.Clear();
+        ShowLoadMoreFoundMessages = false;
+        SkipFindMessageCount = 0;
         await InvokeAsync(StateHasChanged);
     }
 }
