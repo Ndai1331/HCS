@@ -285,26 +285,9 @@ public class HCBlazorModule : AbpModule
         })
         .AddCookie("Cookies", options =>
         {
-            options.LoginPath = "/Account/Login";
-            options.LogoutPath = "/Account/Logout";
-            options.AccessDeniedPath = "/Account/AccessDenied";
             options.ExpireTimeSpan = TimeSpan.FromDays(1);
             options.SlidingExpiration = false;
             options.IntrospectAccessToken();
-            
-            options.Events = new CookieAuthenticationEvents
-            {
-                OnValidatePrincipal = async context =>
-                {
-                    if (context.Principal == null || 
-                        context.Principal.Identity == null ||
-                        !context.Principal.Identity.IsAuthenticated)
-                    {
-                        context.RejectPrincipal();
-                        await context.HttpContext.SignOutAsync();
-                    }
-                }
-            };
             
             options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
             options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
@@ -446,14 +429,9 @@ public class HCBlazorModule : AbpModule
 
         context.Services.Configure<AbpClaimsPrincipalFactoryOptions>(options =>
         {
-            // Enable dynamic claims to load permissions from userinfo endpoint
-            // This is required for permissions to be loaded after login
             options.IsDynamicClaimsEnabled = false;
         });
         
-        // Configure HttpClient timeout for RemoteServices to prevent timeout errors
-        // This is especially important for dynamic claims refresh
-        // Increase timeout for all HttpClient instances used by ABP RemoteServices
         context.Services.ConfigureAll<Microsoft.Extensions.Http.HttpClientFactoryOptions>(options =>
         {
             options.HttpClientActions.Add(client =>
@@ -598,8 +576,6 @@ public class HCBlazorModule : AbpModule
             {
                 container.UseMinio(minio =>
                 {
-                    // MinIO EndPoint chỉ cần hostname:port (không có http://)
-                    // Protocol được xác định bởi WithSSL
                     minio.EndPoint = configuration["MinIO:EndPoint"] ?? "minio:9000";
                     minio.AccessKey = configuration["MinIO:AccessKey"] ?? "hcsadmin";
                     minio.SecretKey = configuration["MinIO:SecretKey"] ?? "hcsadminpassword";
@@ -615,25 +591,19 @@ public class HCBlazorModule : AbpModule
     {
         context.Services.AddSignalR(options =>
         {
-            options.AddFilter<ForceLogoutHubFilter>();
+            // options.AddFilter<ForceLogoutHubFilter>();
             options.EnableDetailedErrors = true;
         });
         
-        // Configure SignalR to use NameIdentifier claim for user mapping
-        // This ensures that Clients.User(userId.ToString()) works correctly
         context.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
         {
         });
         
-        // Configure SignalR Hub options for Blazor Server with Cookie Authentication
-        // In Blazor Server, SignalR automatically uses HttpContext from the browser connection
-        // Cookies are sent automatically with the connection negotiation request
         context.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions<Hubs.NotificationHub>>(options =>
         {
             options.MaximumReceiveMessageSize = 1024 * 1024;
         });
 
-        // Configure ChatHub options
         context.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions<Hubs.ChatHub>>(options =>
         {
             options.MaximumReceiveMessageSize = 1024 * 1024;
@@ -654,7 +624,6 @@ public class HCBlazorModule : AbpModule
 
     private void ConfigureEventHandlers(ServiceConfigurationContext context)
     {
-        // Register chat event handlers for real-time messaging
         context.Services.AddTransient<
             Volo.Abp.EventBus.Distributed.IDistributedEventHandler<HC.Chat.Messages.ChatMessageEto>,
             HC.Blazor.EventHandlers.ChatEventHandler>();
@@ -670,7 +639,6 @@ public class HCBlazorModule : AbpModule
 
     public override void OnPostApplicationInitialization(ApplicationInitializationContext context)
     {
-        // Log after application is initialized
         var logger = context.ServiceProvider.GetRequiredService<ILogger<HCBlazorModule>>();
         logger.LogInformation("[HCBlazorModule] ✅ Layout Hook configured: Hook={Hook}, Component={Component}, Layout={Layout}",
             LayoutHooks.Body.Last,

@@ -60,7 +60,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     public new string Message { get; set; }
 
     public ElementReference MessageTextArea { get; set; }
-    public ElementReference ConversationContainerRef { get; set; }
 
     public bool SendOnEnter { get; set; } = true; // Default: Enter to send
     
@@ -135,8 +134,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
     [Inject]
     protected IJSRuntime JSRuntime { get; set; }
-
-    private DotNetObjectReference<Chat1>? _objRef;
 
     [Inject]
     private IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider { get; set; } = default!;
@@ -397,16 +394,15 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
 
         _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
+        
         // Initialize SignalR connection for real-time chat
         try
         {
-            // Register callback with ChatHubConnectionService FIRST
             await ChatHubConnectionService.OnReceiveMessageAsync(async message =>
             {
                 await ProcessReceivedMessage(message);
             });
 
-            // Register delete callbacks
             await ChatHubConnectionService.OnDeletedMessageAsync(async messageId =>
             {
                 ChatConversationDto.Messages.RemoveAll(message => message.Id == messageId);
@@ -448,7 +444,9 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await GetContactsAsync();
         }
 
-        foreach (var contactDto in ChatContactDtos)
+        // Create snapshot to avoid "Collection was modified" errors
+        var contactsSnapshot = ChatContactDtos.ToList();
+        foreach (var contactDto in contactsSnapshot)
         {
             if (CanvasElementReferences.ContainsKey(contactDto))
             {
@@ -480,7 +478,9 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User && ChatConversationDto?.Messages != null)
         {
             await Task.Delay(100); // Wait for DOM to be ready
-            foreach (var message in ChatConversationDto.Messages.Where(m => m.SenderUserId.HasValue && m.Side == ChatMessageSide.Receiver))
+            // Create snapshot to avoid "Collection was modified" errors
+            var messagesSnapshot = ChatConversationDto.Messages.Where(m => m.SenderUserId.HasValue && m.Side == ChatMessageSide.Receiver).ToList();
+            foreach (var message in messagesSnapshot)
             {
                 try
                 {
@@ -520,6 +520,14 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
 
         return name;
+    }
+    
+    /// <summary>
+    /// Get a snapshot of messages to avoid "Collection was modified" errors during rendering
+    /// </summary>
+    public List<ChatMessageDto> GetMessagesSnapshot()
+    {
+        return ChatConversationDto?.Messages?.ToList() ?? new List<ChatMessageDto>();
     }
     
     public static string GetContactDisplayName(ChatContactDto contact)
@@ -1238,7 +1246,14 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     private async Task ReplyToMessageAsync(ChatMessageDto message)
     {
         ReplyingToMessage = message;
-        await MessageTextArea.FocusAsync();
+        try
+        {
+            await MessageTextArea.FocusAsync();
+        }
+        catch
+        {
+            // Ignore if element is not available
+        }
         await InvokeAsync(StateHasChanged);
     }
     private async Task TogglePinMessageAsync(ChatMessageDto message)
@@ -1558,8 +1573,15 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         await ScrollToBottomAsync();
         
         // Focus textarea immediately for next message
-        await Task.Delay(50);
-        await MessageTextArea.FocusAsync();
+        try
+        {
+            await Task.Delay(50);
+            await MessageTextArea.FocusAsync();
+        }
+        catch
+        {
+            // Ignore if element is not available or component disposed
+        }
 
         // Send to server in background (fire-and-forget pattern)
         _ = SendToServerAsync(messageText, uploadedFiles, replyingTo, optimisticMessage);
@@ -1761,12 +1783,12 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     /// <summary>
     /// Open image viewer modal
     /// </summary>
-    public async Task OpenImageViewerAsync(Guid fileId, string fileName, string filePath, string imageUrl)
+    public async Task OpenImageViewerAsync(MessageFileDto file)
     {
-        ImageViewerFileName = fileName;
-        ImageViewerUrl = imageUrl;
-        ImageViewerFilePath = filePath;
-        _currentViewingImageFileId = fileId;
+        ImageViewerFileName = file.FileName;
+        ImageViewerUrl = file.FilePath;
+        ImageViewerFilePath = file.FilePath;
+        _currentViewingImageFileId = file.Id;
         ShowImageViewerModal = true;
         await InvokeAsync(StateHasChanged);
     }
@@ -1797,12 +1819,9 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     
     public async ValueTask DisposeAsync()
     {
-        _objRef?.Dispose();
-        _objRef = null;
-
-        if (ChatHubConnectionService is IAsyncDisposable asyncDisposable)
-        {
-            await asyncDisposable.DisposeAsync();
-        }
+    //     if (ChatHubConnectionService is IAsyncDisposable asyncDisposable)
+    //     {
+    //         await asyncDisposable.DisposeAsync();
+    //     }
     }
 }

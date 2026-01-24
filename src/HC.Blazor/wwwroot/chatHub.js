@@ -53,27 +53,16 @@ window.chatHub = {
 
         // Register event handlers only once
         connection.on("ReceiveMessage", function (messageData) {
-            console.log("Chat SignalR: ========== ReceiveMessage START ==========");
-            console.log("Chat SignalR: Received message", messageData);
-            console.log("Chat SignalR: window._chatConnection exists?", !!window._chatConnection);
-            console.log("Chat SignalR: connection._dotnetHelpers exists?", !!connection._dotnetHelpers);
-            console.log("Chat SignalR: Available helpers:", connection._dotnetHelpers ? connection._dotnetHelpers.length : 0);
-            console.log("Chat SignalR: window._chatNotificationHelper exists?", !!window._chatNotificationHelper);
-
-            // Call Chat1 page helpers (ChatHubConnectionService)
             if (connection._dotnetHelpers && connection._dotnetHelpers.length > 0) {
-                // Create a copy to iterate over, in case we need to remove disposed helpers
                 const helpers = [...connection._dotnetHelpers];
                 helpers.forEach((helper, index) => {
                     console.log(`Chat SignalR: Helper ${index}:`, helper);
                     if (helper) {
-                        // Call method in ChatHubConnectionService using JsonElement-based method
                         console.log("Chat SignalR: Calling HandleSignalRMessageJson for helper");
                         helper.invokeMethodAsync("HandleSignalRMessageJson", messageData)
                             .then(() => console.log("Chat SignalR: HandleSignalRMessageJson call completed"))
                             .catch(err => {
                                 console.error("Error calling HandleSignalRMessageJson:", err);
-                                // If error is about disposed object, remove this helper from array
                                 if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
                                     console.log("Chat SignalR: Removing disposed helper from array");
                                     const helperIndex = connection._dotnetHelpers.indexOf(helper);
@@ -96,7 +85,14 @@ window.chatHub = {
                 const messageJson = JSON.stringify(messageData);
                 window._chatNotificationHelper.invokeMethodAsync("OnChatMessageReceived", messageJson)
                     .then(() => console.log("Chat SignalR: OnChatMessageReceived for NotificationToast completed"))
-                    .catch(err => console.error("Chat SignalR: Error calling OnChatMessageReceived for NotificationToast:", err));
+                    .catch(err => {
+                        console.error("Chat SignalR: Error calling OnChatMessageReceived for NotificationToast:", err);
+                        // If helper is disposed, clean it up
+                        if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
+                            console.log("Chat SignalR: Notification helper was disposed, cleaning up...");
+                            window._chatNotificationHelper = null;
+                        }
+                    });
             }
 
             // Broadcast message to other tabs for cross-tab sync
@@ -153,7 +149,6 @@ window.chatHub = {
         connection.on("ConversationCreated", function (conversationData) {
             console.log("Chat SignalR: ConversationCreated event received", conversationData);
             
-            // Call Chat1 page helpers (ChatHubConnectionService)
             if (connection._dotnetHelpers) {
                 const helpers = [...connection._dotnetHelpers];
                 helpers.forEach(helper => {
@@ -178,7 +173,14 @@ window.chatHub = {
                 const conversationJson = JSON.stringify(conversationData);
                 window._chatNotificationHelper.invokeMethodAsync("OnConversationCreated", conversationJson)
                     .then(() => console.log("Chat SignalR: OnConversationCreated for NotificationToast completed"))
-                    .catch(err => console.error("Chat SignalR: Error calling OnConversationCreated for NotificationToast:", err));
+                    .catch(err => {
+                        console.error("Chat SignalR: Error calling OnConversationCreated for NotificationToast:", err);
+                        // If helper is disposed, clean it up
+                        if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
+                            console.log("Chat SignalR: Notification helper was disposed, cleaning up...");
+                            window._chatNotificationHelper = null;
+                        }
+                    });
             }
         });
 
@@ -225,7 +227,6 @@ window.chatHub = {
                 console.log("Chat SignalR: Available helpers:", connection._dotnetHelpers ? connection._dotnetHelpers.length : 0);
                 console.log("Chat SignalR: window._chatNotificationHelper exists?", !!window._chatNotificationHelper);
                 
-                // Call Chat1 page helpers (ChatHubConnectionService) if any
                 if (connection._dotnetHelpers && connection._dotnetHelpers.length > 0) {
                     const helpers = [...connection._dotnetHelpers];
                     helpers.forEach((helper, index) => {
@@ -258,7 +259,14 @@ window.chatHub = {
                     const messageJson = JSON.stringify(messageData);
                     window._chatNotificationHelper.invokeMethodAsync("OnChatMessageReceived", messageJson)
                         .then(() => console.log("Chat SignalR: OnChatMessageReceived called successfully"))
-                        .catch(err => console.error("Chat SignalR: Error calling OnChatMessageReceived:", err));
+                        .catch(err => {
+                            console.error("Chat SignalR: Error calling OnChatMessageReceived:", err);
+                            // If helper is disposed, clean it up
+                            if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
+                                console.log("Chat SignalR: Notification helper was disposed, cleaning up...");
+                                window._chatNotificationHelper = null;
+                            }
+                        });
                 }
                 
                 // Broadcast message to other tabs for cross-tab sync
@@ -280,7 +288,14 @@ window.chatHub = {
                     const conversationJson = JSON.stringify(conversationData);
                     window._chatNotificationHelper.invokeMethodAsync("OnConversationCreated", conversationJson)
                         .then(() => console.log("Chat SignalR: OnConversationCreated called successfully"))
-                        .catch(err => console.error("Chat SignalR: Error calling OnConversationCreated:", err));
+                        .catch(err => {
+                            console.error("Chat SignalR: Error calling OnConversationCreated:", err);
+                            // If helper is disposed, clean it up
+                            if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
+                                console.log("Chat SignalR: Notification helper was disposed, cleaning up...");
+                                window._chatNotificationHelper = null;
+                            }
+                        });
                 }
             });
 
@@ -305,14 +320,22 @@ window.chatHub = {
     stopForNotifications: function () {
         console.log("Chat SignalR: stopForNotifications called");
         
-        if (window._chatNotificationHelper) {
-            // Dispose notification helper
-            if (window._chatNotificationHelper.dispose) {
-                window._chatNotificationHelper.dispose();
+        // Clean up notification helper reference FIRST before disposing
+        const helper = window._chatNotificationHelper;
+        window._chatNotificationHelper = null;
+        
+        if (helper) {
+            try {
+                // Don't dispose here - let .NET handle disposal
+                // Just remove reference so JS won't try to call it
+                console.log("Chat SignalR: Notification helper reference cleared");
+            } catch (err) {
+                console.error("Chat SignalR: Error cleaning notification helper:", err);
             }
-            window._chatNotificationHelper = null;
-            console.log("Chat SignalR: Notification helper disposed");
         }
+        
+        // Note: We don't stop the connection here because it might still be used by Chat1 page
+        // The connection will be stopped when all helpers are removed
     },
 
     stop: function () {

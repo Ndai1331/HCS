@@ -10,7 +10,7 @@
 @if (_isInitialized)
 {
     <div class="notification-toast-container position-fixed top-0 end-0 p-3">
-        @foreach (var notification in _notifications)
+        @foreach (var notification in GetNotificationsSnapshot())
         {
             var isRemoving = _removingNotifications.Contains(notification.Id);
             <div class="toast show mb-2 notification-toast-item @(isRemoving ? "fade-out" : "")" 
@@ -44,6 +44,7 @@
     private bool _isInitializing = false; // Prevent multiple initialization attempts
     private DotNetObjectReference<NotificationToast>? _objRef;
     private Dictionary<Guid, string> _chatNotifications = new(); // Track chat notifications by ConversationId
+    private readonly object _notificationsLock = new object(); // Lock for thread-safe access to _notifications
 
     [Inject] private NavigationManager NavigationManager { get; set; } = null!;
     [Inject] private INotificationsAppService NotificationsAppService { get; set; } = null!;
@@ -187,7 +188,10 @@
                 _chatNotifications[messageData.ConversationId.Value] = messageData.Text ?? "";
             }
             
-            _notifications.Insert(0, notification);
+            lock (_notificationsLock)
+            {
+                _notifications.Insert(0, notification);
+            }
             await InvokeAsync(StateHasChanged);
             
             // Auto-remove after 5 seconds
@@ -327,7 +331,10 @@
             
             _chatNotifications[conversationData.ConversationId] = conversationData.ConversationName ?? "";
             
-            _notifications.Insert(0, notification);
+            lock (_notificationsLock)
+            {
+                _notifications.Insert(0, notification);
+            }
             await InvokeAsync(StateHasChanged);
             
             // Auto-remove after 5 seconds
@@ -354,7 +361,13 @@
             NotificationLogger.LogInformation("[NotificationToast] Loading notification: NotificationId={NotificationId}", notificationId);
             
             // Check if notification already exists to prevent duplicates
-            if (_notifications.Any(n => n.Id == notificationId))
+            bool exists;
+            lock (_notificationsLock)
+            {
+                exists = _notifications.Any(n => n.Id == notificationId);
+            }
+            
+            if (exists)
             {
                 NotificationLogger.LogWarning("[NotificationToast] ⚠️ Notification already exists, skipping: NotificationId={NotificationId}", notificationId);
                 return;
@@ -365,7 +378,11 @@
             {
                 NotificationLogger.LogInformation("[NotificationToast] ✅ Notification loaded: NotificationId={NotificationId}, Title={Title}", 
                     notificationId, notification.Title);
-                _notifications.Insert(0, notification);
+                
+                lock (_notificationsLock)
+                {
+                    _notifications.Insert(0, notification);
+                }
                 
                 // Auto-remove after 5 seconds with fade-out animation
                 _ = Task.Run(async () =>
@@ -395,8 +412,11 @@
         // Wait for animation to complete (300ms)
         await Task.Delay(300);
         
-        // Remove from list
-        _notifications.RemoveAll(n => n.Id == notificationId);
+        // Remove from list with lock
+        lock (_notificationsLock)
+        {
+            _notifications.RemoveAll(n => n.Id == notificationId);
+        }
         _removingNotifications.Remove(notificationId);
         await InvokeAsync(StateHasChanged);
     }
@@ -498,21 +518,59 @@
             _ => "#"
         };
     }
+    
+    /// <summary>
+    /// Create a snapshot of notifications to avoid "Collection was modified" errors during rendering
+    /// </summary>
+    private List<NotificationDto> GetNotificationsSnapshot()
+    {
+        lock (_notificationsLock)
+        {
+            return _notifications.ToList();
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {
-        // Stop SignalR connections from JavaScript
-        // Using SafeInvokeVoidAsync to automatically handle JSDisconnectedException
-        if (_isInitialized)
+        try
         {
-            await JS.SafeInvokeVoidAsync("notificationHub.stop");
-            NotificationLogger.LogInformation("[NotificationToast] Notification Hub stopped");
+            NotificationLogger.LogInformation("[NotificationToast] 🔴 Starting cleanup - IsInitialized={IsInitialized}", _isInitialized);
             
-            await JS.SafeInvokeVoidAsync("chatHub.stopForNotifications");
-            NotificationLogger.LogInformation("[NotificationToast] Chat Hub stopped");
+            if (_isInitialized)
+            {
+                try
+                {
+                    await JS.SafeInvokeVoidAsync("chatHub.stopForNotifications");
+                    NotificationLogger.LogInformation("[NotificationToast] ✅ Chat Hub stopped for notifications");
+                }
+                catch (Exception ex)
+                {
+                    NotificationLogger.LogError(ex, "[NotificationToast] ⚠️ Error stopping Chat Hub: {Message}", ex.Message);
+                }
+                
+                try
+                {
+                    await JS.SafeInvokeVoidAsync("notificationHub.stop");
+                    NotificationLogger.LogInformation("[NotificationToast] ✅ Notification Hub stopped");
+                }
+                catch (Exception ex)
+                {
+                    NotificationLogger.LogError(ex, "[NotificationToast] ⚠️ Error stopping Notification Hub: {Message}", ex.Message);
+                }
+            }
+            
+            // Dispose object reference LAST to ensure JS cleanup happens first
+            if (_objRef != null)
+            {
+                _objRef.Dispose();
+                _objRef = null;
+                NotificationLogger.LogInformation("[NotificationToast] ✅ DotNetObjectReference disposed");
+            }
         }
-        
-        _objRef?.Dispose();
+        catch (Exception ex)
+        {
+            NotificationLogger.LogError(ex, "[NotificationToast] ❌ Error during cleanup: {Message}", ex.Message);
+        }
     }
 }
 

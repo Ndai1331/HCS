@@ -42,7 +42,7 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     [Parameter]
     public Func<RemoveMemberInput, Task> LeaveConversationAsync { get; set; } = null!;
     [Parameter]
-    public EventCallback<(Guid fileId, string fileName, string filePath, string imageUrl)> OnOpenImageViewer { get; set; }
+    public EventCallback<MessageFileDto> OnOpenImageViewer { get; set; }
 
     public bool AccordionChatInfoVisible { get; set; }
     public bool AccordionChatMembersVisible { get; set; }
@@ -439,9 +439,9 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     }
 
     
-    private async Task OnOpenImageViewerAsync(Guid fileId, string fileName, string filePath, string imageUrl)
+    private async Task OnOpenImageViewerAsync(MessageFileDto file)
     {
-        await OnOpenImageViewer.InvokeAsync((fileId, fileName, filePath, imageUrl));
+        await OnOpenImageViewer.InvokeAsync(file);
     }
 
 }
