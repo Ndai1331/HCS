@@ -303,7 +303,14 @@
             <CardHeader>
                 <Heading Size="HeadingSize.Is4">@L["Documents"]</Heading>
                 <small class="text-muted d-block text-truncate">
-                    @L["Update"] @LastDocumentTimeAgo
+                    @if (!string.IsNullOrEmpty(LastDocumentTimeAgo))
+                    {
+                        @L["Update"]@(" ")@LastDocumentTimeAgo
+                    } 
+                    else
+                    {
+                        @L["NoRecentUpdates"]
+                    }
                 </small>
             </CardHeader>
 
@@ -370,7 +377,14 @@
             <CardHeader>
                 <Heading Size="HeadingSize.Is4">@L["Notifications"]</Heading>
                 <small class="text-muted d-block text-truncate">
-                    @L["Update"] @LastNotificationTimeAgo
+                    @if (!string.IsNullOrEmpty(LastNotificationTimeAgo))
+                    {
+                        @L["Update"]@(" ")@LastNotificationTimeAgo
+                    }
+                    else
+                    {
+                        @L["NoRecentUpdates"]
+                    }
                 </small>
             </CardHeader>
 

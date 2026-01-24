@@ -172,7 +172,7 @@ public partial class NewIndex
             });
 
             RecentDocumentsList = result.Items.ToList();
-            LastDocumentTimeAgo = result.Items.Last().Document.CreationTime.Humanize();
+            LastDocumentTimeAgo = result.Items.Any() ? result.Items.Last().Document.CreationTime.Humanize() : string.Empty;
         }
         catch (Exception ex)
         {
@@ -196,7 +196,7 @@ public partial class NewIndex
             var result = await NotificationReceiversAppService.GetListAsync(input);
 
             RecentNotificationsList = result.Items.ToList();
-            LastNotificationTimeAgo = result.Items.Last().NotificationReceiver.CreationTime.Humanize();
+            LastNotificationTimeAgo = result.Items.Any() ? result.Items.Last().NotificationReceiver.CreationTime.Humanize() : string.Empty;
         }
         catch (Exception ex)
         {
