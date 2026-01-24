@@ -1472,37 +1472,34 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
     }
     
-    private async Task SendMessageAsync()
+    private bool ValidateMessageBeforeSend()
     {
-        // Prevent duplicate sends
         if (_isSendingMessage)
-        {
-            return;
-        }
+            return false;
         
         if (Message.IsNullOrWhiteSpace() && (UploadedFiles == null || !UploadedFiles.Any()))
-        {
-            return;
-        }
+            return false;
 
         if (CurrentChatContact == null)
-        {
-            return;
-        }
-        
-        // Set flag to prevent duplicate sends - must be set before any async operations
-        _isSendingMessage = true;
+            return false;
 
-        // Store message content and files before clearing
+        return true;
+    }
+
+    private (string messageText, List<MessageFileDto> files, ChatMessageDto replyingTo, Guid targetUserId, Guid? conversationId) PrepareMessageContent()
+    {
         var messageText = Message;
         var uploadedFiles = UploadedFiles?.ToList() ?? new List<MessageFileDto>();
         var replyingTo = ReplyingToMessage;
         var targetUserId = CurrentChatContact.UserId;
         var conversationId = CurrentConversationId;
 
-        // Clear input immediately for better UX (non-blocking)
-        // Clear textarea directly via JavaScript FIRST to ensure immediate clearing
-        // This must be done before clearing Message property to prevent text from reappearing
+        return (messageText, uploadedFiles, replyingTo, targetUserId, conversationId);
+    }
+
+    private async Task ClearInputAsync()
+    {
+        // Clear textarea via JavaScript FIRST to ensure immediate clearing
         try
         {
             await JsRuntime.SafeInvokeVoidAsync("eval", 
@@ -1517,23 +1514,148 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             // Ignore errors
         }
         
-        // Now clear the property
         Message = "";
-        if (ReplyingToMessage != null)
-        {
-            ReplyingToMessage = null;
-        }
-        if (UploadedFiles != null)
-        {
-            UploadedFiles.Clear();
-        }
-        
-        // Force immediate UI update
+        ReplyingToMessage = null;
+        UploadedFiles?.Clear();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SendToServerAsync(string messageText, List<MessageFileDto> uploadedFiles, ChatMessageDto replyingTo, ChatMessageDto optimisticMessage)
+    {
+        try
+        {
+            ChatMessageDto serverMessage = null;
+            var targetUserId = CurrentChatContact.UserId;
+            var conversationId = CurrentConversationId;
+            
+            if (replyingTo != null)
+            {
+                // Send reply message
+                serverMessage = await ConversationAppService.SendReplyMessageAsync(new SendReplyMessageInput
+                {
+                    TargetUserId = targetUserId,
+                    ConversationId = conversationId,
+                    ReplyToMessageId = replyingTo.Id,
+                    Message = messageText ?? string.Empty
+                });
+            }
+            else if (uploadedFiles.Any())
+            {
+                // Send message with files
+                serverMessage = await ConversationAppService.SendMessageWithFilesAsync(new SendMessageWithFilesInput
+                {
+                    TargetUserId = targetUserId,
+                    ConversationId = conversationId,
+                    Message = messageText,
+                    FileIds = uploadedFiles.Select(f => f.Id).ToList()
+                });
+            }
+            else
+            {
+                // Send normal message
+                serverMessage = await ConversationAppService.SendMessageAsync(new SendMessageInput
+                {
+                    Message = messageText,
+                    ConversationId = conversationId ?? throw new InvalidOperationException("ConversationId is required")
+                });
+            }
+
+            // Update optimistic message with server response on UI thread
+            await InvokeAsync(async () =>
+            {
+                if (serverMessage != null && ChatConversationDto?.Messages != null)
+                {
+                    // Mark server message as sent (no spinner)
+                    serverMessage.IsSending = false;
+                    
+                    // Replace optimistic message with server message
+                    var index = ChatConversationDto.Messages.FindIndex(m => m.Id == optimisticMessage.Id);
+                    if (index >= 0)
+                    {
+                        ChatConversationDto.Messages[index] = serverMessage;
+                    }
+                    else
+                    {
+                        // If not found, add server message
+                        ChatConversationDto.Messages.Add(serverMessage);
+                    }
+                    
+                    // Update last message from server
+                    var lastMessage = ChatConversationDto.Messages.LastOrDefault();
+                    if (lastMessage != null)
+                    {
+                        CurrentChatContact.LastMessage = lastMessage.Message;
+                        CurrentChatContact.LastMessageDate = lastMessage.MessageDate;
+                        
+                        var contactInList = ChatContactDtos.FirstOrDefault(c => 
+                            (c.Type == ConversationType.User && c.UserId == CurrentChatContact.UserId) ||
+                            (c.Type != ConversationType.User && c.ConversationId == CurrentChatContact.ConversationId));
+                        
+                        if (contactInList != null)
+                        {
+                            contactInList.LastMessage = lastMessage.Message;
+                            contactInList.LastMessageDate = lastMessage.MessageDate;
+                        }
+                    }
+                    
+                    // Refresh contacts list
+                    await RefreshContactsListAsync();
+                    
+                    // Auto scroll to bottom after server message is updated
+                    await Task.Delay(100);
+                    await ScrollToBottomAsync();
+                }
+                
+                // Decrement pending count
+                Interlocked.Decrement(ref _pendingMessagesCount);
+                
+                // Reset sending flag to allow next send
+                _isSendingMessage = false;
+                
+                await InvokeAsync(StateHasChanged);
+            });
+        }
+        catch (Exception ex)
+        {
+            // Handle error on UI thread
+            await InvokeAsync(async () =>
+            {
+                // Remove optimistic message on error
+                if (ChatConversationDto?.Messages != null)
+                {
+                    ChatConversationDto.Messages.RemoveAll(m => m.Id == optimisticMessage.Id);
+                }
+                
+                // Decrement pending count
+                Interlocked.Decrement(ref _pendingMessagesCount);
+                
+                // Reset sending flag to allow next send
+                _isSendingMessage = false;
+                
+                await InvokeAsync(StateHasChanged);
+                await HandleErrorAsync(ex);
+            });
+        }
+    }
+
+    private async Task SendMessageAsync()
+    {
+        // Validate before attempting send
+        if (!ValidateMessageBeforeSend())
+            return;
+        
+        _isSendingMessage = true;
+
+        // Extract message content
+        var (messageText, uploadedFiles, replyingTo, targetUserId, conversationId) = PrepareMessageContent();
+
+        // Clear input immediately for better UX
+        await ClearInputAsync();
 
         // Create optimistic message and add to UI immediately
         var optimisticMessage = CreateOptimisticMessage(messageText, uploadedFiles, replyingTo);
         optimisticMessage.IsSending = true; // Mark as sending to show spinner
+        
         if (ChatConversationDto?.Messages == null)
         {
             ChatConversationDto = new ChatConversationDto { Messages = new List<ChatMessageDto>() };
@@ -1555,132 +1677,22 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             contactInList.LastMessageDate = DateTime.UtcNow;
         }
         
-        // Increment pending count (no spinner on button, spinner is on message)
+        // Increment pending count
         Interlocked.Increment(ref _pendingMessagesCount);
         
         // Update UI immediately
         await InvokeAsync(StateHasChanged);
         
         // Auto scroll to bottom to show new message
-        await Task.Delay(100); // Wait for DOM to update with new message
+        await Task.Delay(100);
         await ScrollToBottomAsync();
         
         // Focus textarea immediately for next message
-        await Task.Delay(50); // Small delay to ensure DOM is updated
+        await Task.Delay(50);
         await MessageTextArea.FocusAsync();
 
         // Send to server in background (fire-and-forget pattern)
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                ChatMessageDto serverMessage = null;
-                
-                if (replyingTo != null)
-                {
-                    // Send reply message
-                    serverMessage = await ConversationAppService.SendReplyMessageAsync(new SendReplyMessageInput
-                    {
-                        TargetUserId = targetUserId,
-                        ConversationId = conversationId,
-                        ReplyToMessageId = replyingTo.Id,
-                        Message = messageText ?? string.Empty
-                    });
-                }
-                else if (uploadedFiles.Any())
-                {
-                    // Send message with files
-                    serverMessage = await ConversationAppService.SendMessageWithFilesAsync(new SendMessageWithFilesInput
-                    {
-                        TargetUserId = targetUserId,
-                        ConversationId = conversationId,
-                        Message = messageText,
-                        FileIds = uploadedFiles.Select(f => f.Id).ToList()
-                    });
-                }
-                else
-                {
-                    // Send normal message
-                    serverMessage = await ConversationAppService.SendMessageAsync(new SendMessageInput
-                    {
-                        Message = messageText,
-                        ConversationId = conversationId ?? throw new InvalidOperationException("ConversationId is required")
-                    });
-                }
-
-                // Update optimistic message with server response on UI thread
-                await InvokeAsync(async () =>
-                {
-                    if (serverMessage != null && ChatConversationDto?.Messages != null)
-                    {
-                        // Mark server message as sent (no spinner)
-                        serverMessage.IsSending = false;
-                        
-                        // Replace optimistic message with server message
-                        var index = ChatConversationDto.Messages.FindIndex(m => m.Id == optimisticMessage.Id);
-                        if (index >= 0)
-                        {
-                            ChatConversationDto.Messages[index] = serverMessage;
-                        }
-                        else
-                        {
-                            // If not found, add server message
-                            ChatConversationDto.Messages.Add(serverMessage);
-                        }
-                        
-                        // Update last message from server
-                        var lastMessage = ChatConversationDto.Messages.LastOrDefault();
-                        if (lastMessage != null)
-                        {
-                            CurrentChatContact.LastMessage = lastMessage.Message;
-                            CurrentChatContact.LastMessageDate = lastMessage.MessageDate;
-                            
-                            if (contactInList != null)
-                            {
-                                contactInList.LastMessage = lastMessage.Message;
-                                contactInList.LastMessageDate = lastMessage.MessageDate;
-                            }
-                        }
-                        
-                        // Refresh contacts list
-                        await RefreshContactsListAsync();
-                        
-                        // Auto scroll to bottom after server message is updated
-                        await Task.Delay(100); // Wait for DOM to update
-                        await ScrollToBottomAsync();
-                    }
-                    
-                    // Decrement pending count (no spinner on button, spinner is on message)
-                    var remaining = Interlocked.Decrement(ref _pendingMessagesCount);
-                    
-                    // Reset sending flag to allow next send
-                    _isSendingMessage = false;
-                    
-                    await InvokeAsync(StateHasChanged);
-                });
-            }
-            catch (Exception ex)
-            {
-                // Handle error on UI thread
-                await InvokeAsync(async () =>
-                {
-                    // Remove optimistic message on error
-                    if (ChatConversationDto?.Messages != null)
-                    {
-                        ChatConversationDto.Messages.RemoveAll(m => m.Id == optimisticMessage.Id);
-                    }
-                    
-                    // Decrement pending count (no spinner on button)
-                    var remaining = Interlocked.Decrement(ref _pendingMessagesCount);
-                    
-                    // Reset sending flag to allow next send
-                    _isSendingMessage = false;
-                    
-                    await InvokeAsync(StateHasChanged);
-                    await HandleErrorAsync(ex);
-                });
-            }
-        });
+        _ = SendToServerAsync(messageText, uploadedFiles, replyingTo, optimisticMessage);
     }
     
     private async Task ScrollToBottomAsync()
