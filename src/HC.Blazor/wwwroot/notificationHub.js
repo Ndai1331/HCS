@@ -26,10 +26,22 @@ window.notificationHub = {
         // Note: connection.on() can be called multiple times, but we only register once per connection
         connection.on("ReceiveNotification", function (notificationId) {
             if (connection._dotnetHelpers) {
-                connection._dotnetHelpers.forEach(helper => {
+                // Create a copy to avoid modification during iteration
+                const helpers = [...connection._dotnetHelpers];
+                helpers.forEach((helper, index) => {
                     if (helper) {
                         helper.invokeMethodAsync("OnNotificationReceived", notificationId)
-                            .catch(err => console.error("Error calling OnNotificationReceived:", err));
+                            .catch(err => {
+                                console.error("Error calling OnNotificationReceived:", err);
+                                // If helper is disposed, remove it from array
+                                if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
+                                    console.log("Notification SignalR: Helper was disposed, removing from array...");
+                                    const helperIndex = connection._dotnetHelpers.indexOf(helper);
+                                    if (helperIndex > -1) {
+                                        connection._dotnetHelpers.splice(helperIndex, 1);
+                                    }
+                                }
+                            });
                     }
                 });
             }
@@ -38,10 +50,22 @@ window.notificationHub = {
         // Listen for unread count changes
         connection.on("UnreadCountChanged", function () {
             if (connection._dotnetHelpers) {
-                connection._dotnetHelpers.forEach(helper => {
+                // Create a copy to avoid modification during iteration
+                const helpers = [...connection._dotnetHelpers];
+                helpers.forEach((helper, index) => {
                     if (helper) {
                         helper.invokeMethodAsync("OnUnreadCountChanged")
-                            .catch(err => console.error("Error calling OnUnreadCountChanged:", err));
+                            .catch(err => {
+                                console.error("Error calling OnUnreadCountChanged:", err);
+                                // If helper is disposed, remove it from array
+                                if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
+                                    console.log("Notification SignalR: Helper was disposed, removing from array...");
+                                    const helperIndex = connection._dotnetHelpers.indexOf(helper);
+                                    if (helperIndex > -1) {
+                                        connection._dotnetHelpers.splice(helperIndex, 1);
+                                    }
+                                }
+                            });
                     }
                 });
             }
@@ -56,14 +80,12 @@ window.notificationHub = {
     
     stop: function () {
         if (window._notificationConnection) {
-            // Dispose all helpers
+            // Clear helper references FIRST (don't dispose from JS, let .NET handle it)
             if (window._notificationConnection._dotnetHelpers) {
-                window._notificationConnection._dotnetHelpers.forEach(helper => {
-                    if (helper && helper.dispose) {
-                        helper.dispose();
-                    }
-                });
+                console.log("Notification SignalR: Clearing helper references...");
+                window._notificationConnection._dotnetHelpers = [];
             }
+            
             window._notificationConnection.stop()
                 .then(() => console.log("SignalR disconnected"))
                 .catch(err => console.error("SignalR disconnect error:", err));

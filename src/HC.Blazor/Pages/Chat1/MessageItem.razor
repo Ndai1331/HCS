@@ -9,310 +9,238 @@
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inherits HCComponentBase
 
-<div class="media w-75 mw-65 w-lp-auto mb-2 @(Message.Side == ChatMessageSide.Sender ? "ms-auto" : "") position-relative">
-    @* Avatar for receiver messages in group chats *@
-    @if (Message.Side == ChatMessageSide.Receiver && CurrentChatContact?.Type != ConversationType.User && Message.SenderUserId.HasValue)
-    {
-        <div class="me-2">
-            <canvas id="sender-avatar-@Message.Id" width="32" height="32" style="border-radius: 50%;"></canvas>
-        </div>
-    }
 
-    <div class="media-body position-relative @(Message.Side == ChatMessageSide.Sender ? "" : "ms-3")">
-        @* Sender name for group chats *@
-        @if (Message.Side == ChatMessageSide.Receiver && CurrentChatContact?.Type != ConversationType.User && Message.SenderUserId.HasValue)
+<div class="chat-row d-flex mb-2
+     @(Message.Side == ChatMessageSide.Sender ? "" : "justify-content-start")">
+
+    <div class="chat-item d-flex align-items-start
+         @(Message.Side == ChatMessageSide.Sender ? "sender flex-row-reverse" : "")">
+
+        @* Avatar *@
+        @if (Message.Side == ChatMessageSide.Receiver && Message.SenderUserId.HasValue)
         {
-            <div class="mb-1">
-                <small class="text-muted fw-bold">@GetSenderName(Message)</small>
-            </div>
+            <canvas id="sender-avatar-@Message.Id"
+                    width="32"
+                    height="32"
+                    class="me-2 rounded-circle"></canvas>
         }
 
-        @* Reply preview *@
-        @if (Message.ReplyToMessage != null)
-        {
-            <div class="@GetReplyBoxClass() rounded p-2 mb-1 position-relative"
-                 style="@GetReplyBoxStyle(); cursor: pointer;"
-                 @onclick="async () => await OnReplyBoxClickAsync(Message.ReplyToMessage)"
-                 @onclick:stopPropagation="true"
-                 title="Click to pin/unpin">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="flex-grow-1">
-                        <small class="text-muted d-block">@L["ReplyingTo"]:</small>
-                        <small class="text-truncate d-block">@Message.ReplyToMessage.Message.TruncateWithPostfix(50, "...")</small>
-                    </div>
-                    @if (Message.ReplyToMessage.IsPinned)
-                    {
-                        <i class="bi bi-pin-fill text-warning ms-2" title="Pinned"></i>
-                    }
-                    else
-                    {
-                        <i class="bi bi-pin ms-2 @GetReplyMutedClass()" title="Click to pin"></i>
-                    }
-                </div>
-            </div>
-        }
+        <div class="message-wrapper">
 
-        @* Forward preview *@
-        @if (Message.ForwardedFromMessage != null)
-        {
-            <div class="@GetForwardBoxClass() rounded p-2 mb-1 position-relative" style="border-left: 3px solid #17a2b8;">
-                <div class="d-flex align-items-start">
-                    <i class="bi bi-forward-fill text-info me-2"></i>
-                    <div class="flex-grow-1">
-                        <small class="text-muted d-block">@L["ForwardedFrom"]:
-                            @if (!string.IsNullOrWhiteSpace(Message.ForwardedFromMessage.SenderName))
-                            {
-                                <span>@Message.ForwardedFromMessage.SenderName @Message.ForwardedFromMessage.SenderSurname</span>
-                            }
-                            else if (!string.IsNullOrWhiteSpace(Message.ForwardedFromMessage.SenderUsername))
-                            {
-                                <span>@Message.ForwardedFromMessage.SenderUsername</span>
-                            }
-                        </small>
-                        <small class="text-truncate d-block">@Message.ForwardedFromMessage.Message.TruncateWithPostfix(50, "...")</small>
-                    </div>
-                </div>
-            </div>
-        }
-
-        @* Message content *@
-        <div class="@GetMessageBoxClass() card mb-1 px-2 py-1 rounded shadow-sm position-relative">
-            @if (Message.IsSending)
+            @* Sender name (group chat) *@
+            @if (Message.Side == ChatMessageSide.Receiver
+            && CurrentChatContact?.Type != ConversationType.User
+            && Message.SenderUserId.HasValue)
             {
-                <div class="position-absolute top-0 end-0 p-1">
-                    <span class="spinner-border spinner-border-sm @GetSpinnerColor()" role="status" aria-hidden="true"></span>
+                <small class="text-muted fw-bold d-block mb-1">
+                    @GetSenderName(Message)
+                </small>
+            }
+
+            @* Forward preview *@
+            @if (Message.ForwardedFromMessage != null)
+            {
+                <div class="forward-box mb-1">
+                    <div class="d-flex align-items-start">
+                        <i class="bi bi-forward-fill forward-icon me-2"></i>
+                        <div class="flex-grow-1">
+                            <small class="forward-title d-block">
+                                @L["ForwardedFrom"]:
+                                @if (!string.IsNullOrWhiteSpace(Message.ForwardedFromMessage.SenderName))
+                                {
+                                    <span>
+                                        @Message.ForwardedFromMessage.SenderName
+                                        @Message.ForwardedFromMessage.SenderSurname
+                                    </span>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(Message.ForwardedFromMessage.SenderUsername))
+                                {
+                                    <span>@Message.ForwardedFromMessage.SenderUsername</span>
+                                }
+                            </small>
+                            <small class="forward-text d-block">
+                                @Message.ForwardedFromMessage.Message.TruncateWithPostfix(50, "…")
+                            </small>
+                        </div>
+                    </div>
                 </div>
             }
-            <p class="mb-0 message-text text-small @GetMessageTextClass()">@Message.Message</p>
-            @* Files *@
-            @if (Message.Files != null && Message.Files.Any())
-            {
-                <div class="mt-2">
-                    @foreach (var file in Message.Files)
+
+            @* 🔥 MESSAGE CONTENT (bubble + date) *@
+            <div class="message-content">
+
+                <div class="@GetMessageBoxClass() message-bubble px-2 py-1 shadow-sm">
+
+                    @if (Message.IsSending)
                     {
-                        @if (file.IsImage)
+                        <span class="spinner-border spinner-border-sm position-absolute top-0 end-0 m-1"></span>
+                    }
+
+                    <p class="mb-0 message-text">@Message.Message</p>
+
+                    @if (Message.Files?.Any() == true)
+                    {
+                        <div class="mt-2">
+                            @foreach (var file in Message.Files)
+                            {
+                                @if (file.IsImage)
+                                {
+                                    <img src="@GetImageUrl(file.FilePath)"
+                                         class="chat-image"
+                                         @onclick="() => OnOpenImageViewerAsync(file)" />
+                                }
+                                else
+                                {
+                                    <div class="file-item d-flex align-items-center">
+                                        <i class="bi bi-file-earmark-text me-2"></i>
+                                        <small class="text-truncate flex-grow-1">@file.FileName</small>
+                                        <button class="btn btn-sm"
+                                                @onclick="() => OnDownloadFileAsync(file.Id)">
+                                            <i class="bi bi-download"></i>
+                                        </button>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+
+                    @if (Message.IsPinned)
+                    {
+                        <small class="d-block mt-1">
+                            <i class="bi bi-pin-fill text-warning"></i> @L["Pinned"]
+                        </small>
+                    }
+                </div>
+
+                <small class="text-muted message-date">
+                    @Clock.ConvertToUserTime(Message.MessageDate)
+                </small>
+            </div>
+        </div>
+
+        @* Dropdown *@
+        <div class="dropdown chat-actions">
+            <button class="btn p-1" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" @onclick="OnReplyAsync">
+                        <i class="bi bi-reply mx-1"></i> @L["Reply"]
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" @onclick="OnTogglePinAsync">
+                        @if (Message.IsPinned)
                         {
-                            <div class="chat-image-container"
-                                 @onclick="async () => await OnOpenImageViewerAsync(file.Id, file.FileName, file.FilePath,file.DownloadUrl)">
-                                <img src="@GetImageUrl(file.FilePath)" alt="@file.FileName" class="chat-image" title="@file.FileName">
-                            </div>
+                            <i class="bi bi-pin-angle mx-1"></i> @L["UnpinMessage"]
                         }
                         else
                         {
-                            <div class="d-flex align-items-center mb-1 p-2 rounded message-file-item" style="@GetFileItemStyle()">
-                                <i class="bi bi-file-earmark-text fs-5 me-2 @GetFileIconColor()"></i>
-                                <small class="flex-grow-1 text-truncate @GetFileTextColor()" title="@file.FileName">@file.FileName</small>
-                                <button class="btn btn-sm btn-link p-0 ms-2 @GetFileButtonColor()"
-                                        @onclick="async () => await OnDownloadFileAsync(file.Id)"
-                                        title="Download">
-                                    <i class="bi bi-download"></i>
-                                </button>
-                            </div>
+                            <i class="bi bi-pin-fill mx-1"></i> @L["PinMessage"]
                         }
-                    }
-                </div>
-            }
-            @if (Message.IsPinned)
-            {
-                <div class="mt-1">
-                    <small><i class="bi bi-pin-fill text-warning"></i> @L["Pinned"]</small>
-                </div>
-            }
-        </div>
-
-        @* Message timestamp *@
-        <p class="@GetMessageDateClass() m-0 message-date small text-muted" style="opacity: 0.35;">
-            @Clock.ConvertToUserTime(Message.MessageDate)
-        </p>
-    </div>
-
-    @* Actions dropdown *@
-    <div class="dropdown position-absolute top-0 @(Message.Side == ChatMessageSide.Sender ? "start-0" : "end-0")">
-        <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-three-dots-vertical @GetDropdownIconColor()" aria-hidden="true"></i>
-        </button>
-        <ul class="dropdown-menu">
-            <li>
-                <a class="dropdown-item" @onclick="async () => await OnReplyAsync()">
-                    <i class="bi bi-reply mx-1"></i> @L["Reply"]
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item" @onclick="async () => await OnTogglePinAsync()">
-                    @if (Message.IsPinned)
-                    {
-                        <i class="bi bi-pin-angle mx-1"></i> @L["UnpinMessage"]
-                    }
-                    else
-                    {
-                        <i class="bi bi-pin-fill mx-1"></i> @L["PinMessage"]
-                    }
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item" @onclick="async () => await OnForwardAsync()">
-                    <i class="bi bi-arrow-up-right@(Message.Side == ChatMessageSide.Sender ? "" : " mx-1")"></i> @L["Forward"]
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item" @onclick="async () => await OnCreateTaskAsync()">
-                    <i class="bi bi-plus-circle@(Message.Side == ChatMessageSide.Sender ? "" : " mx-1")"></i> @L["CreateTask"]
-                </a>
-            </li>
-            @if (IsDeletingEnabled)
-            {
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <a class="dropdown-item delete-message-btn text-danger" @onclick="async () => await OnDeleteAsync()">
-                        <i class="bi bi-trash mx-1"></i> @L["Delete"]
                     </a>
                 </li>
-            }
-        </ul>
+                <li>
+                    <a class="dropdown-item" @onclick="OnForwardAsync">
+                        <i class="bi bi-arrow-up-right mx-1"></i> @L["Forward"]
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" @onclick="OnCreateTaskAsync">
+                        <i class="bi bi-plus-circle mx-1"></i> @L["CreateTask"]
+                    </a>
+                </li>
+                @if (IsDeletingEnabled)
+                {
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item text-danger" @onclick="OnDeleteAsync">
+                            <i class="bi bi-trash mx-1"></i> @L["Delete"]
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
     </div>
 </div>
 
 <style>
-    .chat-image-container {
-        max-width: 250px;
-        margin: 8px 0;
-        border-radius: 8px;
-        overflow: hidden;
-        cursor: pointer;
-        transition: transform 0.2s;
-    }
+.chat-row {
+    width: 100%;
+}
 
-    .chat-image-container:hover {
-        transform: scale(1.02);
-    }
+.chat-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
 
-    .chat-image {
-        max-width: 100%;
-        max-height: 300px;
-        display: block;
-        border-radius: 6px;
-    }
+    max-width: 75%;
+    width: fit-content;
+}
 
-    .message-file-item {
-        background-color: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(200, 200, 200, 0.3);
-    }
+/* Sender luôn bám phải */
+.chat-item.sender {
+    margin-left: auto;
+}
 
-    .message-file-item:hover {
-        background-color: rgba(255, 255, 255, 0.15);
-    }
+.message-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-bubble {
+    max-width: 100%;
+    min-width: 120px;
+    padding: 8px 12px;
+    border-radius: 12px;
+
+    white-space: pre-line;
+    word-break: break-word;
+}
+
+.message-date {
+    align-self: flex-end;
+    white-space: nowrap;
+    opacity: 0.4;
+}
 </style>
 
 @code {
-    [Inject]
-    public IConversationAppService ConversationAppService { get; set; }
+    [Inject] public IConversationAppService ConversationAppService { get; set; }
+    [Inject] public IClock Clock { get; set; }
 
-    [Inject]
-    public IClock Clock { get; set; }
+    [Parameter] public ChatMessageDto Message { get; set; }
+    [Parameter] public ChatContactDto CurrentChatContact { get; set; }
 
-    [Parameter]
-    public ChatMessageDto Message { get; set; }
+    [Parameter] public EventCallback<ChatMessageDto> OnReply { get; set; }
+    [Parameter] public EventCallback<ChatMessageDto> OnTogglePin { get; set; }
+    [Parameter] public EventCallback<ChatMessageDto> OnForward { get; set; }
+    [Parameter] public EventCallback<ChatMessageDto> OnCreateTask { get; set; }
+    [Parameter] public EventCallback<ChatMessageDto> OnDelete { get; set; }
+    [Parameter] public EventCallback<Guid> OnDownloadFile { get; set; }
+    [Parameter] public bool IsDeletingEnabled { get; set; }
+    [Parameter] public Func<string, string> GetImageUrl { get; set; } = null!;
+    [Parameter] public EventCallback<MessageFileDto> OnOpenImageViewer { get; set; }
 
-    [Parameter]
-    public ChatContactDto CurrentChatContact { get; set; }
+    private string GetSenderName(ChatMessageDto m)
+        => !string.IsNullOrEmpty(m.SenderName) || !string.IsNullOrEmpty(m.SenderSurname)
+            ? $"{m.SenderName} {m.SenderSurname}".Trim()
+            : m.SenderUsername ?? "Unknown";
 
-    [Parameter]
-    public EventCallback<ChatMessageDto> OnReply { get; set; }
-
-    [Parameter]
-    public EventCallback<ChatMessageDto> OnTogglePin { get; set; }
-
-    [Parameter]
-    public EventCallback<ChatMessageDto> OnForward { get; set; }
-
-    [Parameter]
-    public EventCallback<ChatMessageDto> OnCreateTask { get; set; }
-
-    [Parameter]
-    public EventCallback<ChatMessageDto> OnDelete { get; set; }
-
-    [Parameter]
-    public EventCallback<Guid> OnDownloadFile { get; set; }
-
-    [Parameter]
-    public bool IsDeletingEnabled { get; set; }
-    
-    [Parameter]
-    public Func<string, string> GetImageUrl { get; set; } = null!;
-
-    [Parameter]
-    public EventCallback<(Guid fileId, string fileName, string filePath, string imageUrl)> OnOpenImageViewer { get; set; }
-
-
-    private string GetSenderName(ChatMessageDto message)
-    {
-        return !string.IsNullOrEmpty(message.SenderName) || !string.IsNullOrEmpty(message.SenderSurname)
-            ? $"{message.SenderName} {message.SenderSurname}".Trim()
-            : message.SenderUsername ?? "Unknown User";
-    }
-
-    private string GetMessageBoxClass() => Message.Side == ChatMessageSide.Sender
-        ? "bg-primary text-bg-primary"
-        : "bg-white shadow";
-
-    private string GetMessageTextClass() => Message.Side == ChatMessageSide.Sender
-        ? "text-small ms-2"
-        : "text-small mb-0 text-black";
-
-    private string GetReplyBoxClass() => Message.Side == ChatMessageSide.Sender
-        ? "bg-dark bg-opacity-25"
-        : "bg-light";
-
-    private string GetReplyBoxStyle() => Message.Side == ChatMessageSide.Sender
-        ? "border-left: 3px solid #0d6efd;"
-        : "border-left: 3px solid #6c757d;";
-
-    private string GetReplyMutedClass() => Message.Side == ChatMessageSide.Sender
-        ? "text-muted"
-        : "text-muted";
-
-    private string GetForwardBoxClass() => Message.Side == ChatMessageSide.Sender
-        ? "bg-dark bg-opacity-25"
-        : "bg-light";
-
-    private string GetSpinnerColor() => Message.Side == ChatMessageSide.Sender
-        ? "text-light"
-        : "text-muted";
-
-    private string GetDropdownIconColor() => Message.Side == ChatMessageSide.Sender
-        ? "text-light"
-        : "text-dark";
-
-    private string GetFileItemStyle() => Message.Side == ChatMessageSide.Sender
-        ? "max-width: 250px;"
-        : "max-width: 250px; background-color: rgba(0,0,0,0.05);";
-
-    private string GetFileIconColor() => Message.Side == ChatMessageSide.Sender
-        ? ""
-        : "text-primary";
-
-    private string GetFileTextColor() => Message.Side == ChatMessageSide.Sender
-        ? ""
-        : "text-dark";
-
-    private string GetFileButtonColor() => Message.Side == ChatMessageSide.Sender
-        ? "text-light"
-        : "text-primary";
-
-    private string GetMessageDateClass() => Message.Side == ChatMessageSide.Sender
-        ? "left m-0"
-        : "position-absolute m-0";
+    private string GetMessageBoxClass()
+        => Message.Side == ChatMessageSide.Sender
+            ? "bg-primary text-white rounded"
+            : "bg-white text-dark rounded";
 
     private async Task OnReplyAsync() => await OnReply.InvokeAsync(Message);
     private async Task OnTogglePinAsync() => await OnTogglePin.InvokeAsync(Message);
     private async Task OnForwardAsync() => await OnForward.InvokeAsync(Message);
     private async Task OnCreateTaskAsync() => await OnCreateTask.InvokeAsync(Message);
     private async Task OnDeleteAsync() => await OnDelete.InvokeAsync(Message);
-    private async Task OnDownloadFileAsync(Guid fileId) => await OnDownloadFile.InvokeAsync(fileId);
-    private async Task OnReplyBoxClickAsync(ChatMessageDto message) => await OnTogglePin.InvokeAsync(message);
-    
-    private async Task OnOpenImageViewerAsync(Guid fileId, string fileName, string filePath, string imageUrl)
-    {
-        await OnOpenImageViewer.InvokeAsync((fileId, fileName, filePath, imageUrl));
-    }
+    private async Task OnDownloadFileAsync(Guid id) => await OnDownloadFile.InvokeAsync(id);
+
+    private async Task OnOpenImageViewerAsync(MessageFileDto file)
+        => await OnOpenImageViewer.InvokeAsync(file);
 }

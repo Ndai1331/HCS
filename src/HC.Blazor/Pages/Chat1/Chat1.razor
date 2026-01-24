@@ -303,7 +303,7 @@
                                             <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
                                         </div>
                                     }
-                                    @foreach (var message in ChatConversationDto.Messages)
+                                    @foreach (var message in GetMessagesSnapshot())
                                     {
                                         <MessageItem 
                                             Message="@message"
@@ -315,7 +315,7 @@
                                             OnDelete="@DeleteMessageAsync"
                                             OnDownloadFile="@DownloadFileAsync"
                                             GetImageUrl="@GetImageUrl"
-                                            OnOpenImageViewer="@((fileInfo) => OpenImageViewerAsync(fileInfo.fileId, fileInfo.fileName, fileInfo.filePath, fileInfo.imageUrl))"
+                                            OnOpenImageViewer="@OpenImageViewerAsync"
                                             IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
                                     }
                                 </div>
@@ -399,7 +399,7 @@
                     DownloadFileAsync ="@DownloadFileAsync"
                     SendMessageToMemberAsync="@SendMessageToMemberAsync"
                     GetImageUrl="@GetImageUrl"
-                    OnOpenImageViewer="@((fileInfo) => OpenImageViewerAsync(fileInfo.fileId, fileInfo.fileName, fileInfo.filePath, fileInfo.imageUrl))"
+                    OnOpenImageViewer="@OpenImageViewerAsync"
 
                 />
             }

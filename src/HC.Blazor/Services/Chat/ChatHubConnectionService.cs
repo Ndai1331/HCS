@@ -6,6 +6,7 @@ using Microsoft.JSInterop;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using HC.Chat.Messages;
+using System.Linq;
 
 namespace HC.Blazor.Components.Chat;
 
@@ -36,7 +37,10 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
      {
           _logger.LogInformation($"ChatHubConnectionService: ReceivedMessageAsync called with {message.Id}, calling {_messageReceived.Count} registered callbacks");
 
-          foreach (var func in _messageReceived)
+          // Create a snapshot to avoid "Collection was modified" errors
+          var callbacks = _messageReceived.ToList();
+          
+          foreach (var func in callbacks)
           {
                _logger.LogInformation("ChatHubConnectionService: Calling callback...");
                await func(message);
@@ -56,7 +60,10 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
 
      public async Task DeletedMessageAsync(Guid messageId)
      {
-          foreach (var func in _messageDeleted)
+          // Create a snapshot to avoid "Collection was modified" errors
+          var callbacks = _messageDeleted.ToList();
+          
+          foreach (var func in callbacks)
           {
                await func(messageId);
           }
@@ -70,7 +77,10 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
 
      public async Task DeletedConversationAsync(Guid userId)
      {
-          foreach (var func in _conversationDeleted)
+          // Create a snapshot to avoid "Collection was modified" errors
+          var callbacks = _conversationDeleted.ToList();
+          
+          foreach (var func in callbacks)
           {
                await func(userId);
           }
@@ -86,7 +96,10 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
      {
           _logger.LogInformation($"ChatHubConnectionService: ConversationCreatedAsync called, calling {_conversationCreated.Count} registered callbacks");
 
-          foreach (var func in _conversationCreated)
+          // Create a snapshot to avoid "Collection was modified" errors
+          var callbacks = _conversationCreated.ToList();
+          
+          foreach (var func in callbacks)
           {
                _logger.LogInformation("ChatHubConnectionService: Calling conversation created callback...");
                await func(conversationData);
@@ -110,11 +123,9 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
           {
                _logger.LogInformation("ChatHubConnectionService: Initializing SignalR connection...");
 
-               // Create object reference for JavaScript callbacks
                _objRef = DotNetObjectReference.Create(this);
                _logger.LogInformation($"ChatHubConnectionService: Created DotNetObjectReference: {_objRef != null}");
 
-               // Start the JavaScript SignalR connection
                _logger.LogInformation("ChatHubConnectionService: Calling chatHub.start...");
                await _jsRuntime.InvokeVoidAsync("chatHub.start", _objRef);
                _logger.LogInformation("ChatHubConnectionService: chatHub.start completed");
