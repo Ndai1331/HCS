@@ -45,6 +45,7 @@ public partial class NewIndex
     private bool IsLoading { get; set; } = true;
     private string LastNotificationTimeAgo { get; set; } = string.Empty;
     private string LastDocumentTimeAgo { get; set; } = string.Empty;
+    private int TotalEvents { get; set; } = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -62,7 +63,7 @@ public partial class NewIndex
             await Task.WhenAll(
                 LoadActiveProjectsAsync(),
                 LoadTasksStatisticsAsync(),
-                // LoadCalendarEventsAsync(),
+                LoadCalendarEventsAsync(),
                 LoadRecentDocumentsAsync(),
                 LoadRecentNotificationsAsync()
             );
@@ -144,12 +145,13 @@ public partial class NewIndex
             {
                 StartTimeMin = now,
                 StartTimeMax = now.AddDays(7),
-                MaxResultCount = 20,
+                MaxResultCount = 1000,
                 SkipCount = 0,
                 Sorting = "StartTime"
             });
 
             CalendarEventsList = result.Items.ToList();
+            TotalEvents = (int)result.TotalCount;
         }
         catch (Exception ex)
         {

@@ -206,19 +206,19 @@
         <Card Class="w-100 overflow-hidden">
             <CardHeader>
                 <Heading Size="HeadingSize.Is4">@L["Calendar"]</Heading>
-                <small class="text-muted d-block">@L["Total"] 424,567 @L["CalenderEvents"]</small>
+                <small class="text-muted d-block">@L["Total"] @TotalEvents @L["CalenderEvents"]</small>
             </CardHeader>
 
             <CardBody>
                 <!-- Tabs -->
                 <Tabs SelectedTab="@SelectedDayTab"
                     SelectedTabChanged="@(tab => SelectedDayTab = tab)"
-                    Class="mb-3 d-flex justify-content-between">
+                    Class="mb-2.5 d-flex justify-content-between">
 
                     <Items>
                         @foreach (var tab in DayTabs)
                         {
-                            <Tab Name="@tab.Key" Style="padding: 0.675rem 1.25rem;">
+                            <Tab Name="@tab.Key" Style="padding: 0.5rem 1.25rem;">
                                 <div class="text-center">
                                     <span class="d-block mb-1 text-muted">@tab.Day</span>
                                     <strong>@tab.Date</strong>
@@ -247,38 +247,40 @@
                                 }
                                 else
                                 {
-                                    <table class="table mb-0">
-                                        <tbody>
-                                            @foreach (var ev in EventsByDay[tab.Key])
-                                            {
-                                                <tr>
-                                                    <td class="ps-0">
-                                                        <div class="d-flex align-items-center">
-                                                            <span class="me-2 rounded-3"
-                                                                style="width:3px;height:66px;
-                                                                        background-color:var(--bs-primary)">
-                                                            </span>
+                                    <div style="max-height: 240px;" class="overflow-auto">
+                                        <table class="table mb-0">
+                                            <tbody>
+                                                @foreach (var ev in EventsByDay[tab.Key])
+                                                {
+                                                    <tr>
+                                                        <td class="ps-0">
+                                                            <div class="d-flex align-items-center">
+                                                                <span class="me-2 rounded-3"
+                                                                    style="width:3px;height:66px;
+                                                                            background-color:var(--bs-primary)">
+                                                                </span>
 
-                                                            <div>
-                                                                <h5 class="mb-1">@ev.StartTime.ToString("HH:mm") - @ev.EndTime.ToString("HH:mm")</h5>
-                                                                <h6 class="text-muted fw-normal mb-0">@ev.Title</h6>
-                                                                @if (!string.IsNullOrEmpty(ev.Description))
-                                                                {
-                                                                    <small class="text-muted">@ev.Description</small>
-                                                                }
+                                                                <div>
+                                                                    <h5 class="mb-1">@ev.StartTime.ToString("HH:mm") - @ev.EndTime.ToString("HH:mm")</h5>
+                                                                    <h6 class="text-muted fw-normal mb-0">@ev.Title</h6>
+                                                                    @if (!string.IsNullOrEmpty(ev.Description))
+                                                                    {
+                                                                        <small class="text-muted">@ev.Description</small>
+                                                                    }
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </td>
+                                                        </td>
 
-                                                    <td class="text-end">
-                                                        <Button Color="Color.Light" Size="Size.Small" Clicked="@(() => Navigation.NavigateTo($"/calendar-events"))">
-                                                            @L["View"]
-                                                        </Button>
-                                                    </td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
+                                                        <td class="text-end">
+                                                            <Button Color="Color.Light" Size="Size.Small" Clicked="@(() => Navigation.NavigateTo($"/calendar-events"))">
+                                                                @L["View"]
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 }
                             </TabPanel>
                         }
