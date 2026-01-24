@@ -19,6 +19,18 @@ public class EnumStatusColorHelper
         };
     }
 
+    public static string GetProjectStatusProgressBarColor(ProjectStatus projectStatus)
+    {
+        return projectStatus switch
+        {
+            ProjectStatus.PLANNING => "info",
+            ProjectStatus.IN_PROGRESS => "brand",
+            ProjectStatus.COMPLETED => "success",
+            ProjectStatus.CANCELLED => "danger",
+            _ => "info",
+        };
+    }
+
     public static Color GetProjectTaskStatusBadgeColor(ProjectTaskStatus projectTaskStatus)
     {
         return projectTaskStatus switch
@@ -29,6 +41,19 @@ public class EnumStatusColorHelper
             ProjectTaskStatus.DONE => Color.Success,
             ProjectTaskStatus.CANCELLED => Color.Danger,
             _ => Color.Secondary,
+        };
+    }
+
+    public static string GetProjectTaskStatusProgressChartColor(ProjectTaskStatus projectTaskStatus)
+    {
+        return projectTaskStatus switch
+        {
+            ProjectTaskStatus.TODO => "secondary",
+            ProjectTaskStatus.IN_PROGRESS => "info",
+            ProjectTaskStatus.WAITING => "warning",
+            ProjectTaskStatus.DONE => "success",
+            ProjectTaskStatus.CANCELLED => "danger",
+            _ => "secondary",
         };
     }
 

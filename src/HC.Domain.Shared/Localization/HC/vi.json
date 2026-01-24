@@ -929,7 +929,13 @@
     "FailedToSendMessage": "Gửi tin nhắn thất bại",
     "FailedToSendMessageDescription": "Gửi tin nhắn thất bại: {0}",
     "SearchMessage": "Tìm tin nhắn",
-    "EnterToFindMessage": "Nhấn Enter để tìm tin nhắn"
-    
+    "EnterToFindMessage": "Nhấn Enter để tìm tin nhắn",
+    "View": "Xem",
+    "Of": "trong",
+    "Total": "Tổng cộng",
+    "CalenderEvents": "sự kiện",
+    "Read": "Đã đọc",
+    "Unread": "Chưa đọc",
+    "NoRecentUpdates": "Không có cập nhật gần đây"
   }
 }
