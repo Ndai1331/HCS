@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
+using System.Runtime.InteropServices.JavaScript;
 using HC.Chat.Authorization;
 using HC.Chat.Conversations;
 using HC.Chat.Messages;
@@ -397,6 +398,10 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
 
         _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
+        
+        // Create JS interop reference for callbacks
+        _objRef = DotNetObjectReference.Create(this);
+        
         // Initialize SignalR connection for real-time chat
         try
         {
