@@ -16,6 +16,7 @@
 @using Microsoft.Extensions.Caching.Memory
 @using HC.Blazor.Pages.Chat1.InfomationConversations
 @using Volo.Abp.AspNetCore.Components.BlockUi
+@using HC.Blazor.Pages.Chat1
 @attribute [Authorize(ChatPermissions.Messaging)]
 @attribute [RequiresFeature(ChatFeatures.Enable)]
 @inherits HCComponentBase
@@ -38,6 +39,43 @@
     .flatpickr-calendar.static {
         position: absolute;
         top: calc(80% + 2px);
+    }
+
+    .chat-image-container {
+        display: inline-block;
+        margin-top: 4px;
+        margin-bottom: 4px;
+        border-radius: 8px;
+        overflow: hidden;
+        background-color: rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .chat-image-container:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-image {
+        display: block;
+        max-width: 250px;
+        max-height: 300px;
+        width: auto;
+        height: auto;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+
+    .message-file-item {
+        background-color: rgba(0, 0, 0, 0.1);
+        transition: background-color 0.2s;
+    }
+
+    .message-file-item:hover {
+        background-color: rgba(0, 0, 0, 0.2);
     }
 </style>
 
@@ -238,9 +276,12 @@
                                     </h5>
                                 </div>
 
-                                <div class="col-auto pe-0 mx-2">
-                                     <i class="bi bi-info-circle fs-4 text-brand mt-1 cursor-pointer" @onclick="async () => await ShowInfoBoxAsync()" title="@L["ShowInfoBox"]"></i>
-                                </div>
+                                @if (CurrentChatContact != null)
+                                {
+                                    <div class="col-auto pe-0 mx-2">
+                                        <i class="bi bi-info-circle fs-4 text-brand mt-1 cursor-pointer" @onclick="async () => await ShowInfoBoxAsync()" title="@L["ShowInfoBox"]"></i>
+                                    </div>
+                                }
                             </div>
                         </div>
                         @if (IsLoadingMessages)
@@ -269,284 +310,38 @@
                                     }
                                     @foreach (var message in ChatConversationDto.Messages)
                                     {
-                                        if (message.Side == ChatMessageSide.Sender)
-                                        {
-                                            <div class="media w-75 mw-65 w-lp-auto mb-2 ms-auto position-relative">
-                                                <div class="media-body position-relative ">
-                                                    @* Reply to message *@
-                                                    @if (message.ReplyToMessage != null)
-                                                    {
-                                                        <div class="bg-dark bg-opacity-25 rounded p-2 mb-1 position-relative" style="border-left: 3px solid #0d6efd; cursor: pointer;" @onclick="async () => await TogglePinMessageAsync(message.ReplyToMessage)" @onclick:stopPropagation="true" title="@L["ClickToPinUnpinMessage"]">
-                                                            <div class="d-flex align-items-center justify-content-between">
-                                                                <div class="flex-grow-1">
-                                                                    <small class="text-muted d-block">@L["ReplyingTo"]:</small>
-                                                                    <small class="text-truncate d-block">@message.ReplyToMessage.Message.TruncateWithPostfix(50, "...")</small>
-                                                                </div>
-                                                                @if (message.ReplyToMessage.IsPinned)
-                                                                {
-                                                                    <i class="bi bi-pin-fill text-warning ms-2" title="@L["Pinned"]"></i>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <i class="bi bi-pin ms-2 text-muted" title="@L["ClickToPin"]"></i>
-                                                                }
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                    
-                                                    @* Forwarded message *@
-                                                    @if (message.ForwardedFromMessage != null)
-                                                    {
-                                                        <div class="bg-dark bg-opacity-25 rounded p-2 mb-1 position-relative" style="border-left: 3px solid #17a2b8;">
-                                                            <div class="d-flex align-items-start">
-                                                                <i class="bi bi-forward-fill text-info me-2"></i>
-                                                                <div class="flex-grow-1">
-                                                                    <small class="text-muted d-block">@L["ForwardedFrom"]: 
-                                                                        @if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderName))
-                                                                        {
-                                                                            <span>@message.ForwardedFromMessage.SenderName @message.ForwardedFromMessage.SenderSurname</span>
-                                                                        }
-                                                                        else if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderUsername))
-                                                                        {
-                                                                            <span>@message.ForwardedFromMessage.SenderUsername</span>
-                                                                        }
-                                                                    </small>
-                                                                    <small class="text-truncate d-block">@message.ForwardedFromMessage.Message.TruncateWithPostfix(50, "...")</small>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                    <div class="bg-primary text-bg-primary card mb-1 px-2 py-1 rounded shadow-sm position-relative">
-                                                        @if (message.IsSending)
-                                                        {
-                                                            <div class="position-absolute top-0 end-0 p-1">
-                                                                <span class="spinner-border spinner-border-sm text-light" role="status" aria-hidden="true"></span>
-                                                            </div>
-                                                        }
-                                                        <p class="mb-0 message-text text-small ms-2">@message.Message</p>
-                                                        @* Message Files *@
-                                                        @if (message.Files != null && message.Files.Any())
-                                                        {
-                                                            <div class="mt-2">
-                                                                @foreach (var file in message.Files)
-                                                                {
-                                                                    <div class="d-flex align-items-center mb-1 p-1 bg-dark bg-opacity-25 rounded">
-                                                                        <i class="bi bi-file-earmark me-2"></i>
-                                                                        <small class="flex-grow-1 text-truncate">@file.FileName</small>
-                                                                        <button class="btn btn-sm btn-link text-light p-0 ms-2" @onclick="async () => await DownloadFileAsync(file.Id)" title="@L["DownloadFile"]">
-                                                                            <i class="bi bi-download"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                }
-                                                            </div>
-                                                        }
-                                                        @if (message.IsPinned)
-                                                        {
-                                                            <div class="mt-1">
-                                                                <small><i class="bi bi-pin-fill text-warning"></i> @L["Pinned"]</small>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                    <p class="left m-0 message-date small text-muted" style="opacity: 0.35; width: 150px; left: -110px; top: 1px; ">@Clock.ConvertToUserTime(message.MessageDate)</p>
-                                                </div>
+                                        <MessageItem 
+                                            Message="@message"
+                                            CurrentChatContact="@CurrentChatContact"
+                                            OnReply="@ReplyToMessageAsync"
+                                            OnTogglePin="@TogglePinMessageAsync"
+                                            OnForward="@ForwardMessageAsync"
+                                            OnCreateTask="@CreateTaskFromMessageAsync"
+                                            OnDelete="@DeleteMessageAsync"
+                                            OnDownloadFile="@DownloadFileAsync"
+                                            IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
+                                    }
+                                </div>
+                            </div>
+                        }
 
-                                                <div class="dropdown position-absolute top-0 start-0">
-                                                    <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="bi bi-three-dots-vertical text-light" aria-hidden="true"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu" style="">
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await ReplyToMessageAsync(message)">
-                                                                <i class="bi bi-reply mx-1"></i> @L["Reply"]
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await TogglePinMessageAsync(message)">
-                                                                @if (message.IsPinned)
-                                                                {
-                                                                    <i class="bi bi-pin-angle mx-1"></i> @L["UnpinMessage"]
-                                                                }
-                                                                else
-                                                                {
-                                                                    <i class="bi bi-pin-fill mx-1"></i> @L["PinMessage"]
-                                                                }
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await ForwardMessageAsync(message)">
-                                                                <i class="bi bi-arrow-up-right"></i> @L["Forward"]
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await CreateTaskFromMessageAsync(message)">
-                                                                <i class="bi bi-plus-circle"></i> @L["CreateTaskFromMessage"]
-                                                            </a>
-                                                        </li>
-                                                        @if (IsDeletingMessageEnabled(message))
-                                                        {
-                                                            <li><hr class="dropdown-divider"></li>
-                                                            <li>
-                                                                <a class="dropdown-item delete-message-btn text-danger" @onclick="async () => await DeleteMessageAsync(message)">
-                                                                    <i class="bi bi-trash mx-1"></i> @L["Delete"]
-                                                                </a>
-                                                            </li>
-                                                        }
-                                                    </ul>
-                                                </div>
+                        <!-- Typing area -->
+                        @if (ChatConversationDto != null)
+                        {
+                            <div class="bg-light rounded-3 m-0">
+                                <div class="p-2 p-lg-3">
+                                    @* Reply Preview *@
+                                    @if (ReplyingToMessage != null)
+                                    {
+                                        <div class="bg-info bg-opacity-10 rounded p-2 mb-2 d-flex justify-content-between align-items-center">
+                                            <div class="flex-grow-1">
+                                                <small class="text-muted d-block">@L["ReplyingTo"]:</small>
+                                                <small class="text-truncate d-block">@ReplyingToMessage.Message.TruncateWithPostfix(50, "...")</small>
                                             </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="media w-75 mw-65 w-lp-auto mb-2 position-relative">
-                                                @if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User && message.SenderUserId.HasValue)
-                                                {
-                                                    <div class="me-2">
-                                                        <canvas id="sender-avatar-@message.Id" width="32" height="32" style="border-radius: 50%;"></canvas>
-                                                    </div>
-                                                }
-                                                <div class="media-body position-relative ms-3">
-                                                    @* Sender name for Group/Project/Task conversations *@
-                                                    @if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User && message.SenderUserId.HasValue)
-                                                    {
-                                                        <div class="mb-1">
-                                                            <small class="text-muted fw-bold">
-                                                                @if (!string.IsNullOrEmpty(message.SenderName) || !string.IsNullOrEmpty(message.SenderSurname))
-                                                                {
-                                                                    @($"{message.SenderName} {message.SenderSurname}".Trim())
-                                                                }
-                                                                else if (!string.IsNullOrEmpty(message.SenderUsername))
-                                                                {
-                                                                    @message.SenderUsername
-                                                                }
-                                                                else
-                                                                {
-                                                                    @L["UnknownUser"]
-                                                                }
-                                                            </small>
-                                                        </div>
-                                                    }
-                                                    @* Reply to message *@
-                                                    @if (message.ReplyToMessage != null)
-                                                    {
-                                                        <div class="bg-light rounded p-2 mb-1 position-relative" style="border-left: 3px solid #6c757d; cursor: pointer;" @onclick="async () => await TogglePinMessageAsync(message.ReplyToMessage)" @onclick:stopPropagation="true" title="@L["ClickToPinUnpinMessage"]">
-                                                            <div class="d-flex align-items-center justify-content-between">
-                                                                <div class="flex-grow-1">
-                                                                    <small class="text-muted d-block">@L["ReplyingTo"]:</small>
-                                                                    <small class="text-truncate d-block">@message.ReplyToMessage.Message.TruncateWithPostfix(50, "...")</small>
-                                                                </div>
-                                                                @if (message.ReplyToMessage.IsPinned)
-                                                                {
-                                                                    <i class="bi bi-pin-fill text-warning ms-2" title="@L["Pinned"]"></i>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <i class="bi bi-pin ms-2 text-muted" title="@L["ClickToPin"]"></i>
-                                                                }
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                    
-                                                    @* Forwarded message *@
-                                                    @if (message.ForwardedFromMessage != null)
-                                                    {
-                                                        <div class="bg-light rounded p-2 mb-1 position-relative" style="border-left: 3px solid #17a2b8;">
-                                                            <div class="d-flex align-items-start">
-                                                                <i class="bi bi-forward-fill text-info me-2"></i>
-                                                                <div class="flex-grow-1">
-                                                                    <small class="text-muted d-block">@L["ForwardedFrom"]: 
-                                                                        @if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderName))
-                                                                        {
-                                                                            <span>@message.ForwardedFromMessage.SenderName @message.ForwardedFromMessage.SenderSurname</span>
-                                                                        }
-                                                                        else if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderUsername))
-                                                                        {
-                                                                            <span>@message.ForwardedFromMessage.SenderUsername</span>
-                                                                        }
-                                                                    </small>
-                                                                    <small class="text-truncate d-block">@message.ForwardedFromMessage.Message.TruncateWithPostfix(50, "...")</small>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                    <div class="bg-white shadow rounded py-1 px-2 mb-1 position-relative">
-                                                        @if (message.IsSending)
-                                                        {
-                                                            <div class="position-absolute top-0 end-0 p-1">
-                                                                <span class="spinner-border spinner-border-sm text-muted" role="status" aria-hidden="true"></span>
-                                                            </div>
-                                                        }
-                                                        <p class="text-small mb-0 text-black">@message.Message</p>
-                                                        @* Message Files *@
-                                                        @if (message.Files != null && message.Files.Any())
-                                                        {
-                                                            <div class="mt-2">
-                                                                @foreach (var file in message.Files)
-                                                                {
-                                                                    <div class="d-flex align-items-center mb-1 p-1 bg-white rounded border">
-                                                                        <i class="bi bi-file-earmark me-2"></i>
-                                                                        <small class="flex-grow-1 text-truncate">@file.FileName</small>
-                                                                        <button class="btn btn-sm btn-link p-0 ms-2" @onclick="async () => await DownloadFileAsync(file.Id)" title="@L["DownloadFile"]">
-                                                                            <i class="bi bi-download"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                }
-                                                            </div>
-                                                        }
-                                                        @if (message.IsPinned)
-                                                        {
-                                                            <div class="mt-1">
-                                                                <small><i class="bi bi-pin-fill text-warning"></i> @L["Pinned"]</small>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                    <p class="small text-muted position-absolute m-0" style="opacity: 0.35; width: 100px; right: -110px; top: 1px;">@Clock.ConvertToUserTime(message.MessageDate)</p>
-                                                </div>
-
-                                                <div class="dropdown position-absolute top-0 end-0">
-                                                    <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="bi bi-three-dots-vertical text-dark" aria-hidden="true"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu" style="">
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await ReplyToMessageAsync(message)">
-                                                                <i class="bi bi-reply mx-1"></i> @L["Reply"]
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await TogglePinMessageAsync(message)">
-                                                                @if (message.IsPinned)
-                                                                {
-                                                                    <i class="bi bi-pin-angle mx-1"></i> @L["UnpinMessage"]
-                                                                }
-                                                                else
-                                                                {
-                                                                    <i class="bi bi-pin-fill mx-1"></i> @L["PinMessage"]
-                                                                }
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await ForwardMessageAsync(message)">
-                                                                <i class="bi bi-arrow-up-right mx-1"></i> @L["Forward"]
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await CreateTaskFromMessageAsync(message)">
-                                                                <i class="bi bi-plus-circle mx-1"></i> @L["CreateTaskFromMessage"]
-                                                            </a>
-                                                        </li>
-                                                        @if (IsDeletingMessageEnabled(message))
-                                                        {
-                                                            <li><hr class="dropdown-divider"></li>
-                                                            <li>
-                                                                <a class="dropdown-item delete-message-btn text-danger" @onclick="async () => await DeleteMessageAsync(message)">
-                                                                    <i class="bi bi-trash mx-1"></i> @L["Delete"]
-                                                                </a>
-                                                            </li>
-                                                        }
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        }
+                                            <button class="btn btn-sm btn-link p-0" @onclick="() => ReplyingToMessage = null">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
                                     }
                                 </div>
                             </div>

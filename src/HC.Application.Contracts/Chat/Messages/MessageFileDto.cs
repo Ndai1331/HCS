@@ -13,4 +13,6 @@ public class MessageFileDto
     public string FilePath { get; set; }
     public string DownloadUrl { get; set; } // Generated download URL
     public DateTime CreationTime { get; set; }
+
+    public bool IsImage => ContentType.StartsWith("image/");
 }
