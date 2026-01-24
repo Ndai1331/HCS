@@ -891,6 +891,7 @@
     "Total": "Total",
     "CalenderEvents": "calendar events",
     "Read": "Read",
-    "Unread": "Unread"
+    "Unread": "Unread",
+    "NoRecentUpdates": "No recent updates"
   }
 }
