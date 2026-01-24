@@ -137,8 +137,9 @@ public partial class MyProfile
         HasSaasPermission = await PermissionChecker.IsGrantedAsync(SaasHostPermissions.Tenants.Default);
 
         // Load API base URL for image display
-        var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-        _apiBaseUrl = remoteService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
+        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
+
+        _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
 
         await LoadUserProfileAsync();
         await LoadUserDepartmentsAsync();

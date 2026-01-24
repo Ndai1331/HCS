@@ -103,8 +103,8 @@ public partial class SurveyCriterias
         await GetSurveyLocationCollectionLookupAsync();
         
         // Get API base URL for image URLs
-        var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-        _apiBaseUrl = remoteService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
+        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
+        _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

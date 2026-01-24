@@ -4,30 +4,29 @@ services:
     container_name: hc-blazor
     environment:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
-      - Kestrel__Certificates__Default__Path=/app/certs/linuxhost.pfx
-      - Kestrel__Certificates__Default__Password=27a19a3a-9aff-42c5-b8c9-56517f1a626d
-
+      - Kestrel__Certificates__Default__Path=/app/certs/openiddict.pfx
+      - Kestrel__Certificates__Default__Password=StrongPass123
       - App__SelfUrl=https://dev.benhvien199.vn
       - App__HealthCheckUrl=http://hc-blazor:8080/health-status
-      - App__RedirectAllowedUrls=https://dev.benhvien199.vn,https://dev.benhvien199.vn/signin-oidc,https://dev.benhvien199.vn/signout-callback-oidc
 
-      - AuthServer__Authority=http://hc-authserver:8080
       - AuthServer__RequireHttpsMetadata=false
-
+      - AuthServer__Authority=https://auth-dev.benhvien199.vn
+      - AuthServer__IsOnK8s=true
+      - AuthServer__MetaAddress=http://hc-authserver:8080
       - AuthServer__ClientId=HC_BlazorServer
       - AuthServer__ClientSecret=1q2w3e*
 
       - RemoteServices__AbpAccountPublic__BaseUrl=http://hc-authserver:8080
       - RemoteServices__Default__BaseUrl=http://hc-api:8080
-
+      - RemoteServices__BlobFiles__BaseUrl=https://api-dev.benhvien199.vn
       - Redis__Configuration=redis
+      - App__Cookie__SecurePolicy=Always
+      - App__Cookie__SameSite=None
+
       - RabbitMQ__Connections__Default__HostName=rabbitmq
       - RabbitMQ__Connections__Default__Port=5672
       - RabbitMQ__Connections__Default__UserName=guest
       - RabbitMQ__Connections__Default__Password=guest
-
-      - App__Cookie__SecurePolicy=Always
-      - App__Cookie__SameSite=None
 
       - MinIO__EndPoint=minio:9000
       - MinIO__AccessKey=hcsadmin
@@ -39,14 +38,18 @@ services:
     ports:
       - "44302:8081"
       - "8082:8080"
+
     depends_on:
-      - hc-api
-      - hc-authserver
-      - rabbitmq
+      hc-api:
+        condition: service_started
+      hc-authserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
     restart: on-failure
     volumes:
       - ./certs:/app/certs
-      - ./keys:/root/.aspnet/DataProtection-Keys
     networks:
       - abp-network
 
@@ -56,17 +59,18 @@ services:
     hostname: hc-api
     environment:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
-      - Kestrel__Certificates__Default__Path=/app/certs/linuxhost.pfx
-      - Kestrel__Certificates__Default__Password=27a19a3a-9aff-42c5-b8c9-56517f1a626d
+      - Kestrel__Certificates__Default__Path=/app/certs/openiddict.pfx
+      - Kestrel__Certificates__Default__Password=StrongPass123
+      - App__SelfUrl=https://api-dev.benhvien199.vn
       - App__HealthCheckUrl=http://hc-api:8080/health-status
       - AuthServer__RequireHttpsMetadata=false
-      - AuthServer__Authority=https://auth-dev.benhvien199.vn/
+      - AuthServer__Authority=https://auth-dev.benhvien199.vn
       - AuthServer__MetaAddress=http://hc-authserver:8080
       - AuthServer__IsOnK8s=true
       - AuthServer__ClientId=HC_Swagger_Prod
-      - App__SelfUrl=https://api-dev.benhvien199.vn
       - ConnectionStrings__Default=User ID=postgres;Password=Bv199;Host=113.160.232.208;Port=5400;Database=AxisHCS;Pooling=false;
       - Redis__Configuration=redis
+
       - RabbitMQ__Connections__Default__HostName=rabbitmq
       - RabbitMQ__Connections__Default__Port=5672
       - RabbitMQ__Connections__Default__UserName=guest
@@ -82,15 +86,14 @@ services:
     ports:
       - "44379:8081"
       - "8083:8080"
+
     depends_on:
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+
     restart: on-failure
     volumes:
       - ./certs:/app/certs
-      - ./keys:/root/.aspnet/DataProtection-Keys
     networks:
       - abp-network
 
@@ -104,16 +107,11 @@ services:
       - App__RedirectAllowedUrls=https://dev.benhvien199.vn,https://api-dev.benhvien199.vn,https://auth-dev.benhvien199.vn
       - App__HealthCheckUrl=http://hc-authserver:8080/health-status
       - AuthServer__RequireHttpsMetadata=false
-      - AuthServer__Authority=https://auth-dev.benhvien199.vn/
-      - Kestrel__Certificates__Default__Path=/app/certs/linuxhost.pfx
-      - Kestrel__Certificates__Default__Password=27a19a3a-9aff-42c5-b8c9-56517f1a626d
+      - AuthServer__Authority=https://auth-dev.benhvien199.vn
+      - Kestrel__Certificates__Default__Path=/app/certs/openiddict.pfx
+      - Kestrel__Certificates__Default__Password=StrongPass123
       - ConnectionStrings__Default=User ID=postgres;Password=Bv199;Host=113.160.232.208;Port=5400;Database=AxisHCS;Pooling=false;
       - Redis__Configuration=redis
-      - RabbitMQ__Connections__Default__HostName=rabbitmq
-      - RabbitMQ__Connections__Default__Port=5672
-      - RabbitMQ__Connections__Default__UserName=guest
-      - RabbitMQ__Connections__Default__Password=guest
-
       - App__Cookie__SecurePolicy=Always
       - App__Cookie__SameSite=None
 
@@ -127,18 +125,24 @@ services:
     ports:
       - "44301:8081"
       - "8084:8080"
+
     depends_on:
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+
     restart: on-failure
     volumes:
       - ./certs:/app/certs
-      - ./keys:/root/.aspnet/DataProtection-Keys
     networks:
       - abp-network
-  
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health-status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   redis:
     container_name: redis
     image: redis:alpine
@@ -147,51 +151,10 @@ services:
     networks:
       - abp-network
     healthcheck:
-      test: ["CMD", "redis-cli","ping"]
-
-  rabbitmq:
-    container_name: rabbitmq
-    image: rabbitmq:3.12.7-management-alpine
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    networks:
-      - abp-network
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  minio:
-    container_name: minio
-    image: minio/minio:latest
-    networks:
-      - abp-network
-    environment:
-      MINIO_ROOT_USER: hcsadmin
-      MINIO_ROOT_PASSWORD: hcsadminpassword
-      MINIO_DEFAULT_BUCKETS: hcs_bucket
-    ports:
-      # API port
-      - "9000:9000"
-      # Console UI port
-      - "9001:9001"
-    volumes:
-      # Persistent storage for data
-      - minio_data:/data
-    command: server --console-address ":9001" /data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-
-volumes:
-  minio_data:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 3s
+        retries: 10
 
 networks:
   abp-network:

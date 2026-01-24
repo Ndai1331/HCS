@@ -27,7 +27,8 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
         // Get pinned messages by ConversationId - much simpler and more accurate
         return await (await GetDbSetAsync())
             .Where(m => m.ConversationId == conversationId && m.IsPinned)
-            .OrderByDescending(m => m.PinnedDate)
+            // .OrderByDescending(m => m.PinnedDate)
+            .OrderByDescending(m => m.CreationTime)
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
     
@@ -44,6 +45,15 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
         return await (await GetDbSetAsync())
             .Where(x => x.ReplyToMessageId == messageId)
             .OrderBy(x => x.CreationTime)
+            .ToListAsync(GetCancellationToken(cancellationToken));
+    }
+
+    public virtual async Task<List<Message>> GetMessagesInConversationAsync(Guid conversationId, string messageText, int maxResultCount = 10, int skipCount = 0, CancellationToken cancellationToken = default)
+    {
+        return await (await GetDbSetAsync())
+            .Where(x => x.ConversationId == conversationId && x.Text.Contains(messageText))
+            .OrderByDescending(x => x.CreationTime)
+            .PageBy(skipCount, maxResultCount)
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
 }

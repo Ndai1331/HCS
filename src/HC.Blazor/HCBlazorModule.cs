@@ -84,6 +84,9 @@ using Volo.Abp.BlobStoring;
 using Volo.Abp.BlobStoring.Minio;
 using Volo.Abp.Ui.LayoutHooks;
 using Volo.Abp.AspNetCore.Components.Web.Theming.Layout;
+using Microsoft.AspNetCore.Authentication;
+using HC.Blazor.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace HC.Blazor;
 
@@ -147,10 +150,18 @@ public class HCBlazorModule : AbpModule
 
         // Add services to the container.
         context.Services.AddRazorComponents()
-            .AddInteractiveServerComponents();
+            .AddInteractiveServerComponents()
+            .AddCircuitOptions(options =>
+            {
+                // Configure circuit options for Blazor Server
+                options.DetailedErrors = true;
+            });
         
         // Add HttpContextAccessor for SignalR authentication
         context.Services.AddHttpContextAccessor();
+
+        // Add global exception handler service
+        context.Services.AddScoped<HC.Blazor.Services.GlobalExceptionHandler>();
 
         if (!configuration.GetValue<bool>("App:DisablePII"))
         {
@@ -274,20 +285,31 @@ public class HCBlazorModule : AbpModule
         })
         .AddCookie("Cookies", options =>
         {
-            // Reduce cookie expiration to reasonable time (was 365 days - too long)
-            options.ExpireTimeSpan = TimeSpan.FromHours(8); // 8 hours instead of 365 days
-            options.SlidingExpiration = true;
+            options.LoginPath = "/Account/Login";
+            options.LogoutPath = "/Account/Logout";
+            options.AccessDeniedPath = "/Account/AccessDenied";
+            options.ExpireTimeSpan = TimeSpan.FromDays(1);
+            options.SlidingExpiration = false;
             options.IntrospectAccessToken();
             
-            // Configure cookie settings for SignalR compatibility
-            // SameSite=Lax allows cookies to be sent with SignalR negotiation requests
+            options.Events = new CookieAuthenticationEvents
+            {
+                OnValidatePrincipal = async context =>
+                {
+                    if (context.Principal == null || 
+                        context.Principal.Identity == null ||
+                        !context.Principal.Identity.IsAuthenticated)
+                    {
+                        context.RejectPrincipal();
+                        await context.HttpContext.SignOutAsync();
+                    }
+                }
+            };
+            
             options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
             options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
             options.Cookie.HttpOnly = true;
             
-            // Use Distributed Session Store to reduce cookie size
-            // Instead of storing entire authentication ticket in cookie, store it in Redis
-            // This reduces cookie from ~36KB to just a session ID (~100 bytes)
             if (!string.IsNullOrEmpty(configuration["Redis:Configuration"]))
             {
                 var redisConnection = ConnectionMultiplexer.Connect(configuration["Redis:Configuration"]!);
@@ -593,6 +615,7 @@ public class HCBlazorModule : AbpModule
     {
         context.Services.AddSignalR(options =>
         {
+            options.AddFilter<ForceLogoutHubFilter>();
             options.EnableDetailedErrors = true;
         });
         
@@ -715,6 +738,44 @@ public class HCBlazorModule : AbpModule
         });
         
         app.UseAuthorization();
+
+        app.Use(async (context, next) =>
+        {
+            if (!context.User?.Identity?.IsAuthenticated == true &&
+                context.Request.Path == "/")
+            {
+                context.Response.Redirect("/Account/Login");
+                return;
+            }
+
+            try
+            {
+                await next();
+            }
+            catch (Volo.Abp.Authorization.AbpAuthorizationException)
+            {
+                await context.SignOutAsync();
+                context.Response.Redirect("/Account/Logout");
+            }
+            catch (Volo.Abp.Http.Client.AbpRemoteCallException ex)
+            {
+                // Handle Unauthorized exceptions from API calls
+                if (ex.Message.Contains("Unauthorized")
+                 || ex.Message.Contains("401")
+                 || ex.Message.Contains("expired")
+                 || ex.Message.Contains("Authentication"))
+                {
+                    await context.SignOutAsync();
+                    context.Response.Redirect("/Account/Logout");
+                }
+                else
+                {
+                    throw; // Re-throw other remote call exceptions
+                }
+            }
+        });
+
+
         app.UseSwagger();
         app.UseAbpSwaggerUI(options =>
         {

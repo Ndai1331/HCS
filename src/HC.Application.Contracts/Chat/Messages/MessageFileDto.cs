@@ -10,6 +10,9 @@ public class MessageFileDto
     public string ContentType { get; set; }
     public long FileSize { get; set; }
     public string FileExtension { get; set; }
+    public string FilePath { get; set; }
     public string DownloadUrl { get; set; } // Generated download URL
     public DateTime CreationTime { get; set; }
+
+    public bool IsImage => ContentType.StartsWith("image/");
 }

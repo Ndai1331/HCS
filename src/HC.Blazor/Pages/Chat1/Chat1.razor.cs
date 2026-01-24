@@ -4,14 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using HC.Blazor;
 using HC.Blazor.Components.Chat;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
-using Volo.Abp.Localization;
 using HC.Chat.Authorization;
 using HC.Chat.Conversations;
 using HC.Chat.Messages;
@@ -22,10 +20,9 @@ using HC.ProjectTasks;
 using HC.ProjectMembers;
 using HC.ProjectTaskAssignments;
 using HC.Shared;
-using Microsoft.Extensions.Caching.Memory;
-using Volo.Abp.Application.Dtos;
 using HC.Blazor.Extensions;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.Http.Client;
 
 
 namespace HC.Blazor.Pages.Chat1;
@@ -69,9 +66,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     
     public bool ShowInfoBox { get; set; } = false;
     
-    public bool AccordionChatInfoVisible { get; set; } = false;
-    public bool AccordionChatMembersVisible { get; set; } = false;
-    public bool AccordionMediaFilesVisible { get; set; } = false;
     
     // Loading state
     public bool IsLoadingMessages { get; set; }
@@ -104,8 +98,13 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     // Modal states
     public bool ShowCreateDirectModal { get; set; }
     public bool ShowCreateGroupModal { get; set; }
-    public bool ShowCreateProjectModal { get; set; }
-    public bool ShowCreateTaskModal { get; set; }
+    
+    // Image Viewer Modal
+    public bool ShowImageViewerModal { get; set; }
+    public string ImageViewerUrl { get; set; } = string.Empty;
+    public string ImageViewerFilePath { get; set; } = string.Empty;
+    public string ImageViewerFileName { get; set; } = string.Empty;
+    private Guid _currentViewingImageFileId { get; set; }
     
     // Form inputs
     public string NewGroupName { get; set; }
@@ -139,13 +138,15 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
     private DotNetObjectReference<Chat1>? _objRef;
 
+    [Inject]
+    private IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider { get; set; } = default!;
+
+    private string? _apiBaseUrl;
     [JSInvokable]
     public async Task HandleSignalRMessage(object messageData)
     {
         try
         {
-            _logger.LogInformation($"Chat1: HandleSignalRMessage called");
-
             // Convert dynamic object to ChatMessageRdto
             var message = new ChatMessageRdto
             {
@@ -163,7 +164,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogInformation($"Chat1: Error in HandleSignalRMessage: {ex.Message}");
             _logger.LogError(ex, "Error processing SignalR message");
         }
     }
@@ -190,31 +190,28 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogInformation($"Chat1: Error in HandleCrossTabMessage: {ex.Message}");
             _logger.LogError(ex, "Error processing cross-tab message");
         }
     }
 
     private async Task ProcessReceivedMessage(ChatMessageRdto message)
     {
-        _logger.LogInformation("CHAT1: ProcessReceivedMessage CALLED from service!");
-
         try
         {
             if (CurrentUser == null)
             {
-                _logger.LogInformation("Chat1: CurrentUser is null, ignoring message");
                 return;
             }
 
+#if DEBUG
             _logger.LogInformation($"Chat1: DEBUG - Message details: Id={message.Id}, SenderUserId={message.SenderUserId}, SenderUsername={message.SenderUsername}, Text={message.Text}, ConversationId={message.ConversationId}");
             _logger.LogInformation($"Chat1: DEBUG - Current user details: CurrentUser.Id={CurrentUser.Id}, CurrentUser.UserName={CurrentUser.UserName}");
             _logger.LogInformation($"Chat1: DEBUG - CurrentChatContact: {(CurrentChatContact != null ? $"Type={CurrentChatContact.Type}, UserId={CurrentChatContact.UserId}, ConversationId={CurrentConversationId}" : "NULL")}");
+#endif
 
             // Skip messages from current user in same tab (avoid duplicate)
             if (message.SenderUserId == CurrentUser.Id && !message.IsCrossTabMessage)
             {
-                _logger.LogInformation("Chat1: Skipping SignalR message from current user in same tab to avoid duplicate processing");
                 return;
             }
 
@@ -230,7 +227,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                     if (message.ConversationId.HasValue && CurrentChatContact.ConversationId.HasValue)
                     {
                         isForCurrentConversation = message.ConversationId.Value == CurrentChatContact.ConversationId.Value;
-                        _logger.LogInformation($"Chat1: User chat check by ConversationId - message.ConversationId: {message.ConversationId.Value}, CurrentChatContact.ConversationId: {CurrentChatContact.ConversationId.Value}, isForCurrentConversation: {isForCurrentConversation}");
                     }
                     else
                     {
@@ -238,7 +234,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                         bool isFromOtherUser = CurrentChatContact.UserId == message.SenderUserId;
                         bool isFromCurrentUser = message.SenderUserId == CurrentUser.Id;
                         isForCurrentConversation = isFromOtherUser || isFromCurrentUser;
-                        _logger.LogInformation($"Chat1: User chat check by sender (fallback) - CurrentChatContact.UserId: {CurrentChatContact.UserId}, message.SenderUserId: {message.SenderUserId}, CurrentUser.Id: {CurrentUser.Id}, isFromOtherUser: {isFromOtherUser}, isFromCurrentUser: {isFromCurrentUser}, isForCurrentConversation: {isForCurrentConversation}");
                     }
                 }
                 else if (CurrentChatContact.Type != ConversationType.User && CurrentConversationId.HasValue)
@@ -246,141 +241,76 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                     // For group conversations: check if message belongs to current conversation
                     isForCurrentConversation = message.ConversationId.HasValue &&
                                              message.ConversationId.Value == CurrentConversationId.Value;
-
-                    _logger.LogInformation($"Chat1: Group chat check - message.ConversationId: {message.ConversationId}, CurrentConversationId: {CurrentConversationId}, SenderUserId: {message.SenderUserId}, CurrentUser.Id: {CurrentUser.Id}, isCrossTab: {message.IsCrossTabMessage}, isForCurrentConversation: {isForCurrentConversation}");
-
-                    if (message.ConversationId.HasValue && CurrentConversationId.HasValue)
-                    {
-                        _logger.LogInformation($"Chat1: DEBUG - Conversation match check: message.ConversationId == CurrentConversationId? {message.ConversationId.Value == CurrentConversationId.Value}");
-                    }
-                }
-                else
-                {
-                    _logger.LogInformation($"Chat1: WARNING - Cannot determine if message is for current conversation. Type: {CurrentChatContact.Type}, CurrentConversationId: {CurrentConversationId}, message.ConversationId: {message.ConversationId}");
                 }
             }
             else
             {
                 // No current conversation selected - always update badge
-                _logger.LogInformation("Chat1: CurrentChatContact is null, will update unread badge");
                 isForCurrentConversation = false;
             }
 
             if (isForCurrentConversation)
             {
-                _logger.LogInformation("Chat1: Message is for current conversation, refreshing...");
-
                 // Refresh conversation
                 if (CurrentChatContact.Type == ConversationType.User)
                 {
-                    _logger.LogInformation("Chat1: Refreshing direct conversation...");
                     ChatConversationDto = await ConversationAppService.GetConversationAsync(
                         new GetConversationInput { TargetUserId = CurrentChatContact.UserId, MaxResultCount = 100 });
-                    _logger.LogInformation($"Chat1: Direct conversation refreshed, messages count: {ChatConversationDto?.Messages?.Count ?? 0}");
                 }
                 else if (CurrentChatContact.ConversationId.HasValue)
                 {
-                    _logger.LogInformation("Chat1: Refreshing group conversation...");
                     ChatConversationDto = await ConversationAppService.GetConversationAsync(
                         new GetConversationInput { ConversationId = CurrentChatContact.ConversationId.Value, TargetUserId = Guid.Empty, MaxResultCount = 100 });
-                    _logger.LogInformation($"Chat1: Group conversation refreshed, messages count: {ChatConversationDto?.Messages?.Count ?? 0}");
                 }
 
                 if (CurrentChatContact.UnreadMessageCount > 0 && CurrentChatContact.Type == ConversationType.User)
                 {
-                    _logger.LogInformation("Chat1: Marking conversation as read...");
                     await ConversationAppService.MarkConversationAsReadAsync(
                         new MarkConversationAsReadInput { TargetUserId = CurrentChatContact.UserId });
                 }
 
                 if (ChatConversationDto != null)
                 {
-                    _logger.LogInformation("Chat1: Processing conversation messages...");
                     ChatConversationDto.Messages.Reverse();
                     var lastMessage = ChatConversationDto.Messages.LastOrDefault();
                     CurrentChatContact.LastMessage = lastMessage?.Message;
                     CurrentChatContact.LastMessageDate = lastMessage?.MessageDate;
-                    _logger.LogInformation($"Chat1: Updated last message: {lastMessage?.Message}");
                 }
 
                 // Auto scroll to bottom when receiving new message
-                _logger.LogInformation("Chat1: Calling StateHasChanged and scrolling to bottom...");
                 await InvokeAsync(async () =>
                 {
-                    _logger.LogInformation("Chat1: Invoking StateHasChanged...");
                     await InvokeAsync(StateHasChanged);
                     await Task.Delay(100); // Wait for DOM to update
-                    _logger.LogInformation("Chat1: Scrolling to bottom...");
                     await ScrollToBottomAsync();
-                    _logger.LogInformation("Chat1: UI update completed");
                 });
             }
             else
             {
-                _logger.LogInformation("Chat1: Message is NOT for current conversation, updating unread badge...");
-                _logger.LogInformation("Chat1: Message is NOT for current conversation, updating unread badge...");
-                
-                // Debug: Log message details
-                _logger.LogInformation($"Chat1 DEBUG: Incoming message.ConversationId = {message.ConversationId}");
-                _logger.LogInformation($"Chat1 DEBUG: Total conversations in list = {ChatContactDtos.Count}");
-                _logger.LogInformation($"Chat1 DEBUG: Conversations in list:");
-                foreach (var c in ChatContactDtos)
-                {
-                    _logger.LogInformation($"  - Type={c.Type}, Name={c.Name}, ConversationId={c.ConversationId}, UserId={c.UserId}");
-                }
-                
                 // Find the conversation in the list and update unread count + last message
                 ChatContactDto targetContact = null;
                 
                 // For User (1-1) conversation: find by SenderUserId
                 if (message.ConversationId.HasValue)
                 {
-                    _logger.LogInformation($"Chat1 DEBUG: Searching by ConversationId = {message.ConversationId.Value}");
                     // Try to find by ConversationId first (works for all types)
                     targetContact = ChatContactDtos.FirstOrDefault(c => 
                         c.ConversationId.HasValue && c.ConversationId.Value == message.ConversationId.Value);
-                    
-                    if (targetContact != null)
-                    {
-                        _logger.LogInformation($"Chat1 DEBUG: FOUND by ConversationId! Name={targetContact.Name}");
-                    }
-                    else
-                    {
-                        _logger.LogInformation($"Chat1 DEBUG: NOT FOUND by ConversationId");
-                    }
                 }
                 
                 // Fallback: For User type, find by UserId (sender)
                 if (targetContact == null && message.SenderUserId != CurrentUser.Id)
                 {
-                    _logger.LogInformation($"Chat1 DEBUG: Fallback - Searching by SenderUserId = {message.SenderUserId}");
                     targetContact = ChatContactDtos.FirstOrDefault(c => 
                         c.Type == ConversationType.User && c.UserId == message.SenderUserId);
-                    
-                    if (targetContact != null)
-                    {
-                        _logger.LogInformation($"Chat1 DEBUG: FOUND by UserId! Name={targetContact.Name}");
-                    }
-                    else
-                    {
-                        _logger.LogInformation($"Chat1 DEBUG: NOT FOUND by UserId");
-                    }
                 }
                 
                 if (targetContact != null)
                 {
-                    _logger.LogInformation($"Chat1: Found conversation '{targetContact.Name}', updating unread count. Current: {targetContact.UnreadMessageCount}");
-                    _logger.LogInformation($"Chat1: Found conversation in list, updating unread count. Current: {targetContact.UnreadMessageCount}");
-                    
                     // Update unread count (only if message is from someone else)
                     if (message.SenderUserId != CurrentUser.Id)
                     {
                         targetContact.UnreadMessageCount++;
-                        _logger.LogInformation($"Chat1: Incremented UnreadMessageCount to {targetContact.UnreadMessageCount}");
-                    }
-                    else
-                    {
-                        _logger.LogInformation($"Chat1: Not incrementing unread count (message from self)");
                     }
                     
                     // Update last message info
@@ -399,35 +329,26 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                         ChatContactsActive[targetContact] = activeState;
                     }
                     
-                    _logger.LogInformation($"Chat1: Calling StateHasChanged to update UI...");
-                    _logger.LogInformation($"Chat1: Updated conversation - UnreadCount: {targetContact.UnreadMessageCount}, LastMessage: {message.Text?.Substring(0, Math.Min(20, message.Text?.Length ?? 0))}");
-                    
                     await InvokeAsync(StateHasChanged);
-                    _logger.LogInformation($"Chat1: StateHasChanged completed");
                 }
                 else
                 {
-                    _logger.LogInformation("Chat1 ERROR: Could not find conversation in list to update unread badge!");
-                    _logger.LogInformation("Chat1: Could not find conversation in list to update unread badge");
+                    _logger.LogWarning("Could not find conversation in list to update unread badge");
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogInformation($"Chat1: ERROR in ProcessReceivedMessage: {ex.Message}");
-            _logger.LogInformation($"Chat1: Stack trace: {ex.StackTrace}");
+            _logger.LogError(ex, "Error processing received message");
         }
     }
 
     private async Task ProcessConversationCreated(object conversationData)
     {
-        _logger.LogInformation("Chat1: ProcessConversationCreated CALLED from service!");
-
         try
         {
             if (CurrentUser == null)
             {
-                _logger.LogInformation("Chat1: CurrentUser is null, ignoring conversation created event");
                 return;
             }
 
@@ -438,34 +359,27 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             var conversationName = jsonElement.TryGetProperty("ConversationName", out var nameElement) ? nameElement.GetString() : null;
             var creatorUserId = jsonElement.GetProperty("CreatorUserId").GetGuid();
 
-            _logger.LogInformation($"Chat1: New conversation created - ConversationId: {conversationId}, Type: {conversationType}, Name: {conversationName}, CreatorUserId: {creatorUserId}");
-
             // Refresh the conversation list to show the new conversation
-            _logger.LogInformation("Chat1: Refreshing conversation list...");
             await GetContactsAsync(includeOtherContacts: false, preserveCurrentContact: true, loadMore: false);
             
             // Find the newly created conversation in the list
             var newConversation = ChatContactDtos.FirstOrDefault(c => c.ConversationId == conversationId);
             if (newConversation != null)
             {
-                _logger.LogInformation($"Chat1: New conversation found in list - Name: {newConversation.Name}");
-                
                 // Move to top of list for visibility
                 ChatContactDtos.Remove(newConversation);
                 ChatContactDtos.Insert(0, newConversation);
                 
-                _logger.LogInformation("Chat1: Calling StateHasChanged to update UI...");
                 await InvokeAsync(StateHasChanged);
-                _logger.LogInformation("Chat1: StateHasChanged completed");
             }
             else
             {
-                _logger.LogWarning($"Chat1: Could not find new conversation in list - ConversationId: {conversationId}");
+                _logger.LogWarning($"Could not find new conversation in list - ConversationId: {conversationId}");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Chat1: ERROR in ProcessConversationCreated: {ex.Message}");
+            _logger.LogError(ex, "Error processing conversation created event");
         }
     }
     
@@ -479,16 +393,16 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
         HasSearchingPermission = await AuthorizationService.IsGrantedAsync(ChatPermissions.Searching);
 
+        // Get API base URL for image URLs
+        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
+
+        _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
         // Initialize SignalR connection for real-time chat
         try
         {
-            _logger.LogInformation("Chat1: Initializing SignalR connection...");
-
             // Register callback with ChatHubConnectionService FIRST
-            _logger.LogInformation("Chat1: Registering SignalR message callback...");
             await ChatHubConnectionService.OnReceiveMessageAsync(async message =>
             {
-                _logger.LogInformation($"Chat1: SignalR message received - Id: {message.Id}, Sender: {message.SenderUsername}, Text: {message.Text}, ConversationId: {message.ConversationId}");
                 await ProcessReceivedMessage(message);
             });
 
@@ -515,18 +429,14 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
             await ChatHubConnectionService.OnConversationCreatedAsync(async conversationData =>
             {
-                _logger.LogInformation($"Chat1: ConversationCreated event received: {System.Text.Json.JsonSerializer.Serialize(conversationData)}");
                 await ProcessConversationCreated(conversationData);
             });
 
             // Initialize SignalR with service reference
             await ChatHubConnectionService.InitializeAsync("/chatHub", string.Empty);
-            _logger.LogInformation("Chat1: Chat SignalR connection initialized successfully");
-            _logger.LogInformation("Chat SignalR connection initialized successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogInformation($"Chat1: Failed to initialize chat SignalR connection: {ex.Message}");
             _logger.LogError(ex, "Failed to initialize chat SignalR connection");
         }
     }
@@ -718,10 +628,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         
         await InvokeAsync(StateHasChanged);
     }
-    
-    /// <summary>
-    /// Refresh contacts list without triggering SetActiveAsync (used after sending message)
-    /// </summary>
     private async Task RefreshContactsListAsync()
     {
         // Preserve current contact selection
@@ -891,12 +797,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             {
                 ChatContactsActive[dto.Key] = "";
             }
-
-            // Update avatar/icon based on conversation type
-            // For Group/Project/Task, icon will be shown in UI instead of canvas
-            // Canvas update will be done after messages are loaded
-
-            // ALL conversations now have ConversationId (User, Group, Project, Task)
             if (CurrentChatContact.ConversationId.HasValue)
             {
                 // Reset pagination when switching conversations
@@ -912,7 +812,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 });
                 CurrentConversationId = CurrentChatContact.ConversationId.Value;
                 
-                // Check if there are more messages
                 if (ChatConversationDto?.Messages != null && ChatConversationDto.Messages.Count < MessagesPageSize)
                 {
                     _hasMoreMessages = false;
@@ -924,8 +823,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
             else if (CurrentChatContact.Type == ConversationType.User && CurrentChatContact.UserId != Guid.Empty)
             {
-                // Backward compatibility: User conversation without ConversationId yet
-                // Use TargetUserId to find conversation, then update ConversationId
                 _messagesSkipCount = 0;
                 _hasMoreMessages = true;
                 
@@ -988,7 +885,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 contactDto.UnreadMessageCount = 0;
                 await InvokeAsync(StateHasChanged);
                 
-                // Call server to mark as read (for User type - TODO: implement for other types)
                 if (CurrentChatContact.Type == ConversationType.User)
                 {
                     await ConversationAppService.MarkConversationAsReadAsync(new MarkConversationAsReadInput
@@ -996,7 +892,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                         TargetUserId = contactDto.UserId
                     });
                 }
-                // TODO: Implement MarkConversationAsReadAsync for Group/Project/Task conversations
             }
 
             if (ChatConversationDto?.Messages != null)
@@ -1050,8 +945,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await JsRuntime.InvokeVoidAsync("eval", "event.preventDefault()");
             await SendMessageAsync();
         }
-        // If Shift+Enter, allow default behavior (new line)
-        // If SendOnEnter is false, allow default Enter behavior (new line)
     }
     
     private async Task GetChatSettingsAsync()
@@ -1064,10 +957,50 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         ShowCreateDirectModal = true;
         SelectedDirectUser.Clear();
-        await GetIdentityUserCollectionLookupAsync();
         await InvokeAsync(StateHasChanged);
     }
-    
+    private async Task SendMessageToMemberAsync(ConversationMemberDto member)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
+            var conversation = await ConversationAppService.FindConversationAsync(new FindConversationInput
+            {
+                    UserIds = new List<Guid> { member.UserId, CurrentUser.Id!.Value  },
+                    Type = ConversationType.User,
+            });
+
+            if (conversation == null)
+            { 
+                //tạo conversation mới với user
+                var newConversation = await ConversationAppService.CreateUserConversationAsync(new CreateUserConversationInput
+                {
+                    TargetUserId = member.UserId,
+                });
+                conversation = newConversation;
+                await GetContactsAsync(false);
+            }
+            var targetContact = new ChatContactDto
+            {
+                    ConversationId = conversation.Id,
+                    Type = ConversationType.User,
+                    UserId = member.UserId,
+                    Name = conversation.Name,
+                    HasChatPermission = true,
+            };
+            await SetActiveAsync(targetContact);
+       }
+       catch (Exception ex)
+       {
+            await UiMessageService.Error(L["FailedToSendMessage"]  + " :"+  ex.Message);
+       }
+       finally
+       {
+            await BlockUiService.UnBlock();
+            await InvokeAsync(StateHasChanged);
+       }
+    }
+
     private async Task CreateDirectConversationAsync()
     {
         try
@@ -1092,7 +1025,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             var existingContact = ChatContactDtos.FirstOrDefault(c => c.Type == ConversationType.User && c.UserId == targetUserId);
             if (existingContact != null)
             {
-                // Conversation already exists, just set it active
                 await SetActiveAsync(existingContact);
                 ShowCreateDirectModal = false;
                 SelectedDirectUser.Clear();
@@ -1100,14 +1032,11 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
             
             // Create new User conversation using API
-            _logger.LogInformation($"Creating User conversation with target user: {targetUserId}");
             var conversation = await ConversationAppService.CreateUserConversationAsync(new CreateUserConversationInput
             {
                 TargetUserId = targetUserId,
                 Name = SelectedDirectUser.First().DisplayName // Optional custom name
             });
-            
-            _logger.LogInformation($"User conversation created: {conversation.Id}");
             
             // Refresh contacts to get the newly created conversation
             await GetContactsAsync(false);
@@ -1135,31 +1064,9 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         NewGroupName = "";
         NewGroupDescription = "";
         SelectedMembers.Clear();
-        await GetIdentityUserCollectionLookupAsync();
         await InvokeAsync(StateHasChanged);
     }
     
-    private async Task ShowCreateProjectModalAsync()
-    {
-        ShowCreateProjectModal = true;
-        SelectedProject.Clear();
-        NewProjectName = "";
-        SelectedMembers.Clear();
-        await GetProjectCollectionLookupAsync();
-        await GetIdentityUserCollectionLookupAsync();
-        await InvokeAsync(StateHasChanged);
-    }
-    
-    private async Task ShowCreateTaskModalAsync()
-    {
-        ShowCreateTaskModal = true;
-        SelectedTask.Clear();
-        NewTaskName = "";
-        SelectedMembers.Clear();
-        await GetProjectTaskCollectionLookupAsync();
-        await GetIdentityUserCollectionLookupAsync();
-        await InvokeAsync(StateHasChanged);
-    }
     
     private async Task CreateGroupConversationAsync()
     {
@@ -1191,82 +1098,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await HandleErrorAsync(ex);
         }
     }
-    
-    private async Task CreateProjectConversationAsync()
-    {
-        try
-        {
-            if (!SelectedProject.Any())
-            {
-                // TODO: Show warning message
-                return;
-            }
-            
-            var projectId = SelectedProject.First().Id;
-            var memberIds = SelectedMembers?.Select(m => m.Id).ToList() ?? new List<Guid>();
-            
-            var result = await ConversationAppService.CreateProjectConversationAsync(new CreateProjectConversationInput
-            {
-                ProjectId = projectId,
-                Name = NewProjectName,
-                MemberUserIds = memberIds
-            });
-            
-            ShowCreateProjectModal = false;
-            SelectedProject.Clear();
-            NewProjectName = "";
-            SelectedMembers.Clear();
-            await GetContactsAsync();
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-    
-    private async Task CreateTaskConversationAsync()
-    {
-        try
-        {
-            if (!SelectedTask.Any())
-            {
-                // TODO: Show warning message
-                return;
-            }
-            
-            var taskId = SelectedTask.First().Id;
-            var memberIds = SelectedMembers?.Select(m => m.Id).ToList() ?? new List<Guid>();
-            
-            var result = await ConversationAppService.CreateTaskConversationAsync(new CreateTaskConversationInput
-            {
-                TaskId = taskId,
-                Name = NewTaskName,
-                MemberUserIds = memberIds
-            });
-            
-            ShowCreateTaskModal = false;
-            SelectedTask.Clear();
-            NewTaskName = "";
-            SelectedMembers.Clear();
-            await GetContactsAsync();
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-    
+   
     // Select2 lookup methods
-    private async Task GetIdentityUserCollectionLookupAsync(string? newValue = null)
-    {
-        var allUsers = (await ((IProjectMembersAppService)ProjectMembersAppService).GetIdentityUserLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
-        var currentUserId = CurrentUser.Id ?? Guid.Empty;
-        // Filter out current user
-        IdentityUsersCollection = allUsers.Where(u => u.Id != currentUserId).ToList();
-    }
-    
     private async Task<List<LookupDto<Guid>>> GetIdentityUserCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
         var allUsers = (await ProjectMembersAppService.GetIdentityUserLookupAsync(new LookupRequestDto { Filter = filter })).Items;
@@ -1276,6 +1109,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         return IdentityUsersCollection.ToList();
     }
     
+    // Overload for modal/non-Select2 usage
     private async Task GetProjectCollectionLookupAsync(string? newValue = null)
     {
         ProjectsCollection = (await ProjectTasksAppService.GetProjectLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
@@ -1285,46 +1119,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         ProjectsCollection = (await ProjectTasksAppService.GetProjectLookupAsync(new LookupRequestDto { Filter = filter })).Items;
         return ProjectsCollection.ToList();
-    }
-    
-    private async Task GetProjectTaskCollectionLookupAsync(string? newValue = null)
-    {
-        var input = new GetProjectTasksInput
-        {
-            FilterText = newValue,
-            MaxResultCount = 20,
-            SkipCount = 0,
-        };
-        
-        var result = await ProjectTasksAppService.GetListAsync(input);
-        ProjectTasksCollection = result.Items
-            .Select(x => new LookupDto<Guid>
-            {
-                Id = x.ProjectTask.Id,
-                DisplayName = $"{x.ProjectTask.Code} - {x.ProjectTask.Title}"
-            })
-            .ToList();
-    }
-    
-    private async Task<List<LookupDto<Guid>>> GetProjectTaskCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
-    {
-        var input = new GetProjectTasksInput
-        {
-            FilterText = filter,
-            MaxResultCount = 20,
-            SkipCount = 0,
-        };
-        
-        var result = await ProjectTasksAppService.GetListAsync(input);
-        ProjectTasksCollection = result.Items
-            .Select(x => new LookupDto<Guid>
-            {
-                Id = x.ProjectTask.Id,
-                DisplayName = $"{x.ProjectTask.Code} - {x.ProjectTask.Title}"
-            })
-            .ToList();
-        
-        return ProjectTasksCollection.ToList();
     }
     
     private async Task TogglePinConversationAsync(ChatContactDto contact)
@@ -1352,14 +1146,101 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await HandleErrorAsync(ex);
         }
     }
-    
+
+    private async Task RemoveMemberAsync(RemoveMemberInput input)
+    {
+        try
+        {
+            if (input.ConversationId == Guid.Empty)
+            {
+                await UiMessageService.Error(L["ConversationNotFound"]);
+                return;
+            }
+            if (input.UserId == Guid.Empty)
+            {
+                await UiMessageService.Error(L["UserNotFound"]);
+                return;
+            }
+            await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
+            await ConversationAppService.RemoveMemberAsync(input);
+            await GetContactsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await UiMessageService.Error(ex.Message);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+    private async Task AddMembersAsync(AddMemberInput input)
+    {
+        try
+        {
+            if (input == null || input.ConversationId == null)
+            {
+                await UiMessageService.Error(L["ConversationNotFound"]);
+                return;
+            }
+            if (input.UserIds == null || input.UserIds.Count == 0)
+            {
+                await UiMessageService.Error(L["NoUsersSelected"]);
+                return;
+            }
+            await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
+            var result = await ConversationAppService.AddMemberAsync(input);
+            if(!string.IsNullOrEmpty(result))
+            {
+                await UiMessageService.Error(L[result]);
+                return;
+            }
+            await GetContactsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await UiMessageService.Error(ex.Message);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+    private async Task LeaveConversationAsync(RemoveMemberInput contact)
+    {
+        try
+        {
+            if (contact.ConversationId == Guid.Empty)
+            {
+                await UiMessageService.Error(L["ConversationNotFound"]);
+                return;
+            }
+            if (CurrentUser.Id == Guid.Empty)
+            {
+                await UiMessageService.Error(L["UserNotLoggedIn"]);
+                return;
+            }
+            await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
+            await ConversationAppService.RemoveMemberAsync(contact);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await UiMessageService.Error(ex.Message);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
     private async Task ReplyToMessageAsync(ChatMessageDto message)
     {
         ReplyingToMessage = message;
         await MessageTextArea.FocusAsync();
         await InvokeAsync(StateHasChanged);
     }
-    
     private async Task TogglePinMessageAsync(ChatMessageDto message)
     {
         try
@@ -1402,7 +1283,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await HandleErrorAsync(ex);
         }
     }
-    
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {
         try
@@ -1441,7 +1321,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await HandleErrorAsync(ex);
         }
     }
-    
     private async Task DownloadFileAsync(Guid fileId)
     {
         try
@@ -1467,38 +1346,32 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await HandleErrorAsync(ex);
         }
     }
-    
-    private async Task SendMessageAsync()
+    private bool ValidateMessageBeforeSend()
     {
-        // Prevent duplicate sends
         if (_isSendingMessage)
-        {
-            return;
-        }
+            return false;
         
         if (Message.IsNullOrWhiteSpace() && (UploadedFiles == null || !UploadedFiles.Any()))
-        {
-            return;
-        }
+            return false;
 
         if (CurrentChatContact == null)
-        {
-            return;
-        }
-        
-        // Set flag to prevent duplicate sends - must be set before any async operations
-        _isSendingMessage = true;
+            return false;
 
-        // Store message content and files before clearing
+        return true;
+    }
+    private (string messageText, List<MessageFileDto> files, ChatMessageDto replyingTo, Guid targetUserId, Guid? conversationId) PrepareMessageContent()
+    {
         var messageText = Message;
         var uploadedFiles = UploadedFiles?.ToList() ?? new List<MessageFileDto>();
         var replyingTo = ReplyingToMessage;
         var targetUserId = CurrentChatContact.UserId;
         var conversationId = CurrentConversationId;
 
-        // Clear input immediately for better UX (non-blocking)
-        // Clear textarea directly via JavaScript FIRST to ensure immediate clearing
-        // This must be done before clearing Message property to prevent text from reappearing
+        return (messageText, uploadedFiles, replyingTo, targetUserId, conversationId);
+    }
+    private async Task ClearInputAsync()
+    {
+        // Clear textarea via JavaScript FIRST to ensure immediate clearing
         try
         {
             await JsRuntime.SafeInvokeVoidAsync("eval", 
@@ -1513,23 +1386,146 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             // Ignore errors
         }
         
-        // Now clear the property
         Message = "";
-        if (ReplyingToMessage != null)
-        {
-            ReplyingToMessage = null;
-        }
-        if (UploadedFiles != null)
-        {
-            UploadedFiles.Clear();
-        }
-        
-        // Force immediate UI update
+        ReplyingToMessage = null;
+        UploadedFiles?.Clear();
         await InvokeAsync(StateHasChanged);
+    }
+    private async Task SendToServerAsync(string messageText, List<MessageFileDto> uploadedFiles, ChatMessageDto replyingTo, ChatMessageDto optimisticMessage)
+    {
+        try
+        {
+            ChatMessageDto serverMessage = null;
+            var targetUserId = CurrentChatContact.UserId;
+            var conversationId = CurrentConversationId;
+            
+            if (replyingTo != null)
+            {
+                // Send reply message
+                serverMessage = await ConversationAppService.SendReplyMessageAsync(new SendReplyMessageInput
+                {
+                    TargetUserId = targetUserId,
+                    ConversationId = conversationId,
+                    ReplyToMessageId = replyingTo.Id,
+                    Message = messageText ?? string.Empty
+                });
+            }
+            else if (uploadedFiles.Any())
+            {
+                // Send message with files
+                serverMessage = await ConversationAppService.SendMessageWithFilesAsync(new SendMessageWithFilesInput
+                {
+                    TargetUserId = targetUserId,
+                    ConversationId = conversationId,
+                    Message = messageText,
+                    FileIds = uploadedFiles.Select(f => f.Id).ToList()
+                });
+            }
+            else
+            {
+                // Send normal message
+                serverMessage = await ConversationAppService.SendMessageAsync(new SendMessageInput
+                {
+                    Message = messageText,
+                    ConversationId = conversationId ?? throw new InvalidOperationException("ConversationId is required")
+                });
+            }
+
+            // Update optimistic message with server response on UI thread
+            await InvokeAsync(async () =>
+            {
+                if (serverMessage != null && ChatConversationDto?.Messages != null)
+                {
+                    // Mark server message as sent (no spinner)
+                    serverMessage.IsSending = false;
+                    
+                    // Replace optimistic message with server message
+                    var index = ChatConversationDto.Messages.FindIndex(m => m.Id == optimisticMessage.Id);
+                    if (index >= 0)
+                    {
+                        ChatConversationDto.Messages[index] = serverMessage;
+                    }
+                    else
+                    {
+                        // If not found, add server message
+                        ChatConversationDto.Messages.Add(serverMessage);
+                    }
+                    
+                    // Update last message from server
+                    var lastMessage = ChatConversationDto.Messages.LastOrDefault();
+                    if (lastMessage != null)
+                    {
+                        CurrentChatContact.LastMessage = lastMessage.Message;
+                        CurrentChatContact.LastMessageDate = lastMessage.MessageDate;
+                        
+                        var contactInList = ChatContactDtos.FirstOrDefault(c => 
+                            (c.Type == ConversationType.User && c.UserId == CurrentChatContact.UserId) ||
+                            (c.Type != ConversationType.User && c.ConversationId == CurrentChatContact.ConversationId));
+                        
+                        if (contactInList != null)
+                        {
+                            contactInList.LastMessage = lastMessage.Message;
+                            contactInList.LastMessageDate = lastMessage.MessageDate;
+                        }
+                    }
+                    
+                    // Refresh contacts list
+                    await RefreshContactsListAsync();
+                    
+                    // Auto scroll to bottom after server message is updated
+                    await Task.Delay(100);
+                    await ScrollToBottomAsync();
+                }
+                
+                // Decrement pending count
+                Interlocked.Decrement(ref _pendingMessagesCount);
+                
+                // Reset sending flag to allow next send
+                _isSendingMessage = false;
+                
+                await InvokeAsync(StateHasChanged);
+            });
+        }
+        catch (Exception ex)
+        {
+            // Handle error on UI thread
+            await InvokeAsync(async () =>
+            {
+                // Remove optimistic message on error
+                if (ChatConversationDto?.Messages != null)
+                {
+                    ChatConversationDto.Messages.RemoveAll(m => m.Id == optimisticMessage.Id);
+                }
+                
+                // Decrement pending count
+                Interlocked.Decrement(ref _pendingMessagesCount);
+                
+                // Reset sending flag to allow next send
+                _isSendingMessage = false;
+                
+                await InvokeAsync(StateHasChanged);
+                await HandleErrorAsync(ex);
+            });
+        }
+    }
+    private async Task SendMessageAsync()
+    {
+        // Validate before attempting send
+        if (!ValidateMessageBeforeSend())
+            return;
+        
+        _isSendingMessage = true;
+
+        // Extract message content
+        var (messageText, uploadedFiles, replyingTo, targetUserId, conversationId) = PrepareMessageContent();
+
+        // Clear input immediately for better UX
+        await ClearInputAsync();
 
         // Create optimistic message and add to UI immediately
         var optimisticMessage = CreateOptimisticMessage(messageText, uploadedFiles, replyingTo);
         optimisticMessage.IsSending = true; // Mark as sending to show spinner
+        
         if (ChatConversationDto?.Messages == null)
         {
             ChatConversationDto = new ChatConversationDto { Messages = new List<ChatMessageDto>() };
@@ -1551,134 +1547,23 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             contactInList.LastMessageDate = DateTime.UtcNow;
         }
         
-        // Increment pending count (no spinner on button, spinner is on message)
+        // Increment pending count
         Interlocked.Increment(ref _pendingMessagesCount);
         
         // Update UI immediately
         await InvokeAsync(StateHasChanged);
         
         // Auto scroll to bottom to show new message
-        await Task.Delay(100); // Wait for DOM to update with new message
+        await Task.Delay(100);
         await ScrollToBottomAsync();
         
         // Focus textarea immediately for next message
-        await Task.Delay(50); // Small delay to ensure DOM is updated
+        await Task.Delay(50);
         await MessageTextArea.FocusAsync();
 
         // Send to server in background (fire-and-forget pattern)
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                ChatMessageDto serverMessage = null;
-                
-                if (replyingTo != null)
-                {
-                    // Send reply message
-                    serverMessage = await ConversationAppService.SendReplyMessageAsync(new SendReplyMessageInput
-                    {
-                        TargetUserId = targetUserId,
-                        ConversationId = conversationId,
-                        ReplyToMessageId = replyingTo.Id,
-                        Message = messageText ?? string.Empty
-                    });
-                }
-                else if (uploadedFiles.Any())
-                {
-                    // Send message with files
-                    serverMessage = await ConversationAppService.SendMessageWithFilesAsync(new SendMessageWithFilesInput
-                    {
-                        TargetUserId = targetUserId,
-                        ConversationId = conversationId,
-                        Message = messageText,
-                        FileIds = uploadedFiles.Select(f => f.Id).ToList()
-                    });
-                }
-                else
-                {
-                    // Send normal message
-                    serverMessage = await ConversationAppService.SendMessageAsync(new SendMessageInput
-                    {
-                        Message = messageText,
-                        ConversationId = conversationId ?? throw new InvalidOperationException("ConversationId is required")
-                    });
-                }
-
-                // Update optimistic message with server response on UI thread
-                await InvokeAsync(async () =>
-                {
-                    if (serverMessage != null && ChatConversationDto?.Messages != null)
-                    {
-                        // Mark server message as sent (no spinner)
-                        serverMessage.IsSending = false;
-                        
-                        // Replace optimistic message with server message
-                        var index = ChatConversationDto.Messages.FindIndex(m => m.Id == optimisticMessage.Id);
-                        if (index >= 0)
-                        {
-                            ChatConversationDto.Messages[index] = serverMessage;
-                        }
-                        else
-                        {
-                            // If not found, add server message
-                            ChatConversationDto.Messages.Add(serverMessage);
-                        }
-                        
-                        // Update last message from server
-                        var lastMessage = ChatConversationDto.Messages.LastOrDefault();
-                        if (lastMessage != null)
-                        {
-                            CurrentChatContact.LastMessage = lastMessage.Message;
-                            CurrentChatContact.LastMessageDate = lastMessage.MessageDate;
-                            
-                            if (contactInList != null)
-                            {
-                                contactInList.LastMessage = lastMessage.Message;
-                                contactInList.LastMessageDate = lastMessage.MessageDate;
-                            }
-                        }
-                        
-                        // Refresh contacts list
-                        await RefreshContactsListAsync();
-                        
-                        // Auto scroll to bottom after server message is updated
-                        await Task.Delay(100); // Wait for DOM to update
-                        await ScrollToBottomAsync();
-                    }
-                    
-                    // Decrement pending count (no spinner on button, spinner is on message)
-                    var remaining = Interlocked.Decrement(ref _pendingMessagesCount);
-                    
-                    // Reset sending flag to allow next send
-                    _isSendingMessage = false;
-                    
-                    await InvokeAsync(StateHasChanged);
-                });
-            }
-            catch (Exception ex)
-            {
-                // Handle error on UI thread
-                await InvokeAsync(async () =>
-                {
-                    // Remove optimistic message on error
-                    if (ChatConversationDto?.Messages != null)
-                    {
-                        ChatConversationDto.Messages.RemoveAll(m => m.Id == optimisticMessage.Id);
-                    }
-                    
-                    // Decrement pending count (no spinner on button)
-                    var remaining = Interlocked.Decrement(ref _pendingMessagesCount);
-                    
-                    // Reset sending flag to allow next send
-                    _isSendingMessage = false;
-                    
-                    await InvokeAsync(StateHasChanged);
-                    await HandleErrorAsync(ex);
-                });
-            }
-        });
+        _ = SendToServerAsync(messageText, uploadedFiles, replyingTo, optimisticMessage);
     }
-    
     private async Task ScrollToBottomAsync()
     {
         try
@@ -1694,7 +1579,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             // Ignore errors
         }
     }
-    
     private async Task OnConversationScroll(EventArgs e)
     {
         if (_isLoadingMoreMessages || !_hasMoreMessages || ChatConversationDto?.Messages == null)
@@ -1718,7 +1602,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             // Ignore errors
         }
     }
-    
     private async Task LoadMoreMessagesAsync()
     {
         if (_isLoadingMoreMessages || !_hasMoreMessages || CurrentChatContact == null)
@@ -1800,7 +1683,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await InvokeAsync(StateHasChanged);
         }
     }
-    
     private async Task LoadMoreConversationsAsync()
     {
         if (_isLoadingMoreConversations || !_hasMoreConversations)
@@ -1823,8 +1705,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await InvokeAsync(StateHasChanged);
         }
     }
-
-
     private ChatMessageDto CreateOptimisticMessage(string messageText, List<MessageFileDto> files, ChatMessageDto replyingTo)
     {
         var currentUserId = CurrentUser.Id ?? Guid.Empty;
@@ -1864,33 +1744,62 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             SenderUsername = CurrentUser.UserName
         };
     }
-
-
-    private async Task ShowPinnedMessagesAsync()
-    {
-        ShowInfoBox = false;
-        await InvokeAsync(StateHasChanged);
-    }
-
     private async Task ShowInfoBoxAsync()
     {
         ShowInfoBox = !ShowInfoBox;
         await InvokeAsync(StateHasChanged);
     }
+    private string GetImageUrl(string imagePath)
+    {
+        if (string.IsNullOrEmpty(imagePath))
+            return string.Empty;
+            
+        var baseUrl = _apiBaseUrl ?? string.Empty;
+        return $"{baseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+    }
 
+    /// <summary>
+    /// Open image viewer modal
+    /// </summary>
+    public async Task OpenImageViewerAsync(Guid fileId, string fileName, string filePath, string imageUrl)
+    {
+        ImageViewerFileName = fileName;
+        ImageViewerUrl = imageUrl;
+        ImageViewerFilePath = filePath;
+        _currentViewingImageFileId = fileId;
+        ShowImageViewerModal = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Close image viewer modal
+    /// </summary>
+    public async Task CloseImageViewerModal()
+    {
+        ShowImageViewerModal = false;
+        ImageViewerUrl = string.Empty;
+        ImageViewerFilePath = string.Empty;
+        ImageViewerFileName = string.Empty;
+        _currentViewingImageFileId = Guid.Empty;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Download current viewing image
+    /// </summary>
+    public async Task DownloadImageAsync()
+    {
+        if (_currentViewingImageFileId != Guid.Empty)
+        {
+            await DownloadFileAsync(_currentViewingImageFileId);
+        }
+    }
+    
     public async ValueTask DisposeAsync()
     {
-        // IMPORTANT: Don't stop chatHub connection here!
-        // NotificationToast component is still using the same connection for chat notifications
-        // Connection will be automatically managed by SignalR (auto-reconnect on disconnect)
-        
-        _logger.LogInformation("Chat1: Component disposing, keeping SignalR connection alive for NotificationToast");
-
-        // Dispose object reference
         _objRef?.Dispose();
         _objRef = null;
 
-        // Cleanup ChatHubConnectionService if needed (this only clears callbacks, not the connection)
         if (ChatHubConnectionService is IAsyncDisposable asyncDisposable)
         {
             await asyncDisposable.DisposeAsync();

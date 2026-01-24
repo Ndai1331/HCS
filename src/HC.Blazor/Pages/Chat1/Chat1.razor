@@ -14,6 +14,9 @@
 @using HC.ProjectMembers
 @using HC.ProjectTaskAssignments
 @using Microsoft.Extensions.Caching.Memory
+@using HC.Blazor.Pages.Chat1.InfomationConversations
+@using Volo.Abp.AspNetCore.Components.BlockUi
+@using HC.Blazor.Pages.Chat1
 @attribute [Authorize(ChatPermissions.Messaging)]
 @attribute [RequiresFeature(ChatFeatures.Enable)]
 @inherits HCComponentBase
@@ -24,7 +27,7 @@
 @inject IProjectTasksAppService ProjectTasksAppService
 @inject IProjectMembersAppService ProjectMembersAppService
 @inject IUiMessageService UiMessageService
-
+@inject IBlockUiService BlockUiService
 
 <link href="_content/Volo.Chat.Blazor/libs/Index.css" rel="stylesheet"/>
 
@@ -37,6 +40,43 @@
         position: absolute;
         top: calc(80% + 2px);
     }
+
+    .chat-image-container {
+        display: inline-block;
+        margin-top: 4px;
+        margin-bottom: 4px;
+        border-radius: 8px;
+        overflow: hidden;
+        background-color: rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .chat-image-container:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-image {
+        display: block;
+        max-width: 250px;
+        max-height: 300px;
+        width: auto;
+        height: auto;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+
+    .message-file-item {
+        background-color: rgba(0, 0, 0, 0.1);
+        transition: background-color 0.2s;
+    }
+
+    .message-file-item:hover {
+        background-color: rgba(0, 0, 0, 0.2);
+    }
 </style>
 
 <div id="chat_wrapper">
@@ -45,7 +85,7 @@
             <!-- Users box-->
             <div class="col-12 col-md-3  d-flex align-items-stretch">
                 <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
-                    <div class="card-body p-1 p-md-2 p-lg-3" style="display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden;">
                         <div class=" mb-2 rounded-2" id="SearchBox">
                             <div class="row">
                                 <div class="col">
@@ -74,12 +114,7 @@
                                         <button type="button" class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowCreateGroupModalAsync()" title="@L["CreateGroup"]">
                                             <i class="bi bi-people"></i> @L["Group"]
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-success" @onclick="async () => await ShowCreateProjectModalAsync()" title="@L["CreateProject"]">
-                                            <i class="bi bi-folder"></i> @L["Project"]
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-warning" @onclick="async () => await ShowCreateTaskModalAsync()" title="@L["CreateTask"]">
-                                            <i class="bi bi-check2-square"></i> @L["Task"]
-                                        </button>
+                                      
                                     </div>
                                 </div>
                             </div>
@@ -91,25 +126,22 @@
                                     {
                                         <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2 @(ChatContactsActive.ContainsKey(chatContact) ? ChatContactsActive[chatContact] : string.Empty)">
                                             <div class="media" @onclick="async () => await SetActiveAsync(chatContact)" >
-                                                @* Conversation Type Icon *@
-                                                <div class="me-2">
-                                                    @if (chatContact.Type == ConversationType.User)
-                                                    {
-                                                        <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="40" Height="40"></canvas>
-                                                    }
-                                                    else if (chatContact.Type == ConversationType.Group)
-                                                    {
-                                                        <i class="bi bi-people-fill fs-4 text-primary"></i>
-                                                    }
-                                                    else if (chatContact.Type == ConversationType.Project)
-                                                    {
-                                                        <i class="bi bi-folder-fill fs-4 text-success"></i>
-                                                    }
-                                                    else if (chatContact.Type == ConversationType.Task)
-                                                    {
-                                                        <i class="bi bi-check2-square fs-4 text-warning"></i>
-                                                    }
-                                                </div>
+                                                @if (chatContact.Type == ConversationType.User)
+                                                {
+                                                    <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="24" Height="24"></canvas>
+                                                }
+                                                else if (chatContact.Type == ConversationType.Group)
+                                                {
+                                                    <i class="bi bi-people-fill fs-3 text-primary"></i>
+                                                }
+                                                else if (chatContact.Type == ConversationType.Project)
+                                                {
+                                                    <i class="bi bi-folder-fill fs-3 text-success"></i>
+                                                }
+                                                else if (chatContact.Type == ConversationType.Task)
+                                                {
+                                                    <i class="bi bi-check2-square fs-3 text-warning"></i>
+                                                }
                                                 <div class="media-body ms-2">
                                                     <div class="d-flex align-items-center justify-content-between mb-1">
                                                         <h6 class="mb-0 me-1">
@@ -121,26 +153,26 @@
                                                             {
                                                                 <i class="bi bi-pin-fill text-warning me-1" title="@L["Pinned"]"></i>
                                                             }
-                                                            @GetContactDisplayName(chatContact)
+                                                            @(GetContactDisplayName(chatContact).TruncateWithPostfix(36,"..."))
                                                         </h6>
-                                                        @if (chatContact.LastMessageDate != null)
-                                                        {
-                                                            <div class="d-inline">
-                                                                <small class="lh-1 d-block last-message-date">@Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("d")</small>
-                                                                <small class="lh-1 d-block last-message-date">@Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("t")</small>
-                                                            </div>
-                                                        }
+                                                        
                                                     </div>
-                                                    <p class="mb-0 small last-message">@chatContact.LastMessage.TruncateWithPostfix(36,"...")</p>
-                                                    @if (chatContact.Type != ConversationType.User && chatContact.MemberCount > 0)
+                                                    <p class="d-flex justify-content-between gap-1 mb-0 small last-message">
+                                                        @if(!string.IsNullOrEmpty(chatContact.LastMessage))
+                                                        {
+                                                            <span class="text-muted">@chatContact.LastMessage?.TruncateWithPostfix(36,"...")</span>
+                                                            <span class="text-muted"> @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("d") @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("t")</span>
+                                                        }
+                                                    </p>
+                                                    @* @if (chatContact.Type != ConversationType.User && chatContact.MemberCount > 0)
                                                     {
                                                         <small class="text-muted"><i class="bi bi-people"></i> @chatContact.MemberCount @L["Member"]</small>
-                                                    }
+                                                    } *@
                                                 </div>
                                             </div>
-                                            <div class="dropdown position-absolute bottom-0 end-0">
+                                            <div class="dropdown position-absolute top-0 end-0">
                                                 <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="lpx-caret bi-chevron-down" aria-hidden="true"></i>
+                                                    <i class="lpx-caret bi-three-dots" aria-hidden="true"></i>
                                                 </button>
                                                 <ul class="dropdown-menu">
                                                     @if (chatContact.Type != ConversationType.User)
@@ -157,8 +189,17 @@
                                                                 }
                                                             </a>
                                                         </li>
+                                                        @if (chatContact.MemberRole == "MEMBER")
+                                                        {
+                                                            <li>    
+                                                                <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(new RemoveMemberInput { ConversationId = chatContact.ConversationId.Value, UserId = CurrentUser.Id.Value })">
+                                                                        <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
+                                                                </a>
+                                                            </li>
+                                                        }
+
                                                     }
-                                                    @if (IsDeletingConversationEnabled())
+                                                    @if (IsDeletingConversationEnabled() && chatContact.MemberRole == "ADMIN")
                                                     {
                                                         <li>
                                                             <a class="dropdown-item delete-conversation-btn" @onclick="async () => await DeleteConversationAsync()">@L["Delete"]</a>
@@ -188,11 +229,11 @@
                 </div>
             </div>
             <!-- Chat Box-->
-            <div id="chatBox" class="col-12 @(ShowInfoBox ? "col-md-6" : "col-md-9")  d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
+            <div id="chatBox" class="col-12 @(ShowInfoBox ? "col-md-6" : "col-md-9") p-0 d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
                 <div class="card w-100 mb-0" style="height: 100%; display: flex; flex-direction: column;">
-                    <div class="card-body p-1 p-md-2 p-lg-3" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
+                    <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
                         <div id="AvatarId" class="px-2 py-1 border mb-2 rounded-2">
-                            <div class="row">
+                            <div class="row d-flex align-items-center">
                                 <div class="col-auto pe-0">
                                     @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
                                     {
@@ -230,9 +271,12 @@
                                     </h5>
                                 </div>
 
-                                <div class="col-auto pe-0 mx-2">
-                                     <i class="bi bi-info-circle fs-4 text-brand mt-1 cursor-pointer" @onclick="async () => await ShowInfoBoxAsync()" title="@L["ShowInfoBox"]"></i>
-                                </div>
+                                @if (CurrentChatContact != null)
+                                {
+                                    <div class="col-auto pe-0 mx-2">
+                                        <i class="bi bi-info-circle fs-4 text-brand mt-1 cursor-pointer" @onclick="async () => await ShowInfoBoxAsync()" title="@L["ShowInfoBox"]"></i>
+                                    </div>
+                                }
                             </div>
                         </div>
                         @if (IsLoadingMessages)
@@ -261,284 +305,18 @@
                                     }
                                     @foreach (var message in ChatConversationDto.Messages)
                                     {
-                                        if (message.Side == ChatMessageSide.Sender)
-                                        {
-                                            <div class="media w-75 mw-65 w-lp-auto mb-2 ms-auto position-relative">
-                                                <div class="media-body position-relative ">
-                                                    @* Reply to message *@
-                                                    @if (message.ReplyToMessage != null)
-                                                    {
-                                                        <div class="bg-dark bg-opacity-25 rounded p-2 mb-1 position-relative" style="border-left: 3px solid #0d6efd; cursor: pointer;" @onclick="async () => await TogglePinMessageAsync(message.ReplyToMessage)" @onclick:stopPropagation="true" title="@L["ClickToPinUnpinMessage"]">
-                                                            <div class="d-flex align-items-center justify-content-between">
-                                                                <div class="flex-grow-1">
-                                                                    <small class="text-muted d-block">@L["ReplyingTo"]:</small>
-                                                                    <small class="text-truncate d-block">@message.ReplyToMessage.Message.TruncateWithPostfix(50, "...")</small>
-                                                                </div>
-                                                                @if (message.ReplyToMessage.IsPinned)
-                                                                {
-                                                                    <i class="bi bi-pin-fill text-warning ms-2" title="@L["Pinned"]"></i>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <i class="bi bi-pin ms-2 text-muted" title="@L["ClickToPin"]"></i>
-                                                                }
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                    
-                                                    @* Forwarded message *@
-                                                    @if (message.ForwardedFromMessage != null)
-                                                    {
-                                                        <div class="bg-dark bg-opacity-25 rounded p-2 mb-1 position-relative" style="border-left: 3px solid #17a2b8;">
-                                                            <div class="d-flex align-items-start">
-                                                                <i class="bi bi-forward-fill text-info me-2"></i>
-                                                                <div class="flex-grow-1">
-                                                                    <small class="text-muted d-block">@L["ForwardedFrom"]: 
-                                                                        @if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderName))
-                                                                        {
-                                                                            <span>@message.ForwardedFromMessage.SenderName @message.ForwardedFromMessage.SenderSurname</span>
-                                                                        }
-                                                                        else if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderUsername))
-                                                                        {
-                                                                            <span>@message.ForwardedFromMessage.SenderUsername</span>
-                                                                        }
-                                                                    </small>
-                                                                    <small class="text-truncate d-block">@message.ForwardedFromMessage.Message.TruncateWithPostfix(50, "...")</small>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                    <div class="bg-primary text-bg-primary card mb-1 px-2 px-lg-3 py-1 py-lg-2 rounded shadow-sm position-relative">
-                                                        @if (message.IsSending)
-                                                        {
-                                                            <div class="position-absolute top-0 end-0 p-1">
-                                                                <span class="spinner-border spinner-border-sm text-light" role="status" aria-hidden="true"></span>
-                                                            </div>
-                                                        }
-                                                        <p class="mb-0 message-text text-small">@message.Message</p>
-                                                        @* Message Files *@
-                                                        @if (message.Files != null && message.Files.Any())
-                                                        {
-                                                            <div class="mt-2">
-                                                                @foreach (var file in message.Files)
-                                                                {
-                                                                    <div class="d-flex align-items-center mb-1 p-1 bg-dark bg-opacity-25 rounded">
-                                                                        <i class="bi bi-file-earmark me-2"></i>
-                                                                        <small class="flex-grow-1 text-truncate">@file.FileName</small>
-                                                                        <button class="btn btn-sm btn-link text-light p-0 ms-2" @onclick="async () => await DownloadFileAsync(file.Id)" title="@L["DownloadFile"]">
-                                                                            <i class="bi bi-download"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                }
-                                                            </div>
-                                                        }
-                                                        @if (message.IsPinned)
-                                                        {
-                                                            <div class="mt-1">
-                                                                <small><i class="bi bi-pin-fill text-warning"></i> @L["Pinned"]</small>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                    <p class="left m-0 message-date small text-muted" style="opacity: 0.35; width: 150px; left: -110px; top: 1px; ">@Clock.ConvertToUserTime(message.MessageDate)</p>
-                                                </div>
-
-                                                <div class="dropdown position-absolute top-0 end-0">
-                                                    <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="bi bi-chevron-down text-light" aria-hidden="true"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu" style="">
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await ReplyToMessageAsync(message)">
-                                                                <i class="bi bi-reply mx-1"></i> @L["Reply"]
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await TogglePinMessageAsync(message)">
-                                                                @if (message.IsPinned)
-                                                                {
-                                                                    <i class="bi bi-pin-angle mx-1"></i> @L["UnpinMessage"]
-                                                                }
-                                                                else
-                                                                {
-                                                                    <i class="bi bi-pin-fill mx-1"></i> @L["PinMessage"]
-                                                                }
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await ForwardMessageAsync(message)">
-                                                                <i class="bi bi-arrow-up-right"></i> @L["Forward"]
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await CreateTaskFromMessageAsync(message)">
-                                                                <i class="bi bi-plus-circle"></i> @L["CreateTaskFromMessage"]
-                                                            </a>
-                                                        </li>
-                                                        @if (IsDeletingMessageEnabled(message))
-                                                        {
-                                                            <li><hr class="dropdown-divider"></li>
-                                                            <li>
-                                                                <a class="dropdown-item delete-message-btn text-danger" @onclick="async () => await DeleteMessageAsync(message)">
-                                                                    <i class="bi bi-trash mx-1"></i> @L["Delete"]
-                                                                </a>
-                                                            </li>
-                                                        }
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="media w-75 mw-65 w-lp-auto mb-2 position-relative">
-                                                @if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User && message.SenderUserId.HasValue)
-                                                {
-                                                    <div class="me-2">
-                                                        <canvas id="sender-avatar-@message.Id" width="32" height="32" style="border-radius: 50%;"></canvas>
-                                                    </div>
-                                                }
-                                                <div class="media-body position-relative ms-3">
-                                                    @* Sender name for Group/Project/Task conversations *@
-                                                    @if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User && message.SenderUserId.HasValue)
-                                                    {
-                                                        <div class="mb-1">
-                                                            <small class="text-muted fw-bold">
-                                                                @if (!string.IsNullOrEmpty(message.SenderName) || !string.IsNullOrEmpty(message.SenderSurname))
-                                                                {
-                                                                    @($"{message.SenderName} {message.SenderSurname}".Trim())
-                                                                }
-                                                                else if (!string.IsNullOrEmpty(message.SenderUsername))
-                                                                {
-                                                                    @message.SenderUsername
-                                                                }
-                                                                else
-                                                                {
-                                                                    @L["UnknownUser"]
-                                                                }
-                                                            </small>
-                                                        </div>
-                                                    }
-                                                    @* Reply to message *@
-                                                    @if (message.ReplyToMessage != null)
-                                                    {
-                                                        <div class="bg-light rounded p-2 mb-1 position-relative" style="border-left: 3px solid #6c757d; cursor: pointer;" @onclick="async () => await TogglePinMessageAsync(message.ReplyToMessage)" @onclick:stopPropagation="true" title="@L["ClickToPinUnpinMessage"]">
-                                                            <div class="d-flex align-items-center justify-content-between">
-                                                                <div class="flex-grow-1">
-                                                                    <small class="text-muted d-block">@L["ReplyingTo"]:</small>
-                                                                    <small class="text-truncate d-block">@message.ReplyToMessage.Message.TruncateWithPostfix(50, "...")</small>
-                                                                </div>
-                                                                @if (message.ReplyToMessage.IsPinned)
-                                                                {
-                                                                    <i class="bi bi-pin-fill text-warning ms-2" title="@L["Pinned"]"></i>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <i class="bi bi-pin ms-2 text-muted" title="@L["ClickToPin"]"></i>
-                                                                }
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                    
-                                                    @* Forwarded message *@
-                                                    @if (message.ForwardedFromMessage != null)
-                                                    {
-                                                        <div class="bg-light rounded p-2 mb-1 position-relative" style="border-left: 3px solid #17a2b8;">
-                                                            <div class="d-flex align-items-start">
-                                                                <i class="bi bi-forward-fill text-info me-2"></i>
-                                                                <div class="flex-grow-1">
-                                                                    <small class="text-muted d-block">@L["ForwardedFrom"]: 
-                                                                        @if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderName))
-                                                                        {
-                                                                            <span>@message.ForwardedFromMessage.SenderName @message.ForwardedFromMessage.SenderSurname</span>
-                                                                        }
-                                                                        else if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderUsername))
-                                                                        {
-                                                                            <span>@message.ForwardedFromMessage.SenderUsername</span>
-                                                                        }
-                                                                    </small>
-                                                                    <small class="text-truncate d-block">@message.ForwardedFromMessage.Message.TruncateWithPostfix(50, "...")</small>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                    <div class="bg-white shadow rounded py-1 px-2 mb-1 position-relative">
-                                                        @if (message.IsSending)
-                                                        {
-                                                            <div class="position-absolute top-0 end-0 p-1">
-                                                                <span class="spinner-border spinner-border-sm text-muted" role="status" aria-hidden="true"></span>
-                                                            </div>
-                                                        }
-                                                        <p class="text-small mb-0 text-black">@message.Message</p>
-                                                        @* Message Files *@
-                                                        @if (message.Files != null && message.Files.Any())
-                                                        {
-                                                            <div class="mt-2">
-                                                                @foreach (var file in message.Files)
-                                                                {
-                                                                    <div class="d-flex align-items-center mb-1 p-1 bg-white rounded border">
-                                                                        <i class="bi bi-file-earmark me-2"></i>
-                                                                        <small class="flex-grow-1 text-truncate">@file.FileName</small>
-                                                                        <button class="btn btn-sm btn-link p-0 ms-2" @onclick="async () => await DownloadFileAsync(file.Id)" title="@L["DownloadFile"]">
-                                                                            <i class="bi bi-download"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                }
-                                                            </div>
-                                                        }
-                                                        @if (message.IsPinned)
-                                                        {
-                                                            <div class="mt-1">
-                                                                <small><i class="bi bi-pin-fill text-warning"></i> @L["Pinned"]</small>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                    <p class="small text-muted position-absolute m-0" style="opacity: 0.35; width: 100px; right: -110px; top: 1px;">@Clock.ConvertToUserTime(message.MessageDate)</p>
-                                                </div>
-
-                                                <div class="dropdown position-absolute top-0 end-0">
-                                                    <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="bi bi-three-dots-vertical text-dark" aria-hidden="true"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu" style="">
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await ReplyToMessageAsync(message)">
-                                                                <i class="bi bi-reply mx-1"></i> @L["Reply"]
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await TogglePinMessageAsync(message)">
-                                                                @if (message.IsPinned)
-                                                                {
-                                                                    <i class="bi bi-pin-angle mx-1"></i> @L["UnpinMessage"]
-                                                                }
-                                                                else
-                                                                {
-                                                                    <i class="bi bi-pin-fill mx-1"></i> @L["PinMessage"]
-                                                                }
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await ForwardMessageAsync(message)">
-                                                                <i class="bi bi-arrow-up-right mx-1"></i> @L["Forward"]
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await CreateTaskFromMessageAsync(message)">
-                                                                <i class="bi bi-plus-circle mx-1"></i> @L["CreateTaskFromMessage"]
-                                                            </a>
-                                                        </li>
-                                                        @if (IsDeletingMessageEnabled(message))
-                                                        {
-                                                            <li><hr class="dropdown-divider"></li>
-                                                            <li>
-                                                                <a class="dropdown-item delete-message-btn text-danger" @onclick="async () => await DeleteMessageAsync(message)">
-                                                                    <i class="bi bi-trash mx-1"></i> @L["Delete"]
-                                                                </a>
-                                                            </li>
-                                                        }
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        }
+                                        <MessageItem 
+                                            Message="@message"
+                                            CurrentChatContact="@CurrentChatContact"
+                                            OnReply="@ReplyToMessageAsync"
+                                            OnTogglePin="@TogglePinMessageAsync"
+                                            OnForward="@ForwardMessageAsync"
+                                            OnCreateTask="@CreateTaskFromMessageAsync"
+                                            OnDelete="@DeleteMessageAsync"
+                                            OnDownloadFile="@DownloadFileAsync"
+                                            GetImageUrl="@GetImageUrl"
+                                            OnOpenImageViewer="@((fileInfo) => OpenImageViewerAsync(fileInfo.fileId, fileInfo.fileName, fileInfo.filePath, fileInfo.imageUrl))"
+                                            IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
                                     }
                                 </div>
                             </div>
@@ -577,7 +355,7 @@
                                             }
                                         </div>
                                     }
-                                    <div class="d-flex align-items-start">
+                                    <div class="d-flex align-items-center">
                                         <label class="btn btn-sm btn-outline-secondary me-2" title="@L["AttachFile"]" style="cursor: pointer;">
                                             <i class="bi bi-paperclip"></i>
                                             <InputFile OnChange="OnFileSelected" multiple class="d-none" />
@@ -588,7 +366,7 @@
                                         @onkeydown="@(async e => await OnMessageEntryAsync(e))"
                                         type="text" placeholder="@L["TypeMessage"].Value" class="form-control rounded py-2 flex-grow-1"></textarea>
                                     </div>
-                                    <div class="form-check float-start mt-2">
+                                    <div class="form-check float-start mt-3">
                                         <input @bind="SendOnEnter" type="checkbox" class="form-check-input  border shadow-sm" id="Send_On_Enter">
                                         <label class="form-check-label" for="Send_On_Enter">@L["SendOnEnter"].Value</label>
                                     </div>
@@ -607,66 +385,28 @@
             <!-- Info box-->
             @if (ShowInfoBox)
             {
-                <div class="col-12 col-md-3  d-flex align-items-stretch">
-                    <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
-                        <div class="card-body p-1 p-md-2 p-lg-3" style="display: flex; flex-direction: column; overflow: hidden;">
-                            <h5  class="modal-title m-0">
-                                @if (CurrentChatContact != null)
-                                {
-                                    @if (CurrentChatContact.Type == ConversationType.User)
-                                    {
-                                        @(GetName(CurrentChatContact) + (CurrentChatContact.HasChatPermission ? string.Empty : $" - {L["Volo.Chat:010004"]}"))
-                                    }
-                                    else
-                                    {
-                                        @(CurrentChatContact.ConversationName ?? GetName(CurrentChatContact))
-                                    }
-                                }
-                            </h5>
+               
+                <InfoBox 
+                    CurrentChatContact="@CurrentChatContact"
+                    ShowInfoBoxAsync="@ShowInfoBoxAsync"
+                    GetName="@GetName"
+                    GetContactDisplayName="@GetContactDisplayName"
+                    CanvasElementReferences="@CanvasElementReferences"
+                    CurrentUserId="@CurrentUser.Id"
+                    AddMembersAsync="@AddMembersAsync"
+                    RemoveMemberAsync="@RemoveMemberAsync"
+                    LeaveConversationAsync="@LeaveConversationAsync"
+                    DownloadFileAsync ="@DownloadFileAsync"
+                    SendMessageToMemberAsync="@SendMessageToMemberAsync"
+                    GetImageUrl="@GetImageUrl"
+                    OnOpenImageViewer="@((fileInfo) => OpenImageViewerAsync(fileInfo.fileId, fileInfo.fileName, fileInfo.filePath, fileInfo.imageUrl))"
 
-                            <Accordion>
-                                <AccordionItem @bind-Visible="@AccordionChatInfoVisible">
-                                    <AccordionHeader>
-                                        <Heading Size="HeadingSize.Is5">
-                                            <AccordionToggle>@L["ChatInfo"]</AccordionToggle>
-                                        </Heading>
-                                    </AccordionHeader>
-                                    <AccordionBody>
-                                        <Button class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowPinnedMessagesAsync()">@L["ShowPinnedMessages"]</Button>
-                                    </AccordionBody>
-                                </AccordionItem>
-                                @if(CurrentChatContact.Type != ConversationType.User)
-                                {
-                                    <AccordionItem @bind-Visible="@AccordionChatMembersVisible">
-                                        <AccordionHeader>
-                                            <Heading Size="HeadingSize.Is5">
-                                                <AccordionToggle>@L["ChatMembers"]</AccordionToggle>
-                                            </Heading>
-                                        </AccordionHeader>
-                                        <AccordionBody>
-                                        </AccordionBody>
-                                    </AccordionItem>
-                                }
-                                <AccordionItem @bind-Visible="@AccordionMediaFilesVisible">
-                                    <AccordionHeader>
-                                        <Heading Size="HeadingSize.Is5">
-                                            <AccordionToggle>@L["Files"]</AccordionToggle>
-                                        </Heading>
-                                    </AccordionHeader>
-                                    <AccordionBody>
-                                    </AccordionBody>
-                                </AccordionItem>
-                                
-                            </Accordion>
-                        </div>
-                    </div>
-                </div>
+                />
             }
         </div>
     </div>
 </div>
 
-@* Create Direct Conversation Modal *@
 @if (ShowCreateDirectModal)
 {
     <div class="modal fade show" style="display: block;" tabindex="-1">
@@ -751,122 +491,6 @@
 }
 
 @* Create Project Modal *@
-@if (ShowCreateProjectModal)
-{
-    <div class="modal fade show" style="display: block;" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@L["CreateProjectChat"]</h5>
-                    <button type="button" class="btn-close" @onclick="() => ShowCreateProjectModal = false"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <Field>
-                            <FieldLabel>@L["Project"] *</FieldLabel>
-                            <div class="hc-select2-full">
-                                <Select2 IdSelector="c => c.Id.ToString()"
-                                        TextSelector="c => c.DisplayName"
-                                        FilterFunction="GetProjectCollectionLookupAsync"
-                                        GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                        Datasource="ProjectsCollection"
-                                        Value="@SelectedProject"
-                                        ValueChanged="@((List<LookupDto<Guid>> value) => SelectedProject = value ?? new List<LookupDto<Guid>>())"
-                                        Cache="__MemoryCache"
-                                        Multiselect="false" />
-                            </div>
-                        </Field>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">@L["ChatName"]</label>
-                        <input type="text" class="form-control" @bind="NewProjectName" maxlength="256" />
-                    </div>
-                    <div class="mb-3">
-                        <Field>
-                            <FieldLabel>@L["Members"]</FieldLabel>
-                            <div class="hc-select2-full">
-                                <Select2 IdSelector="c => c.Id.ToString()"
-                                        TextSelector="c => c.DisplayName"
-                                        FilterFunction="GetIdentityUserCollectionLookupAsync"
-                                        GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                        Datasource="IdentityUsersCollection"
-                                        Value="@SelectedMembers"
-                                        ValueChanged="@((List<LookupDto<Guid>> value) => SelectedMembers = value ?? new List<LookupDto<Guid>>())"
-                                        Cache="__MemoryCache"
-                                        Multiselect="true" />
-                            </div>
-                        </Field>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => ShowCreateProjectModal = false">@L["Cancel"]</button>
-                    <button type="button" class="btn btn-primary" @onclick="CreateProjectConversationAsync">@L["Create"]</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal-backdrop fade show"></div>
-}
-
-@* Create Task Modal *@
-@if (ShowCreateTaskModal)
-{
-    <div class="modal fade show" style="display: block;" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@L["CreateTaskChat"]</h5>
-                    <button type="button" class="btn-close" @onclick="() => ShowCreateTaskModal = false"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <Field>
-                            <FieldLabel>@L["Task"] *</FieldLabel>
-                            <div class="hc-select2-full">
-                                <Select2 IdSelector="c => c.Id.ToString()"
-                                        TextSelector="c => c.DisplayName"
-                                        FilterFunction="GetProjectTaskCollectionLookupAsync"
-                                        GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                        Datasource="ProjectTasksCollection"
-                                        Value="@SelectedTask"
-                                        ValueChanged="@((List<LookupDto<Guid>> value) => SelectedTask = value ?? new List<LookupDto<Guid>>())"
-                                        Cache="__MemoryCache"
-                                        Multiselect="false" />
-                            </div>
-                        </Field>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">@L["ChatName"]</label>
-                        <input type="text" class="form-control" @bind="NewTaskName" maxlength="256" />
-                    </div>
-                    <div class="mb-3">
-                        <Field>
-                            <FieldLabel>@L["Members"]</FieldLabel>
-                            <div class="hc-select2-full">
-                                <Select2 IdSelector="c => c.Id.ToString()"
-                                        TextSelector="c => c.DisplayName"
-                                        FilterFunction="GetIdentityUserCollectionLookupAsync"
-                                        GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                        Datasource="IdentityUsersCollection"
-                                        Value="@SelectedMembers"
-                                        ValueChanged="@((List<LookupDto<Guid>> value) => SelectedMembers = value ?? new List<LookupDto<Guid>>())"
-                                        Cache="__MemoryCache"
-                                        Multiselect="true" />
-                            </div>
-                        </Field>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => ShowCreateTaskModal = false">@L["Cancel"]</button>
-                    <button type="button" class="btn btn-primary" @onclick="CreateTaskConversationAsync">@L["Create"]</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal-backdrop fade show"></div>
-}
-
-@* ==================== Forward Message Modal ==================== *@
 @if (ShowForwardMessageModal)
 {
     <div class="modal fade show" style="display: block;" tabindex="-1">
@@ -989,14 +613,12 @@
     </div>
     <div class="modal-backdrop fade show"></div>
 }
-
-@* ==================== Create Task from Message Modal (100% like ProjectTasks) ==================== *@
 <Modal @bind-Visible="@ShowCreateTaskFromMessageModal">
     <ModalContent Size="ModalSize.Large" Centered="true">
         <Form>
             <ModalHeader>
                 <ModalTitle>@L["CreateTaskFromMessage"]</ModalTitle>
-                <CloseButton Clicked="@CloseCreateTaskFromMessageModal" />
+                @* <CloseButton Clicked="@CloseCreateTaskFromMessageModal" /> *@
             </ModalHeader>
             <ModalBody>
                 <Tabs SelectedTab="@SelectedCreateTaskTab" SelectedTabChanged="@(async (name) => await OnSelectedCreateTaskTabChanged(name))">
@@ -1385,6 +1007,33 @@
                 }
             </ModalFooter>
         </Form>
+    </ModalContent>
+</Modal>
+
+@* Image Viewer Modal *@
+<Modal @bind-Visible="@ShowImageViewerModal">
+    <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
+        <ModalHeader>
+            <ModalTitle>@ImageViewerFileName</ModalTitle>
+            <CloseButton Clicked="@CloseImageViewerModal" />
+        </ModalHeader>
+        <ModalBody>
+            @if (!string.IsNullOrEmpty(ImageViewerFilePath))
+            {
+                <div class="text-center">
+                    <img src="@GetImageUrl(ImageViewerFilePath)" alt="@ImageViewerFileName" class="img-fluid" style="max-width: 100%; max-height: 600px; border-radius: 8px;" />
+                </div>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@CloseImageViewerModal">
+                @L["Close"]
+            </Button>
+            <Button Color="Color.Primary" Clicked="@(async () => await DownloadImageAsync())">
+                <Icon Name="IconName.Download" Class="me-1" />
+                @L["Download"]
+            </Button>
+        </ModalFooter>
     </ModalContent>
 </Modal>
 

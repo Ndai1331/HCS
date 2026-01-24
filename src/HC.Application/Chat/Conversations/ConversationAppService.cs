@@ -16,6 +16,7 @@ using Volo.Abp.Users;
 using HC.Chat.Authorization;
 using HC.Chat.Messages;
 using HC.Chat.Users;
+using Microsoft.Extensions.Logging;
 
 namespace HC.Chat.Conversations;
 
@@ -35,6 +36,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
     private readonly IPermissionFinder _permissionFinder;
     private readonly IBlobContainer _blobContainer;
     private readonly IDistributedEventBus _distributedEventBus;
+    private readonly ILogger<ConversationAppService> _logger;
 
     public ConversationAppService(
         MessagingManager messagingManager,
@@ -48,7 +50,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         IAuthorizationService authorizationService,
         IPermissionFinder permissionFinder,
         IBlobContainer blobContainer,
-        IDistributedEventBus distributedEventBus)
+        IDistributedEventBus distributedEventBus,
+        ILogger<ConversationAppService> logger)
     {
         _messagingManager = messagingManager;
         _chatUserLookupService = chatUserLookupService;
@@ -62,6 +65,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         _permissionFinder = permissionFinder;
         _blobContainer = blobContainer;
         _distributedEventBus = distributedEventBus;
+        _logger = logger;
     }
 
     public virtual async Task<ChatMessageDto> SendMessageAsync(SendMessageInput input)
@@ -655,63 +659,71 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         await _conversationMemberRepository.UpdateAsync(member);
     }
     
-    public virtual async Task AddMemberAsync(AddMemberInput input)
+    public virtual async Task<string> AddMemberAsync(AddMemberInput input)
     {
-        var conversation = await _conversationRepository.GetWithMembersAsync(input.ConversationId);
-        if (conversation == null)
-        {
-            throw new BusinessException("HC.Chat:ConversationNotFound");
-        }
-        
-        var currentUserId = CurrentUser.GetId();
-        
-        // Check if current user is member and has permission (ADMIN only for now)
-        var currentMember = conversation.Members.FirstOrDefault(m => m.UserId == currentUserId && m.IsActive);
-        if (currentMember == null || currentMember.Role != "ADMIN")
-        {
-            throw new BusinessException("HC.Chat:OnlyAdminCanAddMembers");
-        }
-        
-        using (var uow = UnitOfWorkManager.Begin(requiresNew: true))
-        {
-            foreach (var userId in input.UserIds)
+        string errorMessage =string.Empty;
+        try{
+            var conversation = await _conversationRepository.GetWithMembersAsync(input.ConversationId);
+            if (conversation == null)
             {
-                // Check if user already exists
-                var exists = await _conversationMemberRepository.ExistsAsync(input.ConversationId, userId);
-                if (exists)
-                {
-                    // Reactivate if deactivated
-                    var existingMember = await _conversationMemberRepository.GetByConversationAndUserAsync(input.ConversationId, userId);
-                    if (existingMember != null && !existingMember.IsActive)
-                    {
-                        existingMember.Activate();
-                        await _conversationMemberRepository.UpdateAsync(existingMember);
-                    }
-                    continue;
-                }
-                
-                // Validate user exists
-                var user = await _chatUserLookupService.FindByIdAsync(userId);
-                if (user == null)
-                {
-                    throw new BusinessException("HC.Chat:UserNotFound").WithData("UserId", userId);
-                }
-                
-                // Add member
-                var member = new ConversationMember(
-                    GuidGenerator.Create(),
-                    input.ConversationId,
-                    userId,
-                    "MEMBER",
-                    CurrentTenant.Id
-                );
-                await _conversationMemberRepository.InsertAsync(member);
-                
-                // No need to create separate conversation - all members share the same conversation now
+                return "HC.Chat:ConversationNotFound";
             }
+
+            // var currentUserId = CurrentUser.GetId();
             
-            await uow.CompleteAsync();
+            // Check if current user is member and has permission (ADMIN only for now)
+            // var currentMember = conversation.Members.FirstOrDefault(m => m.UserId == currentUserId && m.IsActive);
+            // if (currentMember == null || currentMember.Role != "ADMIN")
+            // {
+            //     throw new BusinessException("HC.Chat:OnlyAdminCanAddMembers");
+            // }
+
+            
+            using (var uow = UnitOfWorkManager.Begin(requiresNew: true))
+            {
+                foreach (var userId in input.UserIds)
+                {
+                    // Check if user already exists
+                    var exists = await _conversationMemberRepository.ExistsAsync(input.ConversationId, userId);
+                    if (exists)
+                    {
+                        // Reactivate if deactivated
+                        var existingMember = await _conversationMemberRepository.GetByConversationAndUserAsync(input.ConversationId, userId);
+                        if (existingMember != null && !existingMember.IsActive)
+                        {
+                            existingMember.Activate();
+                            await _conversationMemberRepository.UpdateAsync(existingMember);
+                        }
+                        continue;
+                    }
+                    
+                    // Validate user exists
+                    var user = await _chatUserLookupService.FindByIdAsync(userId);
+                    if (user == null)
+                    {
+                        throw new BusinessException("HC.Chat:UserNotFound").WithData("UserId", userId);
+                    }
+                    
+                    // Add member
+                    var member = new ConversationMember(
+                        GuidGenerator.Create(),
+                        input.ConversationId,
+                        userId,
+                        "MEMBER",
+                        CurrentTenant.Id
+                    );
+                    await _conversationMemberRepository.InsertAsync(member);
+                    
+                }
+                
+                await uow.CompleteAsync();
+            }
         }
+        catch(Exception ex)
+        {
+            errorMessage = ex.Message;
+        }   
+        return errorMessage;
     }
     
     public virtual async Task RemoveMemberAsync(RemoveMemberInput input)
@@ -730,6 +742,9 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         {
             throw new BusinessException("HC.Chat:UserNotMember");
         }
+
+
+        _logger.LogInformation($"InputUserId: {input.UserId} CurrentUserId: {currentUserId} CurrentMember: {currentMember.UserId} {currentMember.Role} {currentMember.IsActive}");
         
         if (input.UserId != currentUserId && currentMember.Role != "ADMIN")
         {
@@ -1368,7 +1383,64 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         
         return await MapToChatMessageDtoAsync(newMessage, ChatMessageSide.Sender, currentUserId);
     }
+
+
+
+    public virtual async Task<ConversationDto> FindConversationAsync(FindConversationInput input)
+    {
+        var conversations = await _conversationMemberRepository.GetByUserIdsAsync(input.UserIds, input.Type);
+        if (conversations.Count == 0)
+        {
+            return null;
+        }
+        return await MapToConversationDtoAsync(conversations.First().Conversation, conversations.First().UserId);
+    }
+
+
+    public virtual async Task<List<ChatMessageDto>> FindMessagesInConversationAsync(FindMessageInConversationInput input)
+    {
+        var messages = await _messageRepository.GetMessagesInConversationAsync(
+            conversationId: input.ConversationId,
+            messageText: input.MessageText,
+            maxResultCount: input.MaxResultCount,
+            skipCount: input.SkipCount
+        );
+        List<ChatMessageDto> messDto =  new ();
+        foreach (var m in messages)
+        {
+            messDto.Add(await MapToChatMessageDtoAsync(m, ChatMessageSide.Sender));
+        }
+        return messDto;
+    }
+
+
+
+    public virtual async Task<List<MessageFileDto>> FindMediaAndFileInConversationAsync(FindMediaAndFileInConversationInput input)
+    {
+        var files = await _messageFileRepository.GetByConversationIdAndFileTypeAsync(
+            input.ConversationId,input.FileType,
+            fileName: input.FileName,
+            maxResultCount: input.MaxResultCount,
+            skipCount: input.SkipCount
+        );
+        List<MessageFileDto> fileDto = new ();
+        foreach (var f in files)
+        {
+            fileDto.Add(new MessageFileDto
+            {
+                Id = f.Id,
+                MessageId = f.MessageId,
+                FileName = f.FileName,
+                ContentType = f.ContentType,
+                FilePath = f.FilePath,
+                FileSize = f.FileSize,
+                FileExtension = f.FileExtension,
+            });
+        }
+        return fileDto;
+    }
     
+    #region helpers
     // Helper methods
     private async Task<ConversationDto> MapToConversationDtoAsync(Conversation conversation, Guid currentUserId)
     {
@@ -1454,13 +1526,13 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             IsPinned = message.IsPinned,
             PinnedDate = message.PinnedDate,
             ReplyToMessageId = message.ReplyToMessageId,
+            SenderUserId = message.CreatorId,
             Files = new List<MessageFileDto>()
         };
         
-        // Load sender information if provided (for Group/Project/Task conversations)
-        if (senderUserId.HasValue)
+        if (senderUserId.HasValue || message.CreatorId.HasValue)
         {
-            var senderUser = await _chatUserLookupService.FindByIdAsync(senderUserId.Value);
+            var senderUser = senderUserId.HasValue ? await _chatUserLookupService.FindByIdAsync(senderUserId.Value) : await _chatUserLookupService.FindByIdAsync(message.CreatorId.Value);
             if (senderUser != null)
             {
                 dto.SenderUserId = senderUser.Id;
@@ -1522,6 +1594,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                 FileName = file.FileName,
                 ContentType = file.ContentType,
                 FileSize = file.FileSize,
+                FilePath = file.FilePath,
                 FileExtension = file.FileExtension,
                 DownloadUrl = $"/api/chat/files/{file.Id}/download",
                 CreationTime = file.CreationTime
@@ -1530,4 +1603,6 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         
         return dto;
     }
+    
+    #endregion
 }

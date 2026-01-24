@@ -106,7 +106,6 @@ public partial class Chat1
             
             // Load project list
             await GetTaskProjectCollectionLookupAsync();
-            await GetIdentityUserCollectionLookupAsync();
             
             // Auto-select project if current conversation is a Project conversation
             if (CurrentChatContact?.Type == ConversationType.Project && CurrentChatContact.ProjectId.HasValue)

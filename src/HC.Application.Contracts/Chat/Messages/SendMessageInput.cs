@@ -14,5 +14,5 @@ public class SendMessageInput
 
     [Required]
     [DynamicStringLength(typeof(ChatMessageConsts),nameof(ChatMessageConsts.MaxTextLength), nameof(ChatMessageConsts.MinTextLength))]
-    public string Message { get; set; }
+    public string? Message { get; set; }
 }
