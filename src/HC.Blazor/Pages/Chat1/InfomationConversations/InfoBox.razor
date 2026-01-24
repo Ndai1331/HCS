@@ -381,7 +381,9 @@
                                         <Card Class="shadow-sm p-0" Style="flex-basis: 33%; min-width: 0;">
                                             <CardBody Class="p-0">
                                                 <Div Class="position-relative h-100 p-1">
-                                                    <CardImage Source="@GetImageUrl(media.FilePath)" Alt="Placeholder image" Class="card-image-full w-100 h-100 object-fit-cover">
+                                                    <CardImage Source="@GetImageUrl(media.FilePath)" Alt="Placeholder image"
+                                                     Class="card-image-full w-100 h-100 object-fit-cover"
+                                                     @onclick="async () => await OnOpenImageViewerAsync(media.Id, media.FileName, media.FilePath, media.DownloadUrl)">
                                                     </CardImage>
                                                     <span role="button" class="heart bg-white flex-center rounded-circle position-absolute text-brand" style="width: 20px; height: 20px; top: 4px; right: 4px"
                                                     @onclick="async () => await DownloadFileAsync(media.Id)">

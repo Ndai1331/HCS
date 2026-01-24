@@ -98,8 +98,13 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     // Modal states
     public bool ShowCreateDirectModal { get; set; }
     public bool ShowCreateGroupModal { get; set; }
-    public bool ShowCreateProjectModal { get; set; }
-    public bool ShowCreateTaskModal { get; set; }
+    
+    // Image Viewer Modal
+    public bool ShowImageViewerModal { get; set; }
+    public string ImageViewerUrl { get; set; } = string.Empty;
+    public string ImageViewerFilePath { get; set; } = string.Empty;
+    public string ImageViewerFileName { get; set; } = string.Empty;
+    private Guid _currentViewingImageFileId { get; set; }
     
     // Form inputs
     public string NewGroupName { get; set; }
@@ -1062,25 +1067,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         await InvokeAsync(StateHasChanged);
     }
     
-    private async Task ShowCreateProjectModalAsync()
-    {
-        ShowCreateProjectModal = true;
-        SelectedProject.Clear();
-        NewProjectName = "";
-        SelectedMembers.Clear();
-        await GetProjectCollectionLookupAsync();
-        await InvokeAsync(StateHasChanged);
-    }
-    
-    private async Task ShowCreateTaskModalAsync()
-    {
-        ShowCreateTaskModal = true;
-        SelectedTask.Clear();
-        NewTaskName = "";
-        SelectedMembers.Clear();
-        await GetProjectTaskCollectionLookupAsync();
-        await InvokeAsync(StateHasChanged);
-    }
     
     private async Task CreateGroupConversationAsync()
     {
@@ -1112,73 +1098,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await HandleErrorAsync(ex);
         }
     }
-    
-    private async Task CreateProjectConversationAsync()
-    {
-        try
-        {
-            if (!SelectedProject.Any())
-            {
-                // TODO: Show warning message
-                return;
-            }
-            
-            var projectId = SelectedProject.First().Id;
-            var memberIds = SelectedMembers?.Select(m => m.Id).ToList() ?? new List<Guid>();
-            
-            var result = await ConversationAppService.CreateProjectConversationAsync(new CreateProjectConversationInput
-            {
-                ProjectId = projectId,
-                Name = NewProjectName,
-                MemberUserIds = memberIds
-            });
-            
-            ShowCreateProjectModal = false;
-            SelectedProject.Clear();
-            NewProjectName = "";
-            SelectedMembers.Clear();
-            await GetContactsAsync();
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-    
-    private async Task CreateTaskConversationAsync()
-    {
-        try
-        {
-            if (!SelectedTask.Any())
-            {
-                // TODO: Show warning message
-                return;
-            }
-            
-            var taskId = SelectedTask.First().Id;
-            var memberIds = SelectedMembers?.Select(m => m.Id).ToList() ?? new List<Guid>();
-            
-            var result = await ConversationAppService.CreateTaskConversationAsync(new CreateTaskConversationInput
-            {
-                TaskId = taskId,
-                Name = NewTaskName,
-                MemberUserIds = memberIds
-            });
-            
-            ShowCreateTaskModal = false;
-            SelectedTask.Clear();
-            NewTaskName = "";
-            SelectedMembers.Clear();
-            await GetContactsAsync();
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-    
+   
     // Select2 lookup methods
     private async Task<List<LookupDto<Guid>>> GetIdentityUserCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
@@ -1199,47 +1119,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         ProjectsCollection = (await ProjectTasksAppService.GetProjectLookupAsync(new LookupRequestDto { Filter = filter })).Items;
         return ProjectsCollection.ToList();
-    }
-    
-    // Overload for modal/non-Select2 usage
-    private async Task GetProjectTaskCollectionLookupAsync(string? newValue = null)
-    {
-        var input = new GetProjectTasksInput
-        {
-            FilterText = newValue,
-            MaxResultCount = 20,
-            SkipCount = 0,
-        };
-        
-        var result = await ProjectTasksAppService.GetListAsync(input);
-        ProjectTasksCollection = result.Items
-            .Select(x => new LookupDto<Guid>
-            {
-                Id = x.ProjectTask.Id,
-                DisplayName = $"{x.ProjectTask.Code} - {x.ProjectTask.Title}"
-            })
-            .ToList();
-    }
-    
-    private async Task<List<LookupDto<Guid>>> GetProjectTaskCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
-    {
-        var input = new GetProjectTasksInput
-        {
-            FilterText = filter,
-            MaxResultCount = 20,
-            SkipCount = 0,
-        };
-        
-        var result = await ProjectTasksAppService.GetListAsync(input);
-        ProjectTasksCollection = result.Items
-            .Select(x => new LookupDto<Guid>
-            {
-                Id = x.ProjectTask.Id,
-                DisplayName = $"{x.ProjectTask.Code} - {x.ProjectTask.Title}"
-            })
-            .ToList();
-        
-        return ProjectTasksCollection.ToList();
     }
     
     private async Task TogglePinConversationAsync(ChatContactDto contact)
@@ -1356,14 +1235,12 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await BlockUiService.UnBlock();
         }
     }
-    
     private async Task ReplyToMessageAsync(ChatMessageDto message)
     {
         ReplyingToMessage = message;
         await MessageTextArea.FocusAsync();
         await InvokeAsync(StateHasChanged);
     }
-    
     private async Task TogglePinMessageAsync(ChatMessageDto message)
     {
         try
@@ -1406,7 +1283,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await HandleErrorAsync(ex);
         }
     }
-    
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {
         try
@@ -1445,7 +1321,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await HandleErrorAsync(ex);
         }
     }
-    
     private async Task DownloadFileAsync(Guid fileId)
     {
         try
@@ -1471,7 +1346,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await HandleErrorAsync(ex);
         }
     }
-    
     private bool ValidateMessageBeforeSend()
     {
         if (_isSendingMessage)
@@ -1485,7 +1359,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
         return true;
     }
-
     private (string messageText, List<MessageFileDto> files, ChatMessageDto replyingTo, Guid targetUserId, Guid? conversationId) PrepareMessageContent()
     {
         var messageText = Message;
@@ -1496,7 +1369,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
         return (messageText, uploadedFiles, replyingTo, targetUserId, conversationId);
     }
-
     private async Task ClearInputAsync()
     {
         // Clear textarea via JavaScript FIRST to ensure immediate clearing
@@ -1519,7 +1391,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         UploadedFiles?.Clear();
         await InvokeAsync(StateHasChanged);
     }
-
     private async Task SendToServerAsync(string messageText, List<MessageFileDto> uploadedFiles, ChatMessageDto replyingTo, ChatMessageDto optimisticMessage)
     {
         try
@@ -1637,7 +1508,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             });
         }
     }
-
     private async Task SendMessageAsync()
     {
         // Validate before attempting send
@@ -1694,7 +1564,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         // Send to server in background (fire-and-forget pattern)
         _ = SendToServerAsync(messageText, uploadedFiles, replyingTo, optimisticMessage);
     }
-    
     private async Task ScrollToBottomAsync()
     {
         try
@@ -1710,7 +1579,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             // Ignore errors
         }
     }
-    
     private async Task OnConversationScroll(EventArgs e)
     {
         if (_isLoadingMoreMessages || !_hasMoreMessages || ChatConversationDto?.Messages == null)
@@ -1734,7 +1602,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             // Ignore errors
         }
     }
-    
     private async Task LoadMoreMessagesAsync()
     {
         if (_isLoadingMoreMessages || !_hasMoreMessages || CurrentChatContact == null)
@@ -1816,7 +1683,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await InvokeAsync(StateHasChanged);
         }
     }
-    
     private async Task LoadMoreConversationsAsync()
     {
         if (_isLoadingMoreConversations || !_hasMoreConversations)
@@ -1839,8 +1705,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             await InvokeAsync(StateHasChanged);
         }
     }
-
-
     private ChatMessageDto CreateOptimisticMessage(string messageText, List<MessageFileDto> files, ChatMessageDto replyingTo)
     {
         var currentUserId = CurrentUser.Id ?? Guid.Empty;
@@ -1880,32 +1744,11 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             SenderUsername = CurrentUser.UserName
         };
     }
-
-
     private async Task ShowInfoBoxAsync()
     {
         ShowInfoBox = !ShowInfoBox;
         await InvokeAsync(StateHasChanged);
     }
-
-    public async ValueTask DisposeAsync()
-    {
-        // IMPORTANT: Don't stop chatHub connection here!
-        // NotificationToast component is still using the same connection for chat notifications
-        // Connection will be automatically managed by SignalR (auto-reconnect on disconnect)
-
-        // Dispose object reference
-        _objRef?.Dispose();
-        _objRef = null;
-
-        // Cleanup ChatHubConnectionService if needed (this only clears callbacks, not the connection)
-        if (ChatHubConnectionService is IAsyncDisposable asyncDisposable)
-        {
-            await asyncDisposable.DisposeAsync();
-        }
-    }
-
-
     private string GetImageUrl(string imagePath)
     {
         if (string.IsNullOrEmpty(imagePath))
@@ -1913,5 +1756,53 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             
         var baseUrl = _apiBaseUrl ?? string.Empty;
         return $"{baseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+    }
+
+    /// <summary>
+    /// Open image viewer modal
+    /// </summary>
+    public async Task OpenImageViewerAsync(Guid fileId, string fileName, string filePath, string imageUrl)
+    {
+        ImageViewerFileName = fileName;
+        ImageViewerUrl = imageUrl;
+        ImageViewerFilePath = filePath;
+        _currentViewingImageFileId = fileId;
+        ShowImageViewerModal = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Close image viewer modal
+    /// </summary>
+    public async Task CloseImageViewerModal()
+    {
+        ShowImageViewerModal = false;
+        ImageViewerUrl = string.Empty;
+        ImageViewerFilePath = string.Empty;
+        ImageViewerFileName = string.Empty;
+        _currentViewingImageFileId = Guid.Empty;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Download current viewing image
+    /// </summary>
+    public async Task DownloadImageAsync()
+    {
+        if (_currentViewingImageFileId != Guid.Empty)
+        {
+            await DownloadFileAsync(_currentViewingImageFileId);
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        _objRef?.Dispose();
+        _objRef = null;
+
+        if (ChatHubConnectionService is IAsyncDisposable asyncDisposable)
+        {
+            await asyncDisposable.DisposeAsync();
+        }
     }
 }

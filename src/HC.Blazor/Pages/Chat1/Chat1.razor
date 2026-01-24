@@ -114,12 +114,7 @@
                                         <button type="button" class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowCreateGroupModalAsync()" title="@L["CreateGroup"]">
                                             <i class="bi bi-people"></i> @L["Group"]
                                         </button>
-                                        @*<button type="button" class="btn btn-sm btn-outline-success" @onclick="async () => await ShowCreateProjectModalAsync()" title="@L["CreateProject"]">
-                                            <i class="bi bi-folder"></i> @L["Project"]
-                                        </button> 
-                                         <button type="button" class="btn btn-sm btn-outline-warning" @onclick="async () => await ShowCreateTaskModalAsync()" title="@L["CreateTask"]">
-                                            <i class="bi bi-check2-square"></i> @L["Task"]
-                                        </button> *@
+                                      
                                     </div>
                                 </div>
                             </div>
@@ -319,29 +314,9 @@
                                             OnCreateTask="@CreateTaskFromMessageAsync"
                                             OnDelete="@DeleteMessageAsync"
                                             OnDownloadFile="@DownloadFileAsync"
+                                            GetImageUrl="@GetImageUrl"
+                                            OnOpenImageViewer="@((fileInfo) => OpenImageViewerAsync(fileInfo.fileId, fileInfo.fileName, fileInfo.filePath, fileInfo.imageUrl))"
                                             IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
-                                    }
-                                </div>
-                            </div>
-                        }
-
-                        <!-- Typing area -->
-                        @if (ChatConversationDto != null)
-                        {
-                            <div class="bg-light rounded-3 m-0">
-                                <div class="p-2 p-lg-3">
-                                    @* Reply Preview *@
-                                    @if (ReplyingToMessage != null)
-                                    {
-                                        <div class="bg-info bg-opacity-10 rounded p-2 mb-2 d-flex justify-content-between align-items-center">
-                                            <div class="flex-grow-1">
-                                                <small class="text-muted d-block">@L["ReplyingTo"]:</small>
-                                                <small class="text-truncate d-block">@ReplyingToMessage.Message.TruncateWithPostfix(50, "...")</small>
-                                            </div>
-                                            <button class="btn btn-sm btn-link p-0" @onclick="() => ReplyingToMessage = null">
-                                                <i class="bi bi-x"></i>
-                                            </button>
-                                        </div>
                                     }
                                 </div>
                             </div>
@@ -424,6 +399,8 @@
                     DownloadFileAsync ="@DownloadFileAsync"
                     SendMessageToMemberAsync="@SendMessageToMemberAsync"
                     GetImageUrl="@GetImageUrl"
+                    OnOpenImageViewer="@((fileInfo) => OpenImageViewerAsync(fileInfo.fileId, fileInfo.fileName, fileInfo.filePath, fileInfo.imageUrl))"
+
                 />
             }
         </div>
@@ -514,122 +491,6 @@
 }
 
 @* Create Project Modal *@
-@if (ShowCreateProjectModal)
-{
-    <div class="modal fade show" style="display: block;" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@L["CreateProjectChat"]</h5>
-                    <button type="button" class="btn-close" @onclick="() => ShowCreateProjectModal = false"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <Field>
-                            <FieldLabel>@L["Project"] *</FieldLabel>
-                            <div class="hc-select2-full">
-                                <Select2 IdSelector="c => c.Id.ToString()"
-                                        TextSelector="c => c.DisplayName"
-                                        FilterFunction="GetProjectCollectionLookupAsync"
-                                        GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                        Datasource="ProjectsCollection"
-                                        Value="@SelectedProject"
-                                        ValueChanged="@((List<LookupDto<Guid>> value) => SelectedProject = value ?? new List<LookupDto<Guid>>())"
-                                        Cache="__MemoryCache"
-                                        Multiselect="false" />
-                            </div>
-                        </Field>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">@L["ChatName"]</label>
-                        <input type="text" class="form-control" @bind="NewProjectName" maxlength="256" />
-                    </div>
-                    <div class="mb-3">
-                        <Field>
-                            <FieldLabel>@L["Members"]</FieldLabel>
-                            <div class="hc-select2-full">
-                                <Select2 IdSelector="c => c.Id.ToString()"
-                                        TextSelector="c => c.DisplayName"
-                                        FilterFunction="GetIdentityUserCollectionLookupAsync"
-                                        GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                        Datasource="IdentityUsersCollection"
-                                        Value="@SelectedMembers"
-                                        ValueChanged="@((List<LookupDto<Guid>> value) => SelectedMembers = value ?? new List<LookupDto<Guid>>())"
-                                        Cache="__MemoryCache"
-                                        Multiselect="true" />
-                            </div>
-                        </Field>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => ShowCreateProjectModal = false">@L["Cancel"]</button>
-                    <button type="button" class="btn btn-primary" @onclick="CreateProjectConversationAsync">@L["Create"]</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal-backdrop fade show"></div>
-}
-
-@* Create Task Modal *@
-@if (ShowCreateTaskModal)
-{
-    <div class="modal fade show" style="display: block;" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@L["CreateTaskChat"]</h5>
-                    <button type="button" class="btn-close" @onclick="() => ShowCreateTaskModal = false"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <Field>
-                            <FieldLabel>@L["Task"] *</FieldLabel>
-                            <div class="hc-select2-full">
-                                <Select2 IdSelector="c => c.Id.ToString()"
-                                        TextSelector="c => c.DisplayName"
-                                        FilterFunction="GetProjectTaskCollectionLookupAsync"
-                                        GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                        Datasource="ProjectTasksCollection"
-                                        Value="@SelectedTask"
-                                        ValueChanged="@((List<LookupDto<Guid>> value) => SelectedTask = value ?? new List<LookupDto<Guid>>())"
-                                        Cache="__MemoryCache"
-                                        Multiselect="false" />
-                            </div>
-                        </Field>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">@L["ChatName"]</label>
-                        <input type="text" class="form-control" @bind="NewTaskName" maxlength="256" />
-                    </div>
-                    <div class="mb-3">
-                        <Field>
-                            <FieldLabel>@L["Members"]</FieldLabel>
-                            <div class="hc-select2-full">
-                                <Select2 IdSelector="c => c.Id.ToString()"
-                                        TextSelector="c => c.DisplayName"
-                                        FilterFunction="GetIdentityUserCollectionLookupAsync"
-                                        GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                        Datasource="IdentityUsersCollection"
-                                        Value="@SelectedMembers"
-                                        ValueChanged="@((List<LookupDto<Guid>> value) => SelectedMembers = value ?? new List<LookupDto<Guid>>())"
-                                        Cache="__MemoryCache"
-                                        Multiselect="true" />
-                            </div>
-                        </Field>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => ShowCreateTaskModal = false">@L["Cancel"]</button>
-                    <button type="button" class="btn btn-primary" @onclick="CreateTaskConversationAsync">@L["Create"]</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal-backdrop fade show"></div>
-}
-
-@* ==================== Forward Message Modal ==================== *@
 @if (ShowForwardMessageModal)
 {
     <div class="modal fade show" style="display: block;" tabindex="-1">
@@ -752,7 +613,6 @@
     </div>
     <div class="modal-backdrop fade show"></div>
 }
-
 <Modal @bind-Visible="@ShowCreateTaskFromMessageModal">
     <ModalContent Size="ModalSize.Large" Centered="true">
         <Form>
@@ -1147,6 +1007,33 @@
                 }
             </ModalFooter>
         </Form>
+    </ModalContent>
+</Modal>
+
+@* Image Viewer Modal *@
+<Modal @bind-Visible="@ShowImageViewerModal">
+    <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
+        <ModalHeader>
+            <ModalTitle>@ImageViewerFileName</ModalTitle>
+            <CloseButton Clicked="@CloseImageViewerModal" />
+        </ModalHeader>
+        <ModalBody>
+            @if (!string.IsNullOrEmpty(ImageViewerFilePath))
+            {
+                <div class="text-center">
+                    <img src="@GetImageUrl(ImageViewerFilePath)" alt="@ImageViewerFileName" class="img-fluid" style="max-width: 100%; max-height: 600px; border-radius: 8px;" />
+                </div>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@CloseImageViewerModal">
+                @L["Close"]
+            </Button>
+            <Button Color="Color.Primary" Clicked="@(async () => await DownloadImageAsync())">
+                <Icon Name="IconName.Download" Class="me-1" />
+                @L["Download"]
+            </Button>
+        </ModalFooter>
     </ModalContent>
 </Modal>
 

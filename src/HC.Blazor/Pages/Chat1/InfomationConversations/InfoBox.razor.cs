@@ -41,6 +41,8 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     public Func<RemoveMemberInput, Task> RemoveMemberAsync { get; set; } = null!;
     [Parameter]
     public Func<RemoveMemberInput, Task> LeaveConversationAsync { get; set; } = null!;
+    [Parameter]
+    public EventCallback<(Guid fileId, string fileName, string filePath, string imageUrl)> OnOpenImageViewer { get; set; }
 
     public bool AccordionChatInfoVisible { get; set; }
     public bool AccordionChatMembersVisible { get; set; }
@@ -434,6 +436,12 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         await SetActiveDivAsync("MediaAndFile");
         SelectedTabMediaFiles = "files";
         await SearchMediaAndFileAsync(FileMediaType.File);
+    }
+
+    
+    private async Task OnOpenImageViewerAsync(Guid fileId, string fileName, string filePath, string imageUrl)
+    {
+        await OnOpenImageViewer.InvokeAsync((fileId, fileName, filePath, imageUrl));
     }
 
 }
