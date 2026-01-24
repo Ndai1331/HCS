@@ -1804,10 +1804,5 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         _objRef?.Dispose();
         _objRef = null;
-
-        if (ChatHubConnectionService is IAsyncDisposable asyncDisposable)
-        {
-            await asyncDisposable.DisposeAsync();
-        }
     }
 }
