@@ -1189,6 +1189,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         return IdentityUsersCollection.ToList();
     }
     
+    // Overload for modal/non-Select2 usage
     private async Task GetProjectCollectionLookupAsync(string? newValue = null)
     {
         ProjectsCollection = (await ProjectTasksAppService.GetProjectLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
@@ -1200,6 +1201,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         return ProjectsCollection.ToList();
     }
     
+    // Overload for modal/non-Select2 usage
     private async Task GetProjectTaskCollectionLookupAsync(string? newValue = null)
     {
         var input = new GetProjectTasksInput
