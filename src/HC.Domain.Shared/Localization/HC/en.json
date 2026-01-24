@@ -885,7 +885,12 @@
     "FailedToSendMessage": "Failed to send message",
     "FailedToSendMessageDescription": "Failed to send message: {0}",
     "SearchMessage": "Search message",
-    "EnterToFindMessage": "Press Enter to find message"
-
+    "EnterToFindMessage": "Press Enter to find message",
+    "View": "View",
+    "Of": "of",
+    "Total": "Total",
+    "CalenderEvents": "calendar events",
+    "Read": "Read",
+    "Unread": "Unread"
   }
 }
