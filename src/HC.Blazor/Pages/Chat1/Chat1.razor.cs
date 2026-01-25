@@ -392,7 +392,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
         // Get API base URL for image URLs
         var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
-
         _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
         
         // Initialize SignalR connection for real-time chat

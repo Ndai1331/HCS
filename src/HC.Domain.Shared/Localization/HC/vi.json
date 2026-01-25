@@ -881,6 +881,7 @@
     "Copy": "Sao chép",
     "SurveyCollections:Rating": "Đánh giá",
     "SurveyCollections:PleaseSelectRating": "Vui lòng chọn đánh giá",
+    "SurveyCollections:SubmitSurvey": "Gửi khảo sát",
     "SurveyCollections:RateAndContinue": "Đánh giá và tiếp tục",
     "SurveyCollections:RatingSaved": "Đánh giá đã được lưu",
     "SurveyCollections:ThankYouForYourFeedback": "Cảm ơn bạn đã cung cấp ý kiến phản hồi",
@@ -936,6 +937,7 @@
     "CalenderEvents": "sự kiện",
     "Read": "Đã đọc",
     "Unread": "Chưa đọc",
-    "NoRecentUpdates": "Không có cập nhật gần đây"
+    "NoRecentUpdates": "Không có cập nhật gần đây",
+    "BackToHome": "Quay lại trang chủ"
   }
 }

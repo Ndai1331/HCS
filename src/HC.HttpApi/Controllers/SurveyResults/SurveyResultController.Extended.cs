@@ -6,6 +6,7 @@ using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 using HC.SurveyResults;
+using System.Collections.Generic;
 
 namespace HC.Controllers.SurveyResults;
 
@@ -24,6 +25,13 @@ public class SurveyResultController : SurveyResultControllerBase, ISurveyResults
     public virtual Task<SurveyResultDto> CreatePublicSurveyResultAsync(SurveyResultCreateDto input)
     {
         return _surveyResultsAppService.CreatePublicSurveyResultAsync(input);
+    }
+
+    [HttpPost]
+    [Route("public/bulk")]
+    public virtual Task<List<SurveyResultDto>> CreatePublicSurveyResultsAsync(List<SurveyResultCreateDto> input)
+    {
+        return _surveyResultsAppService.CreatePublicSurveyResultsAsync(input);
     }
 
     [HttpGet]

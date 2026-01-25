@@ -837,6 +837,7 @@
     "Copy": "Copy",
     "SurveyCollections:Rating": "Rating",
     "SurveyCollections:PleaseSelectRating": "Please select rating",
+    "SurveyCollections:SubmitSurvey": "Submit survey",
     "SurveyCollections:RateAndContinue": "Rate and continue",
     "SurveyCollections:RatingSaved": "Rating saved",
     "SurveyCollections:ThankYouForYourFeedback": "Thank you for your feedback",
@@ -892,6 +893,7 @@
     "CalenderEvents": "calendar events",
     "Read": "Read",
     "Unread": "Unread",
-    "NoRecentUpdates": "No recent updates"
+    "NoRecentUpdates": "No recent updates",
+    "BackToHome": "Back to home"
   }
 }

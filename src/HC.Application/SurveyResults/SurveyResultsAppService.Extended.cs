@@ -83,6 +83,42 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
         }
     }
 
+    [AllowAnonymous]
+    public virtual async Task<List<SurveyResultDto>> CreatePublicSurveyResultsAsync(List<SurveyResultCreateDto> input)
+    {
+        try 
+        {   
+            var surveyResults = new List<SurveyResultDto>();
+            var firstCriteriaId = input.FirstOrDefault(x=> x.SurveyCriteriaId != default)?.SurveyCriteriaId;
+            var surveyCriteria = await _surveyCriteriaRepository.GetAsync(x=> x.Id == firstCriteriaId);
+            var tenantId = surveyCriteria?.TenantId;
+            using (CurrentTenant.Change(tenantId))
+            {
+                //check if survey result already exists
+                foreach (var surveyResultCreateDto in input)
+                {
+                    var surveyResult = await _surveyResultRepository.GetAsync(x=> x.SurveyCriteriaId == surveyResultCreateDto.SurveyCriteriaId && x.SurveySessionId == surveyResultCreateDto.SurveySessionId);
+                    if (surveyResult != null)
+                    {
+                        //update survey result
+                        surveyResult = await _surveyResultManager.UpdateAsync(surveyResult.Id, surveyResultCreateDto.SurveyCriteriaId, surveyResultCreateDto.SurveySessionId, surveyResultCreateDto.Rating);
+                    }
+                    else
+                    {
+                        //create survey result
+                        surveyResult = await _surveyResultManager.CreateAsync(surveyResultCreateDto.SurveyCriteriaId, surveyResultCreateDto.SurveySessionId, surveyResultCreateDto.Rating);
+                    }
+                    surveyResults.Add(ObjectMapper.Map<SurveyResult, SurveyResultDto>(surveyResult));
+                }
+            }
+            return surveyResults;
+        }
+        catch (Exception ex)
+        {
+            throw new UserFriendlyException(ex.Message);
+        }
+    }
+
     public virtual async Task<SurveyResultStatisticsDto> GetStatisticsByLocationAsync(Guid? surveyLocationId)
     {
         var statistics = new SurveyResultStatisticsDto();
