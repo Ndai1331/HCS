@@ -516,8 +516,10 @@
     "SurveySession": "Phiên khảo sát",
 
     "Enum:DeviceType.QR": "QR",
-    "Enum:DeviceType.TABLET": "Máy tính bảng",
-    "Enum:DeviceType.WEB": "Web",
+    "Enum:DeviceType.TABLET": "TABLET",
+    "Enum:DeviceType.WEB": "WEB",
+    "Enum:DeviceType.DESKTOP": "DESKTOP",
+    "Enum:DeviceType.MOBILE": "MOBILE",
 
     "Permission:SurveyFiles": "Tệp khảo sát",
     "UploaderType": "Người tải lên",
@@ -879,6 +881,8 @@
     "ProjectChatCreationFailed": "Chat dự án đã được tạo thất bại",
     "SurveyLocationCopiedToClipboard": "Đã sao chép đường dẫn khảo sát vào clipboard",
     "Copy": "Sao chép",
+    "SurveyCollections:TitleSurvey": "Khảo sát độ hài lòng",
+    "SurveyCollections:DescriptionSurvey": "Vui lòng đánh giá độ hài lòng của bạn về dịch vụ của chúng tôi theo các tiêu chí bên dưới",
     "SurveyCollections:Rating": "Đánh giá",
     "SurveyCollections:PleaseSelectRating": "Vui lòng chọn đánh giá",
     "SurveyCollections:SubmitSurvey": "Gửi khảo sát",

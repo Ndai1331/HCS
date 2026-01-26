@@ -12,6 +12,17 @@ window.copyToClipboard = function (text) {
     navigator.clipboard.writeText(text);
 };
 
+window.getDeviceType = () => {
+    const ua = navigator.userAgent;
+
+    if (/tablet|ipad|playbook|silk/i.test(ua)) {
+        return "TABLET";
+    }
+    if (/mobile|iphone|ipod|android/i.test(ua)) {
+        return "MOBILE";
+    }
+    return "DESKTOP";
+};
 
 // Hide Blazorise license banner (including shadow root content)
 (function() {
@@ -80,3 +91,4 @@ window.copyToClipboard = function (text) {
         subtree: true
     });
 })();
+

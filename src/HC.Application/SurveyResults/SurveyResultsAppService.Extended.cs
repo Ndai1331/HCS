@@ -90,27 +90,40 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
         {   
             var surveyResults = new List<SurveyResultDto>();
             var firstCriteriaId = input.FirstOrDefault(x=> x.SurveyCriteriaId != default)?.SurveyCriteriaId;
-            var surveyCriteria = await _surveyCriteriaRepository.GetAsync(x=> x.Id == firstCriteriaId);
-            var tenantId = surveyCriteria?.TenantId;
+            var surveyCriteria = await _surveyCriteriaRepository.FirstOrDefaultAsync(x=> x.Id == firstCriteriaId);
+            var tenantId = surveyCriteria != null ? surveyCriteria.TenantId : null;
+
+            _logger.LogInformation($"Input survey results: {JsonSerializer.Serialize(input)}");
             using (CurrentTenant.Change(tenantId))
             {
+                _logger.LogInformation($"Changing tenant to: {tenantId}");
                 //check if survey result already exists
                 foreach (var surveyResultCreateDto in input)
                 {
-                    var surveyResult = await _surveyResultRepository.GetAsync(x=> x.SurveyCriteriaId == surveyResultCreateDto.SurveyCriteriaId && x.SurveySessionId == surveyResultCreateDto.SurveySessionId);
+                    var surveyResult = await _surveyResultRepository.FirstOrDefaultAsync(x=> 
+                    x.SurveyCriteriaId == surveyResultCreateDto.SurveyCriteriaId 
+                    && x.SurveySessionId == surveyResultCreateDto.SurveySessionId);
+
+                    _logger.LogInformation($"Survey result: {JsonSerializer.Serialize(surveyResult)}");
                     if (surveyResult != null)
                     {
-                        //update survey result
+                        _logger.LogInformation($"Updating survey result: {JsonSerializer.Serialize(surveyResult)}");
                         surveyResult = await _surveyResultManager.UpdateAsync(surveyResult.Id, surveyResultCreateDto.SurveyCriteriaId, surveyResultCreateDto.SurveySessionId, surveyResultCreateDto.Rating);
                     }
                     else
                     {
-                        //create survey result
-                        surveyResult = await _surveyResultManager.CreateAsync(surveyResultCreateDto.SurveyCriteriaId, surveyResultCreateDto.SurveySessionId, surveyResultCreateDto.Rating);
+                        _logger.LogInformation($"Creating survey result: {JsonSerializer.Serialize(surveyResultCreateDto)}");
+                        surveyResult = await _surveyResultManager.CreateAsync(
+                            surveyResultCreateDto.SurveyCriteriaId, 
+                            surveyResultCreateDto.SurveySessionId, 
+                            surveyResultCreateDto.Rating);
                     }
+                    _logger.LogInformation($"Survey result added: {JsonSerializer.Serialize(surveyResult)}");
                     surveyResults.Add(ObjectMapper.Map<SurveyResult, SurveyResultDto>(surveyResult));
+                    _logger.LogInformation($"Survey results: {JsonSerializer.Serialize(surveyResults)}");
                 }
             }
+            _logger.LogInformation($"Survey results: {JsonSerializer.Serialize(surveyResults)}");
             return surveyResults;
         }
         catch (Exception ex)

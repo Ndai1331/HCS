@@ -2,7 +2,7 @@
 
 public enum DeviceType
 {
-    QR,
+    MOBILE,
     TABLET,
-    WEB
+    DESKTOP
 }

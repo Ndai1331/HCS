@@ -11,6 +11,9 @@ using HC.SurveyFiles;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Http.Client;
+using Volo.Abp.AspNetCore.Components.Messages;
+using Volo.Abp.AspNetCore.Components.BlockUi;
+using Microsoft.JSInterop;
 
 namespace HC.Blazor.Pages;
 
@@ -19,9 +22,11 @@ public partial class SurveyCollections
     [Parameter]
     public Guid SurveyLocationId { get; set; }
 
+
+    [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
     [Inject]
     private ILogger<SurveyCollections> _logger { get; set; } = null!;
-    
+
 
     [Inject]
     private IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider { get; set; } = default!;
@@ -51,7 +56,7 @@ public partial class SurveyCollections
         NewSurveySession = new SurveySessionCreateDto
         {
             SurveyTime = DateTime.Now,
-            DeviceType = DeviceType.WEB // Default device type
+            DeviceType = DeviceType.DESKTOP // Default device type
         };
     }
 
@@ -124,6 +129,7 @@ public partial class SurveyCollections
 
     protected virtual async Task CreateSurveySessionAsync()
     {
+        await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
         try
         {
             if (string.IsNullOrWhiteSpace(NewSurveySession.FullName))
@@ -163,6 +169,10 @@ public partial class SurveyCollections
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+            
+        } finally 
+        {
+            await InvokeAsync(BlockUiService.UnBlock);
         }
     }
 
@@ -262,10 +272,21 @@ public partial class SurveyCollections
 
     protected virtual async Task ShowModalCreateSurveySessionAsync()
     {
+        string type = await JSRuntime.InvokeAsync<string>("getDeviceType");
+
+        DeviceType deviceType;
+
+        if (!Enum.TryParse<DeviceType>(type, true, out deviceType))
+        {
+            deviceType = DeviceType.DESKTOP; // default fallback
+        }
+
+
         NewSurveySession = new SurveySessionCreateDto
         {
             SurveyTime = DateTime.Now,
-            SurveyLocationId = SurveyLocationId
+            SurveyLocationId = SurveyLocationId,
+            DeviceType = deviceType
         };
 
         await InvokeAsync(CreateSurveySessionModal.Show);

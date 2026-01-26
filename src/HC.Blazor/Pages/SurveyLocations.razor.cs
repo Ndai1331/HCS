@@ -14,7 +14,10 @@ using HC.SurveyLocations;
 using HC.Permissions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using Volo.Abp.Http.Client;
+using Microsoft.Extensions.Configuration;
 namespace HC.Blazor.Pages;
+
 
 public partial class SurveyLocations
 {
@@ -61,6 +64,12 @@ public partial class SurveyLocations
 
     [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
 
+    [Inject]
+    private IConfiguration Configuration { get; set; } = default!;
+
+
+    private string? _apiBaseUrl;
+
     public SurveyLocations()
     {
         NewSurveyLocation = new SurveyLocationCreateDto();
@@ -77,6 +86,9 @@ public partial class SurveyLocations
     protected override async Task OnInitializedAsync()
     {
         await SetPermissionsAsync();
+
+        // Get API base URL for image URLs
+        _apiBaseUrl = Configuration.GetSection("App:SelfUrl").Value?.EnsureEndsWith('/') ?? string.Empty;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -340,7 +352,7 @@ public partial class SurveyLocations
 
     private async Task CopySurveyLocationToClipboardAsync(SurveyLocationDto input)
     {
-        await JSRuntime.InvokeVoidAsync("copyToClipboard", $"/survey-collections/{input.Id}");
+        await JSRuntime.InvokeVoidAsync("copyToClipboard", $"{_apiBaseUrl}survey-collections/{input.Id}");
         await UiMessageService.Success(L["SurveyLocationCopiedToClipboard"].Value);
         await InvokeAsync(StateHasChanged);
     }
