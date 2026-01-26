@@ -371,30 +371,26 @@
                         </div>
                     </DisplayTemplate>
                 </DataGridColumn>
+
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="Document.No"
-                        Caption="@L["DocumentNumber"]"
-                        CellStyle="@((item) => "min-width: 150px")"
-                        Width="150px">
-                </DataGridColumn>
-                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
-                        Field="Document.StorageNumber"
-                        Caption="@L["StorageNumber"]"
-                        CellStyle="@((item) => "min-width: 150px")"
-                        Width="150px">
-                </DataGridColumn>
-                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
-                        Field="Document.Title"
                         Caption="@L["Title"]"
-                        CellStyle="@((item) => "min-width: 300px")"
+                        CellStyle="@((item) => "min-width: 300px; max-width: 350px")"
                         Width="300px">
                     <DisplayTemplate>
-                        @{
-                            var title = context.Document?.Title ?? string.Empty;
-                            var displayText = title.Length > 100 ? title.Substring(0, 100) + "..." : title;
-                        }
-                        <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@title">
-                            @displayText
+                        <div class="row">
+                            <div class="col">
+                              <h5 class="card-title question-title pb-2">
+                                @context.Document.Title
+                              </h5>
+                              <div class="d-flex pb-2 mb-2">
+                                <p class="mb-0">
+                                    <small class="text-muted">
+                                        <span>#@context.Document.No</span> | @context.Document.StorageNumber
+                                    </small>
+                                </p>
+                              </div>
+                            </div>
                         </div>
                     </DisplayTemplate>
                 </DataGridColumn>
@@ -412,7 +408,11 @@
                         Caption="@L["Type"]"
                         CellStyle="@((item) => "min-width: 150px")"
                         Width="150px">
+                    <DisplayTemplate>
+                        <small class="badge bg-secondary me-1"> @context.Type?.Name</small>
+                    </DisplayTemplate>
                 </DataGridColumn>
+
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="Field.Name"
                         Caption="@L["Field"]"
@@ -430,18 +430,27 @@
                         Caption="@L["Status"]"
                         CellStyle="@((item) => "min-width: 150px")"
                         Width="150px">
+                    <DisplayTemplate>
+                        <small class="badge bg-primary me-1"> @context.Status?.Name</small>
+                    </DisplayTemplate>
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="UrgencyLevel.Name"
                         Caption="@L["UrgencyLevel"]"
                         CellStyle="@((item) => "min-width: 180px")"
                         Width="180px">
+                    <DisplayTemplate>
+                        <small class="badge bg-warning me-1"> @context.UrgencyLevel?.Name</small>
+                    </DisplayTemplate>
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="SecrecyLevel.Name"
                         Caption="@L["SecrecyLevel"]"
                         CellStyle="@((item) => "min-width: 150px")"
                         Width="150px">
+                    <DisplayTemplate>
+                        <small class="badge bg-danger me-1"> @context.SecrecyLevel?.Name</small>
+                    </DisplayTemplate>
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="Workflow.Name"

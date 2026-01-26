@@ -195,6 +195,8 @@ public static class HCPermissions
         public const string Create = Default + ".Create";
         public const string Delete = Default + ".Delete";
         public const string SubmitForSigning = Default + ".SubmitForSigning";
+
+        public const string MyDocuments = Default + ".MyDocuments";
     }
 
     public static class DocumentFiles

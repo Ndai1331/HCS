@@ -1,15 +1,8 @@
-using System.Collections.Generic;
-using Microsoft.AspNetCore.Authorization;
-using System;
 using System.Threading.Tasks;
 using Localization.Resources.AbpUi;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using HC.Localization;
 using HC.Permissions;
-using HC.MultiTenancy;
-using Volo.Abp.Users;
 using Volo.Abp.Account.Localization;
 using Volo.Abp.UI.Navigation;
 using Volo.Abp.Authorization.Permissions;
@@ -21,8 +14,6 @@ using Volo.FileManagement.Blazor.Navigation;
 using Volo.Abp.TextTemplateManagement.Blazor.Menus;
 using Volo.Abp.OpenIddict.Pro.Blazor.Menus;
 using Volo.Saas.Host.Blazor.Navigation;
-using Volo.FileManagement.Blazor.Navigation;
-using HC.Chat.Authorization;
 
 namespace HC.Blazor.Menus;
 
@@ -53,7 +44,8 @@ public class HCMenuContributor : IMenuContributor
         context.Menu.Items.Insert(0, new ApplicationMenuItem(HCMenus.Home, l["Menu:Home"], "/", icon: "fas fa-home", order: 1));
         // FileManagement menu is removed from UI (kept as a module dependency).
         context.Menu.AddItem(new ApplicationMenuItem("Documents", l["Menu:Documents"], icon: "fa fa-book", order: 2)
-        .AddItem(new ApplicationMenuItem("Documents.List", l["Menu:DocumentList"],icon: "bi bi-menu-button-wide-fill", url: "/documents").RequirePermissions(HCPermissions.Documents.Default)));
+        .AddItem(new ApplicationMenuItem("Documents.List", l["Menu:DocumentList"],icon: "bi bi-menu-button-wide-fill", url: "/documents").RequirePermissions(HCPermissions.Documents.Default))
+        .AddItem(new ApplicationMenuItem("Documents.MyDocuments", l["Menu:MyDocuments"],icon: "bi bi-menu-button-wide-fill", url: "/my-documents").RequirePermissions(HCPermissions.Documents.MyDocuments)));
 
         context.Menu.AddItem(new ApplicationMenuItem("Workflows", l["Menu:Workflows"], icon: "fa fa-arrow-trend-up", order: 3)
         .AddItem(new ApplicationMenuItem("Workflows.WorkflowDefinitions", l["Menu:WorkflowDefinitions"], icon: "bi bi-menu-button-wide-fill", url: "/workflow-definitions").RequirePermissions(HCPermissions.WorkflowDefinitions.Default))

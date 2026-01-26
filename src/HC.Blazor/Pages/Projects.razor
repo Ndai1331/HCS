@@ -295,47 +295,42 @@
               <DataGridColumn TItem="ProjectWithNavigationPropertiesDto"
                       Field="Project.Code"
                       Caption="@L["Code"]"
-                      CellStyle="@((item) => "min-width: 150px")"
-                      Width="150px">
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectWithNavigationPropertiesDto"
-                      Field="Project.Name"
-                      Caption="@L["Name"]"
-                      CellStyle="@((item) => "min-width: 150px")"
-                      Width="150px">
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectWithNavigationPropertiesDto"
-                      Field="Project.Description"
-                      Caption="@L["Description"]"
                       CellStyle="@((item) => "min-width: 300px")"
                       Width="300px">
-                  <DisplayTemplate>
-                      @{
-                          var description = context.Project?.Description ?? string.Empty;
-                          var displayText = description.Length > 100 ? description.Substring(0, 100) + "..." : description;
-                      }
-                      <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@description">
-                          @displayText
-                      </div>
-                  </DisplayTemplate>
+                      <DisplayTemplate>
+                        <div class="row">
+                            <div class="col">
+                              <h5 class="card-title question-title pb-2">
+                                @context.Project.Name
+                              </h5>
+                              <div class="d-flex flex-column pb-2 mb-2">
+                                <p class="mb-0">
+                                    <small class="text-black">
+                                        <span>#@context.Project.Code</span>
+                                    </small>
+                                </p>
+                                <p class="mb-0">
+                                    <small class="text-muted">
+                                        <span>@context.Project.Description</span>
+                                    </small>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                    </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="ProjectWithNavigationPropertiesDto"
                       Field="Project.StartDate"
-                      Caption="@L["StartDate"]"
+                      Caption="@L["StartDateAndEndDate"]"
                       CellStyle="@((item) => "min-width: 200px")"
                       Width="200px">
                   <DisplayTemplate>
                         @context.Project.StartDate.ToString("dd/MM/yyyy HH:mm")
-                  </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectWithNavigationPropertiesDto"
-                      Field="Project.EndDate"
-                      Caption="@L["EndDate"]"
-                      CellStyle="@((item) => "min-width: 200px")"
-                      Width="200px">
-                  <DisplayTemplate>
+                        <small class="text-muted">
+                            <span>-</span>
+                        </small>
                         @context.Project.EndDate.ToString("dd/MM/yyyy HH:mm")
-                  </DisplayTemplate>
+                    </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="ProjectWithNavigationPropertiesDto"
                       Field="Project.Status"

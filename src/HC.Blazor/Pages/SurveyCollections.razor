@@ -74,12 +74,10 @@
                                         <p class="lead fw-normal my-3">
                                             @L["SurveyCollections:YourFeedbackIsImportant"]
                                         </p>
-                                        <a class="btn btn-brand soft mb-3" href="/">@L["BackToHome"]</a>
+                                        <Button class="btn-brand soft mb-3" Clicked="@OnReloadPage">@L["Back"]</Button>
                                         <br/>
                                         <img class="mt-3" src="https://x.leptontheme.com/assets/img/getting-started/img-blog.png">
-
                                     </CardBody>
-
                                 </Card>
                             </Column>
                         </Row>
@@ -88,8 +86,8 @@
                     {
                         <Row>
                             <Div Class="w-100 text-center">
-                                <h1 class="lpx-login-title mb-2">@L["SurveyCollections:TitleSurvey"]</h1>
-                                <p>@L["SurveyCollections:DescriptionSurvey"]</p>
+                                <h1 class="lpx-login-title mb-2">@SurveyLocation?.Name</h1>
+                                <p>@SurveyLocation?.Description ?? string.Empty </p>
                             </Div>
                             @foreach (var criteria in SurveyCriterias.OrderBy(x => x.SurveyCriteria.DisplayOrder))
                             {
@@ -118,7 +116,8 @@
                                                     var currentStar = star;
                                                     <i class="hover-pointer
                                                         @(GetRatingForCriteria(criteria.SurveyCriteria.Id) >= currentStar ? "bi bi-star-fill text-brand fs-3" : "bi bi-star text-muted fs-3")"
-                                                        @onclick="@(() => SetRatingForCriteria(criteria.SurveyCriteria.Id, currentStar))"></i>
+                                                        @onclick="@(async () => await SetRatingForCriteria(criteria.SurveyCriteria.Id, currentStar))"   
+                                                        ></i>
                                                 }
                                             </Div>
                                         </CardBody>
@@ -196,6 +195,37 @@
                                                     <Field>
                                                         <FieldLabel>@L["Note"]</FieldLabel>
                                                         <MemoEdit @bind-Text="@NewSurveySession.Note" Rows="3" />
+                                                    </Field>
+                                                </Column>
+                                            </Row>
+
+                                            <Row>
+                                                <Column ColumnSize="ColumnSize.Is12">
+                                                    <Field>
+                                                        <FieldLabel>@L["SurveyCollections:UploadPhoto"]</FieldLabel>
+                                                        <FilePicker Multiple="false"
+                                                                @ref="FilePicker"
+                                                                Changed="@(async (files) => await OnFileChangedAsync(files))"
+                                                                ShowMode="FilePickerShowMode.List"
+                                                                MaxFileSize="52428800"
+                                                                Accept="image/*">
+                                                            <ButtonsTemplate>
+                                                                <Buttons>
+                                                                    <Button Clicked="@(() => ClearFiles())"
+                                                                            Color="Color.Warning"
+                                                                            Size="Size.Small">
+                                                                        <Icon Name="IconName.Clear" /> @L["Clear"]
+                                                                    </Button>
+                                                                </Buttons>
+                                                            </ButtonsTemplate>
+                                                        </FilePicker>
+                                                        @if (!string.IsNullOrEmpty(GetUploadedFileName()))
+                                                        {
+                                                            <Alert Color="Color.Success" Dismissible="false" Class="mt-2">
+                                                                <Icon Name="IconName.CheckCircle" Class="me-2" />
+                                                                @L["FileUploadedSuccessfully"]: @GetUploadedFileName()
+                                                            </Alert>
+                                                        }
                                                     </Field>
                                                 </Column>
                                             </Row>

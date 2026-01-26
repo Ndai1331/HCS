@@ -31,6 +31,8 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         documentTypePermission.AddChild(HCPermissions.MasterDatas.DocumentTypeCreate, L("Permission:Create"));
         documentTypePermission.AddChild(HCPermissions.MasterDatas.DocumentTypeEdit, L("Permission:Edit"));
         documentTypePermission.AddChild(HCPermissions.MasterDatas.DocumentTypeDelete, L("Permission:Delete"));
+        documentTypePermission.AddChild(HCPermissions.Documents.MyDocuments, L("Menu:MyDocuments"));
+        
         var sectorPermission = myGroup.AddPermission(HCPermissions.MasterDatas.SectorDefault, L("Sector"));
         sectorPermission.AddChild(HCPermissions.MasterDatas.SectorCreate, L("Permission:Create"));
         sectorPermission.AddChild(HCPermissions.MasterDatas.SectorEdit, L("Permission:Edit"));

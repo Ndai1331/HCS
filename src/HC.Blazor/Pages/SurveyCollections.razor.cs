@@ -44,13 +44,14 @@ public partial class SurveyCollections
     protected SurveySessionDto? CurrentSurveySession { get; set; }
     // Form data
     protected SurveySessionCreateDto NewSurveySession { get; set; } = new();
+    protected List<SurveyFileCreateDto> NewSurveyFiles { get; set; } = new();
 
     // Step data
     protected Dictionary<Guid, IFileEntry> CriteriaFiles { get; set; } = new();
     protected Dictionary<Guid, string> UploadedFileNames { get; set; } = new();
     protected string ApiBaseUrl { get; set; } = string.Empty;
     protected  List<SurveyResultCreateDto> NewSurveyResults { get; set; } = new();
-
+    protected FilePicker FilePicker { get; set; } = default!;
     public SurveyCollections()
     {
         NewSurveySession = new SurveySessionCreateDto
@@ -62,18 +63,21 @@ public partial class SurveyCollections
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadSurveyLocationAsync();
-        await LoadSurveyCriteriasAsync();
         var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
         ApiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
-        IsLoading = false;
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await LoadSurveyLocationAsync();
-        await LoadSurveyCriteriasAsync();
-        IsLoading = false;
+        if (firstRender)
+        {
+            await LoadSurveyLocationAsync();
+            await LoadSurveyCriteriasAsync();
+
+            IsLoading = false;
+
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     protected virtual async Task LoadSurveyLocationAsync()
@@ -117,6 +121,17 @@ public partial class SurveyCollections
                 SurveyLocation = SurveyLocation
             }).ToList();
 
+            foreach (var criteria in SurveyCriterias)
+            {
+                NewSurveyResults.Add(new SurveyResultCreateDto
+                {
+                    SurveyCriteriaId = criteria.SurveyCriteria.Id,
+                    Rating = 1
+                });
+            }
+
+            _logger.LogInformation($"NewSurveyResults: {NewSurveyResults.Count}");
+
             _logger.LogInformation($"Mapped to {SurveyCriterias.Count} SurveyCriteriaWithNavigationPropertiesDto objects");
         }
         catch (Exception ex)
@@ -148,9 +163,31 @@ public partial class SurveyCollections
             NewSurveySession.SessionDisplay = GenerateSessionDisplay();
 
             CurrentSurveySession = await SurveySessionsAppService.CreatePublicSurveySessionAsync(NewSurveySession);
+            if (CurrentSurveySession == null)
+            {
+                await UiMessageService.Error(L["SurveyCollections:FailedToCreateSurveySession"]);
+                throw new Exception(L["SurveyCollections:FailedToCreateSurveySession"]);
+            }
+
+            foreach (var surveyFile in NewSurveyFiles)
+            {
+                surveyFile.SurveySessionId = CurrentSurveySession.Id;
+                var createdSurveyFile = await SurveyFilesAppService.CreatePublicSurveyFileAsync(surveyFile);
+
+                _logger.LogInformation($"Created survey file: {createdSurveyFile.Id}");
+
+                if (createdSurveyFile == null)
+                {
+                    await UiMessageService.Error(L["SurveyCollections:FailedToCreateSurveyFile"]);
+                    throw new Exception(L["SurveyCollections:FailedToCreateSurveyFile"]);
+                }
+            }
+
+            _logger.LogInformation($"Creating {NewSurveyResults.Count} survey results");
 
             foreach (var surveyResult in NewSurveyResults)
             {
+                
                 surveyResult.SurveySessionId = CurrentSurveySession.Id;
             }
 
@@ -164,12 +201,13 @@ public partial class SurveyCollections
             else
             {
                 await UiMessageService.Error(L["SurveyCollections:FailedToCreateSurveySession"]);
+                throw new Exception(L["SurveyCollections:FailedToCreateSurveySession"]);
             }
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
-            
+            _logger.LogError(ex, "Error creating survey session");
         } finally 
         {
             await InvokeAsync(BlockUiService.UnBlock);
@@ -184,41 +222,43 @@ public partial class SurveyCollections
 
     protected virtual int GetRatingForCriteria(Guid criteriaId)
     {
+        _logger.LogInformation($"NewSurveyResults Getting rating for criteria: {NewSurveyResults.Count}");
         return NewSurveyResults.FirstOrDefault(x => x.SurveyCriteriaId == criteriaId)?.Rating ?? 1;
     }
 
-    protected virtual void SetRatingForCriteria(Guid criteriaId, int rating)
+    protected virtual async Task SetRatingForCriteria(Guid criteriaId, int rating)
     {
+        _logger.LogInformation($"NewSurveyResults Setting rating for criteria: {NewSurveyResults.Count} to {rating}");
         var surveyResult = NewSurveyResults.FirstOrDefault(x => x.SurveyCriteriaId == criteriaId);
         if (surveyResult != null)
         {
             surveyResult.Rating = rating;
         }
         else
-        {
-            NewSurveyResults.Add(new SurveyResultCreateDto
-            {
-                Rating = rating,
-                SurveyCriteriaId = criteriaId,
-                SurveySessionId = Guid.Empty
-            });
-        }
+            await UiMessageService.Error(L["SurveyCollections:FailedToSetRatingForCriteria"]);
     }
 
-    protected virtual string GetUploadedFileNameForCriteria(Guid criteriaId)
+    protected virtual string GetUploadedFileName()
     {
-        return UploadedFileNames.GetValueOrDefault(criteriaId, string.Empty);
+        return NewSurveyFiles != null && NewSurveyFiles.Count > 0 ? NewSurveyFiles.Select(file => file.FileName).Aggregate((a, b) => $"{a}, {b}") : string.Empty;
     }
 
-    protected virtual async Task OnFileChangedAsync(Guid criteriaId, FileChangedEventArgs files)
+    protected virtual async Task OnFileChangedAsync(FileChangedEventArgs files)
     {
         try
         {
             if (files.Files?.Any() == true)
             {
-                var file = files.Files.First();
-                CriteriaFiles[criteriaId] = file;
-                UploadedFileNames[criteriaId] = file.Name;
+                NewSurveyFiles.AddRange(files.Files.Select(file => new SurveyFileCreateDto
+                {
+                    // SurveySessionId = CurrentSurveySession.Id,
+                    FilePath = $"survey-files/{DateTime.Now:yyyyMMddHHmmss}/{file.Name}",
+                    UploaderType = UploaderType.PATIENT,
+                    FileName = file.Name,
+                    FileSize = (int)file.Size,
+                    MimeType = file.Type,
+                    FileType = System.IO.Path.GetExtension(file.Name).TrimStart('.')
+                }));
                 await InvokeAsync(StateHasChanged);
             }
         }
@@ -228,46 +268,12 @@ public partial class SurveyCollections
         }
     }
 
-    protected virtual void ClearFileForCriteria(Guid criteriaId)
+    protected virtual void ClearFiles()
     {
-        CriteriaFiles.Remove(criteriaId);
-        UploadedFileNames.Remove(criteriaId);
+        NewSurveyFiles.Clear();
+        UploadedFileNames.Clear();
+        FilePicker.Clear();
         StateHasChanged();
-    }
-
-
-    protected virtual async Task UploadFileForCriteriaAsync(Guid criteriaId, IFileEntry file)
-    {
-        if (CurrentSurveySession == null)
-        {
-            return;
-        }
-        
-        try
-        {
-            // TODO: Implement actual file upload to storage service
-            // For now, we just save file metadata
-            
-            var surveyFile = new SurveyFileCreateDto
-            {
-                SurveySessionId = CurrentSurveySession.Id,
-                UploaderType = UploaderType.PATIENT,
-                FileName = file.Name,
-                FilePath = $"survey-files/{CurrentSurveySession.Id}/{criteriaId}/{file.Name}",
-                FileSize = (int)file.Size,
-                MimeType = file.Type,
-                FileType = System.IO.Path.GetExtension(file.Name).TrimStart('.')
-            };
-
-            _logger.LogInformation($"Creating survey file: SessionId={surveyFile.SurveySessionId}, FileName={surveyFile.FileName}, Size={surveyFile.FileSize}");
-
-            await SurveyFilesAppService.CreatePublicSurveyFileAsync(surveyFile);
-            _logger.LogInformation("Survey file created successfully");
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
     }
 
     protected virtual async Task ShowModalCreateSurveySessionAsync()
@@ -280,7 +286,7 @@ public partial class SurveyCollections
         {
             deviceType = DeviceType.DESKTOP; // default fallback
         }
-
+        ClearFiles();
 
         NewSurveySession = new SurveySessionCreateDto
         {
@@ -295,5 +301,10 @@ public partial class SurveyCollections
     protected virtual async Task CloseCreateSurveySessionModalAsync()
     {
         await InvokeAsync(CreateSurveySessionModal.Hide);
+    }
+
+    protected virtual void OnReloadPage()
+    {
+        NavigationManager.NavigateTo($"/survey-collections/{SurveyLocationId}", forceLoad: true);
     }
 }
