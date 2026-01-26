@@ -14,6 +14,7 @@
     [Parameter] public List<string> BackgroundColors { get; set; } = new();
     [Parameter] public bool IsDoughnut { get; set; } = false;
     [Parameter] public string? Title { get; set; }
+    [Parameter] public bool ShowLegend { get; set; } = true;
 
     private IJSObjectReference? _chartModule;
     private IJSObjectReference? _chartInstance;
@@ -168,7 +169,7 @@
             // Ensure helper functions exist
             await JSRuntime.InvokeVoidAsync("eval", @"
                 if (typeof window.createPieChartHelper === 'undefined') {
-                    window.createPieChartHelper = function(canvasId, labels, data, colors, isDoughnut, title) {
+                    window.createPieChartHelper = function(canvasId, labels, data, colors, isDoughnut, title, showLegend) {
                         const canvas = document.getElementById(canvasId);
                         if (!canvas) {
                             console.error('Canvas with id ' + canvasId + ' not found');
@@ -211,6 +212,7 @@
                         const plugins = [];
                         const pluginsConfig = {
                             legend: {
+                                display: showLegend,
                                 position: 'bottom',
                                 labels: {
                                     padding: 15,
@@ -330,7 +332,8 @@
                 Data.ToArray(),
                 colors.ToArray(),
                 IsDoughnut,
-                Title);
+                Title,
+                ShowLegend);
             
             _chartRendered = true;
         }

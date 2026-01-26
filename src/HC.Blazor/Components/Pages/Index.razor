@@ -24,24 +24,13 @@
 @using Volo.Abp.AspNetCore.Components
 @using Microsoft.AspNetCore.Components
 @using Volo.Abp.Http.Client
+@using HC.Blazor.Components.Charts
 @inherits HCComponentBase
 @inject IWorkflowsAppService WorkflowsAppService
 @inject IUiMessageService UiMessageService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
 @inject NavigationManager NavigationManager
-
-<style>
-    /* Tùy chỉnh thanh cuộn cho CardBody */
-    ::v-deep .overflow-auto::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    ::v-deep .overflow-auto::-webkit-scrollbar-thumb {
-        background-color: rgba(255, 255, 255, 0.3);
-        border-radius: 10px;
-    }
-</style>
 
 <Row>
     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
@@ -63,7 +52,7 @@
                         </Row>
                     </CardHeader>
 
-                    <CardBody Style="max-height: 300px;" Class="overflow-auto py-2">
+                    <CardBody Style="max-height: 370px;" Class="overflow-auto py-2">
                         @if (IsLoading)
                         {
                             <div class="text-center py-4">
@@ -123,9 +112,10 @@
                     <CardBody>
 
                         @* Dynamic Donut Chart with Real Data *@
+                        @* Task Distribution Donut Chart *@
                         @if (IsLoading)
                         {
-                            <div class="d-flex justify-content-center align-items-center" style="min-height: 187px;">
+                            <div class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
                                 <div class="spinner-border" role="status">
                                     <span class="visually-hidden">@L["Loading"]...</span>
                                 </div>
@@ -133,42 +123,18 @@
                         }
                         else if (TotalTasksCount == 0)
                         {
-                            <div class="d-flex justify-content-center align-items-center" style="min-height: 187px;">
+                            <div class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
                                 <p class="text-muted">@L["NoTasksFound"]</p>
                             </div>
                         }
                         else
                         {
-                            var chartData = GetChartData();
-                            <div id="chart1" class="d-flex justify-content-center" style="min-height: 187px;">
-                                <svg width="220" height="187" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 187">
-                                    <g transform="translate(18.33, 0)">
-                                        <circle r="54.23" cx="91.67" cy="91.67" fill="transparent"></circle>
-                                        <g>
-                                            @{
-                                                double startAngle = 0;
-                                                int index = 0;
-                                            }
-                                            @foreach (var segment in chartData)
-                                            {
-                                                var angle = segment.Percentage * 3.6; // Convert percentage to degrees
-                                                var path = GetDonutPath(91.67, 91.67, 83.43, 54.23, startAngle, angle);
-
-                                                <path d="@path"
-                                                      fill="@segment.Color"
-                                                      fill-opacity="1"
-                                                      stroke="var(--lpx-card-bg, #fff)"
-                                                      stroke-width="2"
-                                                      class="apexcharts-pie-area apexcharts-donut-slice-@index">
-                                                </path>
-
-                                                startAngle += angle;
-                                                index++;
-                                            }
-                                        </g>
-                                    </g>
-                                </svg>
-                            </div>
+                            <PieChart ChartId="taskDistributionChart"
+                                      Labels="@TaskChartLabels"
+                                      Data="@TaskChartData"
+                                      BackgroundColors="@TaskChartColors"
+                                      IsDoughnut="true"
+                                      ShowLegend="false" />
                         }
 
                         <div class="mt-3">
@@ -253,7 +219,7 @@
                                 }
                                 else
                                 {
-                                    <div style="max-height: 240px;" class="overflow-auto">
+                                    <div style="max-height: 335px;" class="overflow-auto">
                                         <table class="table mb-0">
                                             <tbody>
                                                 @foreach (var ev in EventsByDay[tab.Key])
@@ -486,7 +452,8 @@
 
             // Group events by day
             var eventsForDay = CalendarEventsList
-                .Where(e => e.StartTime.Date == date)
+                .Where(e => e.StartTime.Date <= date)
+                .Where(e => e.EndTime.Date >= date)
                 .OrderBy(e => e.StartTime)
                 .ToList();
 
@@ -499,55 +466,19 @@
 
     record CalendarDayTab(string Key, string Day, int Date);
 
-    // Chart data generation
-    private List<ChartSegment> GetChartData()
+    // Task Chart Data for PieChart component
+    private List<string> TaskChartLabels => TasksByStatus.OrderBy(x => x.Key).Select(x => L[$"Enum:ProjectTaskStatus.{x.Key}"].ToString()).ToList();
+
+    private List<double> TaskChartData => TasksByStatus.OrderBy(x => x.Key).Select(x => (double)x.Value).ToList();
+
+    private List<string> TaskChartColors => TasksByStatus.OrderBy(x => x.Key).Select(x => x.Key switch
     {
-        var segments = new List<ChartSegment>();
-
-        foreach (var statusKvp in TasksByStatus.OrderBy(x => x.Key))
-        {
-            var percentage = GetTaskPercentage(statusKvp.Key);
-            var color = statusKvp.Key switch
-            {
-                "TODO" => "var(--lpx-secondary)",
-                "IN_PROGRESS" => "var(--lpx-info)",
-                "WAITING" => "var(--lpx-warning)",
-                "DONE" => "var(--lpx-success)",
-                "CANCELLED" => "var(--lpx-danger)",
-                _ => "var(--lpx-secondary)"
-            };
-
-            segments.Add(new ChartSegment(statusKvp.Key, statusKvp.Value, percentage, color));
-        }
-
-        return segments;
-    }
-
-    private string GetDonutPath(double cx, double cy, double outerRadius, double innerRadius, double startAngle, double angleSize)
-    {
-        if (angleSize >= 360) angleSize = 359.99; // Prevent full circle issues
-
-        var startRad = (startAngle - 90) * Math.PI / 180;
-        var endRad = (startAngle + angleSize - 90) * Math.PI / 180;
-
-        var x1 = cx + outerRadius * Math.Cos(startRad);
-        var y1 = cy + outerRadius * Math.Sin(startRad);
-        var x2 = cx + outerRadius * Math.Cos(endRad);
-        var y2 = cy + outerRadius * Math.Sin(endRad);
-
-        var x3 = cx + innerRadius * Math.Cos(endRad);
-        var y3 = cy + innerRadius * Math.Sin(endRad);
-        var x4 = cx + innerRadius * Math.Cos(startRad);
-        var y4 = cy + innerRadius * Math.Sin(startRad);
-
-        var largeArc = angleSize > 180 ? 1 : 0;
-
-        // Use InvariantCulture to ensure decimal point (.) instead of comma (,)
-        return string.Format(System.Globalization.CultureInfo.InvariantCulture,
-            "M {0:F2} {1:F2} A {2:F2} {3:F2} 0 {4} 1 {5:F2} {6:F2} L {7:F2} {8:F2} A {9:F2} {10:F2} 0 {11} 0 {12:F2} {13:F2} Z",
-            x1, y1, outerRadius, outerRadius, largeArc, x2, y2, x3, y3, innerRadius, innerRadius, largeArc, x4, y4);
-    }
-
-    record ChartSegment(string Status, int Count, double Percentage, string Color);
+        "TODO" => "#6c5dd3",           // Secondary - purple
+        "IN_PROGRESS" => "#438aa7",    // Info - blue
+        "WAITING" => "#ff9f38",        // Warning - orange
+        "DONE" => "#4fbf67",           // Success - green
+        "CANCELLED" => "#c00d49",      // Danger - red
+        _ => "6c5dd3"                 // Default - purple
+    }).ToList();
 
 }
