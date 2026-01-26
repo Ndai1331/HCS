@@ -18,6 +18,7 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
+using HC.Chat.Helpers;
 
 namespace HC.ProjectTasks;
 
@@ -40,8 +41,12 @@ public abstract class ProjectTasksAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<ProjectTaskWithNavigationPropertiesDto>> GetListAsync(GetProjectTasksInput input)
     {
-        var totalCount = await _projectTaskRepository.GetCountAsync(input.FilterText, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId);
-        var items = await _projectTaskRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId, input.Sorting, input.MaxResultCount, input.SkipCount);
+        if (!CurrentUser.IsAdminRole())
+        {
+            input.UserId = CurrentUser.Id;
+        }
+        var totalCount = await _projectTaskRepository.GetCountAsync(input.FilterText, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId, input.UserId   );
+        var items = await _projectTaskRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId, input.UserId, input.Sorting, input.MaxResultCount, input.SkipCount);
         return new PagedResultDto<ProjectTaskWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,

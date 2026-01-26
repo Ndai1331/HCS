@@ -577,10 +577,10 @@
                     </Column>
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
                         <div class="hc-toolbar-actions">
-                            <Button Color="Color.Primary" Size="Size.Small" Clicked="SearchProjectTasksAsync" Class="hc-btn-grow">
+                            <Button Color="Color.Primary"  Clicked="SearchProjectTasksAsync" Class="hc-btn-grow">
                                 <Icon Name="IconName.Search" Class="me-1" /> @L["Search"]
                             </Button>
-                            <Button Color="Color.Light" Size="Size.Small" Outline Clicked="RefreshProjectTasksAsync" Title="@L["Search"]">
+                            <Button Color="Color.Light"  Outline Clicked="RefreshProjectTasksAsync" Title="@L["Search"]">
                                 <Icon Name="IconName.Sync" />
                             </Button>
                         </div>
@@ -614,12 +614,12 @@
                     <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Title" Caption="@L["Title"]" />
                     <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Status" Caption="@L["Status"]">
                         <DisplayTemplate>
-                            <Badge Color="Color.Info">@context.ProjectTask.Status</Badge>
+                            <Badge Color="Color.Info">@L[$"Enum:ProjectTaskStatus.{context.ProjectTask.Status}"]</Badge>
                         </DisplayTemplate>
                     </DataGridColumn>
                     <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Priority" Caption="@L["Priority"]">
                         <DisplayTemplate>
-                            <Badge Color="Color.Secondary">@context.ProjectTask.Priority</Badge>
+                            <Badge Color="Color.Secondary">@L[$"Enum:ProjectTaskPriority.{context.ProjectTask.Priority}"]</Badge>
                         </DisplayTemplate>
                     </DataGridColumn>
                     <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.ProgressPercent" Caption="@L["ProgressPercent"]">

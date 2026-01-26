@@ -18,7 +18,7 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
+using HC.Chat.Helpers;
 
 namespace HC.Projects;
 
@@ -41,10 +41,19 @@ public abstract class ProjectsAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<ProjectWithNavigationPropertiesDto>> GetListAsync(GetProjectsInput input)
     {
-        // Convert enum to string for repository
         var statusFilter = input.Status?.ToString();
-        var totalCount = await _projectRepository.GetCountAsync(input.FilterText, input.Code, input.Name, input.Description, input.StartDateMin, input.StartDateMax, input.EndDateMin, input.EndDateMax, statusFilter, input.OwnerDepartmentId);
-        var items = await _projectRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.Code, input.Name, input.Description, input.StartDateMin, input.StartDateMax, input.EndDateMin, input.EndDateMax, statusFilter, input.OwnerDepartmentId, input.Sorting, input.MaxResultCount, input.SkipCount);
+        if (!CurrentUser.IsAdminRole())
+        {
+            input.UserId = CurrentUser.Id;
+        }
+
+        var totalCount = await _projectRepository.GetCountAsync(input.FilterText, input.Code, input.Name, input.Description, 
+        input.StartDateMin, input.StartDateMax, input.EndDateMin, input.EndDateMax, statusFilter, input.OwnerDepartmentId, input.UserId);
+
+        var items = await _projectRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.Code,
+        input.Name, input.Description, input.StartDateMin, input.StartDateMax, input.EndDateMin, 
+        input.EndDateMax, statusFilter, input.OwnerDepartmentId, input.UserId, input.Sorting, input.MaxResultCount, input.SkipCount);
+
         return new PagedResultDto<ProjectWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,

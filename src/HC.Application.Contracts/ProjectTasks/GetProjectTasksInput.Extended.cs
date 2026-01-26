@@ -1,6 +1,8 @@
+using System;
+
 namespace HC.ProjectTasks;
 
 public class GetProjectTasksInput : GetProjectTasksInputBase
 {
-    //Write your custom code here...
+    public Guid? UserId { get; set; }
 }

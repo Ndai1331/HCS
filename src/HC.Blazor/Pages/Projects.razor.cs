@@ -311,21 +311,7 @@ public partial class Projects : HCComponentBase
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task OpenCreateProjectModalAsync()
-    {
-        NewProject = new ProjectCreateDto
-        {
-            StartDate = DateTime.Now,
-            EndDate = DateTime.Now,
-            Code = await GenerateNextProjectCodeAsync(), // Auto-generate code
-        };
-        SelectedDepartment = new List<LookupDto<Guid>>();
-        SelectedCreateTab = "project-create-tab";
-        await GetDepartmentCollectionLookupAsync();
-        CreateFieldErrors.Clear();
-        CreateProjectValidationErrorKey = null;
-        await CreateProjectModal.Show();
-    }
+
     
     // Generate next available Project code (Pxxxxxxx format)
     private async Task<string> GenerateNextProjectCodeAsync()
