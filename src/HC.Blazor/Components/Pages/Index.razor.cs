@@ -143,7 +143,7 @@ public partial class Index
             var now = DateTime.Now;
             var result = await CalendarEventsAppService.GetListAsync(new GetCalendarEventsInput
             {
-                StartTimeMin = now,
+                EndTimeMin = now,
                 StartTimeMax = now.AddDays(7),
                 MaxResultCount = 1000,
                 SkipCount = 0,

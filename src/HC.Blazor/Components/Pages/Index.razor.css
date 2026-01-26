@@ -15,3 +15,13 @@
 /* Getting-Started End */
 
 /* Write here your styles for the Index page */
+
+/* Tùy chỉnh thanh cuộn cho CardBody */
+::v-deep .overflow-auto::-webkit-scrollbar {
+    width: 6px;
+}
+
+::v-deep .overflow-auto::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}
