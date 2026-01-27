@@ -910,6 +910,8 @@
     "BackToHome": "Back to home",
     "Infomation": "Infomation",
     "NoProjectOrDeleted": "No project or deleted",
-    "YouAreNotAMemberOfThisProjectChat": "You are not a member of this project chat"
+    "YouAreNotAMemberOfThisProjectChat": "You are not a member of this project chat",
+    "NumberOfMembers": "Number of Members",
+    "NumberOfTasks": "Number of Tasks"
   }
 }

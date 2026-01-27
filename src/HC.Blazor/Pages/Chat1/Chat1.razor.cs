@@ -630,7 +630,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
         }
 
-        // Restore current contact if preserving
         if (preserveCurrentContact && currentContactId.HasValue)
         {
             CurrentChatContact = ChatContactDtos.FirstOrDefault(c => 
@@ -646,7 +645,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
             else
             {
-                // Don't call createCanvasForUser if there's no current contact or canvas is not ready
                 ChatConversationDto = null;
             }
         }
