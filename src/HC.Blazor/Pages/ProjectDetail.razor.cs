@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
+using HC.Blazor.Shared;
 
 namespace HC.Blazor.Pages;
 
@@ -89,6 +90,14 @@ public partial class ProjectDetail : HCComponentBase
     private bool CanCreateProjectMember { get; set; }
     private bool CanDeleteProjectMember { get; set; }
     private bool CanEditProjectMember { get; set; }
+
+
+    private bool CanCreateProject { get; set; }
+    private bool CanEditProject { get; set; }
+    private bool CanDeleteProject { get; set; }
+
+
+
     private IReadOnlyList<LookupDto<Guid>> IdentityUsersCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<LookupDto<Guid>> MembersToAdd { get; set; } = new();
     private ProjectMemberRole MembersRoleToAdd { get; set; } = ProjectMemberRole.MEMBER;
@@ -106,15 +115,11 @@ public partial class ProjectDetail : HCComponentBase
         EditingProject = new ProjectUpdateDto();
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        await SetPermissionsAsync();
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            await SetPermissionsAsync();
             await SetToolbarItemsAsync();
             await InvokeAsync(StateHasChanged);
         }
@@ -174,6 +179,9 @@ public partial class ProjectDetail : HCComponentBase
         CanCreateProjectMember = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectMembers.Create);
         CanDeleteProjectMember = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectMembers.Delete);
         CanEditProjectMember = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectMembers.Edit);
+        CanEditProject = await AuthorizationService.IsGrantedAsync(HCPermissions.Projects.Edit);
+        CanDeleteProject = await AuthorizationService.IsGrantedAsync(HCPermissions.Projects.Delete);
+        CanCreateProject = await AuthorizationService.IsGrantedAsync(HCPermissions.Projects.Create);
     }
 
     protected virtual ValueTask SetToolbarItemsAsync()
@@ -184,14 +192,18 @@ public partial class ProjectDetail : HCComponentBase
             return Task.CompletedTask;
         }, IconName.ArrowLeft);
 
-        // Add Save button for create/edit modes
-        if (ProjectId == Guid.Empty)
+        if (ProjectId == Guid.Empty && CanCreateProject)
         {
             Toolbar.AddButton(L["Save"], CreateProjectAsync, IconName.Save, Color.Primary);
         }
-        else if (CurrentProject != null)
+        else if (CurrentProject != null && CanEditProject)
         {
             Toolbar.AddButton(L["Save"], UpdateProjectAsync, IconName.Save, Color.Primary);
+        }
+
+        if (CurrentProject != null && CanDeleteProject)
+        {
+            Toolbar.AddButton(L["Delete"], DeleteProjectAsync, IconName.Delete, Color.Danger);
         }
 
         return ValueTask.CompletedTask;
@@ -700,6 +712,33 @@ public partial class ProjectDetail : HCComponentBase
             // Fallback to P0000001 if error occurs
             return "P0000001";
         }
+    }
+
+
+    private async Task DeleteProjectAsync()
+    {
+        try
+        {
+            if (!await UiMessageService.Confirm(L["DeleteConfirmationMessage"].Value))
+            {
+                return;
+            }
+
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            await ProjectsAppService.DeleteAsync(ProjectId);
+            await UiMessageService.Success(L["SuccessfullyDeleted"]);
+            NavigationManager.NavigateTo("/projects");
+        }
+        catch (Exception ex)
+        {
+            await UiMessageService.Error(ex.Message);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+       
     }
 
     private async Task GetDepartmentCollectionLookupAsync(string? newValue = null)

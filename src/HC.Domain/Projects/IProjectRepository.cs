@@ -18,7 +18,7 @@ public partial interface IProjectRepository : IRepository<Project, Guid>
     //  string? description = null, DateTime? startDateMin = null, DateTime? startDateMax = null,
     //   DateTime? endDateMin = null, DateTime? endDateMax = null, string? status = null,
     //    Guid? ownerDepartmentId = null, Guid? userId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default);
-
+    
 
     Task<long> GetCountAsync(string? filterText = null, string? code = null, string? name = null,
      string? description = null, DateTime? startDateMin = null, DateTime? startDateMax = null,

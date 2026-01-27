@@ -126,7 +126,7 @@ public partial class SurveyCollections
                 NewSurveyResults.Add(new SurveyResultCreateDto
                 {
                     SurveyCriteriaId = criteria.SurveyCriteria.Id,
-                    Rating = 1
+                    Rating = 5
                 });
             }
 

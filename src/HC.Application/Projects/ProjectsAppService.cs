@@ -19,6 +19,7 @@ using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using HC.Chat.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace HC.Projects;
 
@@ -30,13 +31,15 @@ public abstract class ProjectsAppServiceBase : HCAppService
     protected IProjectRepository _projectRepository;
     protected ProjectManager _projectManager;
     protected IRepository<HC.Departments.Department, Guid> _departmentRepository;
+    protected ILogger<ProjectsAppServiceBase> _logger;
 
-    public ProjectsAppServiceBase(IProjectRepository projectRepository, ProjectManager projectManager, IDistributedCache<ProjectDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.Departments.Department, Guid> departmentRepository)
+    public ProjectsAppServiceBase(IProjectRepository projectRepository, ProjectManager projectManager, IDistributedCache<ProjectDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.Departments.Department, Guid> departmentRepository, ILogger<ProjectsAppServiceBase> logger)
     {
         _downloadTokenCache = downloadTokenCache;
         _projectRepository = projectRepository;
         _projectManager = projectManager;
         _departmentRepository = departmentRepository;
+        _logger = logger;
     }
 
     public virtual async Task<PagedResultDto<ProjectWithNavigationPropertiesDto>> GetListAsync(GetProjectsInput input)
@@ -86,7 +89,16 @@ public abstract class ProjectsAppServiceBase : HCAppService
     [Authorize(HCPermissions.Projects.Delete)]
     public virtual async Task DeleteAsync(Guid id)
     {
-        await _projectRepository.DeleteAsync(id);
+        try
+        {
+            _logger.LogInformation($"Deleting project {id}");
+            await _projectRepository.DeleteAsync(id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error deleting project {id}: {ex.Message}");
+            throw new UserFriendlyException(ex.Message);
+        }
     }
 
     [Authorize(HCPermissions.Projects.Create)]

@@ -367,33 +367,39 @@
               </DataGridColumn>
                 <DataGridColumn TItem="ProjectWithNavigationPropertiesDto" Caption="@L["Actions"]">
                     <DisplayTemplate>
-                        <div class="hc-action-icons">
+                        <div class="d-flex gap-1">
                             @if (CanEditProject)
                             {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => NavigateToProjectDetail(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Color="Color.Primary" 
+                                    Outline Size="Size.Small" 
+                                    Clicked="@(() => NavigateToProjectDetail(context))">
+                                    <Icon Name="IconName.Edit" />
+                                </Button>   
                             }
-                            <i class="bi bi-chat-dots-fill hc-action-icon hc-action-view" 
-                               title="@L["Menu:CreateChat"]"
-                               @onclick="@(async () => await CreateProjectChatModalAsync(context))"
-                               style="cursor: pointer;"></i>
+                            
+                            <Button Color="Color.Info" 
+                                Outline Size="Size.Small" 
+                                Clicked="@(async () => await CreateProjectChatModalAsync(context))">
+                                <Icon Name="IconName.Comments" />
+                            </Button>
 
-                            <i class="bi bi-card-checklist hc-action-icon hc-action-tasks" 
-                               title="@L["Tasks"]"
-                               @onclick="@(() => OpenProjectTasksModalAsync(context))"
-                               style="cursor: pointer;"></i>
-                            <i class="bi bi-people-fill hc-action-icon hc-action-members" 
-                               title="@L["Members"]"
-                               @onclick="@(() => OpenProjectMembersModalAsync(context))"
-                               style="cursor: pointer;"></i>
+                            <Button Color="Color.Success" 
+                                Outline Size="Size.Small" 
+                                Clicked="@(() => OpenProjectTasksModalAsync(context))">
+                                <Icon Name="IconName.List" />
+                            </Button>
+                            <Button Color="Color.Info" 
+                                Outline Size="Size.Small" 
+                                Clicked="@(() => OpenProjectMembersModalAsync(context))">
+                                <Icon Name="IconName.UserCheck" />
+                            </Button>
                             @if (CanDeleteProject)
                             {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteProjectWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Color="Color.Danger" 
+                                    Outline Size="Size.Small" 
+                                    Clicked="@(() => DeleteProjectWithConfirmationAsync(context))">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
                             }
                         </div>
 @*//<suite-custom-code-block-4>*@

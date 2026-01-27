@@ -21,6 +21,7 @@ using Microsoft.JSInterop;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.Application.Dtos;
 using Blazorise.PdfViewer;
+using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 
 namespace HC.Blazor.Pages;
 
@@ -42,10 +43,11 @@ public partial class DocumentDetail : HCComponentBase
     protected bool IsEditMode => DocumentId != Guid.Empty;
     protected bool IsViewMode { get; set; } = false;
     protected DocumentWithNavigationPropertiesDto? CurrentDocument { get; set; }
-
+    protected PageToolbar Toolbar { get; } = new PageToolbar();
     private bool CanEditDocument { get; set; }
     private bool CanCreateDocument { get; set; }
     private bool CanDeleteDocumentFile { get; set; }
+
 
     // Document data
     private DocumentCreateDto? DocumentCreateData { get; set; }
@@ -92,7 +94,6 @@ public partial class DocumentDetail : HCComponentBase
     private bool IsUploading { get; set; }
     private int FilePickerProgress { get; set; }
 
-    // Document files list
     private IReadOnlyList<DocumentFileWithNavigationPropertiesDto> DocumentFilesList { get; set; } = new List<DocumentFileWithNavigationPropertiesDto>();
 
     // PDF viewer
@@ -108,25 +109,25 @@ public partial class DocumentDetail : HCComponentBase
 
     private Guid _loadedDocumentId;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await SetPermissionsAsync();
+        if (firstRender)
+        {
+            await SetPermissionsAsync();
+            await SetToolbarItemsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        Logger.LogInformation($"OnParametersSetAsync called. DocumentId: {DocumentId}, DocumentIdQuery: {DocumentIdQuery}, _loadedDocumentId: {_loadedDocumentId}");
         
         if (DocumentId == Guid.Empty && DocumentIdQuery.HasValue)
         {
             DocumentId = DocumentIdQuery.Value;
-            Logger.LogInformation($"DocumentId set from query: {DocumentId}");
         }
-
         if (DocumentId == Guid.Empty)
         {
-            // Create mode
-            Logger.LogInformation("OnParametersSetAsync: Create mode");
             IsLoading = true;
             try
             {
@@ -182,9 +183,9 @@ public partial class DocumentDetail : HCComponentBase
 
     private async Task SetPermissionsAsync()
     {
-        CanCreateDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Create);
-        CanEditDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Edit);
-        CanDeleteDocumentFile = await AuthorizationService.IsGrantedAsync(HCPermissions.DocumentFiles.Delete);
+        CanCreateDocument = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.Documents.Create);
+        CanEditDocument = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.Documents.Edit);
+        CanDeleteDocumentFile = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.DocumentFiles.Delete);
     }
 
     private void InitializeCreateMode()
@@ -196,20 +197,38 @@ public partial class DocumentDetail : HCComponentBase
         DocumentUpdateData = null;
     }
 
+    protected virtual ValueTask SetToolbarItemsAsync()
+    {   
+        Toolbar.AddButton(L["Back"], () =>
+        {
+            NavigationManager.NavigateTo("/projects");
+            return Task.CompletedTask;
+        }, IconName.ArrowLeft);
+
+        if (DocumentId == Guid.Empty && CanCreateDocument) 
+        {
+            Toolbar.AddButton(L["Save"], OnSave, IconName.Save, Color.Primary);
+        }else if (DocumentId != Guid.Empty && CanEditDocument)
+        {
+            Toolbar.AddButton(L["Edit"], OnSave, IconName.Edit, Color.Primary);
+        }
+        if (CurrentDocument != null && CanDeleteDocumentFile)
+        {
+            Toolbar.AddButton(L["Delete"],DeleteDocumentAsync, IconName.Delete, Color.Danger);
+        }
+        return ValueTask.CompletedTask;
+    }
+
     private async Task LoadDocumentAsync()
     {
-        // IsLoading is already set in OnParametersSetAsync
         try
         {
-            Logger.LogInformation($"LoadDocumentAsync called. DocumentId: {DocumentId}");
             CurrentDocument = await DocumentsAppService.GetWithNavigationPropertiesAsync(DocumentId);
             if (CurrentDocument != null)
             {
-                Logger.LogInformation($"LoadDocumentAsync: Document loaded successfully");
                 DocumentUpdateData = ObjectMapper.Map<DocumentDto, DocumentUpdateDto>(CurrentDocument.Document);
                 DocumentCreateData = null;
 
-                // Load selected values for Select2
                 if (CurrentDocument.Document.TypeId != default)
                 {
                     var typeData = await GetMasterDataByIdAsync(CurrentDocument.Document.TypeId, MasterDataType.DocumentType);
@@ -286,8 +305,6 @@ public partial class DocumentDetail : HCComponentBase
                 SkipCount = 0
             });
             
-            Logger.LogInformation($"DocumentFilesList loaded: {result.Items.Count} items");
-            Console.WriteLine($"DocumentFilesList: {result.Items.Count}");
             DocumentFilesList = result.Items;
         }
         catch (Exception ex)
@@ -552,7 +569,6 @@ public partial class DocumentDetail : HCComponentBase
         InvokeAsync(StateHasChanged);
     }
 
-    // File changed handler - auto upload when file is selected
     private async Task OnFileChanged(FileChangedEventArgs e)
     {
         if (e.Files != null && e.Files.Any())
@@ -564,13 +580,11 @@ public partial class DocumentDetail : HCComponentBase
        
     }
 
-    // File upload handler (kept for backward compatibility if needed)
     private async Task OnFileUpload(FileUploadEventArgs e)
     {
         await UploadFileAsync(e.File);
     }
 
-    // Common file upload logic
     private async Task UploadFileAsync(IFileEntry file)
     {
         try
@@ -639,7 +653,6 @@ public partial class DocumentDetail : HCComponentBase
         }
     }
 
-    // Save handler
     private async Task OnSave()
     {
         IsSaving = true;
@@ -730,13 +743,7 @@ public partial class DocumentDetail : HCComponentBase
         NavigationManager.NavigateTo("/documents");
     }
 
-    private void OnEdit()
-    {
-        IsViewMode = false;
-        InvokeAsync(StateHasChanged);
-    }
 
-    // PDF Viewer Modal methods
     private async Task OpenPdfViewerModalAsync()
     {
         if (PdfViewerModal != null)
@@ -784,10 +791,8 @@ public partial class DocumentDetail : HCComponentBase
         }
     }
 
-    // FilePicker Localizer
     private string FilePickerLocalizer(string name, params object[] arguments)
     {
-        // Map Blazorise FilePicker localization keys to our localization strings
         return name switch
         {
             "ClearConfirmation" => L["FilePicker:ClearConfirmation"],
@@ -796,11 +801,10 @@ public partial class DocumentDetail : HCComponentBase
             "Confirm" => L["Confirm"],
             "Are you sure you want to clear all files?" => L["FilePicker:ClearConfirmation"],
             "Are you sure you want to clear the selected files?" => L["FilePicker:ClearConfirmation"],
-            _ => L[name] ?? name // Try to get from localization, fallback to default name
+            _ => L[name] ?? name 
         };
     }
 
-    // Manual validation methods using ValidationHelper
     private bool ValidateCreateDocument()
     {
         CreateValidation.Reset();
@@ -913,7 +917,6 @@ public partial class DocumentDetail : HCComponentBase
                 return;
             }
 
-            // Delete file from MinIO if path exists
             if (!string.IsNullOrEmpty(file.DocumentFile.Path))
             {
                 try
@@ -924,17 +927,13 @@ public partial class DocumentDetail : HCComponentBase
                 catch (Exception ex)
                 {
                     Logger.LogWarning(ex, $"Failed to delete file from MinIO: {file.DocumentFile.Path}");
-                    // Continue to delete from database even if MinIO deletion fails
                 }
             }
 
-            // Delete from DocumentFiles table
             await DocumentFilesAppService.DeleteAsync(file.DocumentFile.Id);
 
-            // Reload document files list
             await LoadDocumentFilesAsync();
             
-            // Clear PDF URL if deleted file was PDF
             await LoadPdfUrlAsync();
 
             await UiMessageService.Success(L["SuccessfullyDeleted"]);
@@ -947,6 +946,36 @@ public partial class DocumentDetail : HCComponentBase
         }
     }
 
+    private async Task DeleteDocumentAsync()
+    {
+        try
+        {   
+            
+            if (CurrentDocument == null)
+            {
+                await UiMessageService.Warn(L["NoDataAvailable"]);
+                return;
+            }
+
+            if (!await UiMessageService.Confirm(L["DeleteConfirmationMessage"]))
+            {
+                return;
+            }
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await DocumentsAppService.DeleteAsync(CurrentDocument.Document.Id);
+            await UiMessageService.Success(L["SuccessfullyDeleted"]);
+            NavigationManager.NavigateTo("/documents");
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
     // Check if file is PDF based on extension
     private bool IsPdfFileExtension(string fileName)
     {

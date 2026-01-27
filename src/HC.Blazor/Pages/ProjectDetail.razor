@@ -12,6 +12,7 @@
 @using Blazorise
 @using Blazorise.Components
 @using Blazorise.DataGrid
+@using Volo.Abp.AspNetCore.Components.BlockUi
 @using Volo.Abp.AspNetCore.Components.Messages
 @using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
 @using Volo.Abp.BlazoriseUI
@@ -22,6 +23,7 @@
 @inject IProjectTasksAppService ProjectTasksAppService
 @inject IProjectMembersAppService ProjectMembersAppService
 @inject IUiMessageService UiMessageService
+@inject IBlockUiService BlockUiService
 @inject IMemoryCache __MemoryCache
 @inject NavigationManager NavigationManager
 
@@ -483,11 +485,11 @@ else
                                             Class="w-100">
                                         @if (IsMemberRoleEditMode)
                                         {
-                                            <Icon Name="IconName.Save" Class="me-1" /> @L["Update"]
+                                            <Icon Name="IconName.Save" Class="me-1" /> 
                                         }
                                         else
                                         {
-                                            <Icon Name="IconName.Add" Class="me-1" /> @L["Add"]
+                                            <Icon Name="IconName.Add" Class="me-1" /> 
                                         }
                                     </Button>
                                 </Column>

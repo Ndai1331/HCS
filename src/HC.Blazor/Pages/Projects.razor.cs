@@ -209,7 +209,11 @@ public partial class Projects : HCComponentBase
     }
     private async Task CreateProjectChatModalAsync(ProjectWithNavigationPropertiesDto project)
     {
-        //open modal create Chat group (auto select project.Project.Id)
+
+        // kiểm tra xem có conversation nào với project id này đã tồn tại chưa 
+        //Có thì qua /chat và chọn conversation đó
+
+        //chưa thì tạo conversation mới với project id này
         try
         {
             //show loading spinner
