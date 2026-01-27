@@ -12,16 +12,19 @@
 @using Blazorise
 @using Blazorise.Components
 @using Blazorise.DataGrid
+@using Volo.Abp.AspNetCore.Components.BlockUi
 @using Volo.Abp.AspNetCore.Components.Messages
 @using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
 @using Volo.Abp.BlazoriseUI
 @inherits HCComponentBase
 @inject IMemoryCache __MemoryCache
+@inject IBlockUiService BlockUiService
 
-<PageHeader Title="@PageTitle" BreadcrumbItems="BreadcrumbItems">
+
+<PageHeader Title="@PageTitle" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
 </PageHeader>
 <style>
-    .row
+    .row, .row > *
     {
       margin-top:0px;
     }   
@@ -52,68 +55,6 @@ else if (CurrentProjectTask is null)
 }
 else
 {
-    @* Task Information Card *@
-    <Card Class="mb-3">
-        <CardBody>
-            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                <div>
-                    <h3 class="mb-1">@CurrentProjectTask.ProjectTask.Title</h3>
-                    <div class="text-muted">
-                        <span class="me-2"><i class="fa fa-hashtag me-1"></i>@CurrentProjectTask.ProjectTask.Code</span>
-                        @if (CurrentProjectTask.Project is not null)
-                        {
-                            <span class="me-2"><i class="fa fa-folder me-1"></i>@CurrentProjectTask.Project.Name</span>
-                        }
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    @if (Enum.TryParse<ProjectTaskPriority>(CurrentProjectTask.ProjectTask.Priority, ignoreCase: true, out var priority))
-                    {
-                        <Badge Color="Color.Primary">@L[$"Enum:ProjectTaskPriority.{priority}"]</Badge>
-                    }
-                    @if (Enum.TryParse<ProjectTaskStatus>(CurrentProjectTask.ProjectTask.Status, ignoreCase: true, out var status))
-                    {
-                        <Badge Color="Color.Info">@L[$"Enum:ProjectTaskStatus.{status}"]</Badge>
-                    }
-                    <Badge Color="Color.Light">
-                        <i class="fa fa-percent me-1"></i>@CurrentProjectTask.ProjectTask.ProgressPercent%
-                    </Badge>
-                </div>
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(CurrentProjectTask.ProjectTask.Description))
-            {
-                <div class="mt-3">
-                    <Field>
-                        <FieldLabel>@L["Description"]</FieldLabel>
-                        <div class="hc-project-desc">
-                            @CurrentProjectTask.ProjectTask.Description
-                        </div>
-                    </Field>
-                </div>
-            }
-
-            <Row Class="g-3 mt-1">
-                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                    <Field>
-                        <FieldLabel>@L["StartDate"]</FieldLabel>
-                        <div class="hc-project-meta">
-                            <i class="fa fa-calendar-day me-1"></i>@CurrentProjectTask.ProjectTask.StartDate.ToString("dd/MM/yyyy HH:mm")
-                        </div>
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                    <Field>
-                        <FieldLabel>@L["DueDate"]</FieldLabel>
-                        <div class="hc-project-meta">
-                            <i class="fa fa-calendar-check me-1"></i>@CurrentProjectTask.ProjectTask.DueDate.ToString("dd/MM/yyyy HH:mm")
-                        </div>
-                    </Field>
-                </Column>
-            </Row>
-        </CardBody>
-    </Card>
-
     @* Edit Form *@
     <Card>
         <CardBody>
@@ -352,61 +293,68 @@ else
                                     }
                                     else
                                     {
-                                        <Row Class="g-3 align-items-center">
-                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                                <Field>
-                                                    <FieldLabel>@L["Assignee"] *</FieldLabel>
-                                                    <div class="hc-select2-full">
-                                                        <Select2 IdSelector="c => c.Id.ToString()"
-                                                                TextSelector="c => c.DisplayName"
-                                                                FilterFunction="GetAssignmentIdentityUserLookupAsync"
-                                                                GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
-                                                                Datasource="AssignmentIdentityUsersCollection"
-                                                                Value="@EditAssignmentsUsersToAdd"
-                                                                OnValueChanged="OnEditAssignmentUserChanged"
-                                                                Cache="__MemoryCache"
-                                                                Multiselect="false" />
-                                                    </div>
-                                                </Field>
-                                            </Column>
-                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
-                                                <Field>
-                                                    <FieldLabel>@L["AssignmentRole"] *</FieldLabel>
-                                                    <Select TValue="ProjectTaskAssignmentRole" @bind-SelectedValue="EditAssignmentRole" Class="w-100">
-                                                        @foreach (var role in Enum.GetValues<ProjectTaskAssignmentRole>())
+
+                                        @if (CanCreateProjectTaskAssignment 
+                                        || CanEditProjectTaskAssignment)
+                                        {
+                                            <Row Class="g-3 align-items-center">
+                                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                                    <Field>
+                                                        <FieldLabel>@L["Assignee"] *</FieldLabel>
+                                                        <div class="hc-select2-full">
+                                                            <Select2 IdSelector="c => c.Id.ToString()"
+                                                                    TextSelector="c => c.DisplayName"
+                                                                    FilterFunction="GetAssignmentIdentityUserLookupAsync"
+                                                                    GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                                                    Datasource="AssignmentIdentityUsersCollection"
+                                                                    Value="@EditAssignmentsUsersToAdd"
+                                                                    OnValueChanged="OnEditAssignmentUserChanged"
+                                                                    Cache="__MemoryCache"
+                                                                    Multiselect="false" />
+                                                        </div>
+                                                    </Field>
+                                                </Column>
+                                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                                    <Field>
+                                                        <FieldLabel>@L["AssignmentRole"] *</FieldLabel>
+                                                        <Select TValue="ProjectTaskAssignmentRole" @bind-SelectedValue="EditAssignmentRole" Class="w-100">
+                                                            @foreach (var role in Enum.GetValues<ProjectTaskAssignmentRole>())
+                                                            {
+                                                                <SelectItem TValue="ProjectTaskAssignmentRole" Value="@role">
+                                                                    @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
+                                                                </SelectItem>
+                                                            }
+                                                        </Select>
+                                                    </Field>
+                                                </Column>
+                                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                                    <Button Color="Color.Primary" 
+                                                            Class="w-100" 
+                                                            Disabled="@IsAddingAssignment"
+                                                            Clicked="AddEditAssignmentAsync">
+                                                        @if (IsAddingAssignment)
                                                         {
-                                                            <SelectItem TValue="ProjectTaskAssignmentRole" Value="@role">
-                                                                @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
-                                                            </SelectItem>
+                                                            <RadarSpinner />
                                                         }
-                                                    </Select>
-                                                </Field>
-                                            </Column>
-                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
-                                                <Button Color="Color.Primary" 
-                                                        Class="w-100" 
-                                                        Disabled="@IsAddingAssignment"
-                                                        Clicked="AddEditAssignmentAsync">
-                                                    @if (IsAddingAssignment)
-                                                    {
-                                                        <RadarSpinner />
-                                                    }
-                                                    else
-                                                    {
-                                                        <Icon Name="IconName.Add" Class="me-1" />
-                                                        @L["Add"]
-                                                    }
-                                                </Button>
-                                            </Column>
-                                        </Row>
-                                        <Row Class="g-3 mt-1">
-                                            <Column ColumnSize="ColumnSize.Is12">
-                                                <Field>
-                                                    <FieldLabel>@L["Note"]</FieldLabel>
-                                                    <TextEdit @bind-Text="EditAssignmentNote" />
-                                                </Field>
-                                            </Column>
-                                        </Row>
+                                                        else
+                                                        {
+                                                            <Icon Name="IconName.Add" Class="me-1" />
+                                                            @L["Add"]
+                                                        }
+                                                    </Button>
+                                                </Column>
+                                            </Row>
+
+                                            <Row Class="g-3 mt-1">
+                                                <Column ColumnSize="ColumnSize.Is12">
+                                                    <Field>
+                                                        <FieldLabel>@L["Note"]</FieldLabel>
+                                                        <TextEdit @bind-Text="EditAssignmentNote" />
+                                                    </Field>
+                                                </Column>
+                                            </Row>
+                                        }
+
 
                                         <DataGrid TItem="ProjectTaskAssignmentWithNavigationPropertiesDto"
                                                 Data="EditAssignmentsList"
@@ -439,13 +387,16 @@ else
                                                     </DisplayTemplate>
                                                 </DataGridColumn>
                                                 <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.Note" Caption="@L["Note"]" />
-                                                <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Caption="@L["Actions"]">
-                                                    <DisplayTemplate>
-                                                        <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteEditAssignmentAsync(context))">
-                                                            <Icon Name="IconName.Delete" Class="me-1" /> @L["Delete"]
-                                                        </Button>
-                                                    </DisplayTemplate>
-                                                </DataGridColumn>
+                                                @if (CanDeleteProjectTaskAssignment)
+                                                {
+                                                    <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Caption="@L["Actions"]">
+                                                        <DisplayTemplate>
+                                                            <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteEditAssignmentAsync(context))">
+                                                                <Icon Name="IconName.Delete" Class="me-1" /> @L["Delete"]
+                                                            </Button>
+                                                        </DisplayTemplate>
+                                                    </DataGridColumn>
+                                                }
                                             </DataGridColumns>
                                         </DataGrid>
                                     }
@@ -567,26 +518,6 @@ else
                         </Tabs>
                     </Column>
                 </Row>
-
-                <Div Class="mt-4 d-flex justify-content-end gap-2">
-                    <Button Color="Color.Secondary" 
-                            Clicked="@(() => NavigationManager.NavigateTo("/tasks"))">
-                        <Icon Name="IconName.ArrowLeft" Class="me-1" /> @L["Back"]
-                    </Button>
-                    <SubmitButton Form="EditProjectTaskForm" 
-                                 Disabled="@IsUpdatingProjectTask"
-                                 Clicked="UpdateProjectTaskAsync">
-                        @if (IsUpdatingProjectTask)
-                        {
-                            <RadarSpinner />
-                        }
-                        else
-                        {
-                            <Icon Name="IconName.Save" Class="me-1" />
-                            @L["Save"]
-                        }
-                    </SubmitButton>
-                </Div>
             </Form>
         </CardBody>
     </Card>

@@ -201,7 +201,7 @@ public partial class DocumentDetail : HCComponentBase
     {   
         Toolbar.AddButton(L["Back"], () =>
         {
-            NavigationManager.NavigateTo("/projects");
+            NavigationManager.NavigateTo("/documents");
             return Task.CompletedTask;
         }, IconName.ArrowLeft);
 
@@ -624,7 +624,7 @@ public partial class DocumentDetail : HCComponentBase
             else
             {
                 IsPdfFile = false;
-                PdfFileUrl = null;
+                PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";;
             }
             await UiMessageService.Success(L["FileUploadedSuccessfully"]);
 
@@ -634,21 +634,12 @@ public partial class DocumentDetail : HCComponentBase
             await HandleErrorAsync(ex);
             UploadedFilePath = string.Empty;
             FilePickerProgress = 0;
-            PdfFileUrl = null;
+            PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";;
             IsPdfFile = false;
         }
         finally
         {
             IsUploading = false;
-
-            if (IsEditMode && EditPdfViewerRef != null)
-            {
-                EditPdfViewerRef.Source = PdfFileUrl ?? "https://pdfobject.com/pdf/sample.pdf"  ;
-            }
-            else if (!IsEditMode && CreatePdfViewerRef != null)
-            {
-                CreatePdfViewerRef.Source = PdfFileUrl ?? "https://pdfobject.com/pdf/sample.pdf";
-            }
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -732,57 +723,6 @@ public partial class DocumentDetail : HCComponentBase
             await InvokeAsync(StateHasChanged);
         }
     }
-
-    private void OnCancel()
-    {
-        NavigationManager.NavigateTo("/documents");
-    }
-
-    private void OnBack()
-    {
-        NavigationManager.NavigateTo("/documents");
-    }
-
-
-    private async Task OpenPdfViewerModalAsync()
-    {
-        if (PdfViewerModal != null)
-        {
-            await PdfViewerModal.Show();
-        }
-    }
-
-    private async Task OpenPdfViewerModalForFileAsync(DocumentFileWithNavigationPropertiesDto file)
-    {
-        try
-        {
-            // Check if file is PDF
-            if (!IsPdfFileExtension(file.DocumentFile.Name) || string.IsNullOrEmpty(file.DocumentFile.Path))
-            {
-                return;
-            }
-
-            // Get file bytes from MinIO
-            var fileBytes = await BlobContainer.GetAllBytesAsync(file.DocumentFile.Path);
-            
-            // Create data URL for PDF
-            var base64 = Convert.ToBase64String(fileBytes);
-            PdfFileUrl = $"data:application/pdf;base64,{base64}";
-            IsPdfFile = true;
-
-            // Open modal
-            if (PdfViewerModal != null)
-            {
-                await PdfViewerModal.Show();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, $"Error loading PDF for file: {file.DocumentFile.Path}");
-            await HandleErrorAsync(ex);
-        }
-    }
-
     private async Task ClosePdfViewerModalAsync()
     {
         if (PdfViewerModal != null)
@@ -989,7 +929,7 @@ public partial class DocumentDetail : HCComponentBase
     // Load PDF URL for viewer
     private async Task LoadPdfUrlAsync()
     {
-        PdfFileUrl = null;
+        PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";;
         IsPdfFile = false;
 
         // Check if there's a file in DocumentFilesList
@@ -1022,7 +962,7 @@ public partial class DocumentDetail : HCComponentBase
         {
             Logger.LogError(ex, $"Error loading PDF URL for file: {firstFile.DocumentFile.Path}");
             IsPdfFile = false;
-            PdfFileUrl = null;
+            PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";;
         }
     }
 }

@@ -907,6 +907,8 @@
     "Read": "Read",
     "Unread": "Unread",
     "NoRecentUpdates": "No recent updates",
-    "BackToHome": "Back to home"
+    "BackToHome": "Back to home",
+    "Infomation": "Infomation",
+    "NoProjectOrDeleted": "No project or deleted"
   }
 }

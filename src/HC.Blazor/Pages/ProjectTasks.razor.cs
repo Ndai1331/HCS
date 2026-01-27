@@ -170,6 +170,10 @@ public partial class ProjectTasks
 
     private bool CanDeleteProjectTask { get; set; }
 
+    private bool CanCreateProjectTaskAssignment { get; set; }
+    private bool CanEditProjectTaskAssignment { get; set; }
+    private bool CanDeleteProjectTaskAssignment { get; set; }
+
     private ProjectTaskDto NewProjectTask { get; set; }
     private ProjectTaskUpdateDto EditingProjectTask { get; set; }
     private Guid EditingProjectTaskId { get; set; }
@@ -224,18 +228,17 @@ public partial class ProjectTasks
 
     protected override async Task OnInitializedAsync()
     {
-        await SetPermissionsAsync();
-
-        await GetProjectCollectionLookupAsync();
-        await RefreshKanbanAsync();
+        await SetBreadcrumbItemsAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await SetBreadcrumbItemsAsync();
+            await SetPermissionsAsync();
             await SetToolbarItemsAsync();
+            await GetProjectCollectionLookupAsync();
+            await RefreshKanbanAsync();
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -309,6 +312,10 @@ public partial class ProjectTasks
         CanCreateProjectTask = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTasks.Create);
         CanEditProjectTask = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTasks.Edit);
         CanDeleteProjectTask = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTasks.Delete);
+
+        CanCreateProjectTaskAssignment = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTaskAssignments.Create);
+        CanEditProjectTaskAssignment = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTaskAssignments.Edit);
+        CanDeleteProjectTaskAssignment = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTaskAssignments.Delete);
     }
 
     protected string GetStatusText(ProjectTaskStatus status)

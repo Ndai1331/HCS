@@ -951,6 +951,8 @@
     "Read": "Đã đọc",
     "Unread": "Chưa đọc",
     "NoRecentUpdates": "Không có cập nhật gần đây",
-    "BackToHome": "Quay lại trang chủ"
+    "BackToHome": "Quay lại trang chủ",
+    "Infomation": "Thông tin",
+    "NoProjectOrDeleted": "Không có dự án hoặc đã bị xóa"
   }
 }

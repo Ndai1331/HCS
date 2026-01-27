@@ -30,7 +30,8 @@
 @inject NavigationManager NavigationManager
 @inject IMemoryCache __MemoryCache
 @* ************************* PAGE HEADER ************************* *@
-<PageHeader Title="@L["Menu:Tasks"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar" @key="IsKanbanView">
+<PageHeader Title="@L["Menu:Tasks"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar"
+ @key="IsKanbanView">
 </PageHeader>
 <style>
     tr.table-row-selectable:hover {
@@ -727,113 +728,117 @@ else
                 {
                     <DataGridMultiSelectColumn TItem="ProjectTaskWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
                 }
-              <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
-                      Field="ProjectTask.ParentTaskId"
-                      Caption="@L["ParentTaskId"]">
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
-                      Field="ProjectTask.Code"
-                      Caption="@L["Code"]">
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
-                      Field="ProjectTask.Title"
-                      Caption="@L["Title"]">
-                  <DisplayTemplate>
-                      @if (!string.IsNullOrWhiteSpace(context.ProjectTask.ParentTaskId))
-                      {
-                          <div class="text-muted">
-                              @L["ParentTaskTitle"]: #@context.ProjectTask.ParentTaskId - @context.ParentTaskTitle
-                          </div>
-                      }
-                      <div class="d-flex align-items-center gap-2">
-                          <span>@context.ProjectTask.Title</span>
-                          @if (context.ChildTaskCount > 0)
-                          {
-                              <span class="text-muted">
-                                  <i aria-hidden="true" class="fa fa-list me-1"></i>@context.ChildTaskCount
-                              </span>
-                          }
-                      </div>
-                  </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
-                      Field="ProjectTask.Description"
-                      Caption="@L["Description"]">
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
-                      Field="ProjectTask.StartDate"
-                      Caption="@L["StartDate"]">
-                  <DisplayTemplate>
-                        @context.ProjectTask.StartDate.ToString("dd/MM/yyyy HH:mm")
-                  </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
-                      Field="ProjectTask.DueDate"
-                      Caption="@L["DueDate"]">
-                  <DisplayTemplate>
-                        @context.ProjectTask.DueDate.ToString("dd/MM/yyyy HH:mm")
-                  </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
-                      Field="ProjectTask.Priority"
-                      Caption="@L["Priority"]">
-                  <DisplayTemplate>
-                      @{
-                          var priority = ParsePriority(context.ProjectTask.Priority);
-                      }
-                      <Badge Color="@GetPriorityBadgeColor(priority)">
-                          @GetPriorityText(priority)
-                      </Badge>
-                  </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
-                      Field="ProjectTask.Status"
-                      Caption="@L["Status"]">
-                  <DisplayTemplate>
-                      @{
-                          var status = ParseStatus(context.ProjectTask.Status);
-                      }
-                      <Badge Color="@GetStatusBadgeColor(status)">
-                          @GetStatusText(status)
-                      </Badge>
-                  </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
-                      Field="ProjectTask.ProgressPercent"
-                      Caption="@L["ProgressPercent"]">
-                  <DisplayTemplate>
-                      <div class="d-flex align-items-center gap-2">
-                          <Progress Value="@context.ProjectTask.ProgressPercent" Max="100" Class="hc-progress" />
-                          <span class="text-muted small">@context.ProjectTask.ProgressPercent%</span>
-                      </div>
-                  </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
-                      Field="Project.Name"
-                      Caption="@L["Project"]">
-              </DataGridColumn>
-                <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Caption="@L["Actions"]">
+
+            <DataGridColumn
+                TItem="ProjectTaskWithNavigationPropertiesDto"
+                Field="ProjectTask.ParentTaskId"
+                Caption="@L["Project"]">
+                    <DisplayTemplate>   
+                        @if (context != null && context.ProjectTask != null && context.Project != null
+                        && !string.IsNullOrWhiteSpace(context.Project.Name))
+                        {
+                            <span>@context.Project.Name</span>
+                        }else{
+                            <span>@L["NoProjectOrDeleted"]</span>
+                        }
+                    </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
+                    Field="ProjectTask.ParentTaskId"
+                    Caption="@L["Infomation"]">
                     <DisplayTemplate>
-                        <div class="hc-action-icons">
+                        <div class="row">
+                            <div class="col">
+                            <h5 class="card-title question-title pb-2">
+                                @context.ProjectTask.Title
+                            </h5>
+                            <div class="d-flex flex-column pb-2 mb-2">
+                                <p class="mb-0">
+                                    <small class="text-black">
+                                        <span>
+                                            @if (!string.IsNullOrWhiteSpace(context.ProjectTask.ParentTaskId))
+                                            {
+                                               <p> @L["ParentTaskId"]: @context.ProjectTask.ParentTaskId </p> <br/>
+                                            }
+                                            @L["Code"]: @(context.ProjectTask.Code) <br/>
+                                            @if (context.ChildTaskCount > 0)
+                                            {
+                                                <i aria-hidden="true" class="fa fa-list me-1 text-brand"></i>@context.ChildTaskCount <br/>
+                                            }
+                                        </span>
+                                    </small>
+                                </p>
+                                <p class="mb-0">
+                                    <small class="text-muted">
+                                        <span>@context.ProjectTask.Description</span>
+                                    </small>
+                                </p>
+                            </div>
+                            </div>
+                        </div>
+                    </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
+                    Field="ProjectTask.StartDate"
+                    Caption="@L["StartDateAndEndDate"]"
+                    Width="200px">
+                <DisplayTemplate>
+                        @context.ProjectTask.StartDate.ToString("dd/MM/yyyy HH:mm") - @context.ProjectTask.DueDate.ToString("dd/MM/yyyy HH:mm")
+                </DisplayTemplate>
+            </DataGridColumn>              
+            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
+                    Field="ProjectTask.Priority"
+                    Caption="@L["Priority"]">
+                <DisplayTemplate>
+                    @{
+                        var priority = ParsePriority(context.ProjectTask.Priority);
+                    }
+                    <Badge Color="@GetPriorityBadgeColor(priority)">
+                        @GetPriorityText(priority)
+                    </Badge>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
+                    Field="ProjectTask.Status"
+                    Caption="@L["Status"]">
+                <DisplayTemplate>
+                    @{
+                        var status = ParseStatus(context.ProjectTask.Status);
+                    }
+                    <Badge Color="@GetStatusBadgeColor(status)">
+                        @GetStatusText(status)
+                    </Badge>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
+                    Field="ProjectTask.ProgressPercent"
+                    Caption="@L["ProgressPercent"]">
+                <DisplayTemplate>
+                    <div class="d-flex align-items-center gap-2">
+                        <Progress Value="@context.ProjectTask.ProgressPercent" Max="100" Class="hc-progress" />
+                        <span class="text-muted small">@context.ProjectTask.ProgressPercent%</span>
+                    </div>
+                </DisplayTemplate>
+            </DataGridColumn>
+            
+            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Caption="@L["Actions"]">
+                    <DisplayTemplate>
+                        <div class="d-flex gap-1">
                             @if (CanEditProjectTask)
                             {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditProjectTaskModalAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => OpenEditProjectTaskModalAsync(context))" Title="@L["Edit"]">
+                                    <Icon Name="IconName.Edit" />
+                                </Button>
                             }
                             @if (CanDeleteProjectTask)
                             {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteProjectTaskWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Color="Color.Danger" Size="Size.Small" Clicked="@(() => DeleteProjectTaskWithConfirmationAsync(context))" Title="@L["Delete"]">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
                             }
                         </div>
-@*//<suite-custom-code-block-4>*@
-@*//</suite-custom-code-block-4>*@
                     </DisplayTemplate>
-                </DataGridColumn>
+                </DataGridColumn>   
             </DataGridColumns>
         </DataGrid>
     </CardBody>

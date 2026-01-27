@@ -20,6 +20,7 @@ using Microsoft.JSInterop;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Messages;
+using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 
 namespace HC.Blazor.Pages;
 
@@ -31,6 +32,8 @@ public partial class ProjectTasksDetail : HCComponentBase
 
     [SupplyParameterFromQuery(Name = "id")]
     public Guid? ProjectTaskIdQuery { get; set; }
+
+    protected PageToolbar Toolbar { get; } = new PageToolbar();
 
     [Inject] private IProjectTasksAppService ProjectTasksAppService { get; set; } = default!;
     [Inject] private IProjectTaskAssignmentsAppService ProjectTaskAssignmentsAppService { get; set; } = default!;
@@ -57,8 +60,18 @@ public partial class ProjectTasksDetail : HCComponentBase
     protected bool IsAddingAssignment { get; set; }
     protected bool IsAddingDocument { get; set; }
 
+
+
+    private bool CanCreateProjectTask { get; set; }
+    private bool CanEditProjectTask { get; set; }
+    private bool CanDeleteProjectTask { get; set; }
+    private bool CanCreateProjectTaskAssignment { get; set; }
+    private bool CanEditProjectTaskAssignment { get; set; }
+    private bool CanDeleteProjectTaskAssignment { get; set; }
+
+
+
     protected ProjectTaskWithNavigationPropertiesDto? CurrentProjectTask { get; set; }
-    private Guid _loadedProjectTaskId;
 
     // Edit state (similar to modal)
     private string SelectedEditTab { get; set; } = "assignments";
@@ -108,30 +121,49 @@ public partial class ProjectTasksDetail : HCComponentBase
     private string? GetEditFieldError(string fieldName) => EditFieldErrors.GetValueOrDefault(fieldName);
     private bool HasEditFieldError(string fieldName) => EditFieldErrors.ContainsKey(fieldName) && !string.IsNullOrWhiteSpace(EditFieldErrors[fieldName]);
 
-    protected override async Task OnParametersSetAsync()
+    protected virtual ValueTask SetBreadcrumbItemsAsync()
     {
-        if (ProjectTaskId == Guid.Empty && ProjectTaskIdQuery.HasValue)
-        {
-            ProjectTaskId = ProjectTaskIdQuery.Value;
-        }
-
-        if (ProjectTaskId == Guid.Empty)
-        {
-            return;
-        }
-
-        if (_loadedProjectTaskId == ProjectTaskId)
-        {
-            return;
-        }
-
-        _loadedProjectTaskId = ProjectTaskId;
-
         BreadcrumbItems.Clear();
         BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["ProjectTasks"], "/project-tasks"));
         BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Details"]));
+        return ValueTask.CompletedTask;
+    }
 
-        await LoadProjectTaskAsync();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadProjectTaskAsync();
+            await SetPermissionsAsync();
+            await SetToolbarItemsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }   
+    protected virtual ValueTask SetToolbarItemsAsync()
+    {
+        Toolbar.AddButton(L["Back"], () =>
+        {
+            NavigationManager.NavigateTo("/tasks");
+            return Task.CompletedTask;
+        }, IconName.ArrowLeft);
+        if (CurrentProjectTask != null && CanEditProjectTask)
+        {
+            Toolbar.AddButton(L["Edit"], UpdateProjectTaskAsync, IconName.Edit, Color.Primary);
+        }
+        if (CurrentProjectTask != null && CanDeleteProjectTask)
+        {
+            Toolbar.AddButton(L["Delete"], DeleteProjectTaskAsync, IconName.Delete, Color.Danger);
+        }
+        return ValueTask.CompletedTask;
+    }
+    protected virtual async Task SetPermissionsAsync()
+    {
+        CanEditProjectTask = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTasks.Edit);
+        CanDeleteProjectTask = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTasks.Delete);
+        CanCreateProjectTask = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTasks.Create);
+        CanCreateProjectTaskAssignment = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTaskAssignments.Create);
+        CanEditProjectTaskAssignment = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTaskAssignments.Edit);
+        CanDeleteProjectTaskAssignment = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTaskAssignments.Delete);
     }
 
     private async Task LoadProjectTaskAsync()
@@ -367,7 +399,6 @@ public partial class ProjectTasksDetail : HCComponentBase
         InvokeAsync(StateHasChanged);
     }
 
-    // Project lookup
     protected async Task<List<LookupDto<Guid>>> GetProjectCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
         ProjectsCollection = (await ProjectTasksAppService.GetProjectLookupAsync(new LookupRequestDto { Filter = filter })).Items;
@@ -386,7 +417,6 @@ public partial class ProjectTasksDetail : HCComponentBase
         }
     }
 
-    // Parent task lookup
     protected async Task<List<ParentTaskSelectItem>> GetParentTaskCollectionLookupAsync(IReadOnlyList<ParentTaskSelectItem> dbset, string filter, CancellationToken token)
     {
         var input = new GetProjectTasksInput
@@ -604,6 +634,31 @@ public partial class ProjectTasksDetail : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task DeleteProjectTaskAsync()
+    {
+        try
+        {
+            if (!await UiMessageService.Confirm(L["DeleteConfirmationMessage"]))
+            {
+                return;
+            }
+
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await ProjectTasksAppService.DeleteAsync(ProjectTaskId);
+            await UiMessageService.Success(L["SuccessfullyDeleted"]);
+            NavigationManager.NavigateTo("/tasks");
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
