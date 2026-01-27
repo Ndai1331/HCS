@@ -1397,6 +1397,18 @@ public class ConversationAppService : ChatAppService, IConversationAppService
     }
 
 
+    
+    public virtual async Task<ConversationDto> FindConversationByProjectIdAsync(Guid projectId)
+    {
+        var conversation = await _conversationRepository.GetByProjectIdAsync(projectId);
+        if (conversation == null)
+        {
+            return null;
+        }
+        return await MapToConversationDtoAsync(conversation.First(), CurrentUser.GetId());
+    }
+
+
     public virtual async Task<List<ChatMessageDto>> FindMessagesInConversationAsync(FindMessageInConversationInput input)
     {
         var messages = await _messageRepository.GetMessagesInConversationAsync(

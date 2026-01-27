@@ -8,4 +8,6 @@ public class FindConversationInput : PagedResultRequestDto
 {
     public List<Guid> UserIds { get; set; } = new List<Guid>();
     public ConversationType Type { get; set; } = ConversationType.User;
+
+    public Guid? ProjectId { get; set; }
 }

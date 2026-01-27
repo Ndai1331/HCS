@@ -233,4 +233,11 @@ public class ConversationController : ChatController, IConversationAppService
     {
         return _conversationAppService.FindMediaAndFileInConversationAsync(input);
     }
+
+    [HttpGet]
+    [Route("project/{projectId}")]
+    public Task<ConversationDto> FindConversationByProjectIdAsync(Guid projectId)
+    {
+        return _conversationAppService.FindConversationByProjectIdAsync(projectId);
+    }
 }

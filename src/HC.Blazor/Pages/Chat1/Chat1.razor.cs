@@ -29,6 +29,11 @@ namespace HC.Blazor.Pages.Chat1;
 
 public partial class Chat1 : HCComponentBase, IAsyncDisposable
 {
+
+    [Parameter]
+    public Guid? RedirectToConversationId { get; set; }
+
+
     [Inject]
     public IContactAppService ContactAppService { get; set; }
 
@@ -80,7 +85,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     
     // Pagination for conversations
     private int _conversationsSkipCount = 0;
-    private const int ConversationsPageSize = 15;
+    private const int ConversationsPageSize = 10;
     private bool _isLoadingMoreConversations = false;
     private bool _hasMoreConversations = true;
     
@@ -441,6 +446,26 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         if(firstRender)
         {
             await GetContactsAsync();
+            
+            if(RedirectToConversationId.HasValue)
+            {
+                ChatContactDto? conversationNeedToActive = null;
+
+                while (conversationNeedToActive == null && _hasMoreConversations)
+                {
+                    conversationNeedToActive = ChatContactDtos
+                        .FirstOrDefault(c => c.ConversationId == RedirectToConversationId.Value);
+
+                    if (conversationNeedToActive != null)
+                    {
+                        await SetActiveAsync(conversationNeedToActive);
+                        break;
+                    }
+
+                    await GetContactsAsync(loadMore: true);
+                    await Task.Delay(100);
+                }
+            }
         }
 
         // Create snapshot to avoid "Collection was modified" errors
@@ -544,7 +569,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         if (!loadMore)
         {
-            // Reset pagination when loading fresh
             _conversationsSkipCount = 0;
             _hasMoreConversations = true;
             CanvasElementReferences.Clear();
@@ -574,10 +598,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
         if (loadMore)
         {
-            // Append new contacts to existing list
             ChatContactDtos.AddRange(newContacts);
-            
-            // Check if there are more conversations
             if (newContacts.Count < ConversationsPageSize)
             {
                 _hasMoreConversations = false;
@@ -589,10 +610,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         else
         {
-            // Replace with new contacts
             ChatContactDtos = newContacts;
             
-            // Check if there are more conversations
             if (newContacts.Count < ConversationsPageSize)
             {
                 _hasMoreConversations = false;

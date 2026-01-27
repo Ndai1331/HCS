@@ -953,6 +953,11 @@
     "NoRecentUpdates": "Không có cập nhật gần đây",
     "BackToHome": "Quay lại trang chủ",
     "Infomation": "Thông tin",
-    "NoProjectOrDeleted": "Không có dự án hoặc đã bị xóa"
+    "NoProjectOrDeleted": "Không có dự án hoặc đã bị xóa",
+    "MinProgressPercent" : "Tỷ lệ hoàn thành tối thiểu",
+    "MaxProgressPercent" : "Tỷ lệ hoàn thành tối đa",
+    "MinDueDate" : "Ngày kết thúc tối thiểu",
+    "MaxDueDate" : "Ngày kết thúc tối đa",
+    "YouAreNotAMemberOfThisProjectChat": "Bạn không phải là thành viên của chat dự án này"
   }
 }

@@ -210,35 +210,45 @@ public partial class Projects : HCComponentBase
     private async Task CreateProjectChatModalAsync(ProjectWithNavigationPropertiesDto project)
     {
 
-        // kiểm tra xem có conversation nào với project id này đã tồn tại chưa 
-        //Có thì qua /chat và chọn conversation đó
-
-        //chưa thì tạo conversation mới với project id này
+        ConversationDto? conversation = null;
         try
         {
-            //show loading spinner
-            var members = await ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
-            {
-                ProjectId = project.Project.Id,
-                MaxResultCount = 100,
-                SkipCount = 0
-            });
 
-            CreateProjectConversationInput = new CreateProjectConversationInput
+            conversation = await ConversationAppService.FindConversationByProjectIdAsync(project.Project.Id);
+            if (conversation == null)
             {
-                ProjectId = project.Project.Id,
-                Name = project.Project.Name,
-                MemberUserIds = members.Items.Select(m => m.User.Id).ToList()
-            };
-            var result = await ConversationAppService.CreateProjectConversationAsync(CreateProjectConversationInput);
+                var members = await ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
+                {
+                    ProjectId = project.Project.Id,
+                    MaxResultCount = 100,
+                    SkipCount = 0
+                });
 
-            if (result != null)
-            {
-                await UiMessageService.Success(L["ProjectChatCreatedSuccessfully"]);
-            }
-            else
-            {
-                await UiMessageService.Error(L["ProjectChatCreationFailed"]);
+                CreateProjectConversationInput = new CreateProjectConversationInput
+                {
+                    ProjectId = project.Project.Id,
+                    Name = project.Project.Name,
+                    MemberUserIds = members.Items.Select(m => m.User.Id).ToList()
+                };
+                conversation = await ConversationAppService.CreateProjectConversationAsync(CreateProjectConversationInput);
+
+                if (conversation != null)
+                {
+                    await UiMessageService.Success(L["ProjectChatCreatedSuccessfully"]);
+                }
+                else
+                {
+                    await UiMessageService.Error(L["ProjectChatCreationFailed"]);
+                }
+            }else {
+                if(conversation.Members.Any(m => m.UserId == CurrentUser.Id))
+                {
+                    NavigationManager.NavigateTo($"/chat/{conversation.Id}");
+                }
+                else
+                {
+                    await UiMessageService.Error(L["YouAreNotAMemberOfThisProjectChat"]);
+                }
             }
         }
         catch (Exception ex)
@@ -247,7 +257,6 @@ public partial class Projects : HCComponentBase
         }
         finally
         {
-            //hide loading spinner
             await InvokeAsync(StateHasChanged);
         }
     }

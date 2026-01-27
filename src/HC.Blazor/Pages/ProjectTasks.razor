@@ -758,12 +758,12 @@ else
                                         <span>
                                             @if (!string.IsNullOrWhiteSpace(context.ProjectTask.ParentTaskId))
                                             {
-                                               <p> @L["ParentTaskId"]: @context.ProjectTask.ParentTaskId </p> <br/>
+                                               <span> @L["ParentTaskId"]: @context.ProjectTask.ParentTaskId </span> <br/>
                                             }
                                             @L["Code"]: @(context.ProjectTask.Code) <br/>
                                             @if (context.ChildTaskCount > 0)
                                             {
-                                                <i aria-hidden="true" class="fa fa-list me-1 text-brand"></i>@context.ChildTaskCount <br/>
+                                                <i aria-hidden="true" class="fa fa-list me-1 text-brand"></i>@context.ChildTaskCount
                                             }
                                         </span>
                                     </small>
@@ -788,7 +788,8 @@ else
             </DataGridColumn>              
             <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
                     Field="ProjectTask.Priority"
-                    Caption="@L["Priority"]">
+                    Caption="@L["Priority"]"
+                    Width="150px">
                 <DisplayTemplate>
                     @{
                         var priority = ParsePriority(context.ProjectTask.Priority);
@@ -800,7 +801,8 @@ else
             </DataGridColumn>
             <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
                     Field="ProjectTask.Status"
-                    Caption="@L["Status"]">
+                    Caption="@L["Status"]"
+                    Width="150px">
                 <DisplayTemplate>
                     @{
                         var status = ParseStatus(context.ProjectTask.Status);
@@ -826,13 +828,13 @@ else
                         <div class="d-flex gap-1">
                             @if (CanEditProjectTask)
                             {
-                                <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => OpenEditProjectTaskModalAsync(context))" Title="@L["Edit"]">
+                                <Button Outline Color="Color.Primary" Size="Size.Small" Clicked="@(() => OpenEditProjectTaskModalAsync(context))" Title="@L["Edit"]">
                                     <Icon Name="IconName.Edit" />
                                 </Button>
                             }
                             @if (CanDeleteProjectTask)
                             {
-                                <Button Color="Color.Danger" Size="Size.Small" Clicked="@(() => DeleteProjectTaskWithConfirmationAsync(context))" Title="@L["Delete"]">
+                                <Button Outline Color="Color.Danger" Size="Size.Small" Clicked="@(() => DeleteProjectTaskWithConfirmationAsync(context))" Title="@L["Delete"]">
                                     <Icon Name="IconName.Delete" />
                                 </Button>
                             }

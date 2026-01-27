@@ -51,4 +51,5 @@ public class ConversationController : ChatController, IConversationAppService
     {
         return _conversationAppService.DeleteConversationAsync(input);
     }
+
 }
