@@ -87,7 +87,7 @@
                         <Row>
                             <Div Class="w-100 text-center">
                                 <h1 class="lpx-login-title mb-2">@SurveyLocation?.Name</h1>
-                                <p>@SurveyLocation?.Description ?? string.Empty </p>
+                                <p>@SurveyLocation?.Description</p>
                             </Div>
                             @foreach (var criteria in SurveyCriterias.OrderBy(x => x.SurveyCriteria.DisplayOrder))
                             {

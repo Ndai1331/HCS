@@ -372,6 +372,7 @@
                             {
                                 <Button Color="Color.Primary" 
                                     Outline Size="Size.Small" 
+                                    Title="@L["Edit"]"
                                     Clicked="@(() => NavigateToProjectDetail(context))">
                                     <Icon Name="IconName.Edit" />
                                 </Button>   
@@ -379,17 +380,20 @@
                             
                             <Button Color="Color.Info" 
                                 Outline Size="Size.Small" 
+                                Title="@L["Chat"]"
                                 Clicked="@(async () => await CreateProjectChatModalAsync(context))">
                                 <Icon Name="IconName.Comments" />
                             </Button>
 
                             <Button Color="Color.Success" 
                                 Outline Size="Size.Small" 
+                                Title="@L["Tasks"]"
                                 Clicked="@(() => OpenProjectTasksModalAsync(context))">
                                 <Icon Name="IconName.List" />
                             </Button>
                             <Button Color="Color.Info" 
                                 Outline Size="Size.Small" 
+                                Title="@L["Members"]"
                                 Clicked="@(() => OpenProjectMembersModalAsync(context))">
                                 <Icon Name="IconName.UserCheck" />
                             </Button>
@@ -397,6 +401,7 @@
                             {
                                 <Button Color="Color.Danger" 
                                     Outline Size="Size.Small" 
+                                    Title="@L["Delete"]"
                                     Clicked="@(() => DeleteProjectWithConfirmationAsync(context))">
                                     <Icon Name="IconName.Delete" />
                                 </Button>

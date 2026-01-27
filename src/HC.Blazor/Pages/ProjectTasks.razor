@@ -828,13 +828,19 @@ else
                         <div class="d-flex gap-1">
                             @if (CanEditProjectTask)
                             {
-                                <Button Outline Color="Color.Primary" Size="Size.Small" Clicked="@(() => OpenEditProjectTaskModalAsync(context))" Title="@L["Edit"]">
+                                <Button Outline Color="Color.Primary"
+                                 Size="Size.Small" 
+                                 Title="@L["Edit"]"
+                                 Clicked="@(() => OpenEditProjectTaskModalAsync(context))">
                                     <Icon Name="IconName.Edit" />
                                 </Button>
                             }
                             @if (CanDeleteProjectTask)
                             {
-                                <Button Outline Color="Color.Danger" Size="Size.Small" Clicked="@(() => DeleteProjectTaskWithConfirmationAsync(context))" Title="@L["Delete"]">
+                                <Button Outline Color="Color.Danger" 
+                                Size="Size.Small" 
+                                Title="@L["Delete"]"
+                                Clicked="@(() => DeleteProjectTaskWithConfirmationAsync(context))">
                                     <Icon Name="IconName.Delete" />
                                 </Button>
                             }
