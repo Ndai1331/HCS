@@ -218,20 +218,24 @@
               </DataGridColumn>
                 <DataGridColumn TItem="PositionDto" Caption="@L["Actions"]">
                     <DisplayTemplate>
-                        <div class="hc-action-icons">
+                        <div class="d-flex gap-1">
                             @if (CanEditPosition)
                             {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditPositionModalAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Outline Color="Color.Primary"
+                                 Size="Size.Small" 
+                                 Title="@L["Edit"]"
+                                 Clicked="@(() => OpenEditPositionModalAsync(context))">
+                                   style="cursor: pointer;">
+                                </Button>
                             }
                             @if (CanDeletePosition)
                             {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeletePositionWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Outline Color="Color.Danger" 
+                                Size="Size.Small" 
+                                Title="@L["Delete"]"
+                                   @onclick="@(() => DeletePositionWithConfirmationAsync(context))">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
                             }
                         </div>
 @*//<suite-custom-code-block-4>*@
