@@ -286,7 +286,7 @@ public partial class CalendarEvents : HCComponentBase
             await DownloadAsExcelAsync();
         }, IconName.Download);
         Toolbar.AddButton(L["NewCalendarEvent"], async () => {
-            await OpenCreateCalendarEventModalAsync();
+            NavigationManager.NavigateTo("/calendar-event-detail");
         }, IconName.Add, requiredPolicyName: HCPermissions.CalendarEvents.Create);
     }
 
@@ -1004,6 +1004,11 @@ public partial class CalendarEvents : HCComponentBase
 
     // Dictionary to cache participant counts for each calendar event
     private Dictionary<Guid, int> _participantCountCache = new Dictionary<Guid, int>();
+
+    private async Task NavigateToCalendarEventDetail(CalendarEventDto input)
+    {
+        NavigationManager.NavigateTo($"/calendar-event-detail/{input.Id}");
+    }
 
     private async Task OpenEditCalendarEventModalAsync(CalendarEventDto input)
     {
