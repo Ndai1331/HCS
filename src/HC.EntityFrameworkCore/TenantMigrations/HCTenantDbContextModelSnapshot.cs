@@ -253,6 +253,364 @@ namespace HC.TenantMigrations
                     b.ToTable("AppCalendarEvents", (string)null);
                 });
 
+            modelBuilder.Entity("HC.Chat.Conversations.Conversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("Description");
+
+                    b.Property<string>("LastMessage")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("LastMessage");
+
+                    b.Property<DateTime>("LastMessageDate")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastMessageDate");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("Name");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ProjectId");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TaskId");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<int>("Type")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("Type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("TaskId");
+
+                    b.HasIndex("Type");
+
+                    b.ToTable("ChatConversations", (string)null);
+                });
+
+            modelBuilder.Entity("HC.Chat.Conversations.ConversationMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ConversationId");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("IsActive");
+
+                    b.Property<bool>("IsPinned")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsPinned");
+
+                    b.Property<DateTime>("JoinedDate")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("JoinedDate");
+
+                    b.Property<DateTime?>("PinnedDate")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("PinnedDate");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("MEMBER")
+                        .HasColumnName("Role");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("UserId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ConversationId", "UserId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "IsPinned");
+
+                    b.ToTable("ChatConversationMembers", (string)null);
+                });
+
+            modelBuilder.Entity("HC.Chat.Messages.Message", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ConversationId");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<Guid?>("ForwardedFromMessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsAllRead")
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsAllRead");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsPinned");
+
+                    b.Property<Guid?>("PinnedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("PinnedByUserId");
+
+                    b.Property<DateTime?>("PinnedDate")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("PinnedDate");
+
+                    b.Property<DateTime?>("ReadTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("ReadTime");
+
+                    b.Property<Guid?>("ReplyToMessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ReplyToMessageId");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("Text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("ForwardedFromMessageId");
+
+                    b.HasIndex("ReplyToMessageId");
+
+                    b.ToTable("ChatMessages", (string)null);
+                });
+
+            modelBuilder.Entity("HC.Chat.Messages.MessageFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("ContentType");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<string>("FileExtension")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("FileExtension");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("FileName");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("FilePath");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint")
+                        .HasColumnName("FileSize");
+
+                    b.Property<Guid?>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("MessageId");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.ToTable("ChatMessageFiles", (string)null);
+                });
+
+            modelBuilder.Entity("HC.Chat.Messages.UserMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChatMessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ChatMessageId");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsRead");
+
+                    b.Property<DateTime?>("ReadTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("ReadTime");
+
+                    b.Property<byte>("Side")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Side");
+
+                    b.Property<Guid?>("TargetUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TargetUserId");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("UserId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChatMessageId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "TargetUserId");
+
+                    b.ToTable("ChatUserMessages", (string)null);
+                });
+
+            modelBuilder.Entity("HC.Chat.Users.ChatUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("Email");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("EmailConfirmed");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsActive");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("Name");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("PhoneNumber");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("PhoneNumberConfirmed");
+
+                    b.Property<string>("Surname")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("Surname");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("UserName");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ChatUsers", (string)null);
+                });
+
             modelBuilder.Entity("HC.Departments.Department", b =>
                 {
                     b.Property<Guid>("Id")
@@ -738,6 +1096,10 @@ namespace HC.TenantMigrations
 
                     b.Property<Guid?>("FieldId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime>("IncommingDate")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("IncommingDate");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -3837,212 +4199,6 @@ namespace HC.TenantMigrations
                     b.ToTable("AbpTextTemplateContents", (string)null);
                 });
 
-            modelBuilder.Entity("Volo.Chat.Conversations.Conversation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("LastMessage")
-                        .HasMaxLength(4096)
-                        .HasColumnType("character varying(4096)")
-                        .HasColumnName("LastMessage");
-
-                    b.Property<DateTime>("LastMessageDate")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("LastMessageDate");
-
-                    b.Property<byte>("LastMessageSide")
-                        .HasColumnType("smallint")
-                        .HasColumnName("LastMessageSide");
-
-                    b.Property<Guid>("TargetUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("TargetUserId");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("TenantId");
-
-                    b.Property<int>("UnreadMessageCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("UnreadMessageCount");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("UserId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ChatConversations", (string)null);
-                });
-
-            modelBuilder.Entity("Volo.Chat.Messages.Message", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("ConcurrencyStamp");
-
-                    b.Property<DateTime>("CreationTime")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("CreationTime");
-
-                    b.Property<Guid?>("CreatorId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("CreatorId");
-
-                    b.Property<string>("ExtraProperties")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("ExtraProperties");
-
-                    b.Property<bool>("IsAllRead")
-                        .HasColumnType("boolean")
-                        .HasColumnName("IsAllRead");
-
-                    b.Property<DateTime?>("ReadTime")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("ReadTime");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("TenantId");
-
-                    b.Property<string>("Text")
-                        .IsRequired()
-                        .HasMaxLength(4096)
-                        .HasColumnType("character varying(4096)")
-                        .HasColumnName("Text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ChatMessages", (string)null);
-                });
-
-            modelBuilder.Entity("Volo.Chat.Messages.UserMessage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ChatMessageId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("ChatMessageId");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("boolean")
-                        .HasColumnName("IsRead");
-
-                    b.Property<DateTime?>("ReadTime")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("ReadTime");
-
-                    b.Property<byte>("Side")
-                        .HasColumnType("smallint")
-                        .HasColumnName("Side");
-
-                    b.Property<Guid?>("TargetUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("TargetUserId");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("TenantId");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("UserId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChatMessageId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "TargetUserId");
-
-                    b.ToTable("ChatUserMessages", (string)null);
-                });
-
-            modelBuilder.Entity("Volo.Chat.Users.ChatUser", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("ConcurrencyStamp");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("Email");
-
-                    b.Property<bool>("EmailConfirmed")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("EmailConfirmed");
-
-                    b.Property<string>("ExtraProperties")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("ExtraProperties");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("IsActive");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("Name");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasColumnName("PhoneNumber");
-
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("PhoneNumberConfirmed");
-
-                    b.Property<string>("Surname")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("Surname");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("TenantId");
-
-                    b.Property<string>("UserName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("UserName");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ChatUsers", (string)null);
-                });
-
             modelBuilder.Entity("Volo.FileManagement.Directories.DirectoryDescriptor", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4173,6 +4329,52 @@ namespace HC.TenantMigrations
                         .WithMany()
                         .HasForeignKey("IdentityUserId")
                         .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HC.Chat.Conversations.ConversationMember", b =>
+                {
+                    b.HasOne("HC.Chat.Conversations.Conversation", "Conversation")
+                        .WithMany("Members")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+                });
+
+            modelBuilder.Entity("HC.Chat.Messages.Message", b =>
+                {
+                    b.HasOne("HC.Chat.Messages.Message", "ForwardedFromMessage")
+                        .WithMany()
+                        .HasForeignKey("ForwardedFromMessageId");
+
+                    b.HasOne("HC.Chat.Messages.Message", "ReplyToMessage")
+                        .WithMany("Replies")
+                        .HasForeignKey("ReplyToMessageId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ForwardedFromMessage");
+
+                    b.Navigation("ReplyToMessage");
+                });
+
+            modelBuilder.Entity("HC.Chat.Messages.MessageFile", b =>
+                {
+                    b.HasOne("HC.Chat.Messages.Message", "Message")
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Message");
+                });
+
+            modelBuilder.Entity("HC.Chat.Messages.UserMessage", b =>
+                {
+                    b.HasOne("HC.Chat.Messages.Message", null)
+                        .WithMany()
+                        .HasForeignKey("ChatMessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -4600,15 +4802,6 @@ namespace HC.TenantMigrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Volo.Chat.Messages.UserMessage", b =>
-                {
-                    b.HasOne("Volo.Chat.Messages.Message", null)
-                        .WithMany()
-                        .HasForeignKey("ChatMessageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Volo.FileManagement.Directories.DirectoryDescriptor", b =>
                 {
                     b.HasOne("Volo.FileManagement.Directories.DirectoryDescriptor", null)
@@ -4621,6 +4814,16 @@ namespace HC.TenantMigrations
                     b.HasOne("Volo.FileManagement.Directories.DirectoryDescriptor", null)
                         .WithMany()
                         .HasForeignKey("DirectoryId");
+                });
+
+            modelBuilder.Entity("HC.Chat.Conversations.Conversation", b =>
+                {
+                    b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("HC.Chat.Messages.Message", b =>
+                {
+                    b.Navigation("Replies");
                 });
 
             modelBuilder.Entity("Volo.Abp.AuditLogging.AuditLog", b =>

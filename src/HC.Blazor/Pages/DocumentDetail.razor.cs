@@ -34,14 +34,7 @@ public partial class DocumentDetail : HCComponentBase
 
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems { get; } = new();
 
-    protected string PageTitle => IsEditMode
-        ? (CurrentDocument?.Document is null ? L["Documents"] : L["EditDocument"])
-        : L["NewDocument"];
-
-    protected bool IsLoading { get; set; }
-    protected bool IsSaving { get; set; }
-    protected bool IsEditMode => DocumentId != Guid.Empty;
-    protected bool IsViewMode { get; set; } = false;
+    protected string PageTitle => DocumentId == Guid.Empty ? L["NewDocument"] : L["EditDocument"];
     protected DocumentWithNavigationPropertiesDto? CurrentDocument { get; set; }
     protected PageToolbar Toolbar { get; } = new PageToolbar();
     private bool CanEditDocument { get; set; }
@@ -50,8 +43,8 @@ public partial class DocumentDetail : HCComponentBase
 
 
     // Document data
-    private DocumentCreateDto? DocumentCreateData { get; set; }
-    private DocumentUpdateDto? DocumentUpdateData { get; set; }
+    private DocumentCreateDto? DocumentCreateData { get; set; } = new DocumentCreateDto();
+    private DocumentUpdateDto? DocumentUpdateData { get; set; } = new DocumentUpdateDto();
 
     // PDF viewer refs
     private PdfViewer? EditPdfViewerRef { get; set; }
@@ -104,104 +97,81 @@ public partial class DocumentDetail : HCComponentBase
     private Modal? PdfViewerModal { get; set; }
 
     // DatePicker refs
-    private DatePicker<DateTime>? EditCompletedTimeDatePicker { get; set; }
-    private DatePicker<DateTime>? CreateCompletedTimeDatePicker { get; set; }
+    private DatePicker<DateTime>? EditIncommingDateDatePicker { get; set; }
+    private DatePicker<DateTime>? CreateIncommingDateDatePicker { get; set; }
 
-    private Guid _loadedDocumentId;
-
+  
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await SetPermissionsAsync();
+            BreadcrumbItems.Clear();
+            BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Documents"], "/manage-documents"));
             await SetToolbarItemsAsync();
+
+            if (DocumentId == Guid.Empty && DocumentIdQuery.HasValue)
+            {
+                DocumentId = DocumentIdQuery.Value;
+            }
+
+            if (DocumentId == Guid.Empty)
+            {
+                BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["NewDocument"]));
+
+                DocumentCreateData = new DocumentCreateDto
+                {
+                    CompletedTime = DateTime.Now,
+                    IncommingDate = DateTime.Now,
+                    StorageNumber = GenerateStorageNumber(),
+                    UrgencyLevelId = UrgencyLevelMasterDataCollection.FirstOrDefault()?.Id ?? Guid.Empty,
+                    SecrecyLevelId = SecrecyLevelMasterDataCollection.FirstOrDefault()?.Id ?? Guid.Empty,
+                    StatusId = StatusMasterDataCollection.FirstOrDefault()?.Id ?? Guid.Empty,
+                };
+
+                if (DocumentCreateData.UrgencyLevelId != default)
+                {
+                    var urgencyData = await GetMasterDataByIdAsync(DocumentCreateData.UrgencyLevelId, MasterDataType.UrgencyLevel);
+                    if (urgencyData != null)
+                        SelectedUrgencyLevelMasterData = new List<LookupDto<Guid>> { urgencyData };
+                }
+                if (DocumentCreateData.SecrecyLevelId != default)
+                {
+                    var secrecyData = await GetMasterDataByIdAsync(DocumentCreateData.SecrecyLevelId, MasterDataType.SecrecyLevel);
+                    if (secrecyData != null)
+                        SelectedSecrecyLevelMasterData = new List<LookupDto<Guid>> { secrecyData };
+                }
+
+                if (DocumentCreateData.StatusId.HasValue && DocumentCreateData.StatusId.Value != default)
+                {
+                    var statusData = await GetMasterDataByIdAsync(DocumentCreateData.StatusId.Value, MasterDataType.Status);
+                    if (statusData != null)
+                        SelectedStatusMasterData = new List<LookupDto<Guid>> { statusData };
+                }
+
+                DocumentUpdateData = null;
+            }
+            else
+            {
+                BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Details"]));
+                await LoadDocumentAsync();
+            }
+            await BlockUiService.UnBlock();
             await InvokeAsync(StateHasChanged);
         }
     }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        
-        if (DocumentId == Guid.Empty && DocumentIdQuery.HasValue)
-        {
-            DocumentId = DocumentIdQuery.Value;
-        }
-        if (DocumentId == Guid.Empty)
-        {
-            IsLoading = true;
-            try
-            {
-                InitializeCreateMode();
-                
-                BreadcrumbItems.Clear();
-                BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Documents"], "/documents"));
-                BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(IsEditMode ? L["Details"] : L["NewDocument"]));
-
-                await LoadLookupDataAsync();
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        }
-        else
-        {
-            if (_loadedDocumentId == DocumentId)
-            {
-                Logger.LogInformation($"OnParametersSetAsync: Document already loaded, skipping. DocumentId: {DocumentId}");
-                BreadcrumbItems.Clear();
-                BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Documents"], "/documents"));
-                BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(IsEditMode ? L["Details"] : L["NewDocument"]));
-                await LoadLookupDataAsync();
-                await InvokeAsync(StateHasChanged);
-                return;
-            }
-
-            BreadcrumbItems.Clear();
-            BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Documents"], "/documents"));
-            BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(IsEditMode ? L["Details"] : L["NewDocument"]));
-
-            // Set loading state before loading data
-            IsLoading = true;
-            try
-            {
-                // Load lookup data first (collections must be loaded before setting selected values)
-                await LoadLookupDataAsync();
-
-                Logger.LogInformation($"OnParametersSetAsync: Loading document. DocumentId: {DocumentId}");
-                _loadedDocumentId = DocumentId;
-                await LoadDocumentAsync();
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        }
-
-        await InvokeAsync(StateHasChanged);
-    }
-
     private async Task SetPermissionsAsync()
     {
         CanCreateDocument = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.Documents.Create);
         CanEditDocument = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.Documents.Edit);
         CanDeleteDocumentFile = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.DocumentFiles.Delete);
     }
-
-    private void InitializeCreateMode()
-    {
-        DocumentCreateData = new DocumentCreateDto
-        {
-            CompletedTime = DateTime.Now
-        };
-        DocumentUpdateData = null;
-    }
-
     protected virtual ValueTask SetToolbarItemsAsync()
     {   
         Toolbar.AddButton(L["Back"], () =>
         {
-            NavigationManager.NavigateTo("/documents");
+            NavigationManager.NavigateTo("/manage-documents");
             return Task.CompletedTask;
         }, IconName.ArrowLeft);
 
@@ -283,7 +253,6 @@ public partial class DocumentDetail : HCComponentBase
             Logger.LogError(ex, $"Error loading document. DocumentId: {DocumentId}");
             throw;
         }
-        // IsLoading is managed in OnParametersSetAsync
     }
 
     private async Task LoadDocumentFilesAsync()
@@ -326,7 +295,6 @@ public partial class DocumentDetail : HCComponentBase
         );
     }
 
-    // MasterData lookup by Type using MasterDatasAppService
     private async Task<List<LookupDto<Guid>>> GetTypeMasterDataLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
         var result = await MasterDatasAppService.GetListAsync(new GetMasterDatasInput
@@ -426,7 +394,7 @@ public partial class DocumentDetail : HCComponentBase
     {
         if (SelectedTypeMasterData?.Any() == true)
         {
-            if (IsEditMode && DocumentUpdateData != null)
+            if (DocumentUpdateData != null)
             {
                 DocumentUpdateData.TypeId = SelectedTypeMasterData[0].Id;
                 EditValidation.RemoveFieldError("Type");
@@ -444,7 +412,7 @@ public partial class DocumentDetail : HCComponentBase
     {
         if (SelectedUrgencyLevelMasterData?.Any() == true)
         {
-            if (IsEditMode && DocumentUpdateData != null)
+            if ( DocumentUpdateData != null)
             {
                 DocumentUpdateData.UrgencyLevelId = SelectedUrgencyLevelMasterData[0].Id;
                 EditValidation.RemoveFieldError("UrgencyLevel");
@@ -462,7 +430,7 @@ public partial class DocumentDetail : HCComponentBase
     {
         if (SelectedSecrecyLevelMasterData?.Any() == true)
         {
-            if (IsEditMode && DocumentUpdateData != null)
+            if (DocumentUpdateData != null)
             {
                 DocumentUpdateData.SecrecyLevelId = SelectedSecrecyLevelMasterData[0].Id;
                 EditValidation.RemoveFieldError("SecrecyLevel");
@@ -480,7 +448,7 @@ public partial class DocumentDetail : HCComponentBase
     {
         if (SelectedFieldMasterData?.Any() == true)
         {
-            if (IsEditMode && DocumentUpdateData != null)
+            if (DocumentUpdateData != null)
             {
                 DocumentUpdateData.FieldId = SelectedFieldMasterData[0].Id;
                 EditValidation.RemoveFieldError("Field");
@@ -493,7 +461,7 @@ public partial class DocumentDetail : HCComponentBase
         }
         else
         {
-            if (IsEditMode && DocumentUpdateData != null)
+            if (DocumentUpdateData != null)
             {
                 DocumentUpdateData.FieldId = null;
                 EditValidation.RemoveFieldError("Field");
@@ -511,7 +479,7 @@ public partial class DocumentDetail : HCComponentBase
     {
         if (SelectedStatusMasterData?.Any() == true)
         {
-            if (IsEditMode && DocumentUpdateData != null)
+            if (DocumentUpdateData != null)
             {
                 DocumentUpdateData.StatusId = SelectedStatusMasterData[0].Id;
                 EditValidation.RemoveFieldError("Status");
@@ -524,7 +492,7 @@ public partial class DocumentDetail : HCComponentBase
         }
         else
         {
-            if (IsEditMode && DocumentUpdateData != null)
+            if ( DocumentUpdateData != null)
             {
                 DocumentUpdateData.StatusId = null;
                 EditValidation.RemoveFieldError("Status");
@@ -542,7 +510,7 @@ public partial class DocumentDetail : HCComponentBase
     {
         if (SelectedUnit?.Any() == true)
         {
-            if (IsEditMode && DocumentUpdateData != null)
+            if (DocumentUpdateData != null)
             {
                 DocumentUpdateData.UnitId = SelectedUnit[0].Id;
                 EditValidation.RemoveFieldError("Unit");
@@ -555,7 +523,7 @@ public partial class DocumentDetail : HCComponentBase
         }
         else
         {
-            if (IsEditMode && DocumentUpdateData != null)
+            if (DocumentUpdateData != null)
             {
                 DocumentUpdateData.UnitId = null;
                 EditValidation.RemoveFieldError("Unit");
@@ -578,11 +546,6 @@ public partial class DocumentDetail : HCComponentBase
         }
 
        
-    }
-
-    private async Task OnFileUpload(FileUploadEventArgs e)
-    {
-        await UploadFileAsync(e.File);
     }
 
     private async Task UploadFileAsync(IFileEntry file)
@@ -646,10 +609,9 @@ public partial class DocumentDetail : HCComponentBase
 
     private async Task OnSave()
     {
-        IsSaving = true;
         try
         {
-            if (IsEditMode && DocumentUpdateData != null)
+            if (DocumentUpdateData != null)
             {
                 if (!ValidateEditDocument())
                 {
@@ -675,7 +637,7 @@ public partial class DocumentDetail : HCComponentBase
             }
 
             // Validate required file is uploaded for create mode
-            if (!IsEditMode && string.IsNullOrEmpty(UploadedFilePath))
+            if (DocumentId == Guid.Empty && string.IsNullOrEmpty(UploadedFilePath))
             {
                 await UiMessageService.Warn(L["PleaseUploadFileFirst"]);
                 return;
@@ -683,7 +645,7 @@ public partial class DocumentDetail : HCComponentBase
 
             DocumentDto savedDocument;
 
-            if (IsEditMode && DocumentUpdateData != null)
+            if (DocumentId != Guid.Empty && DocumentUpdateData != null)
             {
                 savedDocument = await DocumentsAppService.UpdateAsync(DocumentId, DocumentUpdateData);
             }
@@ -719,7 +681,6 @@ public partial class DocumentDetail : HCComponentBase
         }
         finally
         {
-            IsSaving = false;
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -904,7 +865,7 @@ public partial class DocumentDetail : HCComponentBase
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await DocumentsAppService.DeleteAsync(CurrentDocument.Document.Id);
             await UiMessageService.Success(L["SuccessfullyDeleted"]);
-            NavigationManager.NavigateTo("/documents");
+            NavigationManager.NavigateTo("/manage-documents");
         }
         catch (Exception ex)
         {
@@ -964,5 +925,11 @@ public partial class DocumentDetail : HCComponentBase
             IsPdfFile = false;
             PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";;
         }
+    }
+
+
+    private string GenerateStorageNumber()
+    {
+        return $"{DateTime.Now.ToString("yyyyMMdd")}-{DateTime.Now.ToString("HHmmss")}";
     }
 }

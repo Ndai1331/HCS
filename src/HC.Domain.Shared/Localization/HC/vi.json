@@ -958,6 +958,9 @@
     "MaxProgressPercent" : "Tỷ lệ hoàn thành tối đa",
     "MinDueDate" : "Ngày kết thúc tối thiểu",
     "MaxDueDate" : "Ngày kết thúc tối đa",
-    "YouAreNotAMemberOfThisProjectChat": "Bạn không phải là thành viên của chat dự án này"
+    "YouAreNotAMemberOfThisProjectChat": "Bạn không phải là thành viên của chat dự án này",
+    "IncommingDate" : "Ngày nhận",
+    "MinIncommingDate" : "Ngày nhận tối thiểu",
+    "MaxIncommingDate" : "Ngày nhận tối đa"
   }
 }

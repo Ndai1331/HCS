@@ -53,13 +53,6 @@ public abstract class DocumentControllerBase : AbpController
     }
 
     [HttpGet]
-    [Route("master-data-lookup-by-code/{code}")]
-    public virtual Task<PagedResultDto<LookupDto<Guid>>> GetMasterDataLookupByCodeAsync(string code, LookupRequestDto input)
-    {
-        return _documentsAppService.GetMasterDataLookupByCodeAsync(code, input);
-    }
-
-    [HttpGet]
     [Route("unit-lookup")]
     public virtual Task<PagedResultDto<LookupDto<Guid>>> GetUnitLookupAsync(LookupRequestDto input)
     {

@@ -912,6 +912,12 @@
     "NoProjectOrDeleted": "No project or deleted",
     "YouAreNotAMemberOfThisProjectChat": "You are not a member of this project chat",
     "NumberOfMembers": "Number of Members",
-    "NumberOfTasks": "Number of Tasks"
+    "NumberOfTasks": "Number of Tasks",
+    "IncommingDate": "Incomming Date",
+    "MinIncommingDate": "Min Incomming Date",
+    "MaxIncommingDate": "Max Incomming Date",
+    "Back": "Back",
+    "Save": "Save",
+    "Menu:FileManagement": "File Management"
   }
 }
