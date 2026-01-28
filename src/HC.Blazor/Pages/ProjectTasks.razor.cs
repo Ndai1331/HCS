@@ -748,7 +748,6 @@ public partial class ProjectTasks
             await RefreshKanbanAsync();
         }
         
-        // Use data from kanban for list view
         UpdateProjectTaskListFromKanban();
         await ClearSelection();
     }
@@ -1279,7 +1278,7 @@ public partial class ProjectTasks
 
     private async Task NavigateToProjectTaskDetailAsync(ProjectTaskWithNavigationPropertiesDto projectTask)
     {
-        // Navigate to the project task detail page
         NavigationManager.NavigateTo($"/project-task-detail/{projectTask.ProjectTask.Id}");
+        await Task.CompletedTask;
     }
 }

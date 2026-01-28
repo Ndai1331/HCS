@@ -546,22 +546,17 @@ else
                                         <div class="d-flex gap-2 flex-wrap justify-content-end">
                                             @if (CanEditProjectMember)
                                             {
-                                                <Button Color="Color.Primary" Outline Size="Size.Small" Clicked="@(() => ToggleEditMemberRoleAsync(context))">
-                                                   <Icon Name="IconName.Edit" Class="me-1" /> 
-                                                   @if (IsMemberRoleEditMode && EditingMemberId == context.ProjectMember.Id)
-                                                   {
-                                                       <span>@L["Cancel"]</span>
-                                                   }
-                                                   else
-                                                   {
-                                                       <span>@L["Edit"]</span>
-                                                   }
+                                                <Button Color="Color.Primary" Outline Size="Size.Small" 
+                                                Clicked="@(() => ToggleEditMemberRoleAsync(context))">
+                                                   <Icon 
+                                                   Name="@(IsMemberRoleEditMode && EditingMemberId == context.ProjectMember.Id ? IconName.Times : IconName.Edit)" 
+                                                   Class="me-1" /> 
                                                 </Button>
                                             }
                                             @if (CanDeleteProjectMember)
                                             {
                                                 <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteMemberAsync(context))">
-                                                    <Icon Name="IconName.Delete" Class="me-1" /> @L["Delete"]
+                                                    <Icon Name="IconName.Delete" Class="me-1" /> 
                                                 </Button>
                                             }
                                         </div>

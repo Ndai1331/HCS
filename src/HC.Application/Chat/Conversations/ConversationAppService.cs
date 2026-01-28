@@ -1401,7 +1401,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
     public virtual async Task<ConversationDto> FindConversationByProjectIdAsync(Guid projectId)
     {
         var conversation = await _conversationRepository.GetByProjectIdAsync(projectId);
-        if (conversation == null)
+        if (conversation == null || conversation.Count == 0)
         {
             return null;
         }

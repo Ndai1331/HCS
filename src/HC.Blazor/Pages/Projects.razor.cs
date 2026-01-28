@@ -209,10 +209,10 @@ public partial class Projects : HCComponentBase
     }
     private async Task CreateProjectChatModalAsync(ProjectWithNavigationPropertiesDto project)
     {
-
         ConversationDto? conversation = null;
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
 
             conversation = await ConversationAppService.FindConversationByProjectIdAsync(project.Project.Id);
             if (conversation == null)
@@ -257,6 +257,7 @@ public partial class Projects : HCComponentBase
         }
         finally
         {
+            await BlockUiService.UnBlock();
             await InvokeAsync(StateHasChanged);
         }
     }
