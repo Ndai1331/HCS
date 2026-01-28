@@ -232,7 +232,7 @@
     private string GetMessageBoxClass()
         => Message.Side == ChatMessageSide.Sender
             ? "bg-primary text-white rounded"
-            : "bg-white text-dark rounded";
+            : "bg-danger-subtle text-black rounded";
 
     private async Task OnReplyAsync() => await OnReply.InvokeAsync(Message);
     private async Task OnTogglePinAsync() => await OnTogglePin.InvokeAsync(Message);
