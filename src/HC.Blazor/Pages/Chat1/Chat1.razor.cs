@@ -445,7 +445,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         if(firstRender)
         {
-            await GetContactsAsync();
+            await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
+            await GetContactsAsync(isSetActive: false);
             
             if(RedirectToConversationId.HasValue)
             {
@@ -462,10 +463,11 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                         break;
                     }
 
-                    await GetContactsAsync(loadMore: true);
+                    await GetContactsAsync(loadMore: true, isSetActive: false);
                     await Task.Delay(100);
                 }
             }
+            await BlockUiService.UnBlock();
         }
 
         // Create snapshot to avoid "Collection was modified" errors
@@ -565,7 +567,10 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         return GetName(contact);
     }
 
-    public async Task GetContactsAsync(bool includeOtherContacts = false, bool preserveCurrentContact = false, bool loadMore = false)
+    public async Task GetContactsAsync(bool includeOtherContacts = false,
+     bool preserveCurrentContact = false, 
+     bool loadMore = false,
+     bool isSetActive = true)
     {
         if (!loadMore)
         {
@@ -574,7 +579,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             CanvasElementReferences.Clear();
         }
         
-        // Preserve current contact selection if requested (e.g., when refreshing after sending message)
         var currentContactId = preserveCurrentContact && CurrentChatContact != null 
             ? (CurrentChatContact.Type == ConversationType.User 
                 ? CurrentChatContact.UserId 
@@ -630,27 +634,29 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
         }
 
-        // Restore current contact if preserving
-        if (preserveCurrentContact && currentContactId.HasValue)
+        if(isSetActive)
         {
-            CurrentChatContact = ChatContactDtos.FirstOrDefault(c => 
-                (c.Type == ConversationType.User && c.UserId == currentContactId.Value) ||
-                (c.Type != ConversationType.User && c.ConversationId == currentContactId.Value));
-        }
-        else
-        {
-            CurrentChatContact = ChatContactDtos.FirstOrDefault();
-            if (CurrentChatContact != null)
+            if (preserveCurrentContact && currentContactId.HasValue)
             {
-                await SetActiveAsync(CurrentChatContact);
+                CurrentChatContact = ChatContactDtos.FirstOrDefault(c => 
+                    (c.Type == ConversationType.User && c.UserId == currentContactId.Value) ||
+                    (c.Type != ConversationType.User && c.ConversationId == currentContactId.Value));
             }
             else
             {
-                // Don't call createCanvasForUser if there's no current contact or canvas is not ready
-                ChatConversationDto = null;
+                CurrentChatContact = ChatContactDtos.FirstOrDefault();
+                if (CurrentChatContact != null)
+                {
+                    await SetActiveAsync(CurrentChatContact);
+                }
+                else
+                {
+                    ChatConversationDto = null;
+                }
             }
-        }
 
+            
+        }
         
         await InvokeAsync(StateHasChanged);
     }
@@ -813,11 +819,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             
             CurrentChatContact = contactDto;
             
-            // For group conversations, always allow chat (permission check not needed)
-            // For direct conversations, check HasChatPermission
-            var hasPermission = contactDto.Type != ConversationType.User || contactDto.HasChatPermission;
-            ChatMessagesContainerStyle = !hasPermission ? "pointer-events: none; opacity: 0.5;" : "";
-            
             ChatContactsActive[contactDto] = "active";
             foreach (var dto in ChatContactsActive.Where(x => x.Key != contactDto))
             {
@@ -825,16 +826,15 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
             if (CurrentChatContact.ConversationId.HasValue)
             {
-                // Reset pagination when switching conversations
                 _messagesSkipCount = 0;
                 _hasMoreMessages = true;
                 
                 ChatConversationDto = await ConversationAppService.GetConversationAsync(new GetConversationInput
                 {
                     ConversationId = CurrentChatContact.ConversationId.Value,
-                    TargetUserId = CurrentChatContact.UserId, // For backward compatibility
+                    TargetUserId = CurrentChatContact.UserId,
                     SkipCount = 0,
-                    MaxResultCount = MessagesPageSize // Load 10 messages initially
+                    MaxResultCount = MessagesPageSize
                 });
                 CurrentConversationId = CurrentChatContact.ConversationId.Value;
                 
@@ -859,21 +859,16 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                     MaxResultCount = MessagesPageSize
                 });
                 
-                // After loading, get ConversationId from contact if available
-                // Or create new conversation for this user
                 if (CurrentChatContact.ConversationId.HasValue)
                 {
                     CurrentConversationId = CurrentChatContact.ConversationId.Value;
                 }
                 else
                 {
-                    // Need to create conversation first - for now set to null
-                    // User must create conversation before sending message
                     CurrentConversationId = null;
                     _logger.LogWarning($"Chat1: User conversation without ConversationId - UserId: {CurrentChatContact.UserId}");
                 }
                 
-                // Check if there are more messages
                 if (ChatConversationDto?.Messages != null && ChatConversationDto.Messages.Count < MessagesPageSize)
                 {
                     _hasMoreMessages = false;
@@ -885,7 +880,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
             else
             {
-                // No conversation ID for group, create empty conversation
                 ChatConversationDto = new ChatConversationDto
                 {
                     Messages = new List<ChatMessageDto>()
@@ -893,10 +887,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 CurrentConversationId = null;
             }
             
-            // Hide loading spinner and update UI
             IsLoadingMessages = false;
             
-            // Set flag to update avatar after render
             if (CurrentChatContact?.Type == ConversationType.User)
             {
                 _shouldUpdateAvatar = true;
@@ -904,10 +896,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             
             await InvokeAsync(StateHasChanged);
 
-            // Reset unread count when opening conversation
             if (contactDto.UnreadMessageCount > 0)
             {
-                // Reset UI immediately
                 contactDto.UnreadMessageCount = 0;
                 await InvokeAsync(StateHasChanged);
                 
@@ -930,11 +920,9 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
             Message = "";
             
-            // Update UI first
             await InvokeAsync(StateHasChanged);
             
-            // Scroll to bottom after messages load
-            await Task.Delay(150); // Wait for DOM to update with messages
+            await Task.Delay(150);
             await ScrollToBottomAsync();
         }
         catch (Exception ex)

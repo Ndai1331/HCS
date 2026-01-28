@@ -31,6 +31,8 @@ public abstract class DocumentBase : FullAuditedAggregateRoot<Guid>, IMultiTenan
     [NotNull]
     public virtual string StorageNumber { get; set; }
 
+    public virtual DateTime IncommingDate { get; set; }
+
     public Guid? FieldId { get; set; }
 
     public Guid? UnitId { get; set; }
@@ -49,7 +51,7 @@ public abstract class DocumentBase : FullAuditedAggregateRoot<Guid>, IMultiTenan
     {
     }
 
-    public DocumentBase(Guid id, Guid? fieldId, Guid? unitId, Guid? workflowId, Guid? statusId, Guid typeId, Guid urgencyLevelId, Guid secrecyLevelId, string title, DateTime completedTime, string storageNumber, string? no = null, string? currentStatus = null)
+    public DocumentBase(Guid id, Guid? fieldId, Guid? unitId, Guid? workflowId, Guid? statusId, Guid typeId, Guid urgencyLevelId, Guid secrecyLevelId, string title, DateTime completedTime, string storageNumber, DateTime incommingDate, string? no = null, string? currentStatus = null)
     {
         Id = id;
         Check.NotNull(title, nameof(title));
@@ -60,6 +62,7 @@ public abstract class DocumentBase : FullAuditedAggregateRoot<Guid>, IMultiTenan
         Title = title;
         CompletedTime = completedTime;
         StorageNumber = storageNumber;
+        IncommingDate = incommingDate;
         No = no;
         CurrentStatus = currentStatus;
         FieldId = fieldId;

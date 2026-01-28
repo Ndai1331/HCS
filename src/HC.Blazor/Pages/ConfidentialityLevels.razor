@@ -207,20 +207,24 @@
                 </DataGridColumn>
                 <DataGridColumn TItem="MasterDataDto" Caption="@L["Actions"]">
                     <DisplayTemplate>
-                        <div class="hc-action-icons">
+                        <div class="d-flex gap-1">
                             @if (CanEditMasterData)
                             {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditMasterDataModalAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Outline Color="Color.Primary"
+                                 Size="Size.Small" 
+                                 Title="@L["Edit"]"
+                                 Clicked="@(() => OpenEditMasterDataModalAsync(context))">
+                                    <Icon Name="IconName.Edit" />
+                                </Button>
                             }
                             @if (CanDeleteMasterData)
                             {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteMasterDataWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Outline Color="Color.Danger" 
+                                Size="Size.Small" 
+                                Title="@L["Delete"]"
+                                Clicked="@(() => DeleteMasterDataWithConfirmationAsync(context))">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
                             }
                         </div>
 @*//<suite-custom-code-block-4>*@

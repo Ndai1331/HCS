@@ -19,6 +19,8 @@ public abstract class DocumentCreateDtoBase
     [Required]
     [StringLength(DocumentConsts.StorageNumberMaxLength)]
     public string StorageNumber { get; set; } = null!;
+    public DateTime IncommingDate { get; set; }
+
     public Guid? FieldId { get; set; }
 
     public Guid? UnitId { get; set; }

@@ -27,6 +27,9 @@
     <link href="_content/KeudellCoding.Blazor.AdvancedBlazorSelect2/lib/select2/css/select2.min.css" rel="stylesheet" />
 
     <AppearanceStyles/>
+
+
+    
     
 </head>
 <body class="abp-application-layout @rtl">
@@ -47,7 +50,14 @@
     </div>
     
     <AbpScripts BundleName="@BlazorLeptonXThemeBundles.Scripts.Global" />
-
+    <style>
+        #lpx-wrapper.full .lpx-content{
+            max-width: 1248px !important;
+        }
+        .full .lpx-topbar-container .lpx-topbar .lpx-breadcrumb-wrapper {
+            max-width: 1248px !important;
+        }
+    </style>
     <script src="_framework/blazor.web.js"></script>
    
     <!-- SignalR JavaScript client library -->

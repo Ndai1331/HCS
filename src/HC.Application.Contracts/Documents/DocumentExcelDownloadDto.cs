@@ -20,6 +20,10 @@ public abstract class DocumentExcelDownloadDtoBase
 
     public string? StorageNumber { get; set; }
 
+    public DateTime? IncommingDateMin { get; set; }
+
+    public DateTime? IncommingDateMax { get; set; }
+
     public Guid? FieldId { get; set; }
 
     public Guid? UnitId { get; set; }
@@ -33,8 +37,6 @@ public abstract class DocumentExcelDownloadDtoBase
     public Guid? UrgencyLevelId { get; set; }
 
     public Guid? SecrecyLevelId { get; set; }
-
-    public Guid? CreatorId { get; set; }
 
     public DocumentExcelDownloadDtoBase()
     {

@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Content;
-using HC.Shared;
 
 namespace HC.Documents;
 
@@ -15,7 +14,6 @@ public partial interface IDocumentsAppService : IApplicationService
     Task<DocumentWithNavigationPropertiesDto> GetWithNavigationPropertiesAsync(Guid id);
     Task<DocumentDto> GetAsync(Guid id);
     Task<PagedResultDto<LookupDto<Guid>>> GetMasterDataLookupAsync(LookupRequestDto input);
-    Task<PagedResultDto<LookupDto<Guid>>> GetMasterDataLookupByCodeAsync(string code, LookupRequestDto input);
     Task<PagedResultDto<LookupDto<Guid>>> GetUnitLookupAsync(LookupRequestDto input);
     Task<PagedResultDto<LookupDto<Guid>>> GetWorkflowLookupAsync(LookupRequestDto input);
     Task DeleteAsync(Guid id);

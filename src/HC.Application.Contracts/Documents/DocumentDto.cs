@@ -15,6 +15,8 @@ public abstract class DocumentDtoBase : FullAuditedEntityDto<Guid>, IHasConcurre
     public DateTime CompletedTime { get; set; }
 
     public string StorageNumber { get; set; } = null!;
+    public DateTime IncommingDate { get; set; }
+
     public Guid? FieldId { get; set; }
 
     public Guid? UnitId { get; set; }

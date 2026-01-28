@@ -209,24 +209,33 @@
               </DataGridColumn>
                 <DataGridColumn TItem="SurveyLocationDto" Caption="@L["Actions"]">
                     <DisplayTemplate>
-                        <div class="hc-action-icons">
+                        <div class="d-flex gap-1">
                             @if (CanEditSurveyLocation)
                             {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditSurveyLocationModalAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                    <Button Outline Color="Color.Primary"
+                                 Size="Size.Small" 
+                                 Title="@L["Edit"]"
+                                 Clicked="@(() => OpenEditSurveyLocationModalAsync(context))">
+                                    <Icon Name="IconName.Edit" />
+                                </Button>
                             }
-                            <i class="bi bi-clipboard hc-action-icon hc-action-copy" 
-                                title="@L["Copy"]"
-                                @onclick="@(async () => await CopySurveyLocationToClipboardAsync(context))"
-                                style="cursor: pointer;"></i>
+                            @if(context.IsActive)
+                            {
+                                <Button Outline Color="Color.Secondary" 
+                                Size="Size.Small" 
+                                Title="@L["Copy"]"
+                                Clicked="@(async () => await CopySurveyLocationToClipboardAsync(context))">
+                                <Icon Name="IconName.Copy" />
+                            </Button>
+                            }
                             @if (CanDeleteSurveyLocation)
                             {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteSurveyLocationWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Outline Color="Color.Danger" 
+                                Size="Size.Small" 
+                                Title="@L["Delete"]"
+                                Clicked="@(() => DeleteSurveyLocationWithConfirmationAsync(context))">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
                             }
                         </div>
 @*//<suite-custom-code-block-4>*@

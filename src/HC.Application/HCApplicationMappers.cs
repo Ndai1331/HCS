@@ -151,7 +151,7 @@ public partial class WorkflowToLookupDtoGuidMapper : MapperBase<Workflow, Lookup
 
     public override void AfterMap(Workflow source, LookupDto<Guid> destination)
     {
-        destination.DisplayName = $"{source.Code} - {source.Name}";
+        destination.DisplayName = source.Name;
     }
 }
 
@@ -205,7 +205,7 @@ public partial class IdentityUserToLookupDtoGuidMapper : MapperBase<IdentityUser
 
     public override void AfterMap(IdentityUser source, LookupDto<Guid> destination)
     {
-        destination.DisplayName =source.Surname + " " + source.Name;
+        destination.DisplayName = source.Surname + " " + source.Name;
     }
 }
 
@@ -297,7 +297,7 @@ public partial class MasterDataToLookupDtoGuidMapper : MapperBase<MasterData, Lo
 
     public override void AfterMap(MasterData source, LookupDto<Guid> destination)
     {
-        destination.DisplayName = $"{source.Code} - {source.Name}";
+        destination.DisplayName = source.Name;
     }
 }
 
@@ -309,7 +309,7 @@ public partial class UnitToLookupDtoGuidMapper : MapperBase<Unit, LookupDto<Guid
 
     public override void AfterMap(Unit source, LookupDto<Guid> destination)
     {
-        destination.DisplayName = $"{source.Code} - {source.Name}";
+        destination.DisplayName = source.Name;
     }
 }
 

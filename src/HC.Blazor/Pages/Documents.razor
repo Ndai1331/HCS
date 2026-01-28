@@ -1,8 +1,6 @@
-@page "/documents"
+@page "/manage-documents"
 @attribute [Authorize(HCPermissions.Documents.Default)]
 @using HC.Documents
-@using HC.DocumentFiles
-@using HC.MasterDatas
 @using HC.Localization
 @using HC.Shared
 @using Microsoft.AspNetCore.Authorization
@@ -11,7 +9,7 @@
 @using Blazorise
 @using Blazorise.Components
 @using Blazorise.DataGrid
-@using Blazorise.PdfViewer
+@using Volo.Abp.AspNetCore.Components.BlockUi
 @using Volo.Abp.BlazoriseUI
 @using Volo.Abp.BlazoriseUI.Components
 @using Volo.Abp.ObjectMapping
@@ -22,40 +20,19 @@
 @using Volo.Abp.AspNetCore.Components
 @using Microsoft.AspNetCore.Components
 @using Volo.Abp.Http.Client
-@using Microsoft.Extensions.Caching.Memory
-@using System.Threading
 @inherits HCComponentBase
 @inject IDocumentsAppService DocumentsAppService
-@inject IDocumentFilesAppService DocumentFilesAppService
-@inject IMasterDatasAppService MasterDatasAppService
 @inject IUiMessageService UiMessageService
+@inject IBlockUiService BlockUiService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
 @inject NavigationManager NavigationManager
-@inject IMemoryCache __MemoryCache
-@inject Volo.Abp.BlobStoring.IBlobContainer BlobContainer
 @* ************************* PAGE HEADER ************************* *@
 <PageHeader Title="@L["Documents"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
 </PageHeader>
 <style>
     tr.table-row-selectable:hover {
         cursor: default;
-    }
-    .entity-actions-container {
-        display: flex;
-        flex-direction: row;
-        gap: 0.25rem;
-        align-items: center;
-    }
-    .pdf-viewer-modal .modal-body {
-        max-height: 90vh;
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
-    .pdf-viewer-modal-body {
-        max-height: 50rem;
-        overflow: hidden;
-        position: relative;
     }
 </style>
 @* ************************* SEARCH ************************* *@
@@ -65,6 +42,7 @@
 @*//</suite-custom-code-block-1>*@
         <Row>
             <div class="col col-md-8 col-lg-10">
+                <div class="mb-3">
                     <Form id="DocumentSearchForm">
                         <Addons>
                             <Addon AddonType="AddonType.Body">
@@ -80,18 +58,21 @@
                             </Addon>
                         </Addons>
                     </Form>
+                </div>
             </div>
                    <div class="col-md-4 col-lg-2">
+            <div class="mb-3">
                <Button Color="Color.Primary" Outline Style="width:100%" id="AdvancedFilterSectionToggler"
                          Clicked="@(() => ShowAdvancedFilters = !ShowAdvancedFilters)">@L["Filters"]
                          <i aria-hidden="true" class="fa ms-1 @(!ShowAdvancedFilters ? "fa-angle-down" : "fa-angle-up")"></i>
                </Button>
+            </div>
        </div>
         <div style="display: @(!ShowAdvancedFilters ? "none" : "block")"  class="mt-3">
             <Row>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
-                        <FieldLabel>@L["DocumentNumber"]</FieldLabel>
+                        <FieldLabel>@L["No"]</FieldLabel>
                         <TextEdit Text="@Filter.No" TextChanged="@OnNoChangedAsync" />                       
                     </Field>
                 </Column>
@@ -135,12 +116,32 @@
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
-                        <FieldLabel>@L["Field"]</FieldLabel>
+                        <FieldLabel>@L["MinIncommingDate"]</FieldLabel>
+                        <DatePicker TValue="DateTime?"
+            InputMode="DateInputMode.Date"
+            Date="@Filter.IncommingDateMin"
+            DateChanged="@OnIncommingDateMinChangedAsync"
+            Placeholder="@string.Empty" />                       
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is3">
+                    <Field>
+                        <FieldLabel>@L["MaxIncommingDate"]</FieldLabel>
+                        <DatePicker TValue="DateTime?"
+            InputMode="DateInputMode.Date"
+            Date="@Filter.IncommingDateMax"
+            DateChanged="@OnIncommingDateMaxChangedAsync"
+            Placeholder="@string.Empty" />                       
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is3">
+                    <Field>
+                        <FieldLabel>@L["MasterData"]</FieldLabel>
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.FieldId"
 		SelectedValueChanged="@OnFieldIdChangedAsync">
 <SelectItem></SelectItem>
-@foreach(var item in FieldMasterDataCollection)
+@foreach(var item in MasterDatasCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">
 		@item.DisplayName
@@ -183,12 +184,12 @@
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
-                        <FieldLabel>@L["Status"]</FieldLabel>
+                        <FieldLabel>@L["MasterData"]</FieldLabel>
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.StatusId"
 		SelectedValueChanged="@OnStatusIdChangedAsync">
 <SelectItem></SelectItem>
-@foreach(var item in StatusMasterDataCollection)
+@foreach(var item in MasterDatasCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">
 		@item.DisplayName
@@ -199,14 +200,14 @@
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
-                        <FieldLabel>@L["Type"]</FieldLabel>
+                        <FieldLabel>@L["MasterData"]</FieldLabel>
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.TypeId"
 		SelectedValueChanged="@OnTypeIdChangedAsync">
 <SelectItem></SelectItem>
-@foreach(var item in TypeMasterDataCollection)
+@foreach(var item in MasterDatasCollection)
 {
-	<SelectItem TValue="Guid?" Value="@item.Id">
+	<SelectItem TValue="Guid" Value="@item.Id">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -215,14 +216,14 @@
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
-                        <FieldLabel>@L["UrgencyLevel"]</FieldLabel>
+                        <FieldLabel>@L["MasterData"]</FieldLabel>
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.UrgencyLevelId"
 		SelectedValueChanged="@OnUrgencyLevelIdChangedAsync">
 <SelectItem></SelectItem>
-@foreach(var item in UrgencyLevelMasterDataCollection)
+@foreach(var item in MasterDatasCollection)
 {
-	<SelectItem TValue="Guid?" Value="@item.Id">
+	<SelectItem TValue="Guid" Value="@item.Id">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -231,14 +232,14 @@
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
-                        <FieldLabel>@L["SecrecyLevel"]</FieldLabel>
+                        <FieldLabel>@L["MasterData"]</FieldLabel>
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.SecrecyLevelId"
 		SelectedValueChanged="@OnSecrecyLevelIdChangedAsync">
 <SelectItem></SelectItem>
-@foreach(var item in SecrecyLevelMasterDataCollection)
+@foreach(var item in MasterDatasCollection)
 {
-	<SelectItem TValue="Guid?" Value="@item.Id">
+	<SelectItem TValue="Guid" Value="@item.Id">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -331,24 +332,11 @@
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" Caption="@L["Actions"]" Width="120px">
                     <DisplayTemplate>
                         <Div Class="d-flex gap-1">
-   @if (HasPdfFile(context))
-                            {
-                    
-                                <Button
-                                    @onclick="@(() => ViewFileAsync(context))"
-                                    Color="Color.Primary"
-                                    Outline
-                                    Size="Size.Small"
-                                    Class="mb-1">
-                                    <Icon Name="IconName.Eye" />
-                                   </Button>
-
-                            }
                             @if (CanEditDocument)
                             {
 
                                 <Button
-                                    @onclick="@(() => OpenEditDocumentModalAsync(context))"
+                                    @onclick="@(() => NavigationManager.NavigateTo("/document-detail/" + context.Document.Id))"
                                     Color="Color.Secondary"
                                     Outline
                                     Size="Size.Small"
@@ -375,7 +363,7 @@
                     <DisplayTemplate>
                         <Div Class="d-flex gap-1">
                             <Button
-                            @onclick="@(() => SendDocumentAsync(context))"
+                            @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
                             Color="Color.Success"
                             Outline
                             Size="Size.Small"
@@ -383,7 +371,7 @@
                             <Icon Name="IconName.Send" />
                         </Button>
                         <Button
-                            @onclick="@(() => SignDocumentAsync(context))"
+                            @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
                             Color="Color.Warning"
                             Outline
                             Size="Size.Small"
@@ -417,13 +405,13 @@
                     </DisplayTemplate>
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
-                        Field="Document.CompletedTime"
-                        Caption="@L["CompletedTime"]"
+                        Field="Document.IncommingDate"
+                        Caption="@L["IncommingDate"]"
                         CellStyle="@((item) => "min-width: 200px")"
                         Width="200px">
                     <DisplayTemplate>
-                            @context.Document.CompletedTime.ToShortDateString()
-                    </DisplayTemplate>
+                            @(context.Document.IncommingDate.ToShortDateString()  + " " + context.Document.IncommingDate.ToShortTimeString())
+                    </DisplayTemplate> 
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="Type.Name"
@@ -484,519 +472,3 @@
         </DataGrid>
     </CardBody>
 </Card>
-@* ************************* CREATE MODAL ************************* *@
-<Modal @ref="CreateDocumentModal" Closing="@CreateDocumentModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
-@*//<suite-custom-code-block-5>*@
-@*//</suite-custom-code-block-5>*@
-        <Form id="CreateDocumentForm">
-            <ModalHeader>
-                <ModalTitle>@L["NewDocument"]</ModalTitle>
-                <CloseButton Clicked="CloseCreateDocumentModalAsync" />
-            </ModalHeader>
-            <ModalBody>
-                <Validations @ref="@NewDocumentValidations"
-                            Mode="ValidationMode.Auto"
-                            Model="@NewDocument"
-                            ValidateOnLoad="false">
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["No"]</FieldLabel>
-                            <TextEdit @bind-Text="@NewDocument.No" MaxLength="DocumentConsts.NoMaxLength"  Autofocus="true">
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["Title"] *</FieldLabel>
-                            <TextEdit @bind-Text="@NewDocument.Title"   >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["CurrentStatus"]</FieldLabel>
-                            <TextEdit @bind-Text="@NewDocument.CurrentStatus" MaxLength="DocumentConsts.CurrentStatusMaxLength"  >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["CompletedTime"]</FieldLabel>
-                            <DateEdit TValue="DateTime" InputMode="DateInputMode.Date" @bind-Date="@NewDocument.CompletedTime"  >
-                               <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </DateEdit>
-                        </Field>
-                    </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["StorageNumber"] *</FieldLabel>
-                            <TextEdit @bind-Text="@NewDocument.StorageNumber" MaxLength="DocumentConsts.StorageNumberMaxLength"  >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
-                    <Field>
-                        <FieldLabel>@L["MasterData"] </FieldLabel>
-                        <Autocomplete Data="@MasterDatasCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid?"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id )"
-                                      SearchChanged="@GetMasterDataCollectionLookupAsync"
-                                      @bind-SelectedValue="@NewDocument.FieldId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Unit"] </FieldLabel>
-                        <Autocomplete Data="@UnitsCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid?"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id )"
-                                      SearchChanged="@GetUnitCollectionLookupAsync"
-                                      @bind-SelectedValue="@NewDocument.UnitId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Workflow"] </FieldLabel>
-                        <Autocomplete Data="@WorkflowsCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid?"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id )"
-                                      SearchChanged="@GetWorkflowCollectionLookupAsync"
-                                      @bind-SelectedValue="@NewDocument.WorkflowId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["MasterData"] </FieldLabel>
-                        <Autocomplete Data="@MasterDatasCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid?"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id )"
-                                      SearchChanged="@GetMasterDataCollectionLookupAsync"
-                                      @bind-SelectedValue="@NewDocument.StatusId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["MasterData"] *</FieldLabel>
-                        <Autocomplete Data="@MasterDatasCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id ?? default)"
-                                      SearchChanged="@GetMasterDataCollectionLookupAsync"
-                                      @bind-SelectedValue="@NewDocument.TypeId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["MasterData"] *</FieldLabel>
-                        <Autocomplete Data="@MasterDatasCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id ?? default)"
-                                      SearchChanged="@GetMasterDataCollectionLookupAsync"
-                                      @bind-SelectedValue="@NewDocument.UrgencyLevelId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["MasterData"] *</FieldLabel>
-                        <Autocomplete Data="@MasterDatasCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id ?? default)"
-                                      SearchChanged="@GetMasterDataCollectionLookupAsync"
-                                      @bind-SelectedValue="@NewDocument.SecrecyLevelId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                </Validations>
-            </ModalBody>
-            <ModalFooter>
-                <Button Color="Color.Secondary"
-                        Clicked="CloseCreateDocumentModalAsync">
-                    @L["Cancel"]
-                </Button>
-                <SubmitButton Form="CreateDocumentForm" Clicked="CreateDocumentAsync"/>
-@*//<suite-custom-code-block-6>*@
-@*//</suite-custom-code-block-6>*@
-            </ModalFooter>
-        </Form>
-@*//<suite-custom-code-block-7>*@
-@*//</suite-custom-code-block-7>*@
-    </ModalContent>
-</Modal>
-@* ************************* EDIT MODAL ************************* *@
-<Modal @ref="EditDocumentModal" Closing="@EditDocumentModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
-@*//<suite-custom-code-block-8>*@
-@*//</suite-custom-code-block-8>*@
-        <Form id="EditDocumentForm">
-            <ModalHeader>
-                <ModalTitle>@L["Update"]</ModalTitle>
-                <CloseButton Clicked="CloseEditDocumentModalAsync" />
-            </ModalHeader>
-            <ModalBody>
-                <Validations @ref="@EditingDocumentValidations"
-                            Mode="ValidationMode.Auto"
-                            Model="@EditingDocument"
-                            ValidateOnLoad="false">
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["No"]</FieldLabel>
-                            <TextEdit @bind-Text="@EditingDocument.No" MaxLength="DocumentConsts.NoMaxLength"  Autofocus="true">
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["Title"] *</FieldLabel>
-                            <TextEdit @bind-Text="@EditingDocument.Title"   >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["CurrentStatus"]</FieldLabel>
-                            <TextEdit @bind-Text="@EditingDocument.CurrentStatus" MaxLength="DocumentConsts.CurrentStatusMaxLength"  >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["CompletedTime"]</FieldLabel>
-                            <DateEdit TValue="DateTime" InputMode="DateInputMode.Date" @bind-Date="@EditingDocument.CompletedTime"  >
-                               <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </DateEdit>
-                        </Field>
-                    </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["StorageNumber"] *</FieldLabel>
-                            <TextEdit @bind-Text="@EditingDocument.StorageNumber" MaxLength="DocumentConsts.StorageNumberMaxLength"  >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
-                    <Field>
-                        <FieldLabel>@L["MasterData"] </FieldLabel>
-                        <Autocomplete Data="@MasterDatasCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid?"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id )"
-                                      SearchChanged="@GetMasterDataCollectionLookupAsync"
-                                      @bind-SelectedValue="@EditingDocument.FieldId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Unit"] </FieldLabel>
-                        <Autocomplete Data="@UnitsCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid?"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id )"
-                                      SearchChanged="@GetUnitCollectionLookupAsync"
-                                      @bind-SelectedValue="@EditingDocument.UnitId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["Workflow"] </FieldLabel>
-                        <Autocomplete Data="@WorkflowsCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid?"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id )"
-                                      SearchChanged="@GetWorkflowCollectionLookupAsync"
-                                      @bind-SelectedValue="@EditingDocument.WorkflowId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["MasterData"] </FieldLabel>
-                        <Autocomplete Data="@MasterDatasCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid?"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id )"
-                                      SearchChanged="@GetMasterDataCollectionLookupAsync"
-                                      @bind-SelectedValue="@EditingDocument.StatusId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["MasterData"] *</FieldLabel>
-                        <Autocomplete Data="@MasterDatasCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id ?? default)"
-                                      SearchChanged="@GetMasterDataCollectionLookupAsync"
-                                      @bind-SelectedValue="@EditingDocument.TypeId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["MasterData"] *</FieldLabel>
-                        <Autocomplete Data="@MasterDatasCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id ?? default)"
-                                      SearchChanged="@GetMasterDataCollectionLookupAsync"
-                                      @bind-SelectedValue="@EditingDocument.UrgencyLevelId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                    <Field>
-                        <FieldLabel>@L["MasterData"] *</FieldLabel>
-                        <Autocomplete Data="@MasterDatasCollection"
-                                      TItem="LookupDto<Guid>"
-                                      TValue="Guid"
-                                      TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id ?? default)"
-                                      SearchChanged="@GetMasterDataCollectionLookupAsync"
-                                      @bind-SelectedValue="@EditingDocument.SecrecyLevelId"
-                                      Placeholder="&#8212;" />
-                    </Field>
-                </Validations>
-            </ModalBody>
-            <ModalFooter>
-                <Button Color="Color.Secondary"
-                        Clicked="CloseEditDocumentModalAsync">
-                    @L["Cancel"]
-                </Button>
-                <SubmitButton Form="EditDocumentForm" Clicked="UpdateDocumentAsync" />
-@*//<suite-custom-code-block-9>*@
-@*//</suite-custom-code-block-9>*@
-            </ModalFooter>
-        </Form>
-@*//<suite-custom-code-block-10>*@
-@*//</suite-custom-code-block-10>*@
-    </ModalContent>
-</Modal>
-@* ************************* VIEW FILE MODAL ************************* *@
-<Modal @ref="ViewFileModal" Class="pdf-viewer-modal">
-    <ModalContent Centered="true" Size="ModalSize.ExtraLarge">  
-         <ModalHeader>
-        <ModalTitle>@L["DocumentPreview"]</ModalTitle>
-        <CloseButton Clicked="CloseViewFileModalAsync" />
-    </ModalHeader>
-    <ModalBody>
-        @if (IsLoadingViewDocument)
-        {
-            <Row Class="w-100 align-items-center" Style="height: 150px;">
-                <Column>
-                    <RadarSpinner />
-                </Column>
-            </Row>
-        }
-        else if (ViewDocumentData != null)
-        {
-            <Form>
-                <Row>
-                    <!-- Left Column: Document Information (6 columns) -->
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <!-- Row 1: Số tài liệu | Số lưu trữ (6-6) -->
-                        <Row>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <Field>
-                                    <FieldLabel>@L["DocumentNumber"]</FieldLabel>
-                                    <TextEdit Text="@ViewDocumentData.No" Disabled="true" />
-                                </Field>
-                            </Column>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <Field>
-                                    <FieldLabel>@L["StorageNumber"]</FieldLabel>
-                                    <TextEdit Text="@ViewDocumentData.StorageNumber" Disabled="true" />
-                                </Field>
-                            </Column>
-                        </Row>
-                        
-                        <!-- Row 2: Title | Thời gian hoàn thành (6-6) -->
-                        <Row>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <Field>
-                                    <FieldLabel>@L["Title"]</FieldLabel>
-                                    <TextEdit Text="@ViewDocumentData.Title" Disabled="true" />
-                                </Field>
-                            </Column>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <Field>
-                                    <FieldLabel>@L["CompletedTime"]</FieldLabel>
-                                    <TextEdit Text="@ViewDocumentData.CompletedTime.ToString("dd/MM/yyyy HH:mm")" Disabled="true" />
-                                </Field>
-                            </Column>
-                        </Row>
-                        
-                       
-                        
-                        <!-- Row 6: Trạng thái hiện tại (12) -->
-                        <Row>
-                            <Column ColumnSize="ColumnSize.Is12">
-                                <Field>
-                                    <FieldLabel>@L["CurrentStatus"]</FieldLabel>
-                                    <TextEdit Text="@ViewDocumentData.CurrentStatus" Disabled="true" />
-                                </Field>
-                            </Column>
-                        </Row>
-                    </Column>
-                    
-                    <!-- Right Column: File List (6 columns) -->
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <!-- Row 3: Loại | Lĩnh vực (6-6) -->
-                        <Row>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <Field>
-                                    <FieldLabel>@L["Type"]</FieldLabel>
-                                    <TextEdit Text="@(ViewSelectedTypeMasterData.FirstOrDefault()?.DisplayName ?? "")" Disabled="true" />
-                                </Field>
-                            </Column>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <Field>
-                                    <FieldLabel>@L["Field"]</FieldLabel>
-                                    <TextEdit Text="@(ViewSelectedFieldMasterData.FirstOrDefault()?.DisplayName ?? "")" Disabled="true" />
-                                </Field>
-                            </Column>
-                        </Row>
-                        
-                        <!-- Row 4: Mức độ cấp bách | Mức độ bảo mật (6-6) -->
-                        <Row>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <Field>
-                                    <FieldLabel>@L["UrgencyLevel"]</FieldLabel>
-                                    <TextEdit Text="@(ViewSelectedUrgencyLevelMasterData.FirstOrDefault()?.DisplayName ?? "")" Disabled="true" />
-                                </Field>
-                            </Column>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <Field>
-                                    <FieldLabel>@L["SecrecyLevel"]</FieldLabel>
-                                    <TextEdit Text="@(ViewSelectedSecrecyLevelMasterData.FirstOrDefault()?.DisplayName ?? "")" Disabled="true" />
-                                </Field>
-                            </Column>
-                        </Row>
-                        
-                        <!-- Row 5: Đơn vị ban hành | Trạng thái (6-6) -->
-                        <Row>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <Field>
-                                    <FieldLabel>@L["Unit"]</FieldLabel>
-                                    <TextEdit Text="@(ViewSelectedUnit.FirstOrDefault()?.DisplayName ?? "")" Disabled="true" />
-                                </Field>
-                            </Column>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <Field>
-                                    <FieldLabel>@L["Status"]</FieldLabel>
-                                    <TextEdit Text="@(ViewSelectedStatusMasterData.FirstOrDefault()?.DisplayName ?? "")" Disabled="true" />
-                                </Field>
-                            </Column>
-                        </Row>
-                    </Column>
-
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
-                        @if (ViewDocumentFilesList.Any())
-                        {
-                            <Table Hoverable="true" Bordered="true" Striped="true">
-                                <thead>
-                                    <tr>
-                                        <th>@L["Name"]</th>
-                                        <th>@L["UploadedAt"]</th>
-                                        <th>@L["IsSigned"]</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var file in ViewDocumentFilesList)
-                                    {
-                                        <tr>
-                                            <td>@file.DocumentFile.Name</td>
-                                            <td>@file.DocumentFile.UploadedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                                            <td>
-                                                @if (file.DocumentFile.IsSigned)
-                                                {
-                                                    <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
-                                                }
-                                                else
-                                                {
-                                                    <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </Table>
-                        }
-                    </Column>
-                </Row>
-
-
-                
-                <!-- PDF Viewer at the bottom -->
-                @if (ViewIsPdfFile && !string.IsNullOrEmpty(ViewPdfFileUrl))
-                {
-                    <Row>
-                        <Column ColumnSize="ColumnSize.Is12">
-                            <div class="mt-3">
-                                <PdfViewerContainer Height="Height.Rem(35)" Class="pdf-viewer-modal-body">
-                                    <PdfViewerToolbar />
-                                    <PdfViewer Source="@ViewPdfFileUrl" />
-                                </PdfViewerContainer>
-                            </div>
-                        </Column>
-                    </Row>
-                }
-            </Form>
-        }
-    </ModalBody>
-    <ModalFooter>
-        <Button Color="Color.Secondary" Clicked="CloseViewFileModalAsync">
-            @L["Close"]
-        </Button>
-    </ModalFooter>
-    </ModalContent>
-   
-</Modal>
-@* ************************* DELETE CONFIRM MODAL ************************* *@
-<Modal @ref="DeleteConfirmModal">
-    <ModalContent Size="ModalSize.Small" Centered="true">
-        <ModalHeader>
-            <ModalTitle>@L["Delete"]</ModalTitle>
-            <CloseButton Clicked="CancelDeleteDocumentAsync" />
-        </ModalHeader>
-        <ModalBody>
-            @L["DeleteConfirmationMessage"]
-        </ModalBody>
-        <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="CancelDeleteDocumentAsync">
-                @L["Cancel"]
-            </Button>
-            <Button Color="Color.Danger" Clicked="ConfirmDeleteDocumentAsync">
-                @L["Delete"]
-            </Button>
-        </ModalFooter>
-    </ModalContent>
-</Modal>

@@ -71,9 +71,8 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
     public DbSet<WorkflowDefinition> WorkflowDefinitions { get; set; } = null!;
     public DbSet<MasterData> MasterDatas { get; set; } = null!;
     public DbSet<Position> Positions { get; set; } = null!;
-    
-    // Chat DbSets are inherited from HCDbContextBase
 
+    // Chat DbSets are inherited from HCDbContextBase
     public HCDbContext(DbContextOptions<HCDbContext> options) : base(options)
     {
     }
@@ -375,23 +374,6 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.HasOne<SurveyCriteria>().WithMany().IsRequired().HasForeignKey(x => x.SurveyCriteriaId).OnDelete(DeleteBehavior.NoAction);
             b.HasOne<SurveySession>().WithMany().IsRequired().HasForeignKey(x => x.SurveySessionId).OnDelete(DeleteBehavior.NoAction);
         });
-        builder.Entity<Document>(b => {
-            b.ToTable(HCConsts.DbTablePrefix + "Documents", HCConsts.DbSchema);
-            b.ConfigureByConvention();
-            b.Property(x => x.TenantId).HasColumnName(nameof(Document.TenantId));
-            b.Property(x => x.No).HasColumnName(nameof(Document.No)).HasMaxLength(DocumentConsts.NoMaxLength);
-            b.Property(x => x.Title).HasColumnName(nameof(Document.Title)).IsRequired();
-            b.Property(x => x.CurrentStatus).HasColumnName(nameof(Document.CurrentStatus)).HasMaxLength(DocumentConsts.CurrentStatusMaxLength);
-            b.Property(x => x.CompletedTime).HasColumnName(nameof(Document.CompletedTime));
-            b.Property(x => x.StorageNumber).HasColumnName(nameof(Document.StorageNumber)).IsRequired().HasMaxLength(DocumentConsts.StorageNumberMaxLength);
-            b.HasOne<MasterData>().WithMany().HasForeignKey(x => x.FieldId).OnDelete(DeleteBehavior.SetNull);
-            b.HasOne<Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.SetNull);
-            b.HasOne<Workflow>().WithMany().HasForeignKey(x => x.WorkflowId).OnDelete(DeleteBehavior.SetNull);
-            b.HasOne<MasterData>().WithMany().HasForeignKey(x => x.StatusId).OnDelete(DeleteBehavior.SetNull);
-            b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.TypeId).OnDelete(DeleteBehavior.NoAction);
-            b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.UrgencyLevelId).OnDelete(DeleteBehavior.NoAction);
-            b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.SecrecyLevelId).OnDelete(DeleteBehavior.NoAction);
-        });
         builder.Entity<Workflow>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "Workflows", HCConsts.DbSchema);
             b.ConfigureByConvention();
@@ -431,6 +413,24 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.Property(x => x.IsActive).HasColumnName(nameof(UserDepartment.IsActive));
             b.HasOne<Department>().WithMany().IsRequired().HasForeignKey(x => x.DepartmentId).OnDelete(DeleteBehavior.NoAction);
             b.HasOne<IdentityUser>().WithMany().IsRequired().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.NoAction);
+        });
+        builder.Entity<Document>(b => {
+            b.ToTable(HCConsts.DbTablePrefix + "Documents", HCConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.TenantId).HasColumnName(nameof(Document.TenantId));
+            b.Property(x => x.No).HasColumnName(nameof(Document.No)).HasMaxLength(DocumentConsts.NoMaxLength);
+            b.Property(x => x.Title).HasColumnName(nameof(Document.Title)).IsRequired();
+            b.Property(x => x.CurrentStatus).HasColumnName(nameof(Document.CurrentStatus)).HasMaxLength(DocumentConsts.CurrentStatusMaxLength);
+            b.Property(x => x.CompletedTime).HasColumnName(nameof(Document.CompletedTime));
+            b.Property(x => x.StorageNumber).HasColumnName(nameof(Document.StorageNumber)).IsRequired().HasMaxLength(DocumentConsts.StorageNumberMaxLength);
+            b.Property(x => x.IncommingDate).HasColumnName(nameof(Document.IncommingDate));
+            b.HasOne<MasterData>().WithMany().HasForeignKey(x => x.FieldId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<Workflow>().WithMany().HasForeignKey(x => x.WorkflowId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<MasterData>().WithMany().HasForeignKey(x => x.StatusId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.TypeId).OnDelete(DeleteBehavior.NoAction);
+            b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.UrgencyLevelId).OnDelete(DeleteBehavior.NoAction);
+            b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.SecrecyLevelId).OnDelete(DeleteBehavior.NoAction);
         });
     }
 }

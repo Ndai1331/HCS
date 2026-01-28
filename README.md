@@ -122,3 +122,13 @@ openssl pkcs12 -export \
 -inkey openiddict.key \
 -in openiddict.crt \
 -passout pass:StrongPass123
+
+
+
+docker cp /www/server/panel/data/compose/hcs/certs/openiddict.pfx hc-api:/app/certs/openiddict.pfx
+chown 1654:1654 /www/server/panel/data/compose/hcs/certs/openiddict.pfx
+chmod 600 /www/server/panel/data/compose/hcs/certs/openiddict.pfx
+
+
+chown -R 1654:1654 /www/server/panel/data/compose/hcs/certs
+chmod 700 /www/server/panel/data/compose/hcs/certs

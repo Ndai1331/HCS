@@ -75,12 +75,10 @@
                     {
                         <span class="spinner-border spinner-border-sm position-absolute top-0 end-0 m-1"></span>
                     }
-
                     <p class="mb-0 message-text">@Message.Message</p>
-
                     @if (Message.Files?.Any() == true)
                     {
-                        <div class="mt-2">
+                        <div class="mt-2 message-file-items">
                             @foreach (var file in Message.Files)
                             {
                                 @if (file.IsImage)
@@ -205,6 +203,15 @@
     white-space: nowrap;
     opacity: 0.4;
 }
+
+
+.message-file-items
+{
+    background: white;
+    border-radius: 4px;
+    padding: 4px;
+    transition: background-color 0.2s;
+}
 </style>
 
 @code {
@@ -232,7 +239,7 @@
     private string GetMessageBoxClass()
         => Message.Side == ChatMessageSide.Sender
             ? "bg-primary text-white rounded"
-            : "bg-white text-dark rounded";
+            : "bg-danger-subtle text-black rounded";
 
     private async Task OnReplyAsync() => await OnReply.InvokeAsync(Message);
     private async Task OnTogglePinAsync() => await OnTogglePin.InvokeAsync(Message);

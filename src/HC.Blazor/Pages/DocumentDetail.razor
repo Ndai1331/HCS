@@ -41,381 +41,20 @@
 <PageHeader Title="@PageTitle" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
 </PageHeader>
 
-@if (IsLoading)
-{
-    <Card>
-        <CardBody>
-            <Row Class="w-100 align-items-center" Style="height: 150px;">
-                <Column>
-                    <RadarSpinner />
-                </Column>
-            </Row>
-        </CardBody>
-    </Card>
-}
-else if (IsEditMode && CurrentDocument is null)
-{
-    <Card>
-        <CardBody>
-            <Alert Color="Color.Danger">
-                @L["NoDataAvailable"]
-            </Alert>
-        </CardBody>
-    </Card>
-}
-else
-{
-    <Card>
-        <CardBody>
-            @if (IsSaving)
-            {
-                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; border-radius: 0.25rem;">
-                    <RadarSpinner />
-                </div>
-            }
-            <Form id="DocumentDetailForm" style="position: relative;">
-                @if (IsEditMode && DocumentUpdateData != null)
-                {
-                    @if (!string.IsNullOrWhiteSpace(EditDocumentValidationErrorKey))
-                    {
-                        <Alert Color="Color.Danger">
-                            <AlertMessage>@L["NotificationError"]!</AlertMessage>
-                            <AlertDescription>@L[EditDocumentValidationErrorKey]</AlertDescription>
-                        </Alert>
-                    }
-                    <Row>
-                            <!-- Left Column: Document Information (6 columns) -->
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <!-- Row 1: Số tài liệu | Số lưu trữ (6-6) -->
-                                <Row>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["DocumentNumber"] *</FieldLabel>
-                                            <TextEdit Text="@DocumentUpdateData.No" 
-                                                      TextChanged="@((string value) => { DocumentUpdateData.No = value; EditValidation.RemoveFieldError("DocumentNumber"); })"
-                                                      MaxLength="DocumentConsts.NoMaxLength" 
-                                                      Disabled="@IsViewMode"
-                                                      Style="@(HasEditFieldError("DocumentNumber") ? "border-color: #dc3545;" : "")" />
-                                            @if (HasEditFieldError("DocumentNumber"))
-                                            {
-                                                <div class="invalid-feedback d-block">@GetEditFieldError("DocumentNumber")</div>
-                                            }
-                                        </Field>
-                                    </Column>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["StorageNumber"] *</FieldLabel>
-                                            <TextEdit Text="@DocumentUpdateData.StorageNumber" 
-                                                      TextChanged="@((string value) => { DocumentUpdateData.StorageNumber = value; EditValidation.RemoveFieldError("StorageNumber"); })"
-                                                      MaxLength="DocumentConsts.StorageNumberMaxLength" 
-                                                      Disabled="@IsViewMode"
-                                                      Style="@(HasEditFieldError("StorageNumber") ? "border-color: #dc3545;" : "")" />
-                                            @if (HasEditFieldError("StorageNumber"))
-                                            {
-                                                <div class="invalid-feedback d-block">@GetEditFieldError("StorageNumber")</div>
-                                            }
-                                        </Field>
-                                    </Column>
-                                </Row>
-                                
-                                <!-- Row 2: Title | Thời gian hoàn thành (6-6) -->
-                                <Row>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["Title"] *</FieldLabel>
-                                            <TextEdit Text="@DocumentUpdateData.Title" 
-                                                      TextChanged="@((string value) => { DocumentUpdateData.Title = value; EditValidation.RemoveFieldError("Title"); })"
-                                                      Disabled="@IsViewMode"
-                                                      Style="@(HasEditFieldError("Title") ? "border-color: #dc3545;" : "")" />
-                                            @if (HasEditFieldError("Title"))
-                                            {
-                                                <div class="invalid-feedback d-block">@GetEditFieldError("Title")</div>
-                                            }
-                                        </Field>
-                                    </Column>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        @* DatePicker is outside Validations to avoid Blazorise validator inference errors. *@
-                                        <Field>
-                                            <FieldLabel>@L["CompletedTime"]</FieldLabel>
-                                            <Addons>
-                                                <Addon AddonType="AddonType.Body">
-                                                    <DatePicker TValue="DateTime"
-                                                                InputMode="DateInputMode.DateTime"
-                                                                Date="@DocumentUpdateData.CompletedTime"
-                                                                DateChanged="@(v => DocumentUpdateData.CompletedTime = v)"
-                                                                Placeholder="@string.Empty"
-                                                                DisplayFormat="dd/MM/yyyy HH:mm"
-                                                                InputFormat="dd/MM/yyyy HH:mm"
-                                                                Disabled="@IsViewMode"
-                                                                @ref="@EditCompletedTimeDatePicker" />
-                                                </Addon>
-                                                <Addon AddonType="AddonType.End">
-                                                    <Button Color="Color.Light" Disabled="@IsViewMode" Clicked="@(() => EditCompletedTimeDatePicker?.ToggleAsync())">
-                                                        <Icon Name="IconName.CalendarDay" />
-                                                    </Button>
-                                                </Addon>
-                                            </Addons>
-                                        </Field>
-                                    </Column>
-                                </Row>
-                                
-                                <!-- Row 3: Loại | Lĩnh vực (6-6) -->
-                                <Row>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["Type"] *</FieldLabel>
-                                            <div class="hc-select2-full" style="@(HasEditFieldError("Type") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                                <Select2 IdSelector="c => c.Id.ToString()"
-                                                         TextSelector="c => c.DisplayName"
-                                                         FilterFunction="GetTypeMasterDataLookupAsync"
-                                                         GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                                         Datasource="TypeMasterDataCollection"
-                                                         Value="@SelectedTypeMasterData"
-                                                         OnValueChanged="OnTypeIdChanged"
-                                                         Cache="__MemoryCache"
-                                                         Multiselect="false"
-                                                         Disabled="@IsViewMode" />
-                                            </div>
-                                            @if (HasEditFieldError("Type"))
-                                            {
-                                                <div class="invalid-feedback d-block">@GetEditFieldError("Type")</div>
-                                            }
-                                        </Field>
-                                    </Column>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["Field"] *</FieldLabel>
-                                            <div class="hc-select2-full" style="@(HasEditFieldError("Field") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                                <Select2 IdSelector="c => c.Id.ToString()"
-                                                         TextSelector="c => c.DisplayName"
-                                                         FilterFunction="GetFieldMasterDataLookupAsync"
-                                                         GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                                         Datasource="FieldMasterDataCollection"
-                                                         Value="@SelectedFieldMasterData"
-                                                         OnValueChanged="OnFieldIdChanged"
-                                                         Cache="__MemoryCache"
-                                                         Multiselect="false"
-                                                         Disabled="@IsViewMode" />
-                                            </div>
-                                            @if (HasEditFieldError("Field"))
-                                            {
-                                                <div class="invalid-feedback d-block">@GetEditFieldError("Field")</div>
-                                            }
-                                        </Field>
-                                    </Column>
-                                </Row>
-                                
-                                <!-- Row 4: Mức độ cấp bách | Mức độ bảo mật (6-6) -->
-                                <Row>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["UrgencyLevel"] *</FieldLabel>
-                                            <div class="hc-select2-full" style="@(HasEditFieldError("UrgencyLevel") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                                <Select2 IdSelector="c => c.Id.ToString()"
-                                                         TextSelector="c => c.DisplayName"
-                                                         FilterFunction="GetUrgencyLevelMasterDataLookupAsync"
-                                                         GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                                         Datasource="UrgencyLevelMasterDataCollection"
-                                                         Value="@SelectedUrgencyLevelMasterData"
-                                                         OnValueChanged="OnUrgencyLevelIdChanged"
-                                                         Cache="__MemoryCache"
-                                                         Multiselect="false"
-                                                         Disabled="@IsViewMode" />
-                                            </div>
-                                            @if (HasEditFieldError("UrgencyLevel"))
-                                            {
-                                                <div class="invalid-feedback d-block">@GetEditFieldError("UrgencyLevel")</div>
-                                            }
-                                        </Field>
-                                    </Column>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["SecrecyLevel"] *</FieldLabel>
-                                            <div class="hc-select2-full" style="@(HasEditFieldError("SecrecyLevel") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                                <Select2 IdSelector="c => c.Id.ToString()"
-                                                         TextSelector="c => c.DisplayName"
-                                                         FilterFunction="GetSecrecyLevelMasterDataLookupAsync"
-                                                         GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                                         Datasource="SecrecyLevelMasterDataCollection"
-                                                         Value="@SelectedSecrecyLevelMasterData"
-                                                         OnValueChanged="OnSecrecyLevelIdChanged"
-                                                         Cache="__MemoryCache"
-                                                         Multiselect="false"
-                                                         Disabled="@IsViewMode" />
-                                            </div>
-                                            @if (HasEditFieldError("SecrecyLevel"))
-                                            {
-                                                <div class="invalid-feedback d-block">@GetEditFieldError("SecrecyLevel")</div>
-                                            }
-                                        </Field>
-                                    </Column>
-                                </Row>
-                                
-                                <!-- Row 5: Đơn vị ban hành | Trạng thái (6-6) -->
-                                <Row>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["Unit"] *</FieldLabel>
-                                            <div class="hc-select2-full" style="@(HasEditFieldError("Unit") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                                <Select2 IdSelector="c => c.Id.ToString()"
-                                                         TextSelector="c => c.DisplayName"
-                                                         FilterFunction="GetUnitLookupAsync"
-                                                         GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                                         Datasource="UnitsCollection"
-                                                         Value="@SelectedUnit"
-                                                         OnValueChanged="OnUnitIdChanged"
-                                                         Cache="__MemoryCache"
-                                                         Multiselect="false"
-                                                         Disabled="@IsViewMode" />
-                                            </div>
-                                            @if (HasEditFieldError("Unit"))
-                                            {
-                                                <div class="invalid-feedback d-block">@GetEditFieldError("Unit")</div>
-                                            }
-                                        </Field>
-                                    </Column>
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                        <Field>
-                                            <FieldLabel>@L["Status"] *</FieldLabel>
-                                            <div class="hc-select2-full" style="@(HasEditFieldError("Status") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                                <Select2 IdSelector="c => c.Id.ToString()"
-                                                         TextSelector="c => c.DisplayName"
-                                                         FilterFunction="GetStatusMasterDataLookupAsync"
-                                                         GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                                         Datasource="StatusMasterDataCollection"
-                                                         Value="@SelectedStatusMasterData"
-                                                         OnValueChanged="OnStatusIdChanged"
-                                                         Cache="__MemoryCache"
-                                                         Multiselect="false"
-                                                         Disabled="@IsViewMode" />
-                                            </div>
-                                            @if (HasEditFieldError("Status"))
-                                            {
-                                                <div class="invalid-feedback d-block">@GetEditFieldError("Status")</div>
-                                            }
-                                        </Field>
-                                    </Column>
-                                </Row>
-                                
-                                <!-- Row 6: Trạng thái hiện tại (12) -->
-                                <Row>
-                                   <Column ColumnSize="ColumnSize.Is12">
-                                        <Field>
-                                            <FieldLabel>@L["CurrentStatus"]</FieldLabel>
-                                            <TextEdit @bind-Text="@DocumentUpdateData.CurrentStatus" MaxLength="DocumentConsts.CurrentStatusMaxLength" Disabled="@IsViewMode" />
-                                        </Field>
-                                    </Column>
 
-                                    <Column ColumnSize="ColumnSize.Is12">
-                                            @if (!IsViewMode && !DocumentFilesList.Any())
-                                            {
-                                                <Field>
-                                                    <FieldLabel>@L["File"] *</FieldLabel>
-                                                    <FilePicker Multiple="false"
-                                                                Changed="OnFileChanged"
-                                                                ShowMode="FilePickerShowMode.List"
-                                                                Disabled="@(IsEditMode && CurrentDocument != null && DocumentFilesList.Any())"
-                                                                MaxFileSize="52428800"
-                                                                Accept="application/pdf"
-                                                                FilePickerLocalizer="FilePickerLocalizer">
-                                                        <ButtonsTemplate>
-                                                            <Progress Value="@FilePickerProgress" />
-                                                            <Buttons>
-                                                                <Button Clicked="@context.Clear" Color="Color.Warning">
-                                                                    <Icon Name="IconName.Clear" /> @L["Clear"]
-                                                                </Button>
-                                                            </Buttons>
-                                                        </ButtonsTemplate>
-                                                    </FilePicker>
-                                                    @if (IsEditMode && CurrentDocument != null)
-                                                    {
-                                                        <Alert Color="Color.Warning" Dismissible="false" Class="mt-2">
-                                                            <Icon Name="IconName.ExclamationTriangle" Class="me-2" />
-                                                            @L["CannotUploadFileInEditMode"] @L["PleaseDeleteFileFirst"]
-                                                        </Alert>
-                                                    }
-                                                    @if (!string.IsNullOrEmpty(UploadedFilePath))
-                                                    {
-                                                        <Alert Color="Color.Success" Dismissible="false" Class="mt-2">
-                                                            <Icon Name="IconName.CheckCircle" Class="me-2" />
-                                                            @L["FileUploadedSuccessfully"]: @System.IO.Path.GetFileName(UploadedFilePath)
-                                                        </Alert>
-                                                    }
-                                                </Field>
-                                            }
-                                            
-                                            @if (DocumentFilesList.Any())
-                                            {
-                                                <div class="mt-3">
-                                                    <Heading Size="HeadingSize.Is6">@L["UploadedFiles"]</Heading>
-                                                    <Table Hoverable="true" Bordered="true" Striped="true">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>@L["Name"]</th>
-                                                                <th>@L["UploadedAt"]</th>
-                                                                <th>@L["IsSigned"]</th>
-                                                                <th>@L["Actions"]</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            @foreach (var file in DocumentFilesList)
-                                                            {
-                                                                <tr>
-                                                                    <td>@file.DocumentFile.Name</td>
-                                                                    <td>@file.DocumentFile.UploadedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                                                                    <td>
-                                                                        @if (file.DocumentFile.IsSigned)
-                                                                        {
-                                                                            <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
-                                                                        }
-                                                                    </td>
-                                                                    <td>
-                                                                        <div class="d-flex gap-2">
-                                                                            <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => DownloadFileAsync(file.DocumentFile.Path, file.DocumentFile.Name))">
-                                                                                <Icon Name="IconName.Download" Class="me-1" />
-                                                                            </Button>
-                                                                            @if (CanDeleteDocumentFile)
-                                                                            {
-                                                                                <Button Color="Color.Danger" Size="Size.Small" Clicked="@(() => DeleteFileAsync(file))">
-                                                                                    <Icon Name="IconName.Delete" Class="me-1" />
-                                                                                </Button>
-                                                                            }
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            }
-                                                        </tbody>
-                                                    </Table>
-                                                </div>
-                                            }
-                                    </Column>
-                                </Row>
-                            </Column>
-                            
-                            <!-- Right Column: File Upload and PDF Viewer (6 columns) -->
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <PdfViewerContainer Height="Height.Rem(50)">
-                                    <PdfViewerToolbar />
-                                    <PdfViewer Source="@PdfFileUrl"  @ref="@EditPdfViewerRef" />
-                                </PdfViewerContainer>
-                            </Column>
-                        </Row>
-                }
-                @* CREATE MODE *@
-                else if (DocumentCreateData != null)
+<Card>
+    <CardBody>
+        <Form id="DocumentDetailForm" style="position: relative;">
+            @if (DocumentUpdateData != null)
+            {
+                @if (!string.IsNullOrWhiteSpace(EditDocumentValidationErrorKey))
                 {
-                    @if (!string.IsNullOrWhiteSpace(CreateDocumentValidationErrorKey))
-                    {
-                        <Alert Color="Color.Danger">
-                            <AlertMessage>@L["NotificationError"]!</AlertMessage>
-                            <AlertDescription>@L[CreateDocumentValidationErrorKey]</AlertDescription>
-                        </Alert>
-                    }
-                    <Row>
+                    <Alert Color="Color.Danger">
+                        <AlertMessage>@L["NotificationError"]!</AlertMessage>
+                        <AlertDescription>@L[EditDocumentValidationErrorKey]</AlertDescription>
+                    </Alert>
+                }
+                <Row>
                         <!-- Left Column: Document Information (6 columns) -->
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                             <!-- Row 1: Số tài liệu | Số lưu trữ (6-6) -->
@@ -423,28 +62,27 @@ else
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["DocumentNumber"] *</FieldLabel>
-                                        <TextEdit Text="@DocumentCreateData.No" 
-                                                    TextChanged="@((string value) => { DocumentCreateData.No = value; CreateValidation.RemoveFieldError("DocumentNumber"); })"
+                                        <TextEdit Text="@DocumentUpdateData.No" 
+                                                    TextChanged="@((string value) => { DocumentUpdateData.No = value; EditValidation.RemoveFieldError("DocumentNumber"); })"
                                                     MaxLength="DocumentConsts.NoMaxLength" 
-                                                    Disabled="@IsViewMode"
-                                                    Style="@(HasCreateFieldError("DocumentNumber") ? "border-color: #dc3545;" : "")" />
-                                        @if (HasCreateFieldError("DocumentNumber"))
+                                                    
+                                                    Style="@(HasEditFieldError("DocumentNumber") ? "border-color: #dc3545;" : "")" />
+                                        @if (HasEditFieldError("DocumentNumber"))
                                         {
-                                            <div class="invalid-feedback d-block">@GetCreateFieldError("DocumentNumber")</div>
+                                            <div class="invalid-feedback d-block">@GetEditFieldError("DocumentNumber")</div>
                                         }
                                     </Field>
                                 </Column>
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["StorageNumber"] *</FieldLabel>
-                                        <TextEdit Text="@DocumentCreateData.StorageNumber" 
-                                                    TextChanged="@((string value) => { DocumentCreateData.StorageNumber = value; CreateValidation.RemoveFieldError("StorageNumber"); })"
+                                        <TextEdit Text="@DocumentUpdateData.StorageNumber" 
+                                                    TextChanged="@((string value) => { DocumentUpdateData.StorageNumber = value; EditValidation.RemoveFieldError("StorageNumber"); })"
                                                     MaxLength="DocumentConsts.StorageNumberMaxLength" 
-                                                    Disabled="@IsViewMode"
-                                                    Style="@(HasCreateFieldError("StorageNumber") ? "border-color: #dc3545;" : "")" />
-                                        @if (HasCreateFieldError("StorageNumber"))
+                                                    Style="@(HasEditFieldError("StorageNumber") ? "border-color: #dc3545;" : "")" />
+                                        @if (HasEditFieldError("StorageNumber"))
                                         {
-                                            <div class="invalid-feedback d-block">@GetCreateFieldError("StorageNumber")</div>
+                                            <div class="invalid-feedback d-block">@GetEditFieldError("StorageNumber")</div>
                                         }
                                     </Field>
                                 </Column>
@@ -455,34 +93,34 @@ else
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["Title"] *</FieldLabel>
-                                        <TextEdit Text="@DocumentCreateData.Title" 
-                                                    TextChanged="@((string value) => { DocumentCreateData.Title = value; CreateValidation.RemoveFieldError("Title"); })"
-                                                    Disabled="@IsViewMode"
-                                                    Style="@(HasCreateFieldError("Title") ? "border-color: #dc3545;" : "")" />
-                                        @if (HasCreateFieldError("Title"))
+                                        <TextEdit Text="@DocumentUpdateData.Title" 
+                                                    TextChanged="@((string value) => { DocumentUpdateData.Title = value; EditValidation.RemoveFieldError("Title"); })"
+                                                    
+                                                    Style="@(HasEditFieldError("Title") ? "border-color: #dc3545;" : "")" />
+                                        @if (HasEditFieldError("Title"))
                                         {
-                                            <div class="invalid-feedback d-block">@GetCreateFieldError("Title")</div>
+                                            <div class="invalid-feedback d-block">@GetEditFieldError("Title")</div>
                                         }
                                     </Field>
                                 </Column>
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     @* DatePicker is outside Validations to avoid Blazorise validator inference errors. *@
                                     <Field>
-                                        <FieldLabel>@L["CompletedTime"]</FieldLabel>
+                                        <FieldLabel>@L["ImcommingDate"]</FieldLabel>
                                         <Addons>
                                             <Addon AddonType="AddonType.Body">
                                                 <DatePicker TValue="DateTime"
                                                             InputMode="DateInputMode.DateTime"
-                                                            Date="@DocumentCreateData.CompletedTime"
-                                                            DateChanged="@(v => DocumentCreateData.CompletedTime = v)"
+                                                            Date="@DocumentUpdateData.IncommingDate"
+                                                            DateChanged="@(v => DocumentUpdateData.IncommingDate = v)"
                                                             Placeholder="@string.Empty"
                                                             DisplayFormat="dd/MM/yyyy HH:mm"
                                                             InputFormat="dd/MM/yyyy HH:mm"
-                                                            Disabled="@IsViewMode"
-                                                            @ref="@CreateCompletedTimeDatePicker" />
+                                                            
+                                                            @ref="@EditIncommingDateDatePicker" />
                                             </Addon>
                                             <Addon AddonType="AddonType.End">
-                                                <Button Color="Color.Light" Disabled="@IsViewMode" Clicked="@(() => CreateCompletedTimeDatePicker?.ToggleAsync())">
+                                                <Button Color="Color.Light"  Clicked="@(() => EditIncommingDateDatePicker?.ToggleAsync())">
                                                     <Icon Name="IconName.CalendarDay" />
                                                 </Button>
                                             </Addon>
@@ -496,7 +134,7 @@ else
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["Type"] *</FieldLabel>
-                                        <div class="hc-select2-full" style="@(HasCreateFieldError("Type") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <div class="hc-select2-full" style="@(HasEditFieldError("Type") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
                                             <Select2 IdSelector="c => c.Id.ToString()"
                                                         TextSelector="c => c.DisplayName"
                                                         FilterFunction="GetTypeMasterDataLookupAsync"
@@ -506,18 +144,18 @@ else
                                                         OnValueChanged="OnTypeIdChanged"
                                                         Cache="__MemoryCache"
                                                         Multiselect="false"
-                                                        Disabled="@IsViewMode" />
+                                                         />
                                         </div>
-                                        @if (HasCreateFieldError("Type"))
+                                        @if (HasEditFieldError("Type"))
                                         {
-                                            <div class="invalid-feedback d-block">@GetCreateFieldError("Type")</div>
+                                            <div class="invalid-feedback d-block">@GetEditFieldError("Type")</div>
                                         }
                                     </Field>
                                 </Column>
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["Field"] *</FieldLabel>
-                                        <div class="hc-select2-full" style="@(HasCreateFieldError("Field") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <div class="hc-select2-full" style="@(HasEditFieldError("Field") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
                                             <Select2 IdSelector="c => c.Id.ToString()"
                                                         TextSelector="c => c.DisplayName"
                                                         FilterFunction="GetFieldMasterDataLookupAsync"
@@ -527,11 +165,11 @@ else
                                                         OnValueChanged="OnFieldIdChanged"
                                                         Cache="__MemoryCache"
                                                         Multiselect="false"
-                                                        Disabled="@IsViewMode" />
+                                                         />
                                         </div>
-                                        @if (HasCreateFieldError("Field"))
+                                        @if (HasEditFieldError("Field"))
                                         {
-                                            <div class="invalid-feedback d-block">@GetCreateFieldError("Field")</div>
+                                            <div class="invalid-feedback d-block">@GetEditFieldError("Field")</div>
                                         }
                                     </Field>
                                 </Column>
@@ -542,7 +180,7 @@ else
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["UrgencyLevel"] *</FieldLabel>
-                                        <div class="hc-select2-full" style="@(HasCreateFieldError("UrgencyLevel") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <div class="hc-select2-full" style="@(HasEditFieldError("UrgencyLevel") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
                                             <Select2 IdSelector="c => c.Id.ToString()"
                                                         TextSelector="c => c.DisplayName"
                                                         FilterFunction="GetUrgencyLevelMasterDataLookupAsync"
@@ -552,18 +190,18 @@ else
                                                         OnValueChanged="OnUrgencyLevelIdChanged"
                                                         Cache="__MemoryCache"
                                                         Multiselect="false"
-                                                        Disabled="@IsViewMode" />
+                                                         />
                                         </div>
-                                        @if (HasCreateFieldError("UrgencyLevel"))
+                                        @if (HasEditFieldError("UrgencyLevel"))
                                         {
-                                            <div class="invalid-feedback d-block">@GetCreateFieldError("UrgencyLevel")</div>
+                                            <div class="invalid-feedback d-block">@GetEditFieldError("UrgencyLevel")</div>
                                         }
                                     </Field>
                                 </Column>
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["SecrecyLevel"] *</FieldLabel>
-                                        <div class="hc-select2-full" style="@(HasCreateFieldError("SecrecyLevel") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <div class="hc-select2-full" style="@(HasEditFieldError("SecrecyLevel") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
                                             <Select2 IdSelector="c => c.Id.ToString()"
                                                         TextSelector="c => c.DisplayName"
                                                         FilterFunction="GetSecrecyLevelMasterDataLookupAsync"
@@ -573,11 +211,11 @@ else
                                                         OnValueChanged="OnSecrecyLevelIdChanged"
                                                         Cache="__MemoryCache"
                                                         Multiselect="false"
-                                                        Disabled="@IsViewMode" />
+                                                         />
                                         </div>
-                                        @if (HasCreateFieldError("SecrecyLevel"))
+                                        @if (HasEditFieldError("SecrecyLevel"))
                                         {
-                                            <div class="invalid-feedback d-block">@GetCreateFieldError("SecrecyLevel")</div>
+                                            <div class="invalid-feedback d-block">@GetEditFieldError("SecrecyLevel")</div>
                                         }
                                     </Field>
                                 </Column>
@@ -588,7 +226,7 @@ else
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["Unit"] *</FieldLabel>
-                                        <div class="hc-select2-full" style="@(HasCreateFieldError("Unit") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <div class="hc-select2-full" style="@(HasEditFieldError("Unit") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
                                             <Select2 IdSelector="c => c.Id.ToString()"
                                                         TextSelector="c => c.DisplayName"
                                                         FilterFunction="GetUnitLookupAsync"
@@ -598,18 +236,18 @@ else
                                                         OnValueChanged="OnUnitIdChanged"
                                                         Cache="__MemoryCache"
                                                         Multiselect="false"
-                                                        Disabled="@IsViewMode" />
+                                                         />
                                         </div>
-                                        @if (HasCreateFieldError("Unit"))
+                                        @if (HasEditFieldError("Unit"))
                                         {
-                                            <div class="invalid-feedback d-block">@GetCreateFieldError("Unit")</div>
+                                            <div class="invalid-feedback d-block">@GetEditFieldError("Unit")</div>
                                         }
                                     </Field>
                                 </Column>
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["Status"] *</FieldLabel>
-                                        <div class="hc-select2-full" style="@(HasCreateFieldError("Status") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <div class="hc-select2-full" style="@(HasEditFieldError("Status") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
                                             <Select2 IdSelector="c => c.Id.ToString()"
                                                         TextSelector="c => c.DisplayName"
                                                         FilterFunction="GetStatusMasterDataLookupAsync"
@@ -619,11 +257,11 @@ else
                                                         OnValueChanged="OnStatusIdChanged"
                                                         Cache="__MemoryCache"
                                                         Multiselect="false"
-                                                        Disabled="@IsViewMode" />
+                                                         />
                                         </div>
-                                        @if (HasCreateFieldError("Status"))
+                                        @if (HasEditFieldError("Status"))
                                         {
-                                            <div class="invalid-feedback d-block">@GetCreateFieldError("Status")</div>
+                                            <div class="invalid-feedback d-block">@GetEditFieldError("Status")</div>
                                         }
                                     </Field>
                                 </Column>
@@ -631,48 +269,99 @@ else
                             
                             <!-- Row 6: Trạng thái hiện tại (12) -->
                             <Row>
-                                @* <Column ColumnSize="ColumnSize.Is12">
+                                <Column ColumnSize="ColumnSize.Is12">
                                     <Field>
                                         <FieldLabel>@L["CurrentStatus"]</FieldLabel>
-                                        <TextEdit @bind-Text="@DocumentCreateData.CurrentStatus" MaxLength="DocumentConsts.CurrentStatusMaxLength" Disabled="@IsViewMode" />
+                                        <TextEdit @bind-Text="@DocumentUpdateData.CurrentStatus" MaxLength="DocumentConsts.CurrentStatusMaxLength"  />
                                     </Field>
-                                </Column> *@
+                                </Column>
+
                                 <Column ColumnSize="ColumnSize.Is12">
-                                    @if (!IsViewMode && !DocumentFilesList.Any())
-                                    {
-                                        <Field>
-                                            <FieldLabel>@L["File"] *</FieldLabel>
-                                            <FilePicker Multiple="false"
-                                                        Changed="OnFileChanged"
-                                                        ShowMode="FilePickerShowMode.List"
-                                                        Disabled="@(IsEditMode && CurrentDocument != null && DocumentFilesList.Any())"
-                                                        MaxFileSize="52428800"
-                                                        FilePickerLocalizer="FilePickerLocalizer">
-                                                <ButtonsTemplate>
-                                                    @* <Progress Value="@FilePickerProgress" /> *@
-                                                    <Buttons>
-                                                        <Button Clicked="@context.Clear" Color="Color.Warning">
-                                                            <Icon Name="IconName.Clear" /> @L["Clear"]
-                                                        </Button>
-                                                    </Buttons>
-                                                </ButtonsTemplate>
-                                            </FilePicker>
-                                            @if (IsEditMode && CurrentDocument != null)
-                                            {
-                                                <Alert Color="Color.Warning" Dismissible="false" Class="mt-2">
-                                                    <Icon Name="IconName.ExclamationTriangle" Class="me-2" />
-                                                    @L["CannotUploadFileInEditMode"] @L["PleaseDeleteFileFirst"]
-                                                </Alert>
-                                            }
-                                            @if (!string.IsNullOrEmpty(UploadedFilePath))
-                                            {
-                                                <Alert Color="Color.Success" Dismissible="false" Class="mt-2">
-                                                    <Icon Name="IconName.CheckCircle" Class="me-2" />
-                                                    @L["FileUploadedSuccessfully"]: @System.IO.Path.GetFileName(UploadedFilePath)
-                                                </Alert>
-                                            }
-                                        </Field>
-                                    }
+                                        @if (!DocumentFilesList.Any())
+                                        {
+                                            <Field>
+                                                <FieldLabel>@L["File"] *</FieldLabel>
+                                                <FilePicker Multiple="false"
+                                                            Changed="OnFileChanged"
+                                                            ShowMode="FilePickerShowMode.List"
+                                                            Disabled="@(CurrentDocument != null && DocumentFilesList.Any())"
+                                                            MaxFileSize="52428800"
+                                                            Accept="application/pdf"
+                                                            FilePickerLocalizer="FilePickerLocalizer">
+                                                    <ButtonsTemplate>
+                                                        <Progress Value="@FilePickerProgress" />
+                                                        <Buttons>
+                                                            <Button Clicked="@context.Clear" Color="Color.Warning">
+                                                                <Icon Name="IconName.Clear" /> @L["Clear"]
+                                                            </Button>
+                                                        </Buttons>
+                                                    </ButtonsTemplate>
+                                                </FilePicker>
+                                                @if (CurrentDocument != null)
+                                                {
+                                                    <Alert Color="Color.Warning" Dismissible="false" Class="mt-2">
+                                                        <Icon Name="IconName.ExclamationTriangle" Class="me-2" />
+                                                        @L["CannotUploadFileInEditMode"] @L["PleaseDeleteFileFirst"]
+                                                    </Alert>
+                                                }
+                                                @if (!string.IsNullOrEmpty(UploadedFilePath))
+                                                {
+                                                    <Alert Color="Color.Success" Dismissible="false" Class="mt-2">
+                                                        <Icon Name="IconName.CheckCircle" Class="me-2" />
+                                                        @L["FileUploadedSuccessfully"]: @System.IO.Path.GetFileName(UploadedFilePath)
+                                                    </Alert>
+                                                }
+                                            </Field>
+                                        }
+                                        
+                                        @if (DocumentFilesList.Any())
+                                        {
+                                            <div class="mt-3">
+                                                <Heading Size="HeadingSize.Is6">@L["UploadedFiles"]</Heading>
+                                                <Table Hoverable="true" Bordered="true" Striped="true">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>@L["Name"]</th>
+                                                            <th>@L["UploadedAt"]</th>
+                                                            <th>@L["IsSigned"]</th>
+                                                            <th>@L["Actions"]</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var file in DocumentFilesList)
+                                                        {
+                                                            <tr>
+                                                                <td>@file.DocumentFile.Name</td>
+                                                                <td>@file.DocumentFile.UploadedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                                                <td>
+                                                                    @if (file.DocumentFile.IsSigned)
+                                                                    {
+                                                                        <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
+                                                                    }
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex gap-2">
+                                                                        <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => DownloadFileAsync(file.DocumentFile.Path, file.DocumentFile.Name))">
+                                                                            <Icon Name="IconName.Download" Class="me-1" />
+                                                                        </Button>
+                                                                        @if (CanDeleteDocumentFile)
+                                                                        {
+                                                                            <Button Color="Color.Danger" Size="Size.Small" Clicked="@(() => DeleteFileAsync(file))">
+                                                                                <Icon Name="IconName.Delete" Class="me-1" />
+                                                                            </Button>
+                                                                        }
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </Table>
+                                            </div>
+                                        }
                                 </Column>
                             </Row>
                         </Column>
@@ -681,39 +370,296 @@ else
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                             <PdfViewerContainer Height="Height.Rem(50)">
                                 <PdfViewerToolbar />
-                                <PdfViewer Source="@PdfFileUrl"  @ref="@CreatePdfViewerRef" />
+                                <PdfViewer Source="@PdfFileUrl"  @ref="@EditPdfViewerRef" />
                             </PdfViewerContainer>
                         </Column>
                     </Row>
-                }
-            </Form>
-        </CardBody>
-    </Card>
-
-    <!-- PDF Viewer Modal -->
-    <Modal @ref="@PdfViewerModal" Class="pdf-viewer-modal">
-        <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
-            <ModalHeader>
-            <ModalTitle>@L["DocumentPreview"]</ModalTitle>
-            <CloseButton Clicked="ClosePdfViewerModalAsync" />
-        </ModalHeader>
-        <ModalBody Class="pdf-viewer-modal-body">
-            @if (IsPdfFile && !string.IsNullOrEmpty(PdfFileUrl))
-            {
-                <PdfViewerContainer Height="Height.Rem(50)">
-                    <PdfViewerToolbar />
-                    <PdfViewer Source="@PdfFileUrl" />
-                </PdfViewerContainer>
             }
-        </ModalBody>
-        </ModalContent>
-        <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="ClosePdfViewerModalAsync">
-                @L["Close"]
-            </Button>
-        </ModalFooter>
-    </Modal>
-}
+            @* CREATE MODE *@
+            else if (DocumentCreateData != null)
+            {
+                @if (!string.IsNullOrWhiteSpace(CreateDocumentValidationErrorKey))
+                {
+                    <Alert Color="Color.Danger">
+                        <AlertMessage>@L["NotificationError"]!</AlertMessage>
+                        <AlertDescription>@L[CreateDocumentValidationErrorKey]</AlertDescription>
+                    </Alert>
+                }
+                <Row>
+                    <!-- Left Column: Document Information (6 columns) -->
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <!-- Row 1: Số tài liệu | Số lưu trữ (6-6) -->
+                        <Row>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["DocumentNumber"] *</FieldLabel>
+                                    <TextEdit Text="@DocumentCreateData.No" 
+                                                TextChanged="@((string value) => { DocumentCreateData.No = value; CreateValidation.RemoveFieldError("DocumentNumber"); })"
+                                                MaxLength="DocumentConsts.NoMaxLength" 
+                                                
+                                                Style="@(HasCreateFieldError("DocumentNumber") ? "border-color: #dc3545;" : "")" />
+                                    @if (HasCreateFieldError("DocumentNumber"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetCreateFieldError("DocumentNumber")</div>
+                                    }
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["StorageNumber"] *</FieldLabel>
+                                    <TextEdit Text="@DocumentCreateData.StorageNumber" 
+                                                TextChanged="@((string value) => { DocumentCreateData.StorageNumber = value; CreateValidation.RemoveFieldError("StorageNumber"); })"
+                                                MaxLength="DocumentConsts.StorageNumberMaxLength" 
+                                                
+                                                Style="@(HasCreateFieldError("StorageNumber") ? "border-color: #dc3545;" : "")" />
+                                    @if (HasCreateFieldError("StorageNumber"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetCreateFieldError("StorageNumber")</div>
+                                    }
+                                </Field>
+                            </Column>
+                        </Row>
+                        
+                        <!-- Row 2: Title | Thời gian hoàn thành (6-6) -->
+                        <Row>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Title"] *</FieldLabel>
+                                    <TextEdit Text="@DocumentCreateData.Title" 
+                                                TextChanged="@((string value) => { DocumentCreateData.Title = value; CreateValidation.RemoveFieldError("Title"); })"
+                                                
+                                                Style="@(HasCreateFieldError("Title") ? "border-color: #dc3545;" : "")" />
+                                    @if (HasCreateFieldError("Title"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetCreateFieldError("Title")</div>
+                                    }
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                @* DatePicker is outside Validations to avoid Blazorise validator inference errors. *@
+                                <Field>
+                                    <FieldLabel>@L["IncommingDate"]</FieldLabel>
+                                    <Addons>
+                                        <Addon AddonType="AddonType.Body">
+                                            <DatePicker TValue="DateTime"
+                                                        InputMode="DateInputMode.DateTime"
+                                                        Date="@DocumentCreateData.IncommingDate"
+                                                        DateChanged="@(v => DocumentCreateData.IncommingDate = v)"
+                                                        Placeholder="@string.Empty"
+                                                        DisplayFormat="dd/MM/yyyy HH:mm"
+                                                        InputFormat="dd/MM/yyyy HH:mm"
+                                                        
+                                                            @ref="@CreateIncommingDateDatePicker" />
+                                        </Addon>
+                                        <Addon AddonType="AddonType.End">
+                                            <Button Color="Color.Light"  Clicked="@(() => CreateIncommingDateDatePicker?.ToggleAsync())">
+                                                <Icon Name="IconName.CalendarDay" />
+                                            </Button>
+                                        </Addon>
+                                    </Addons>
+                                </Field>
+                            </Column>
+                        </Row>
+                        
+                        <!-- Row 3: Loại | Lĩnh vực (6-6) -->
+                        <Row>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Type"] *</FieldLabel>
+                                    <div class="hc-select2-full" style="@(HasCreateFieldError("Type") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <Select2 IdSelector="c => c.Id.ToString()"
+                                                    TextSelector="c => c.DisplayName"
+                                                    FilterFunction="GetTypeMasterDataLookupAsync"
+                                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                                    Datasource="TypeMasterDataCollection"
+                                                    Value="@SelectedTypeMasterData"
+                                                    OnValueChanged="OnTypeIdChanged"
+                                                    Cache="__MemoryCache"
+                                                    Multiselect="false"
+                                                     />
+                                    </div>
+                                    @if (HasCreateFieldError("Type"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetCreateFieldError("Type")</div>
+                                    }
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Field"] *</FieldLabel>
+                                    <div class="hc-select2-full" style="@(HasCreateFieldError("Field") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <Select2 IdSelector="c => c.Id.ToString()"
+                                                    TextSelector="c => c.DisplayName"
+                                                    FilterFunction="GetFieldMasterDataLookupAsync"
+                                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                                    Datasource="FieldMasterDataCollection"
+                                                    Value="@SelectedFieldMasterData"
+                                                    OnValueChanged="OnFieldIdChanged"
+                                                    Cache="__MemoryCache"
+                                                    Multiselect="false"
+                                                     />
+                                    </div>
+                                    @if (HasCreateFieldError("Field"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetCreateFieldError("Field")</div>
+                                    }
+                                </Field>
+                            </Column>
+                        </Row>
+                        
+                        <!-- Row 4: Mức độ cấp bách | Mức độ bảo mật (6-6) -->
+                        <Row>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["UrgencyLevel"] *</FieldLabel>
+                                    <div class="hc-select2-full" style="@(HasCreateFieldError("UrgencyLevel") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <Select2 IdSelector="c => c.Id.ToString()"
+                                                    TextSelector="c => c.DisplayName"
+                                                    FilterFunction="GetUrgencyLevelMasterDataLookupAsync"
+                                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                                    Datasource="UrgencyLevelMasterDataCollection"
+                                                    Value="@SelectedUrgencyLevelMasterData"
+                                                    OnValueChanged="OnUrgencyLevelIdChanged"
+                                                    Cache="__MemoryCache"
+                                                    Multiselect="false"
+                                                     />
+                                    </div>
+                                    @if (HasCreateFieldError("UrgencyLevel"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetCreateFieldError("UrgencyLevel")</div>
+                                    }
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["SecrecyLevel"] *</FieldLabel>
+                                    <div class="hc-select2-full" style="@(HasCreateFieldError("SecrecyLevel") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <Select2 IdSelector="c => c.Id.ToString()"
+                                                    TextSelector="c => c.DisplayName"
+                                                    FilterFunction="GetSecrecyLevelMasterDataLookupAsync"
+                                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                                    Datasource="SecrecyLevelMasterDataCollection"
+                                                    Value="@SelectedSecrecyLevelMasterData"
+                                                    OnValueChanged="OnSecrecyLevelIdChanged"
+                                                    Cache="__MemoryCache"
+                                                    Multiselect="false"
+                                                     />
+                                    </div>
+                                    @if (HasCreateFieldError("SecrecyLevel"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetCreateFieldError("SecrecyLevel")</div>
+                                    }
+                                </Field>
+                            </Column>
+                        </Row>
+                        
+                        <!-- Row 5: Đơn vị ban hành | Trạng thái (6-6) -->
+                        <Row>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Unit"] *</FieldLabel>
+                                    <div class="hc-select2-full" style="@(HasCreateFieldError("Unit") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <Select2 IdSelector="c => c.Id.ToString()"
+                                                    TextSelector="c => c.DisplayName"
+                                                    FilterFunction="GetUnitLookupAsync"
+                                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                                    Datasource="UnitsCollection"
+                                                    Value="@SelectedUnit"
+                                                    OnValueChanged="OnUnitIdChanged"
+                                                    Cache="__MemoryCache"
+                                                    Multiselect="false"
+                                                     />
+                                    </div>
+                                    @if (HasCreateFieldError("Unit"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetCreateFieldError("Unit")</div>
+                                    }
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Status"] *</FieldLabel>
+                                    <div class="hc-select2-full" style="@(HasCreateFieldError("Status") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                        <Select2 IdSelector="c => c.Id.ToString()"
+                                                    TextSelector="c => c.DisplayName"
+                                                    FilterFunction="GetStatusMasterDataLookupAsync"
+                                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                                    Datasource="StatusMasterDataCollection"
+                                                    Value="@SelectedStatusMasterData"
+                                                    OnValueChanged="OnStatusIdChanged"
+                                                    Cache="__MemoryCache"
+                                                    Multiselect="false"
+                                                     />
+                                    </div>
+                                    @if (HasCreateFieldError("Status"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetCreateFieldError("Status")</div>
+                                    }
+                                </Field>
+                            </Column>
+                        </Row>
+                        
+                        <!-- Row 6: Trạng thái hiện tại (12) -->
+                        <Row>
+                            @* <Column ColumnSize="ColumnSize.Is12">
+                                <Field>
+                                    <FieldLabel>@L["CurrentStatus"]</FieldLabel>
+                                    <TextEdit @bind-Text="@DocumentCreateData.CurrentStatus" MaxLength="DocumentConsts.CurrentStatusMaxLength"  />
+                                </Field>
+                            </Column> *@
+                            <Column ColumnSize="ColumnSize.Is12">
+                                @if (!DocumentFilesList.Any())
+                                {
+                                    <Field>
+                                        <FieldLabel>@L["File"] *</FieldLabel>
+                                        <FilePicker Multiple="false"
+                                                    Changed="OnFileChanged"
+                                                    ShowMode="FilePickerShowMode.List"
+                                                    Disabled="@(CurrentDocument != null && DocumentFilesList.Any())"
+                                                    MaxFileSize="52428800"
+                                                    FilePickerLocalizer="FilePickerLocalizer">
+                                            <ButtonsTemplate>
+                                                @* <Progress Value="@FilePickerProgress" /> *@
+                                                <Buttons>
+                                                    <Button Clicked="@context.Clear" Color="Color.Warning">
+                                                        <Icon Name="IconName.Clear" /> @L["Clear"]
+                                                    </Button>
+                                                </Buttons>
+                                            </ButtonsTemplate>
+                                        </FilePicker>
+                                        @if (CurrentDocument != null)
+                                        {
+                                            <Alert Color="Color.Warning" Dismissible="false" Class="mt-2">
+                                                <Icon Name="IconName.ExclamationTriangle" Class="me-2" />
+                                                @L["CannotUploadFileInEditMode"] @L["PleaseDeleteFileFirst"]
+                                            </Alert>
+                                        }
+                                        @if (!string.IsNullOrEmpty(UploadedFilePath))
+                                        {
+                                            <Alert Color="Color.Success" Dismissible="false" Class="mt-2">
+                                                <Icon Name="IconName.CheckCircle" Class="me-2" />
+                                                @L["FileUploadedSuccessfully"]: @System.IO.Path.GetFileName(UploadedFilePath)
+                                            </Alert>
+                                        }
+                                    </Field>
+                                }
+                            </Column>
+                        </Row>
+                    </Column>
+                    
+                    <!-- Right Column: File Upload and PDF Viewer (6 columns) -->
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <PdfViewerContainer Height="Height.Rem(50)">
+                            <PdfViewerToolbar />
+                            <PdfViewer Source="@PdfFileUrl"  @ref="@CreatePdfViewerRef" />
+                        </PdfViewerContainer>
+                    </Column>
+                </Row>
+            }
+        </Form>
+    </CardBody>
+</Card>
+
 
 <style>
     /* PDF Viewer Modal - Ensure it stays within modal */

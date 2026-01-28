@@ -1,7 +1,4 @@
 using HC.Shared;
-using HC.Workflows;
-using HC.Units;
-using HC.MasterDatas;
 using System;
 using System.IO;
 using System.Linq;
@@ -11,15 +8,14 @@ using System.Linq.Dynamic.Core;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
-using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using HC.Permissions;
-using HC.Documents;
 using MiniExcelLibs;
 using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 
 namespace HC.Documents;
 
@@ -33,8 +29,8 @@ public abstract class DocumentsAppServiceBase : HCAppService
     protected IRepository<HC.MasterDatas.MasterData, Guid> _masterDataRepository;
     protected IRepository<HC.Units.Unit, Guid> _unitRepository;
     protected IRepository<HC.Workflows.Workflow, Guid> _workflowRepository;
-
-    public DocumentsAppServiceBase(IDocumentRepository documentRepository, DocumentManager documentManager, IDistributedCache<DocumentDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.MasterDatas.MasterData, Guid> masterDataRepository, IRepository<HC.Units.Unit, Guid> unitRepository, IRepository<HC.Workflows.Workflow, Guid> workflowRepository)
+    protected ILogger<DocumentsAppServiceBase> _logger;
+    public DocumentsAppServiceBase(IDocumentRepository documentRepository, DocumentManager documentManager, IDistributedCache<DocumentDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.MasterDatas.MasterData, Guid> masterDataRepository, IRepository<HC.Units.Unit, Guid> unitRepository, IRepository<HC.Workflows.Workflow, Guid> workflowRepository, ILogger<DocumentsAppServiceBase> logger)
     {
         _downloadTokenCache = downloadTokenCache;
         _documentRepository = documentRepository;
@@ -42,17 +38,26 @@ public abstract class DocumentsAppServiceBase : HCAppService
         _masterDataRepository = masterDataRepository;
         _unitRepository = unitRepository;
         _workflowRepository = workflowRepository;
+        _logger = logger;
     }
 
     public virtual async Task<PagedResultDto<DocumentWithNavigationPropertiesDto>> GetListAsync(GetDocumentsInput input)
     {
-        var totalCount = await _documentRepository.GetCountAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId);
-        var items = await _documentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId, input.Sorting, input.MaxResultCount, input.SkipCount);
-        return new PagedResultDto<DocumentWithNavigationPropertiesDto>
+        _logger.LogInformation("GetListAsync start");
+        var totalCount = await _documentRepository.GetCountAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId);
+        var items = await _documentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.No, input.Title, 
+        input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax,
+         input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax,
+          input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, 
+          input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId,
+          input.Sorting,  input.MaxResultCount, input.SkipCount);
+        var result = new PagedResultDto<DocumentWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,
             Items = ObjectMapper.Map<List<DocumentWithNavigationProperties>, List<DocumentWithNavigationPropertiesDto>>(items)
         };
+        _logger.LogInformation("GetListAsync end");
+        return result;
     }
 
     public virtual async Task<DocumentWithNavigationPropertiesDto> GetWithNavigationPropertiesAsync(Guid id)
@@ -67,21 +72,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetMasterDataLookupAsync(LookupRequestDto input)
     {
-        var query = (await _masterDataRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => (x.Code != null && x.Code.Contains(input.Filter)) || (x.Name != null && x.Name.Contains(input.Filter)));
-        var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.MasterDatas.MasterData>();
-        var totalCount = query.Count();
-        return new PagedResultDto<LookupDto<Guid>>
-        {
-            TotalCount = totalCount,
-            Items = ObjectMapper.Map<List<HC.MasterDatas.MasterData>, List<LookupDto<Guid>>>(lookupData)
-        };
-    }
-
-    public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetMasterDataLookupByCodeAsync(string code, LookupRequestDto input)
-    {
-        var query = (await _masterDataRepository.GetQueryableAsync())
-            .WhereIf(!string.IsNullOrWhiteSpace(code), x => x.Code == code)
-            .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => (x.Code != null && x.Code.Contains(input.Filter)) || (x.Name != null && x.Name.Contains(input.Filter)));
+        var query = (await _masterDataRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.MasterDatas.MasterData>();
         var totalCount = query.Count();
         return new PagedResultDto<LookupDto<Guid>>
@@ -105,7 +96,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetWorkflowLookupAsync(LookupRequestDto input)
     {
-        var query = (await _workflowRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => (x.Code != null && x.Code.Contains(input.Filter)) || (x.Name != null && x.Name.Contains(input.Filter)));
+        var query = (await _workflowRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.Workflows.Workflow>();
         var totalCount = query.Count();
         return new PagedResultDto<LookupDto<Guid>>
@@ -139,7 +130,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["MasterData"]]);
         }
 
-        var document = await _documentManager.CreateAsync(input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.Title, input.CompletedTime, input.StorageNumber, input.No, input.CurrentStatus);
+        var document = await _documentManager.CreateAsync(input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.Title, input.CompletedTime, input.StorageNumber, input.IncommingDate, input.No, input.CurrentStatus);
         return ObjectMapper.Map<Document, DocumentDto>(document);
     }
 
@@ -161,7 +152,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["MasterData"]]);
         }
 
-        var document = await _documentManager.UpdateAsync(id, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.Title, input.CompletedTime, input.StorageNumber, input.No, input.CurrentStatus, input.ConcurrencyStamp);
+        var document = await _documentManager.UpdateAsync(id, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.Title, input.CompletedTime, input.StorageNumber, input.IncommingDate, input.No, input.CurrentStatus, input.ConcurrencyStamp);
         return ObjectMapper.Map<Document, DocumentDto>(document);
     }
 
@@ -174,8 +165,8 @@ public abstract class DocumentsAppServiceBase : HCAppService
             throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
         }
 
-        var documents = await _documentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId);
-        var items = documents.Select(item => new { No = item.Document.No, Title = item.Document.Title, CurrentStatus = item.Document.CurrentStatus, CompletedTime = item.Document.CompletedTime, StorageNumber = item.Document.StorageNumber, Field = item.Field?.Name, Unit = item.Unit?.Name, Workflow = item.Workflow?.Name, Status = item.Status?.Name, Type = item.Type?.Name, UrgencyLevel = item.UrgencyLevel?.Name, SecrecyLevel = item.SecrecyLevel?.Name, });
+        var documents = await _documentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId);
+        var items = documents.Select(item => new { No = item.Document.No, Title = item.Document.Title, CurrentStatus = item.Document.CurrentStatus, CompletedTime = item.Document.CompletedTime, StorageNumber = item.Document.StorageNumber, IncommingDate = item.Document.IncommingDate, Field = item.Field?.Name, Unit = item.Unit?.Name, Workflow = item.Workflow?.Name, Status = item.Status?.Name, Type = item.Type?.Name, UrgencyLevel = item.UrgencyLevel?.Name, SecrecyLevel = item.SecrecyLevel?.Name, Creator = item.Document.CreatorId });
         var memoryStream = new MemoryStream();
         await memoryStream.SaveAsAsync(items);
         memoryStream.Seek(0, SeekOrigin.Begin);
@@ -191,7 +182,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
     [Authorize(HCPermissions.Documents.Delete)]
     public virtual async Task DeleteAllAsync(GetDocumentsInput input)
     {
-        await _documentRepository.DeleteAllAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId);
+        await _documentRepository.DeleteAllAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId);
     }
 
     public virtual async Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync()

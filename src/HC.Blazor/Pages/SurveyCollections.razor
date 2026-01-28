@@ -87,7 +87,7 @@
                         <Row>
                             <Div Class="w-100 text-center">
                                 <h1 class="lpx-login-title mb-2">@SurveyLocation?.Name</h1>
-                                <p>@SurveyLocation?.Description ?? string.Empty </p>
+                                <p>@SurveyLocation?.Description</p>
                             </Div>
                             @foreach (var criteria in SurveyCriterias.OrderBy(x => x.SurveyCriteria.DisplayOrder))
                             {
@@ -101,8 +101,8 @@
                                                     <img src="@FileHelper.GetImageUrl(ApiBaseUrl, criteria.SurveyCriteria.Image)"
                                                         onerror="el.onerror = null; el.src = 'https://www.freeiconspng.com/uploads/no-image-icon-6.png';"
                                                         alt="@criteria.SurveyCriteria.Name" 
-                                                        class="rounded-circle me-2"
-                                                        style="width: 100px; height: 100px; object-fit: contain;">
+                                                        class="me-2"
+                                                        style="width: 150px; height: 150px; object-fit: contain;">
                                                     
                                                 </Div>
                                             
@@ -115,7 +115,7 @@
                                                 {
                                                     var currentStar = star;
                                                     <i class="hover-pointer
-                                                        @(GetRatingForCriteria(criteria.SurveyCriteria.Id) >= currentStar ? "bi bi-star-fill text-brand fs-3" : "bi bi-star text-muted fs-3")"
+                                                        @(GetRatingForCriteria(criteria.SurveyCriteria.Id) >= currentStar ? "bi bi-star-fill text-brand fs-40" : "bi bi-star text-muted fs-40")"
                                                         @onclick="@(async () => await SetRatingForCriteria(criteria.SurveyCriteria.Id, currentStar))"   
                                                         ></i>
                                                 }
@@ -257,3 +257,9 @@
     </Div>
 </Div>
 
+
+<style>
+    .fs-40 {
+        font-size: 40px;
+    }
+</style>

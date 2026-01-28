@@ -12,4 +12,5 @@ public abstract class DocumentExcelDtoBase
     public DateTime CompletedTime { get; set; }
 
     public string StorageNumber { get; set; } = null!;
+    public DateTime IncommingDate { get; set; }
 }
