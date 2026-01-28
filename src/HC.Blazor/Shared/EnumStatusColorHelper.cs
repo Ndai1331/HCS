@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Blazorise;
+using HC.CalendarEventParticipants;
 using HC.Projects;
 using HC.ProjectTasks;
 namespace HC.Blazor.Shared;
@@ -66,6 +67,17 @@ public class EnumStatusColorHelper
             ProjectTaskPriority.HIGH => Color.Warning,
             ProjectTaskPriority.URGENT => Color.Danger,
             _ => Color.Secondary,
+        };
+    }
+
+    public static Color GetCalendarEventParticipantResponseBadgeColor(ParticipantResponse responseStatus)
+    {
+        return responseStatus switch
+        {
+            ParticipantResponse.INVITED => Color.Primary,
+            ParticipantResponse.ACCEPTED => Color.Success,
+            ParticipantResponse.DECLINED => Color.Danger,
+            _ => Color.Primary,
         };
     }
 }
