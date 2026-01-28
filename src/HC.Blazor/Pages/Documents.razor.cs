@@ -14,11 +14,7 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.Documents;
 using HC.Permissions;
 using HC.Shared;
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
-using Volo.Abp;
-using Volo.Abp.Content;
 using Microsoft.Extensions.Logging;
 
 namespace HC.Blazor.Pages;
@@ -308,12 +304,9 @@ public partial class Documents
         await GetDocumentsAsync();
     }
 
-    private async Task OpenDocumentDetailAsync(DocumentWithNavigationPropertiesDto context)
-    {
-        NavigationManager.NavigateTo("/document-detail/" + context.Document.Id);
-    }
     private async Task OpenDocumentDetailAsync(Guid documentId)
     {
         NavigationManager.NavigateTo("/document-detail/" + documentId);
+        await Task.CompletedTask;
     }
 }

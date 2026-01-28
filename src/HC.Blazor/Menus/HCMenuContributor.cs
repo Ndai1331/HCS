@@ -84,9 +84,6 @@ public class HCMenuContributor : IMenuContributor
         var hcResource = context.GetLocalizer<HCResource>();
         var accountResource = context.GetLocalizer<AccountResource>();
         var authServerUrl = _configuration["AuthServer:Authority"] ?? "~";
-        // context.Menu.AddItem(new ApplicationMenuItem("Account.Manage", accountResource["MyAccount"], $"{authServerUrl.EnsureEndsWith('/')}Account/Manage", icon: "fa fa-cog", order: 1000, target: "_blank").RequireAuthenticated());
-        // context.Menu.AddItem(new ApplicationMenuItem("Account.SecurityLogs", accountResource["MySecurityLogs"], $"{authServerUrl.EnsureEndsWith('/')}Account/SecurityLogs", icon: "fa fa-user-shield", target: "_blank").RequireAuthenticated());
-        // context.Menu.AddItem(new ApplicationMenuItem("Account.Sessions", accountResource["Sessions"], url: $"{authServerUrl.EnsureEndsWith('/')}Account/Sessions", icon: "fa fa-clock", target: "_blank").RequireAuthenticated());
         context.Menu.AddItem(new ApplicationMenuItem("Menu:Personal", hcResource["Menu:Personal"], url: "~/my-profile", icon: "bi-sliders", order: int.MaxValue - 1000).RequireAuthenticated());
         context.Menu.AddItem(new ApplicationMenuItem("Menu:FileManagement", hcResource["Menu:FileManagement"], url: "~/file-management", icon: "fa fa-file-alt", order: int.MaxValue - 1000).RequireAuthenticated());
         context.Menu.AddItem(new ApplicationMenuItem("Menu:Notifications", hcResource["Menu:Notifications"], url: "~/notification-receivers", icon: "fa fa-bell", order: int.MaxValue - 1000).RequireAuthenticated());
