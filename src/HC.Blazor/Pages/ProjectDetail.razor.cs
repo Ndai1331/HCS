@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.Blazor.Shared;
+using HC.Blazor.Components.ProjectTaskCreateModal;
 
 namespace HC.Blazor.Pages;
 
@@ -95,6 +96,7 @@ public partial class ProjectDetail : HCComponentBase
     private bool CanCreateProject { get; set; }
     private bool CanEditProject { get; set; }
     private bool CanDeleteProject { get; set; }
+    private bool CanCreateProjectTask { get; set; }
 
 
 
@@ -108,6 +110,9 @@ public partial class ProjectDetail : HCComponentBase
     private string EditingMemberConcurrencyStamp { get; set; } = string.Empty;
 
     private Guid _loadedProjectId;
+
+    // Project Task Create Modal
+    private ProjectTaskCreateModal? ProjectTaskCreateModalRef { get; set; }
 
     public ProjectDetail()
     {
@@ -183,6 +188,7 @@ public partial class ProjectDetail : HCComponentBase
         CanEditProject = await AuthorizationService.IsGrantedAsync(HCPermissions.Projects.Edit);
         CanDeleteProject = await AuthorizationService.IsGrantedAsync(HCPermissions.Projects.Delete);
         CanCreateProject = await AuthorizationService.IsGrantedAsync(HCPermissions.Projects.Create);
+        CanCreateProjectTask = await AuthorizationService.IsGrantedAsync(HCPermissions.ProjectTasks.Create);
     }
 
     protected virtual ValueTask SetToolbarItemsAsync()
@@ -761,6 +767,29 @@ public partial class ProjectDetail : HCComponentBase
     protected virtual void OnEditDepartmentIdChanged()
     {
         EditingProject.OwnerDepartmentId = SelectedEditDepartment?.FirstOrDefault()?.Id;
+    }
+
+    // ---------------------------
+    // Create Task from Project Detail
+    // ---------------------------
+    private async Task OpenCreateTaskModalAsync()
+    {
+        if (ProjectId == Guid.Empty)
+        {
+            return;
+        }
+
+        if (ProjectTaskCreateModalRef != null)
+        {
+            await ProjectTaskCreateModalRef.OpenCreateProjectTaskModalAsync();
+        }
+    }
+
+    private async Task OnTaskCreatedAsync()
+    {
+        // Refresh tasks grid after a new task is created
+        await LoadTasksAsync(page: TasksCurrentPage);
+        await InvokeAsync(StateHasChanged);
     }
 }
 

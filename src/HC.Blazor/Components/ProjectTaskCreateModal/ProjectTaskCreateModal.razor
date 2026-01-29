@@ -65,44 +65,69 @@
                                     <AlertDescription>@L[CreateGeneralValidationErrorKey]</AlertDescription>
                                 </Alert>
                             }
-                            <Row Class="g-3">
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["Project"] *</FieldLabel>
-                                        <div class="hc-select2-full" style="@(HasCreateFieldError("Project") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                            <Select2 IdSelector="c => c.Id.ToString()"
-                                                     TextSelector="c => c.DisplayName"
-                                                     FilterFunction="GetProjectCollectionLookupAsync"
-                                                     GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
-                                                     Datasource="ProjectsCollection"
-                                                     Value="@SelectedNewProjectTaskProject"
-                                                     OnValueChanged="@(() => { OnNewProjectTaskProjectChanged(); CreateFieldErrors.Remove("Project"); })"
-                                                     Cache="__MemoryCache"
-                                                     Multiselect="false" />
-                                        </div>
-                                        @if (HasCreateFieldError("Project"))
-                                        {
-                                            <div class="invalid-feedback d-block">@GetCreateFieldError("Project")</div>
-                                        }
-                                    </Field>
-                                </Column>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["ParentTaskId"]</FieldLabel>
-                                        <div class="hc-select2-full">
-                                            <Select2 IdSelector="c => c.Id"
-                                                     TextSelector="c => c.DisplayName"
-                                                     FilterFunction="GetParentTaskCollectionLookupAsync"
-                                                     GetElementById="async (items, id, token) => items.Where(x => x.Id == id).FirstOrDefault()!"
-                                                     Datasource="ParentTasksCollection"
-                                                     Value="@SelectedNewProjectTaskParentTask"
-                                                     OnValueChanged="OnNewProjectTaskParentChanged"
-                                                     Cache="__MemoryCache"
-                                                     Multiselect="false" />
-                                        </div>
-                                    </Field>
-                                </Column>
-                            </Row>
+                            @* Only show Project selector if ProjectId is not provided *@
+                            @if (!ProjectId.HasValue || ProjectId.Value == Guid.Empty)
+                            {
+                                <Row Class="g-3">
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <Field>
+                                            <FieldLabel>@L["Project"] *</FieldLabel>
+                                            <div class="hc-select2-full" style="@(HasCreateFieldError("Project") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
+                                                <Select2 IdSelector="c => c.Id.ToString()"
+                                                         TextSelector="c => c.DisplayName"
+                                                         FilterFunction="GetProjectCollectionLookupAsync"
+                                                         GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                                         Datasource="ProjectsCollection"
+                                                         Value="@SelectedNewProjectTaskProject"
+                                                         OnValueChanged="@(() => { OnNewProjectTaskProjectChanged(); CreateFieldErrors.Remove("Project"); })"
+                                                         Cache="__MemoryCache"
+                                                         Multiselect="false" />
+                                            </div>
+                                            @if (HasCreateFieldError("Project"))
+                                            {
+                                                <div class="invalid-feedback d-block">@GetCreateFieldError("Project")</div>
+                                            }
+                                        </Field>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <Field>
+                                            <FieldLabel>@L["ParentTaskId"]</FieldLabel>
+                                            <div class="hc-select2-full">
+                                                <Select2 IdSelector="c => c.Id"
+                                                         TextSelector="c => c.DisplayName"
+                                                         FilterFunction="GetParentTaskCollectionLookupAsync"
+                                                         GetElementById="async (items, id, token) => items.Where(x => x.Id == id).FirstOrDefault()!"
+                                                         Datasource="ParentTasksCollection"
+                                                         Value="@SelectedNewProjectTaskParentTask"
+                                                         OnValueChanged="OnNewProjectTaskParentChanged"
+                                                         Cache="__MemoryCache"
+                                                         Multiselect="false" />
+                                            </div>
+                                        </Field>
+                                    </Column>
+                                </Row>
+                            }
+                            else
+                            {
+                                <Row Class="g-3">
+                                    <Column ColumnSize="ColumnSize.Is12">
+                                        <Field>
+                                            <FieldLabel>@L["ParentTaskId"]</FieldLabel>
+                                            <div class="hc-select2-full">
+                                                <Select2 IdSelector="c => c.Id"
+                                                         TextSelector="c => c.DisplayName"
+                                                         FilterFunction="GetParentTaskCollectionLookupAsync"
+                                                         GetElementById="async (items, id, token) => items.Where(x => x.Id == id).FirstOrDefault()!"
+                                                         Datasource="ParentTasksCollection"
+                                                         Value="@SelectedNewProjectTaskParentTask"
+                                                         OnValueChanged="OnNewProjectTaskParentChanged"
+                                                         Cache="__MemoryCache"
+                                                         Multiselect="false" />
+                                            </div>
+                                        </Field>
+                                    </Column>
+                                </Row>
+                            }
 
                             @* Manual validation is used for Create wizard (see ValidateCreateGeneralInformation). *@
                             @if (!string.IsNullOrWhiteSpace(CreateGeneralValidationErrorKey))

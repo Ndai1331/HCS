@@ -20,6 +20,10 @@ namespace HC.Blazor.Components.ProjectTaskCreateModal;
 
 public partial class ProjectTaskCreateModal
 {
+    // Parameters for external use
+    [Parameter] public Guid? ProjectId { get; set; }
+    [Parameter] public EventCallback OnTaskCreated { get; set; }
+
     private Modal CreateProjectTaskModal { get; set; } = new();
     protected string SelectedCreateTab = "general";
     protected bool IsNavigatingTab { get; set; }
@@ -152,7 +156,7 @@ public partial class ProjectTaskCreateModal
     }
 
     
-    private async Task OpenCreateProjectTaskModalAsync()
+    public async Task OpenCreateProjectTaskModalAsync()
     {
         NewProjectTask = new ProjectTaskDto
         {
@@ -162,6 +166,12 @@ public partial class ProjectTaskCreateModal
             Status = ProjectTaskStatus.TODO.ToString(),
             Code = await GenerateNextProjectTaskCodeAsync(), // Auto-generate code
         };
+
+        // If ProjectId is provided (when called from ProjectDetail page)
+        if (ProjectId.HasValue && ProjectId.Value != Guid.Empty)
+        {
+            NewProjectTask.ProjectId = ProjectId.Value;
+        }
 
         // Defaults for enum-backed selects.
         NewProjectTaskPriority = ProjectTaskPriority.LOW;
@@ -182,7 +192,23 @@ public partial class ProjectTaskCreateModal
         CreateDocumentPurpose = ProjectTaskDocumentPurpose.REPORT;
         SelectedCreateTab = "general";
 
-        await GetProjectCollectionLookupAsync();
+        // Only load projects if ProjectId is not provided
+        if (!ProjectId.HasValue || ProjectId.Value == Guid.Empty)
+        {
+            await GetProjectCollectionLookupAsync();
+        }
+        else
+        {
+            // Pre-select the project when opening from ProjectDetail
+            var projectLookup = await ProjectTasksAppService.GetProjectLookupAsync(new LookupRequestDto { MaxResultCount = 1000 });
+            var currentProject = projectLookup.Items.FirstOrDefault(p => p.Id == ProjectId.Value);
+            if (currentProject != null)
+            {
+                ProjectsCollection = projectLookup.Items;
+                SelectedNewProjectTaskProject = new List<LookupDto<Guid>> { currentProject };
+            }
+        }
+
         await CreateProjectTaskModal.Show();
     }
     
@@ -447,6 +473,13 @@ public partial class ProjectTaskCreateModal
                 return;
             }
             await CloseCreateProjectTaskModalAsync();
+            
+            // Notify parent component that task was created
+            if (OnTaskCreated.HasDelegate)
+            {
+                await OnTaskCreated.InvokeAsync();
+            }
+            
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
