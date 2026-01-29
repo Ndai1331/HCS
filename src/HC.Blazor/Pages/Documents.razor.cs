@@ -399,7 +399,59 @@ public partial class Documents
 
     private async Task SendDocumentAsync()
     {
-        await InvokeAsync(SendDocumentModal.Hide);
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            // Validate input
+            if (SendDocumentInput.DocumentId == Guid.Empty)
+            {
+                await UiMessageService.Error(L["DocumentId is required"]);
+                return;
+            }
+
+            // Check if sending to personal
+            if (IsPersonal)
+            {
+                if (SelectedRecipients == null || SelectedRecipients.Count == 0)
+                {
+                    await UiMessageService.Error(L["At least one recipient is required"]);
+                    return;
+                }
+                SendDocumentInput.Recipients = SelectedRecipients.Select(x => x.Id).ToList();
+                SendDocumentInput.Departments = null;
+            }
+            else
+            {
+                if (SelectedDepartments == null || SelectedDepartments.Count == 0)
+                {
+                    await UiMessageService.Error(L["At least one department is required"]);
+                    return;
+                }
+                SendDocumentInput.Departments = SelectedDepartments.Select(x => x.Id).ToList();
+                SendDocumentInput.Recipients = null;
+            }
+            var result = await DocumentsAppService.SendDocumentAsync(SendDocumentInput);
+
+            if (result)
+            {
+                await UiMessageService.Success(L["Document sent successfully"]);
+                await GetDocumentsAsync();
+                await InvokeAsync(SendDocumentModal.Hide);
+            }
+            else
+            {
+                await UiMessageService.Error(L["Failed to send document"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
 

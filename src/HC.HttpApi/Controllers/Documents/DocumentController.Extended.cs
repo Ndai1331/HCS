@@ -19,8 +19,10 @@ public class DocumentController : DocumentControllerBase, IDocumentsAppService
     {
     }
 
-    public async Task<bool> SendDocumentAsync(SendDocumentInput input)
+    [HttpPost]
+    [Route("send-document")]
+    public virtual Task<bool> SendDocumentAsync(SendDocumentInput input)
     {
-        return await _documentsAppService.SendDocumentAsync(input);
+        return _documentsAppService.SendDocumentAsync(input);
     }
 }
