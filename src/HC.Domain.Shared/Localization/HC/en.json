@@ -395,6 +395,7 @@
     "Action.Edit": "Edit",
     "Action.Delete": "Delete",
     "Action.SubmitForSigning": "Submit For Signing",
+    "Action.Send": "Send",
     "FileManagement": "File Management",
     "Workflows.Follow": "Follow",
     "Menu:WorkflowList": "Workflow List",

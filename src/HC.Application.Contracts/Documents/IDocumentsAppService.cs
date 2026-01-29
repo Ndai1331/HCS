@@ -23,4 +23,5 @@ public partial interface IDocumentsAppService : IApplicationService
     Task DeleteByIdsAsync(List<Guid> documentIds);
     Task DeleteAllAsync(GetDocumentsInput input);
     Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync();
+    Task<bool> SendDocumentAsync(SendDocumentInput input);
 }

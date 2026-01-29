@@ -18,4 +18,9 @@ public class DocumentController : DocumentControllerBase, IDocumentsAppService
     public DocumentController(IDocumentsAppService documentsAppService) : base(documentsAppService)
     {
     }
+
+    public async Task<bool> SendDocumentAsync(SendDocumentInput input)
+    {
+        return await _documentsAppService.SendDocumentAsync(input);
+    }
 }

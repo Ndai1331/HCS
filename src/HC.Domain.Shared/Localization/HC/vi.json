@@ -241,6 +241,7 @@
     "Action.Edit": "Sửa",
     "Action.Delete": "Xoá",
     "Action.SubmitForSigning": "Trình ký",
+    "Action.Send": "Gửi",
     "FileManagement": "Quản lý files",
     "Workflows.Follow": "Theo dõi",
     "Permission:WorkflowDefinitions": "Loại quy trình",

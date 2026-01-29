@@ -6,6 +6,7 @@ namespace HC.Blazor.Pages;
 
 public class DepartmentTreeView : DepartmentDto
 {
+    public bool Checked { get; set; } = false;
     // HasChildren: true when there are entities with ParentId = this.Id
     public bool HasChildren => Children?.Any() ?? false;
         

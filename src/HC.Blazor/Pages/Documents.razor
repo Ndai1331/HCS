@@ -1,9 +1,12 @@
 @page "/manage-documents"
 @attribute [Authorize(HCPermissions.Documents.Default)]
+@using HC.Departments
 @using HC.Documents
 @using HC.Localization
 @using HC.Shared
+@using HC.UserDepartments
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Caching.Memory
 @using Microsoft.Extensions.Localization
 @using Microsoft.AspNetCore.Components.Web
 @using Blazorise
@@ -20,13 +23,19 @@
 @using Volo.Abp.AspNetCore.Components
 @using Microsoft.AspNetCore.Components
 @using Volo.Abp.Http.Client
+@using Excubo.Blazor.TreeViews
+
 @inherits HCComponentBase
 @inject IDocumentsAppService DocumentsAppService
 @inject IUiMessageService UiMessageService
 @inject IBlockUiService BlockUiService
+@inject IUserDepartmentsAppService UserDepartmentsAppService
+@inject IDepartmentsAppService DepartmentsAppService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
 @inject NavigationManager NavigationManager
+@inject IMemoryCache __MemoryCache 
+
 @* ************************* PAGE HEADER ************************* *@
 <PageHeader Title="@L["Documents"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
 </PageHeader>
@@ -362,22 +371,28 @@
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" Caption="@L["SendAndSign"]" Width="120px">
                     <DisplayTemplate>
                         <Div Class="d-flex gap-1">
-                            <Button
-                            @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
-                            Color="Color.Success"
-                            Outline
-                            Size="Size.Small"
-                            Class="mb-1">
-                            <Icon Name="IconName.Send" />
-                        </Button>
-                        <Button
-                            @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
-                            Color="Color.Warning"
-                            Outline
-                            Size="Size.Small"
-                            Class="mb-1">
-                            <Icon Name="IconName.CheckSquare" />
-                        </Button>
+                            @if (CanSendDocument)
+                            {
+                                <Button
+                                    @onclick="@(async () => await ShowSendDocumentModalAsync(context))"
+                                    Color="Color.Success"
+                                    Outline
+                                    Size="Size.Small"
+                                    Class="mb-1">
+                                    <Icon Name="IconName.Send" />
+                                </Button>
+                            }
+                            @if (CanSubmitForSigning)
+                            {
+                                <Button
+                                    @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
+                                    Color="Color.Warning"
+                                    Outline
+                                    Size="Size.Small"
+                                    Class="mb-1">
+                                    <Icon Name="IconName.CheckSquare" />
+                                </Button>
+                            }
                         </Div>
                     </DisplayTemplate>
                 </DataGridColumn>
@@ -472,3 +487,90 @@
         </DataGrid>
     </CardBody>
 </Card>
+
+
+
+
+
+<Modal @ref="SendDocumentModal" Closing="@SendDocumentModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>@L["SendDocument"]</ModalTitle>
+            <CloseButton Clicked="CloseSendDocumentModalAsync" />
+        </ModalHeader>
+    <ModalBody>
+        <Form>
+            @* Thông tin cơ bản của file được gửi *@
+            @if (DocumentToSend != null && DocumentToSend.Document != null)
+            {
+                <Alert Color="Color.Info" Visible="true" Class="mb-3">
+                    <AlertMessage>
+                        <i class="bi bi-file-earmark-text me-1"></i>@L["DocumentTitle"]:
+                    </AlertMessage>
+                    <AlertDescription>
+                        @DocumentToSend.Document.Title - #@DocumentToSend.Document.No
+                    </AlertDescription>
+                </Alert>
+            }
+            @* cá nhân hoặc phòng ban  *@
+            <Field>
+                <Select TValue="bool" @bind-SelectedValue="@IsPersonal">
+                    <SelectItem Value="true">@L["Personal"]</SelectItem>
+                    <SelectItem Value="false">@L["Department"]</SelectItem>
+                </Select>
+            </Field>
+
+            @* người nhận *@
+            @if (IsPersonal)
+            {
+                <Field>
+                    <FieldLabel>@L["Recipients"] </FieldLabel>
+                    @if (RecipientsCollection != null)
+                    {
+                        <Select2 TItem="LookupDto<Guid>"
+                                TSource="IReadOnlyList<LookupDto<Guid>>"
+                                Datasource="RecipientsCollection"
+                                IdSelector="c => c.Id.ToString()"
+                                TextSelector="c => c.DisplayName"
+                                FilterFunction="GetRecipientsLookupAsync"
+                                GetElementById="async (items, id, token) =>
+                                    items?.FirstOrDefault(x => x.Id.ToString() == id)"
+                                Value="SelectedRecipients"
+                                ValueChanged="@((List<LookupDto<Guid>> v) => SelectedRecipients = v ?? new List<LookupDto<Guid>>())"
+                                Cache="__MemoryCache"
+                                Multiselect="true" />
+                    }
+                </Field>
+            }
+            else
+            {
+                @if (DepartmentTreeViews == null || !DepartmentTreeViews.Any())
+                {
+                    @L["NoDepartmentDefinedYet"]
+                }
+                else
+                {
+                    <TreeView Items="DepartmentTreeViews"
+                              GetChildren="@(item => item.Children)"
+                              HasChildren="@(item => item.HasChildren)">
+                        <ItemTemplate>
+                            <Check TValue="bool" Class="me-1">
+                                <Excubo.Blazor.TreeViews.Collapse 
+                                 @bind-Value="ExpandDepartmentTree"/>
+                                <span class="ml-1 mr-1" style="cursor: pointer">
+                                    &nbsp;<i class="fas fa-person-shelter"></i>&nbsp;
+                                    @context.Item.Name
+                                </span>
+                            </Check>
+                        </ItemTemplate>
+                    </TreeView>
+                }
+            }
+        </Form>
+    </ModalBody>
+    <ModalFooter>
+        <Button Color="Color.Secondary" Clicked="CloseSendDocumentModalAsync">@L["Cancel"]</Button>
+        <Button Color="Color.Primary" Clicked="SendDocumentAsync">@L["Send"]</Button>
+    </ModalFooter>
+    </ModalContent>
+</Modal>

@@ -26,7 +26,7 @@ public partial class ProjectDetail : HCComponentBase
     [SupplyParameterFromQuery(Name = "id")]
     public Guid? ProjectIdQuery { get; set; }
 
-    protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems { get; } = new();
+    protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems { get; set; } = new();
 
     protected PageToolbar Toolbar { get; } = new PageToolbar();
 
@@ -119,13 +119,14 @@ public partial class ProjectDetail : HCComponentBase
     {
         if (firstRender)
         {
+            await OnSetupProjectAsync();
             await SetPermissionsAsync();
             await SetToolbarItemsAsync();
             await InvokeAsync(StateHasChanged);
         }
     }
 
-    protected override async Task OnParametersSetAsync()
+    private async Task OnSetupProjectAsync()
     {
         if (ProjectId == Guid.Empty && ProjectIdQuery.HasValue)
         {

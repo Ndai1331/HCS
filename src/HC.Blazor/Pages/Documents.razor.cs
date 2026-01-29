@@ -16,6 +16,8 @@ using HC.Permissions;
 using HC.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
+using HC.Departments;
+using System.Threading;
 
 namespace HC.Blazor.Pages;
 
@@ -40,6 +42,8 @@ public partial class Documents
     private bool CanEditDocument { get; set; }
 
     private bool CanDeleteDocument { get; set; }
+    private bool CanSendDocument { get; set; }
+    private bool CanSubmitForSigning { get; set; }
 
     private GetDocumentsInput Filter { get; set; } = new GetDocumentsInput();
 
@@ -50,8 +54,17 @@ public partial class Documents
     private IReadOnlyList<LookupDto<Guid>> WorkflowsCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<DocumentWithNavigationPropertiesDto> SelectedDocuments { get; set; } = new();
     private bool AllDocumentsSelected { get; set; } = false;
+    private bool ExpandDepartmentTree { get; set; } = false;
 
+    private Modal SendDocumentModal { get; set; } = new();
 
+    public Documents()
+    {
+        DepartmentList = new List<DepartmentDto>();
+        DepartmentTreeViews = new List<DepartmentTreeView>();
+        AllDepartmentsFlat = new List<DepartmentTreeView>();
+        AllDepartmentsForSelect2 = new List<DepartmentTreeView>();
+    }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         Logger.LogInformation("Documents OnAfterRenderAsync start");
@@ -62,7 +75,7 @@ public partial class Documents
             await SetPermissionsAsync();
             await SetBreadcrumbItemsAsync();
             await SetToolbarItemsAsync();
-            // await GetDocumentsAsync();
+            await GetDepartmentsAsync();
             await InvokeAsync(StateHasChanged);
         }
         Logger.LogInformation("Documents OnAfterRenderAsync end");
@@ -95,6 +108,8 @@ public partial class Documents
     {
         CanCreateDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Create);
         CanEditDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Edit);
+        CanSendDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Send);
+        CanSubmitForSigning = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.SubmitForSigning);
         CanDeleteDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Delete);
     }
 
@@ -309,4 +324,181 @@ public partial class Documents
         NavigationManager.NavigateTo("/document-detail/" + documentId);
         await Task.CompletedTask;
     }
+
+    #region Send Document
+
+    private List<DepartmentTreeView> DepartmentTreeViews { get; set; } = new();
+    private IReadOnlyList<DepartmentDto> DepartmentList { get; set; } = new List<DepartmentDto>();
+    private List<DepartmentTreeView> AllDepartmentsFlat { get; set; } = new List<DepartmentTreeView>();
+    private List<DepartmentTreeView> AllDepartmentsForSelect2 { get; set; } = new List<DepartmentTreeView>();
+    private SendDocumentInput SendDocumentInput { get; set; } = new();
+    private DocumentWithNavigationPropertiesDto DocumentToSend { get; set; } = new();
+    private bool IsPersonal { get; set; } = true;
+    private IReadOnlyList<LookupDto<Guid>> RecipientsCollection { get; set; } = new List<LookupDto<Guid>>();
+    private IReadOnlyList<LookupDto<Guid>> DepartmentsCollection { get; set; } = new List<LookupDto<Guid>>();
+    private List<LookupDto<Guid>> SelectedRecipients { get; set; } = new();
+    private List<LookupDto<Guid>> SelectedDepartments { get; set; } = new();
+
+    
+    private async Task ShowSendDocumentModalAsync(DocumentWithNavigationPropertiesDto document)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);  
+            DocumentToSend = document;
+            SendDocumentInput.DocumentId = DocumentToSend.Document.Id;
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            await InvokeAsync(SendDocumentModal.Show);
+        }
+    }
+
+    private async Task<List<LookupDto<Guid>>> GetRecipientsLookupAsync(
+    IReadOnlyList<LookupDto<Guid>> source,
+    string search,
+        CancellationToken cancellationToken)
+    {
+        var result = await UserDepartmentsAppService.GetIdentityUserLookupAsync(
+            new LookupRequestDto { Filter = search }
+        );
+
+        return result.Items.ToList();
+    }
+
+    private async Task CloseSendDocumentModalAsync()
+    {
+        await InvokeAsync(SendDocumentModal.Hide);
+    }
+
+    private async Task SendDocumentAsync()
+    {
+        await InvokeAsync(SendDocumentModal.Hide);
+    }
+
+
+
+    private async Task GetDepartmentsAsync()
+    {
+        var result = await DepartmentsAppService.GetListAsync(new GetDepartmentsInput
+        {
+            MaxResultCount = LimitedResultRequestDto.MaxMaxResultCount
+        });
+
+        DepartmentList = result.Items.Select(x => x.Department).ToList();
+
+        // Map each DepartmentDto to DepartmentTreeView manually
+        var departments = DepartmentList.Select(d => ObjectMapper.Map<DepartmentDto, DepartmentTreeView>(d)).ToList();
+
+        var departmentsDictionary = new Dictionary<string, List<DepartmentTreeView>>();
+
+        // Build dictionary: key = ParentId, value = list of children
+        foreach (var department in departments)
+        {
+            var parentId = department.ParentId ?? string.Empty;
+
+            if (!departmentsDictionary.ContainsKey(parentId))
+            {
+                departmentsDictionary.Add(parentId, new List<DepartmentTreeView>());
+            }
+
+            departmentsDictionary[parentId].Add(department);
+        }
+
+        // Set Children for each department: Children = entities where ParentId = this.Id
+        foreach (var department in departments)
+        {
+            var departmentId = department.Id.ToString();
+            if (departmentsDictionary.ContainsKey(departmentId))
+            {
+                department.Children = departmentsDictionary[departmentId];
+            }
+            else
+            {
+                department.Children = new List<DepartmentTreeView>();
+            }
+        }
+
+        if (departmentsDictionary.Any())
+        {
+            DepartmentTreeViews = departmentsDictionary.ContainsKey(string.Empty) 
+                ? departmentsDictionary[string.Empty] 
+                : new List<DepartmentTreeView>();
+        }
+        else
+        {
+            DepartmentTreeViews = new List<DepartmentTreeView>();
+        }
+
+        // Build flat list for dropdown (flatten tree structure)
+        AllDepartmentsFlat = FlattenDepartments(DepartmentTreeViews);
+        
+        // Expand all nodes by default
+        ExpandAllNodes(DepartmentTreeViews);
+        
+        // Create list for Select2 (include root option)
+        AllDepartmentsForSelect2 = new List<DepartmentTreeView>();
+        // Add root option
+        AllDepartmentsForSelect2.Add(new DepartmentTreeView 
+        { 
+            Id = Guid.Empty, 
+            Name = L["Root"].Value,
+            TreeLevel = -1 // Special level for root
+        });
+        // Add all departments
+        AllDepartmentsForSelect2.AddRange(AllDepartmentsFlat);
+    }
+
+
+    private void ExpandAllNodes(List<DepartmentTreeView> departments)
+    {
+        if (departments == null) return;
+        
+        foreach (var dept in departments)
+        {
+            dept.Collapsed = false; // Expand this node
+            if (dept.Children != null && dept.Children.Any())
+            {
+                ExpandAllNodes(dept.Children); // Recursively expand children
+            }
+        }
+    }
+    private List<DepartmentTreeView> FlattenDepartments(List<DepartmentTreeView> departments, int treeLevel = 0)
+    {
+        var result = new List<DepartmentTreeView>();
+        foreach (var dept in departments)
+        {
+            // Set tree level for display (don't modify the actual Level property)
+            dept.TreeLevel = treeLevel;
+            result.Add(dept);
+            if (dept.Children != null && dept.Children.Any())
+            {
+                result.AddRange(FlattenDepartments(dept.Children, treeLevel + 1));
+            }
+        }
+        return result;
+    }
+    
+    // Format department name with dashes based on tree level
+    private string GetDepartmentDisplayName(DepartmentTreeView department)
+    {
+        if (department == null || string.IsNullOrEmpty(department.Name))
+            return "";
+        
+        // Special handling for root option
+        if (department.Id == Guid.Empty)
+            return department.Name;
+            
+        // TreeLevel 0 = root level, no dash
+        // TreeLevel 1 = one dash, TreeLevel 2 = two dashes, etc.
+        var dashes = new string('-', department.TreeLevel);
+        return string.IsNullOrEmpty(dashes) ? department.Name : $"{dashes} {department.Name}";
+    }
+    
+    #endregion Send Document
 }
