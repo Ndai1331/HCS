@@ -368,7 +368,7 @@
                          
                     </DisplayTemplate>
                 </DataGridColumn>
-                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" Caption="@L["SendAndSign"]" Width="120px">
+                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" Caption="@L["SendAndSign"]" Width="150px">
                     <DisplayTemplate>
                         <Div Class="d-flex gap-1">
                             @if (CanSendDocument)
@@ -505,7 +505,7 @@
             {
                 <Alert Color="Color.Info" Visible="true" Class="mb-3">
                     <AlertMessage>
-                        <i class="bi bi-file-earmark-text me-1"></i>@L["DocumentTitle"]:
+                        <i class="bi bi-file-earmark-text me-1"></i>@L["Title"]:
                     </AlertMessage>
                     <AlertDescription>
                         @DocumentToSend.Document.Title - #@DocumentToSend.Document.No
@@ -514,6 +514,7 @@
             }
             @* cá nhân hoặc phòng ban  *@
             <Field>
+                <FieldLabel>@L["SendTo"] </FieldLabel>
                 <Select TValue="bool" @bind-SelectedValue="@IsPersonal">
                     <SelectItem Value="true">@L["Personal"]</SelectItem>
                     <SelectItem Value="false">@L["Department"]</SelectItem>
@@ -552,18 +553,20 @@
                 {
                     <TreeView Items="DepartmentTreeViews"
                               GetChildren="@(item => item.Children)"
-                              HasChildren="@(item => item.HasChildren)">
+                              HasChildren="@(item => item.HasChildren)"
+                               AllowSelection="true"
+                                @bind-SelectedItems="SelectedDepartments">
                         <ItemTemplate>
-                            <Check TValue="bool" Class="me-1">
-                                <Excubo.Blazor.TreeViews.Collapse 
-                                 @bind-Value="ExpandDepartmentTree"/>
-                                <span class="ml-1 mr-1" style="cursor: pointer">
-                                    &nbsp;<i class="fas fa-person-shelter"></i>&nbsp;
-                                    @context.Item.Name
-                                </span>
-                            </Check>
+                            <div @onclick="() => { SelectedItem = (SelectedItem != context.Item) ? context.Item : new DepartmentTreeView(); }" 
+                                style="background-color: @(SelectedItem?.Id == context.Item.Id ? "Highlight" : "inherit")">
+                                &nbsp;<i class="fas fa-person-shelter"></i>&nbsp;
+                                @context.Item.Name
+                            </div>
                         </ItemTemplate>
                     </TreeView>
+
+
+
                 }
             }
         </Form>

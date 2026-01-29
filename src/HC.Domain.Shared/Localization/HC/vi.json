@@ -962,6 +962,9 @@
     "YouAreNotAMemberOfThisProjectChat": "Bạn không phải là thành viên của chat dự án này",
     "IncommingDate" : "Ngày nhận",
     "MinIncommingDate" : "Ngày nhận tối thiểu",
-    "MaxIncommingDate" : "Ngày nhận tối đa"
+    "MaxIncommingDate" : "Ngày nhận tối đa",
+    "Personal" : "Cá nhân",
+    "SendDocument" : "Gửi tài liệu",
+    "SendTo" : "Gửi đến"
   }
 }

@@ -18,6 +18,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using HC.Departments;
 using System.Threading;
+using Excubo.Blazor.TreeViews;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace HC.Blazor.Pages;
 
@@ -54,9 +56,24 @@ public partial class Documents
     private IReadOnlyList<LookupDto<Guid>> WorkflowsCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<DocumentWithNavigationPropertiesDto> SelectedDocuments { get; set; } = new();
     private bool AllDocumentsSelected { get; set; } = false;
-    private bool ExpandDepartmentTree { get; set; } = false;
+    private bool ExpandDepartmentTree { get; set; } = true;
 
     private Modal SendDocumentModal { get; set; } = new();
+    private static readonly object no_render = new object();
+    private static readonly CheckboxFragment checkbox_template_matblazor =
+        (value, indeterminate, value_changed, disabled) =>
+            (builder) =>
+            {
+                builder.OpenComponent<Check<bool?>>(0);
+                builder.AddAttribute(1, nameof(Check<bool?>.Checked), indeterminate ? null : value);
+                builder.AddAttribute(2, nameof(Check<bool?>.CheckedChanged), EventCallback.Factory.Create<bool?>(no_render, (v) => { if (v != null) { value_changed(v.Value); } }));
+                builder.AddAttribute(3, nameof(Check<bool?>.Indeterminate), true);
+                builder.AddAttribute(4, nameof(Check<bool?>.Disabled), disabled);
+                builder.AddAttribute(5, "onclick", EventCallback.Factory.Create<MouseEventArgs>(no_render, (e) => {
+                    value_changed(true); }));
+                builder.CloseComponent();
+            };
+
 
     public Documents()
     {
@@ -337,7 +354,8 @@ public partial class Documents
     private IReadOnlyList<LookupDto<Guid>> RecipientsCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> DepartmentsCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<LookupDto<Guid>> SelectedRecipients { get; set; } = new();
-    private List<LookupDto<Guid>> SelectedDepartments { get; set; } = new();
+    private List<DepartmentTreeView> SelectedDepartments { get; set; } = new();
+    private DepartmentTreeView SelectedItem { get; set; } = new();
 
     
     private async Task ShowSendDocumentModalAsync(DocumentWithNavigationPropertiesDto document)
@@ -346,6 +364,9 @@ public partial class Documents
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);  
             DocumentToSend = document;
+            IsPersonal = true;
+            SelectedDepartments.Clear();
+            SelectedRecipients.Clear();
             SendDocumentInput.DocumentId = DocumentToSend.Document.Id;
         }
         catch (Exception ex)

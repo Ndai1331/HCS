@@ -30,45 +30,60 @@
     z-index: 9999999 !important;
 }
 
+.select2-container--default .select2-selection--multiple,
+
 .select2-container--default
 .select2-selection--single {
     --tw-bg-opacity: 1;
     background-color: rgb(249 251 253 / var(--tw-bg-opacity)) !important;
-    height: 40px !important;
+    height: 44px !important;
     min-width: 150px;
     background-color: #f0f4f7 !important;
     border-radius: 0.5rem !important;
     border-color: #e8eef3 !important;
 }
 
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
+    /* .select2-container--default .select2-selection--single .select2-selection__rendered ,
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
         line-height: 38px !important;
     }
 
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
+    .select2-container--default .select2-selection--single .select2-selection__arrow ,
+    .select2-container--default .select2-selection--multiple .select2-selection__arrow {
         height: 35px !important;
+    } */
+
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        padding: 5px !important;
     }
 
-.select2-selection--single {
+.select2-selection--single ,
+.select2-selection--multiple {
     border: 1px solid #323a461a !important;
 }
 
-.select2-selection__rendered {
+.select2-selection__rendered ,
+.select2-selection--multiple .select2-selection__rendered {
     border-radius: 4px !important;
 }
 
-.select2-selection__arrow {
+.select2-selection__arrow ,
+.select2-selection--multiple .select2-selection__arrow {
     border-radius: 4px !important;
 }
 
-.select2-disabled .select2-selection {
+.select2-disabled .select2-selection ,
+.select2-disabled .select2-selection--multiple {
     pointer-events: none;
     opacity: 0.75;
 }
 
-.select2-disabled .select2-selection > span {
+.select2-disabled .select2-selection > span ,
+.select2-disabled .select2-selection--multiple > span {
     background-color: inherit !important;
 }
+
+
 
 
 /* Hide Blazorise license banner globally */

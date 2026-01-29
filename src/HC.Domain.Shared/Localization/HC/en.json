@@ -920,6 +920,9 @@
     "Back": "Back",
     "Save": "Save",
     "Menu:FileManagement": "File Management",
-    "Update": "Update"
+    "Update": "Update",
+    "Personal": "Personal",
+    "SendDocument": "Send Document",
+    "SendTo": "Send To"
   }
 }
