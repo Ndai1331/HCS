@@ -20,5 +20,6 @@ public enum DocumentAssignmentStatus
 {
     PENDING,
     DONE,
-    REJECTED
+    REJECTED,
+    REVOKED
 }

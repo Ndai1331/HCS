@@ -13,6 +13,7 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using Volo.Abp.BlobStoring;
 using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
+using HC.DocumentAssignments;
 
 namespace HC.Blazor.Pages;
 
@@ -53,6 +54,9 @@ public partial class ViewDocumentDetail
     // PDF viewer
     private string? PdfFileUrl { get; set; } = "https://pdfobject.com/pdf/sample.pdf";
     private bool IsPdfAvailable { get; set; } = false;
+
+    // Document revocation status
+    private bool IsDocumentRevoked { get; set; } = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -110,10 +114,47 @@ public partial class ViewDocumentDetail
 
             // Load PDF URL if file exists and is PDF
             await LoadPdfUrlAsync();
+
+            // Check if document is revoked for current user
+            await CheckDocumentRevocationAsync();
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+    }
+
+    // Check if document assignment status is REVOKE for current user
+    private async Task CheckDocumentRevocationAsync()
+    {
+        try
+        {
+            if (CurrentUser.Id == null)
+            {
+                return;
+            }
+
+            var assignments = await DocumentAssignmentsAppService.GetListAsync(new GetDocumentAssignmentsInput
+            {
+                DocumentId = DocumentId,
+                ReceiverUserId = CurrentUser.Id,
+                MaxResultCount = 1,
+                SkipCount = 0
+            });
+
+            if (assignments != null && assignments.TotalCount > 0)
+            {
+                var assignment = assignments.Items.FirstOrDefault();
+                if (assignment != null && assignment.DocumentAssignment.Status == DocumentAssignmentStatus.REVOKED.ToString())
+                {
+                    IsDocumentRevoked = true;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Ignore error checking revocation status
+            IsDocumentRevoked = false;
         }
     }
 

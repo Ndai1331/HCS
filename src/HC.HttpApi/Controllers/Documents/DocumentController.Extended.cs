@@ -25,4 +25,11 @@ public class DocumentController : DocumentControllerBase, IDocumentsAppService
     {
         return _documentsAppService.SendDocumentAsync(input);
     }
+
+    [HttpPost]
+    [Route("revoke-document")]
+    public virtual Task<bool> RevokeDocumentAsync(RevokeDocumentInput input)
+    {
+        return _documentsAppService.RevokeDocumentAsync(input);
+    }
 }

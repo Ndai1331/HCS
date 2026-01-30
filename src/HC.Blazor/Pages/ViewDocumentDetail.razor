@@ -4,6 +4,7 @@
 @attribute [Authorize(HCPermissions.Documents.MyDocuments)]
 @attribute [Authorize(HCPermissions.DocumentAssignments.Default)]
 
+@using HC.DocumentAssignments
 @using HC.Documents
 @using HC.DocumentFiles
 @using HC.Localization
@@ -30,19 +31,26 @@
 @using Blazorise.PdfViewer
 @using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars
 @using Volo.Abp.Http.Client
+@using Volo.Abp.Users
+
 @inherits HCComponentBase
 @inject IDocumentsAppService DocumentsAppService
 @inject IDocumentFilesAppService DocumentFilesAppService
 @inject IMasterDatasAppService MasterDatasAppService
+@inject IDocumentAssignmentsAppService DocumentAssignmentsAppService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject NavigationManager NavigationManager
 @inject IMemoryCache __MemoryCache
 @inject Volo.Abp.BlobStoring.IBlobContainer BlobContainer
 @inject IJSRuntime JSRuntime
 @inject IUiMessageService UiMessageService
+@inject ICurrentUser CurrentUser
 
 <PageHeader Title="@PageTitle" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
 </PageHeader>
+
+@* Check if document is revoked and show warning *@
+
 
 <style>
     .hc-field-label {
@@ -59,8 +67,17 @@
         align-items: center;
     }
 </style>
-
-@if (DocumentData != null)
+@if (IsDocumentRevoked)
+{
+    <Alert Color="Color.Danger" Visible="true" Class="mb-3">
+        <AlertMessage>
+            <i class="bi bi-exclamation-triangle me-1"></i>@L["DocumentRevoked"]:
+        </AlertMessage>
+        <AlertDescription>
+            @L["DocumentHasBeenRevokedMessage"]
+        </AlertDescription>
+    </Alert>
+} else if (DocumentData != null)
 {
     <Card>
         <CardBody>

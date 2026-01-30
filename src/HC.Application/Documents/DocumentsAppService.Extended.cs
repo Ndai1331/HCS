@@ -122,6 +122,8 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             notification.TenantId = CurrentTenant.Id;
             await _notificationRepository.InsertAsync(notification);
 
+            var now = DateTime.Now;
+
             // Create notification receivers and document histories for each user
             foreach (var receiverUserId in allReceiverUserIds)
             {
@@ -144,19 +146,43 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                     $"Document sent from user {CurrentUser.UserName ?? L["System"]}"
                 );
 
-                // Create document assignment for VIEW action
-                var now = DateTime.Now;
-                var documentAssignment = await _documentAssignmentManager.CreateAsync(
-                    input.DocumentId,
-                    null,
-                    receiverUserId,
-                    (int)DocumentAssignmentStepOrder.ORIGINAL, // ORIGINAL
-                    DocumentAssignmentActionType.VIEW.ToString(), // VIEW
-                    DocumentAssignmentStatus.DONE.ToString(),
-                    now, // AssignedAt
-                    now, // ProcessedAt
-                    true // IsCurrent
+                // Check if DocumentAssignment already exists for this document and user
+                var existingAssignments = await _documentAssignmentRepository.GetListAsync(
+                    documentId: input.DocumentId,
+                    receiverUserId: receiverUserId
                 );
+
+                var existingAssignment = existingAssignments.FirstOrDefault();
+
+                if (existingAssignment != null)
+                {
+                    // DocumentAssignment exists → Update status to DONE and ProcessedAt
+                    existingAssignment.Status = DocumentAssignmentStatus.DONE.ToString();
+                    existingAssignment.ProcessedAt = now;
+                    existingAssignment.IsCurrent = true;
+                    await _documentAssignmentRepository.UpdateAsync(existingAssignment);
+                    
+                    _logger.LogInformation("Updated existing DocumentAssignment: DocumentId={DocumentId}, ReceiverUserId={ReceiverUserId}",
+                        input.DocumentId, receiverUserId);
+                }
+                else
+                {
+                    // DocumentAssignment doesn't exist → Create new with status DONE
+                    var documentAssignment = await _documentAssignmentManager.CreateAsync(
+                        input.DocumentId,
+                        null,
+                        receiverUserId,
+                        (int)DocumentAssignmentStepOrder.ORIGINAL, // ORIGINAL
+                        DocumentAssignmentActionType.VIEW.ToString(), // VIEW
+                        DocumentAssignmentStatus.DONE.ToString(),
+                        now, // AssignedAt
+                        now, // ProcessedAt
+                        true // IsCurrent
+                    );
+                    
+                    _logger.LogInformation("Created new DocumentAssignment: DocumentId={DocumentId}, ReceiverUserId={ReceiverUserId}",
+                        input.DocumentId, receiverUserId);
+                }
             }
 
             // Publish event to RabbitMQ for real-time notification
@@ -176,6 +202,115 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in SendDocumentAsync: DocumentId={DocumentId}", input.DocumentId);
+            throw;
+        }
+    }
+
+    public async Task<bool> RevokeDocumentAsync(RevokeDocumentInput input)
+    {
+        try
+        {
+            _logger.LogInformation("RevokeDocumentAsync started: DocumentId={DocumentId}", input.DocumentId);
+
+            // Validate input
+            if (input.DocumentId == Guid.Empty)
+            {
+                throw new UserFriendlyException(L["DocumentId is required"]);
+            }
+
+            // Get current user
+            var currentUserId = CurrentUser.Id;
+            if (currentUserId == null)
+            {
+                throw new UserFriendlyException(L["User not authenticated"]);
+            }
+
+            // Get document info
+            var document = await _documentRepository.GetAsync(input.DocumentId);
+
+            // Get all document assignments for this document
+            var documentAssignments = await _documentAssignmentRepository.GetListAsync(
+                documentId: input.DocumentId
+            );
+
+            if (documentAssignments == null || documentAssignments.Count == 0)
+            {
+                _logger.LogWarning("No document assignments found for DocumentId={DocumentId}", input.DocumentId);
+                return true;
+            }
+
+            // Get all unique receiver user IDs
+            var receiverUserIds = documentAssignments
+                .Select(da => da.ReceiverUserId)
+                .Distinct()
+                .ToList();
+
+            _logger.LogInformation("Revoking document from {RecipientCount} recipients", receiverUserIds.Count);
+
+            // Update all document assignments status to REVOKE
+            foreach (var documentAssignment in documentAssignments)
+            {
+                documentAssignment.Status = DocumentAssignmentStatus.REVOKED.ToString();
+                await _documentAssignmentRepository.UpdateAsync(documentAssignment);
+            }
+
+            // Create notification
+            var notificationTitleKey = "DocumentRevoked";
+            var notificationContentKey = $"DocumentRevokedMessage|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? L["System"]}";
+
+            var notification = new Notification(
+                GuidGenerator.Create(),
+                notificationTitleKey,
+                notificationContentKey,
+                SourceType.DOCUMENT.ToString(),
+                EventType.DOCUMENT_REVOKED.ToString(),
+                RelatedType.DOCUMENT.ToString(),
+                "NORMAL",
+                document.Id.ToString()
+            );
+
+            notification.TenantId = CurrentTenant.Id;
+            await _notificationRepository.InsertAsync(notification);
+
+            // Create notification receivers for each user
+            foreach (var receiverUserId in receiverUserIds)
+            {
+                var notificationReceiver = new NotificationReceiver(
+                    GuidGenerator.Create(),
+                    notification.Id,
+                    receiverUserId,
+                    false
+                );
+                notificationReceiver.TenantId = CurrentTenant.Id;
+                await _notificationReceiverRepository.InsertAsync(notificationReceiver);
+
+                // Create document history with Action = THU HOI
+                await _documentHistoryManager.CreateAsync(
+                    input.DocumentId,
+                    currentUserId.Value,
+                    receiverUserId,
+                    "THU_HOI",
+                    $"Revoked document {document.Title} by {CurrentUser.UserName ?? L["System"]}"
+                );
+            }
+
+            // Publish event to RabbitMQ for real-time notification
+            await _distributedEventBus.PublishAsync(
+                new NotificationCreatedEto
+                {
+                    NotificationId = notification.Id,
+                    ReceiverUserIds = receiverUserIds
+                }
+            );
+
+            _logger.LogInformation("RevokeDocumentAsync completed successfully: DocumentId={DocumentId}, RevokedFrom={RecipientCount} users",
+                input.DocumentId, receiverUserIds.Count.ToString());
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in RevokeDocumentAsync: DocumentId={DocumentId}", input.DocumentId);
             throw;
         }
     }

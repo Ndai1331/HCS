@@ -112,8 +112,9 @@ public partial class Documents
 
         if (CanCreateDocument)
         {
-            Toolbar.AddButton(L["NewDocument"], async () => {
+            Toolbar.AddButton(L["NewDocument"], () => {
                 NavigationManager.NavigateTo("/document-detail");
+                return Task.CompletedTask;
             }, IconName.Add, requiredPolicyName: HCPermissions.Documents.Create);
         }
 
@@ -357,6 +358,11 @@ public partial class Documents
     private List<DepartmentTreeView> SelectedDepartments { get; set; } = new();
     private DepartmentTreeView SelectedItem { get; set; } = new();
 
+    // Delete or Revoke Document Modal
+    private Modal DeleteOrRevokeModal { get; set; } = new();
+    private DocumentWithNavigationPropertiesDto DocumentToDeleteOrRevoke { get; set; } = new();
+    private string DeleteOrRevokeOption { get; set; } = "delete"; // "delete" or "revoke"
+
     
     private async Task ShowSendDocumentModalAsync(DocumentWithNavigationPropertiesDto document)
     {
@@ -574,4 +580,86 @@ public partial class Documents
     }
     
     #endregion Send Document
+
+    #region Delete or Revoke Document
+
+    private async Task ShowDeleteOrRevokeModalAsync(DocumentWithNavigationPropertiesDto document)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);  
+            DocumentToDeleteOrRevoke = document;
+            DeleteOrRevokeOption = "delete"; // Default option
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            await InvokeAsync(DeleteOrRevokeModal.Show);
+        }
+    }
+
+    private async Task CloseDeleteOrRevokeModalAsync()
+    {
+        await InvokeAsync(DeleteOrRevokeModal.Hide);
+        DocumentToDeleteOrRevoke = new();
+        DeleteOrRevokeOption = "delete";
+    }
+
+    private async Task ConfirmDeleteOrRevokeAsync()
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            if (DocumentToDeleteOrRevoke == null || DocumentToDeleteOrRevoke.Document == null)
+            {
+                await UiMessageService.Error(L["DocumentNotFound"]);
+                return;
+            }
+
+            if (DeleteOrRevokeOption == "delete")
+            {
+                // Delete document - keep existing logic
+                await DocumentsAppService.DeleteAsync(DocumentToDeleteOrRevoke.Document.Id);
+                await UiMessageService.Success(L["DocumentDeletedSuccessfully"]);
+            }
+            else if (DeleteOrRevokeOption == "revoke")
+            {
+                // Revoke document - new logic
+                var revokeInput = new RevokeDocumentInput
+                {
+                    DocumentId = DocumentToDeleteOrRevoke.Document.Id
+                };
+                
+                var result = await DocumentsAppService.RevokeDocumentAsync(revokeInput);
+                
+                if (result)
+                {
+                    await UiMessageService.Success(L["DocumentRevokedSuccessfully"]);
+                }
+                else
+                {
+                        await UiMessageService.Error(L["FailedToRevokeDocument"]);
+                    return;
+                }
+            }
+
+            await GetDocumentsAsync();
+            await InvokeAsync(DeleteOrRevokeModal.Hide);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    #endregion Delete or Revoke Document
 }

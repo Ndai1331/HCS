@@ -51,6 +51,7 @@ public abstract class EfCoreDocumentAssignmentRepositoryBase : EfCoreRepository<
                from workflowStepTemplate in workflowStepTemplates.DefaultIfEmpty()
                join receiverUser in (await GetDbContextAsync()).Set<IdentityUser>() on documentAssignment.ReceiverUserId equals receiverUser.Id into identityUsers
                from receiverUser in identityUsers.DefaultIfEmpty()
+               where document != null && document.IsDeleted == false
                select new DocumentAssignmentWithNavigationProperties
                {
                    DocumentAssignment = documentAssignment,
@@ -65,9 +66,16 @@ public abstract class EfCoreDocumentAssignmentRepositoryBase : EfCoreRepository<
         return query.WhereIf(!string.IsNullOrWhiteSpace(filterText), e => e.DocumentAssignment.ActionType!.Contains(filterText!) || e.DocumentAssignment.Status!.Contains(filterText!)).WhereIf(stepOrderMin.HasValue, e => e.DocumentAssignment.StepOrder >= stepOrderMin!.Value).WhereIf(stepOrderMax.HasValue, e => e.DocumentAssignment.StepOrder <= stepOrderMax!.Value).WhereIf(!string.IsNullOrWhiteSpace(actionType), e => e.DocumentAssignment.ActionType.Contains(actionType)).WhereIf(!string.IsNullOrWhiteSpace(status), e => e.DocumentAssignment.Status.Contains(status)).WhereIf(assignedAtMin.HasValue, e => e.DocumentAssignment.AssignedAt >= assignedAtMin!.Value).WhereIf(assignedAtMax.HasValue, e => e.DocumentAssignment.AssignedAt <= assignedAtMax!.Value).WhereIf(processedAtMin.HasValue, e => e.DocumentAssignment.ProcessedAt >= processedAtMin!.Value).WhereIf(processedAtMax.HasValue, e => e.DocumentAssignment.ProcessedAt <= processedAtMax!.Value).WhereIf(isCurrent.HasValue, e => e.DocumentAssignment.IsCurrent == isCurrent).WhereIf(documentId != null && documentId != Guid.Empty, e => e.Document != null && e.Document.Id == documentId).WhereIf(workflowStepTemplateId != null && workflowStepTemplateId != Guid.Empty, e => e.WorkflowStepTemplate != null && e.WorkflowStepTemplate.Id == workflowStepTemplateId).WhereIf(receiverUserId != null && receiverUserId != Guid.Empty, e => e.ReceiverUser != null && e.ReceiverUser.Id == receiverUserId);
     }
 
-    public virtual async Task<List<DocumentAssignment>> GetListAsync(string? filterText = null, int? stepOrderMin = null, int? stepOrderMax = null, string? actionType = null, string? status = null, DateTime? assignedAtMin = null, DateTime? assignedAtMax = null, DateTime? processedAtMin = null, DateTime? processedAtMax = null, bool? isCurrent = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)
+    public virtual async Task<List<DocumentAssignment>> GetListAsync(string? filterText = null, int? stepOrderMin = null, int? stepOrderMax = null, string? actionType = null, string? status = null, DateTime? assignedAtMin = null, DateTime? assignedAtMax = null, DateTime? processedAtMin = null, DateTime? processedAtMax = null, bool? isCurrent = null, Guid? documentId = null, Guid? workflowStepTemplateId = null, Guid? receiverUserId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)
     {
-        var query = ApplyFilter((await GetQueryableAsync()), filterText, stepOrderMin, stepOrderMax, actionType, status, assignedAtMin, assignedAtMax, processedAtMin, processedAtMax, isCurrent);
+        // Join with Document table to filter out deleted documents
+        var query = from documentAssignment in (await GetDbSetAsync())
+                    join document in (await GetDbContextAsync()).Set<Document>() on documentAssignment.DocumentId equals document.Id into documents
+                    from document in documents.DefaultIfEmpty()
+                    where document != null && document.IsDeleted == false
+                    select documentAssignment;
+        
+        query = ApplyFilter(query, filterText, stepOrderMin, stepOrderMax, actionType, status, assignedAtMin, assignedAtMax, processedAtMin, processedAtMax, isCurrent, documentId, workflowStepTemplateId, receiverUserId);
         query = query.OrderBy(string.IsNullOrWhiteSpace(sorting) ? DocumentAssignmentConsts.GetDefaultSorting(false) : sorting);
         return await query.PageBy(skipCount, maxResultCount).ToListAsync(cancellationToken);
     }
@@ -79,8 +87,8 @@ public abstract class EfCoreDocumentAssignmentRepositoryBase : EfCoreRepository<
         return await query.LongCountAsync(GetCancellationToken(cancellationToken));
     }
 
-    protected virtual IQueryable<DocumentAssignment> ApplyFilter(IQueryable<DocumentAssignment> query, string? filterText = null, int? stepOrderMin = null, int? stepOrderMax = null, string? actionType = null, string? status = null, DateTime? assignedAtMin = null, DateTime? assignedAtMax = null, DateTime? processedAtMin = null, DateTime? processedAtMax = null, bool? isCurrent = null)
+    protected virtual IQueryable<DocumentAssignment> ApplyFilter(IQueryable<DocumentAssignment> query, string? filterText = null, int? stepOrderMin = null, int? stepOrderMax = null, string? actionType = null, string? status = null, DateTime? assignedAtMin = null, DateTime? assignedAtMax = null, DateTime? processedAtMin = null, DateTime? processedAtMax = null, bool? isCurrent = null, Guid? documentId = null, Guid? workflowStepTemplateId = null, Guid? receiverUserId = null)
     {
-        return query.WhereIf(!string.IsNullOrWhiteSpace(filterText), e => e.ActionType!.Contains(filterText!) || e.Status!.Contains(filterText!)).WhereIf(stepOrderMin.HasValue, e => e.StepOrder >= stepOrderMin!.Value).WhereIf(stepOrderMax.HasValue, e => e.StepOrder <= stepOrderMax!.Value).WhereIf(!string.IsNullOrWhiteSpace(actionType), e => e.ActionType.Contains(actionType)).WhereIf(!string.IsNullOrWhiteSpace(status), e => e.Status.Contains(status)).WhereIf(assignedAtMin.HasValue, e => e.AssignedAt >= assignedAtMin!.Value).WhereIf(assignedAtMax.HasValue, e => e.AssignedAt <= assignedAtMax!.Value).WhereIf(processedAtMin.HasValue, e => e.ProcessedAt >= processedAtMin!.Value).WhereIf(processedAtMax.HasValue, e => e.ProcessedAt <= processedAtMax!.Value).WhereIf(isCurrent.HasValue, e => e.IsCurrent == isCurrent);
+        return query.WhereIf(!string.IsNullOrWhiteSpace(filterText), e => e.ActionType!.Contains(filterText!) || e.Status!.Contains(filterText!)).WhereIf(stepOrderMin.HasValue, e => e.StepOrder >= stepOrderMin!.Value).WhereIf(stepOrderMax.HasValue, e => e.StepOrder <= stepOrderMax!.Value).WhereIf(!string.IsNullOrWhiteSpace(actionType), e => e.ActionType.Contains(actionType)).WhereIf(!string.IsNullOrWhiteSpace(status), e => e.Status.Contains(status)).WhereIf(assignedAtMin.HasValue, e => e.AssignedAt >= assignedAtMin!.Value).WhereIf(assignedAtMax.HasValue, e => e.AssignedAt <= assignedAtMax!.Value).WhereIf(processedAtMin.HasValue, e => e.ProcessedAt >= processedAtMin!.Value).WhereIf(processedAtMax.HasValue, e => e.ProcessedAt <= processedAtMax!.Value).WhereIf(isCurrent.HasValue, e => e.IsCurrent == isCurrent).WhereIf(documentId != null && documentId != Guid.Empty, e => e.DocumentId == documentId).WhereIf(workflowStepTemplateId != null && workflowStepTemplateId != Guid.Empty, e => e.WorkflowStepTemplateId == workflowStepTemplateId).WhereIf(receiverUserId != null && receiverUserId != Guid.Empty, e => e.ReceiverUserId == receiverUserId);
     }
 }

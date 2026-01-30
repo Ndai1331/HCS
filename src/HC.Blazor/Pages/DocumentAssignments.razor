@@ -334,6 +334,10 @@
                             {
                                 <small class="badge bg-danger me-1"> @L["Rejected"]</small>
                             }
+                            else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.REVOKED.ToString())
+                            {
+                                <small class="badge bg-danger me-1"> @L["Revoked"]</small>
+                            }
                       </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"

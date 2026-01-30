@@ -39,3 +39,14 @@ DocumentAssignments.ReceiverUserId = user chỉ định
 4. Xem document thì tạo 1 blazor page mới làm giống trang DocumentDetail -> ViewDocumentDetail (chỉ xem thông tin và file ko cho phép sửa xoá)
 
 
+====== XOÁ VĂN BẢN & Thu hồi văn bản từ blazor page /manage-documents
+1. Khi xoá văn bản hiện modal 2 radio option : 1 xoá văn bản, 2 Thu hồi văn bản kèm thông báo  
+2. Chọn xoá thì vẫn giữ logic xoá, DocumentAssignment (thêm filter từ repo với điều kiện Document.IsDeleted = false)
+3. Chọn thu hồi văn bản và thông báo 
+  - Không delete văn bản
+  - Gửi thông báo tới all DocumentAssignment.ReceiverUserId có DocumentId == DocumentId thu hồi (Tạo thông báo mới về việc thu hồi văn bản tiếng anh,tiếng việt)
+  - DocumentAssignment tìm documentId tương ứng (update Status = Revoke) 
+  - ViewDocumentDetail: DocumentAssignment.ReceiverUserId == CurrentUserId && DocumentAssignment.DocumentId  == DocumentId && DocumentAssignment.Status = Revoke thì show message Văn bản đã bị thu hồi 
+  - DocumentHistory : Comment là thu hồi văn bản Name bởi người dùng abc 
+
+4. Văn bản bị xoá ở bảng Documents thì qua bên DocumentAssignment ko cần load văn bản đó ra hiện đang lỗi logic get văn bản đã bị xoá 
