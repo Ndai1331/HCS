@@ -7,6 +7,7 @@
 @using HC.Shared
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.Localization
+@using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
 @using Microsoft.AspNetCore.Components.Web
 @using Blazorise
 @using Volo.Abp.BlazoriseUI
@@ -17,10 +18,13 @@
 @using Volo.Abp.AspNetCore.Components.Messages
 @using Volo.Abp.AspNetCore.Components.Web
 @using HC.Blazor.Components.Charts
+@using Volo.Abp.Http.Client
 @inherits HCComponentBase
 @inject ISurveyResultsAppService SurveyResultsAppService
 @inject ISurveyLocationsAppService SurveyLocationsAppService
+@inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
 @inject IUiMessageService UiMessageService
+@inject NavigationManager NavigationManager
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 
 @* ************************* PAGE HEADER ************************* *@

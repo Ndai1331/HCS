@@ -990,6 +990,10 @@
     "MaxStepOrder" : "Thứ tự bước tối đa",
     "MaxAssignedAt" : "Ngày giao tối đa",
     "MaxProcessedAt" : "Ngày xử lý tối đa",
-    "ViewDocumentDetail" : "Xem chi tiết văn bản"
+    "ViewDocumentDetail" : "Xem chi tiết văn bản",
+    "FileNotFound": "Không tìm thấy tập tin",
+    "NotAPdfFile": "Đây không phải là tệp PDF",
+    "NoPdfAvailable": "Không có PDF để hiển thị",
+    "NoPdfFileInDocument": "Không tìm thấy tệp PDF trong văn bản này"
   }
 }

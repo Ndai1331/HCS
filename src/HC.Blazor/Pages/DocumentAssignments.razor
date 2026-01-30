@@ -281,7 +281,8 @@
              
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="DocumentAssignment.StepOrder"
-                      Caption="@L["StepOrder"]">
+                      Caption="@L["StepOrder"]"
+                      Width="150px">
 
                        <DisplayTemplate> 
                             @if(context.DocumentAssignment.StepOrder == (int)DocumentAssignmentStepOrder.ORIGINAL)
@@ -300,7 +301,8 @@
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="DocumentAssignment.ActionType"
-                      Caption="@L["ActionType"]">
+                      Caption="@L["ActionType"]"
+                      Width="150px">
                       <DisplayTemplate> 
                             @if(context.DocumentAssignment.ActionType == DocumentAssignmentActionType.PROCESS.ToString())
                             {
@@ -336,21 +338,21 @@
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="DocumentAssignment.AssignedAt"
-                      Caption="@L["AssignedAt"]">
+                      Caption="@L["AssignedAt"]" Width="150px">
                   <DisplayTemplate>
                         @context.DocumentAssignment.AssignedAt.ToString("dd/MM/yyyy HH:mm")
                   </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="DocumentAssignment.ProcessedAt"
-                      Caption="@L["ProcessedAt"]">
+                      Caption="@L["ProcessedAt"]" Width="150px">
                   <DisplayTemplate>
                         @context.DocumentAssignment.ProcessedAt.ToString("dd/MM/yyyy HH:mm")
                   </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="DocumentAssignment.IsCurrent"
-                      Caption="@L["IsCurrent"]">
+                      Caption="@L["IsCurrent"]" Width="100px">
                     <DisplayTemplate>
                         @if (context.DocumentAssignment.IsCurrent)
                         {
@@ -368,26 +370,26 @@
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="WorkflowStepTemplate.Name"
-                      Caption="@L["WorkflowStepTemplate"]">
+                      Caption="@L["WorkflowStepTemplate"]" Width="150px">
               </DataGridColumn>
               @* <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="ReceiverUser.Name"
                       Caption="@L["ReceiverUser"]">
               </DataGridColumn> *@
 
-                 <DataGridEntityActionsColumn TItem="DocumentAssignmentWithNavigationPropertiesDto" @ref="@EntityActionsColumn">
-                    <DisplayTemplate>
-                        <div class="d-flex gap-1">
-                               <Button
-                                    Color="Color.Secondary"
-                                    Outline
-                                    Size="Size.Small"
-                                    Title="@L["View"]"
-                                    Clicked="@(() => NavigationManager.NavigateTo("/view-document-detail/" + context.DocumentAssignment.Id))">
-                                    <Icon Name="IconName.Eye" />
-                            </Button>
-                        </div>
-                    </DisplayTemplate>
+                <DataGridEntityActionsColumn TItem="DocumentAssignmentWithNavigationPropertiesDto" @ref="@EntityActionsColumn">
+                <DisplayTemplate>
+                    <div class="d-flex gap-1">
+                            <Button
+                                Color="Color.Secondary"
+                                Outline
+                                Size="Size.Small"
+                                Title="@L["View"]"
+                                Clicked="@(() => NavigationManager.NavigateTo("/view-document-detail/" + context.DocumentAssignment.DocumentId))">
+                                <Icon Name="IconName.Eye" />
+                        </Button>
+                    </div>
+                </DisplayTemplate>
                 </DataGridEntityActionsColumn>
             </DataGridColumns>
         </DataGrid>

@@ -9,6 +9,8 @@ using HC.SurveyLocations;
 using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.Http.Client;
+using System.Globalization;
 
 namespace HC.Blazor.Pages;
 
@@ -67,14 +69,18 @@ public partial class SurveyResults
     protected List<double> CriteriaAverageRatingsData => Statistics?.CriteriaAverageRatings?.Values.ToList() ?? new();
     protected List<string> CriteriaAverageRatingsColors => Statistics?.CriteriaAverageRatings?.Keys.Count() > 0 ?
     Enumerable.Repeat("#3498db", Statistics.CriteriaAverageRatings.Keys.Count()).ToList() : new();
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        pieChartId = $"ratingDistributionChart-{Guid.NewGuid()}";
-        barChartId = $"criteriaAverageRatingChart-{Guid.NewGuid()}";
-        await SetToolbarItemsAsync();
-        await SetBreadcrumbItemsAsync();
-        await LoadSurveyLocationsAsync();
-        IsLoading = false;
+        if (firstRender)
+        {
+            pieChartId = $"ratingDistributionChart-{Guid.NewGuid()}";
+            barChartId = $"criteriaAverageRatingChart-{Guid.NewGuid()}";
+            await SetToolbarItemsAsync();
+            await SetBreadcrumbItemsAsync();
+            await LoadSurveyLocationsAsync();
+            IsLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     protected virtual ValueTask SetBreadcrumbItemsAsync()
@@ -134,25 +140,19 @@ public partial class SurveyResults
             await InvokeAsync(StateHasChanged);
         }
     }
-
-    protected virtual async Task DownloadAsExcelAsync()
+    private async Task DownloadAsExcelAsync()
     {
-        try
+        var token = (await SurveyResultsAppService.GetDownloadTokenAsync()).Token;
+        var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("HC") ?? 
+        await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
+        var culture = CultureInfo.CurrentUICulture.Name ?? CultureInfo.CurrentCulture.Name;
+        if (!culture.IsNullOrEmpty())
         {
-            var filter = new SurveyResultExcelDownloadDto
-            {
-                FilterText = string.Empty
-            };
-
-            var remoteStreamContent = await SurveyResultsAppService.GetListAsExcelFileAsync(filter);
-            var fileStream = remoteStreamContent.GetStream();
-            var fileName = $"survey_results_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
-
-            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(((System.IO.MemoryStream)fileStream).ToArray()));
+            culture = "&culture=" + culture;
         }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
+
+        await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
+        NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/survey-results/as-excel-file?DownloadToken={token}&SurveyLocationId={SelectedSurveyLocationId}", forceLoad: true);
     }
+
 }

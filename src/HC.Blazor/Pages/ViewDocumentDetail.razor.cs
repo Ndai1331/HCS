@@ -51,14 +51,8 @@ public partial class ViewDocumentDetail
     private IReadOnlyList<DocumentFileWithNavigationPropertiesDto> DocumentFilesList { get; set; } = new List<DocumentFileWithNavigationPropertiesDto>();
 
     // PDF viewer
-    private string? PdfFileUrl { get; set; }
-    private Modal PdfViewerModal { get; set; } = new Modal();
-
-    protected override async Task OnInitializedAsync()
-    {
-        await SetBreadcrumbItemsAsync();
-        await SetToolbarItemsAsync();
-    }
+    private string? PdfFileUrl { get; set; } = "https://pdfobject.com/pdf/sample.pdf";
+    private bool IsPdfAvailable { get; set; } = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -74,6 +68,9 @@ public partial class ViewDocumentDetail
                 await LoadDocumentAsync();
             }
 
+            await SetBreadcrumbItemsAsync();
+            await SetToolbarItemsAsync();
+
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -87,10 +84,9 @@ public partial class ViewDocumentDetail
 
     protected virtual ValueTask SetToolbarItemsAsync()
     {
-        Toolbar.AddButton(L["Back"], () =>
+        Toolbar.AddButton(L["Back"], async () =>
         {
             NavigationManager.NavigateTo("/document-assignments");
-            return  Task.CompletedTask;
         }, IconName.ArrowLeft);
 
         return ValueTask.CompletedTask;
@@ -111,6 +107,9 @@ public partial class ViewDocumentDetail
 
             // Load document files
             await LoadDocumentFilesAsync();
+
+            // Load PDF URL if file exists and is PDF
+            await LoadPdfUrlAsync();
         }
         catch (Exception ex)
         {
@@ -218,10 +217,11 @@ public partial class ViewDocumentDetail
         return null;
     }
 
-    private async Task<LookupDto<Guid>?> GetUnitByIdAsync(Guid id)
+    private async Task<LookupDto<Guid>?> GetUnitByIdAsync(Guid? id)
     {
+        if (!id.HasValue) return null;
         var result = await DocumentsAppService.GetUnitLookupAsync(new LookupRequestDto { Filter = "" });
-        return result.Items.FirstOrDefault(x => x.Id == id);
+        return result.Items.FirstOrDefault(x => x.Id == id.Value);
     }
 
     private async Task LoadDisplayNamesAsync()
@@ -258,9 +258,9 @@ public partial class ViewDocumentDetail
             StatusName = statusData?.DisplayName;
         }
 
-        if (DocumentData.UnitId != default && DocumentData.UnitId.HasValue)
+        if (DocumentData.UnitId.HasValue)
         {
-            var unitData = await GetUnitByIdAsync(DocumentData.UnitId.Value);
+            var unitData = await GetUnitByIdAsync(DocumentData.UnitId);
             UnitName = unitData?.DisplayName;
         }
     }
@@ -283,30 +283,97 @@ public partial class ViewDocumentDetail
         }
     }
 
-    private async Task ViewFileAsync(DocumentFileDto file)
+    // Load PDF URL for viewer
+    private async Task LoadPdfUrlAsync()
     {
+        IsPdfAvailable = false;
+        PdfFileUrl = null;
+
+        // Check if there's a file in DocumentFilesList
+        var firstFile = DocumentFilesList.FirstOrDefault();
+        if (firstFile == null || string.IsNullOrEmpty(firstFile.DocumentFile.Path))
+        {
+            return;
+        }
+
+        // Check if file is PDF
+        if (!IsPdfFileExtension(firstFile.DocumentFile.Name))
+        {
+            return;
+        }
+
         try
         {
-            if (string.IsNullOrEmpty(file.Path))
-            {
-                await UiMessageService.Warn(L["FileNotFound"]);
-                return;
-            }
-            var fileStream = await BlobContainer.GetAllBytesOrNullAsync(file.Path ?? "");
+            // Get file bytes from MinIO
+            var fileBytes = await BlobContainer.GetAllBytesAsync(firstFile.DocumentFile.Path);
+            
+            // Create data URL for PDF
+            var base64 = Convert.ToBase64String(fileBytes);
+            PdfFileUrl = $"data:application/pdf;base64,{base64}";
+            IsPdfAvailable = true;
+        }
+        catch (Exception ex)
+        {
+            // File not found or other error - hide PDF viewer
+            IsPdfAvailable = false;
+            PdfFileUrl = null;
+        }
+    }
+
+    private bool IsPdfFileExtension(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            return false;
+        
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension == ".pdf";
+    }
+
+    private async Task ViewFileAsync(DocumentFileDto file)
+    {
+        // Load the selected file into PDF viewer
+        if (string.IsNullOrEmpty(file.Path))
+        {
+            await UiMessageService.Warn(L["FileNotFound"]);
+            IsPdfAvailable = false;
+            PdfFileUrl = null;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        if (!IsPdfFileExtension(file.Name))
+        {
+            await UiMessageService.Warn(L["NotAPdfFile"]);
+            IsPdfAvailable = false;
+            PdfFileUrl = null;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        try
+        {
+            var fileStream = await BlobContainer.GetAllBytesOrNullAsync(file.Path);
             if (fileStream != null)
             {
                 var base64 = Convert.ToBase64String(fileStream);
                 PdfFileUrl = $"data:application/pdf;base64,{base64}";
-                await PdfViewerModal.Show();
+                IsPdfAvailable = true;
+                await InvokeAsync(StateHasChanged);
             }
             else
             {
                 await UiMessageService.Warn(L["FileNotFound"]);
+                IsPdfAvailable = false;
+                PdfFileUrl = null;
+                await InvokeAsync(StateHasChanged);
             }
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+            IsPdfAvailable = false;
+            PdfFileUrl = null;
+            await InvokeAsync(StateHasChanged);
         }
     }
 

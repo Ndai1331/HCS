@@ -1,6 +1,8 @@
+using System;
+
 namespace HC.SurveyResults;
 
 public class GetSurveyResultsInput : GetSurveyResultsInputBase
 {
-    //Write your custom code here...
+    public Guid? SurveyLocationId { get; set; }
 }

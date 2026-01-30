@@ -15,6 +15,7 @@ public abstract class SurveyResultExcelDownloadDtoBase
     public Guid? SurveyCriteriaId { get; set; }
 
     public Guid? SurveySessionId { get; set; }
+    public Guid? SurveyLocationId { get; set; }
 
     public SurveyResultExcelDownloadDtoBase()
     {

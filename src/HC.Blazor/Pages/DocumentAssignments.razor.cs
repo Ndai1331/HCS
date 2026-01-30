@@ -24,7 +24,7 @@ namespace HC.Blazor.Pages;
 
 public partial class DocumentAssignments
 {
-    protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems = new List<Volo.Abp.BlazoriseUI.BreadcrumbItem>();
+    protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems { get; set; } = new();
 
     protected PageToolbar Toolbar { get; } = new PageToolbar();
     protected bool ShowAdvancedFilters { get; set; }
@@ -108,9 +108,6 @@ public partial class DocumentAssignments
         Toolbar.AddButton(L["ExportToExcel"], async () => {
             await DownloadAsExcelAsync();
         }, IconName.Download);
-        Toolbar.AddButton(L["NewDocumentAssignment"], async () => {
-            await OpenCreateDocumentAssignmentModalAsync();
-        }, IconName.Add, requiredPolicyName: HCPermissions.DocumentAssignments.Create);
         return ValueTask.CompletedTask;
     }
 

@@ -34,7 +34,6 @@
 @inject IDocumentsAppService DocumentsAppService
 @inject IDocumentFilesAppService DocumentFilesAppService
 @inject IMasterDatasAppService MasterDatasAppService
-@inject IUnitsAppService UnitsAppService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject NavigationManager NavigationManager
 @inject IMemoryCache __MemoryCache
@@ -52,6 +51,12 @@
     }
     .hc-field-value {
         color: #212529;
+        padding: 0.375rem 0.5rem;
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+        min-height: 38px;
+        display: flex;
+        align-items: center;
     }
 </style>
 
@@ -60,8 +65,8 @@
     <Card>
         <CardBody>
             <Row>
-                <!-- Left Column: Document Information -->
-                <Column ColumnSize="ColumnSize.Is12">
+                <!-- Left Column: Document Information (6 columns) -->
+                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <h5 class="mb-3">@L["DocumentInformation"]</h5>
                     
                     <Row>
@@ -80,46 +85,55 @@
                     </Row>
 
                     <Row>
-                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Column ColumnSize="ColumnSize.Is12">
                             <Field>
                                 <FieldLabel>@L["Title"]</FieldLabel>
                                 <div class="hc-field-value">@DocumentData.Title</div>
                             </Field>
                         </Column>
+                    </Row>
+
+                    <Row>
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                             <Field>
                                 <FieldLabel>@L["ImcommingDate"]</FieldLabel>
                                 <div class="hc-field-value">@DocumentData.IncommingDate.ToString("dd/MM/yyyy HH:mm")</div>
                             </Field>
                         </Column>
-                    </Row>
-
-                    <Row>
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                             <Field>
                                 <FieldLabel>@L["Type"]</FieldLabel>
                                 <div class="hc-field-value">@TypeName</div>
                             </Field>
                         </Column>
+                    </Row>
+
+                    <Row>
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                             <Field>
                                 <FieldLabel>@L["Field"]</FieldLabel>
                                 <div class="hc-field-value">@FieldName</div>
                             </Field>
                         </Column>
-                    </Row>
-
-                    <Row>
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                             <Field>
                                 <FieldLabel>@L["UrgencyLevel"]</FieldLabel>
                                 <div class="hc-field-value">@UrgencyLevelName</div>
                             </Field>
                         </Column>
+                    </Row>
+
+                    <Row>
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                             <Field>
                                 <FieldLabel>@L["SecrecyLevel"]</FieldLabel>
                                 <div class="hc-field-value">@SecrecyLevelName</div>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["CurrentStatus"]</FieldLabel>
+                                <div class="hc-field-value">@StatusName</div>
                             </Field>
                         </Column>
                     </Row>
@@ -127,19 +141,14 @@
                     <Row>
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                             <Field>
-                                <FieldLabel>@L["CurrentStatus"]</FieldLabel>
-                                <div class="hc-field-value">@StatusName</div>
-                            </Field>
-                        </Column>
-                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                            <Field>
                                 <FieldLabel>@L["Unit"]</FieldLabel>
                                 <div class="hc-field-value">@UnitName</div>
                             </Field>
                         </Column>
+                      
                     </Row>
-@* 
-                    @if (!string.IsNullOrWhiteSpace(DocumentData.Signer))
+
+                    @* @if (!string.IsNullOrWhiteSpace(DocumentData.Signer))
                     {
                         <Row>
                             <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
@@ -156,56 +165,82 @@
                             </Column>
                         </Row>
                     } *@
+
+                    <!-- Document Files Section -->
+                    <h5 class="mb-3 mt-3">@L["DocumentFiles"]</h5>
+                    @if (DocumentFilesList.Any())
+                    {
+                        <DataGrid TItem="DocumentFileWithNavigationPropertiesDto"
+                                  Data="DocumentFilesList"
+                                  ShowPager="false"
+                                  Responsive="true"
+                                  Class="mb-3">
+                            <DataGridColumns>
+                                <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto"
+                                                Field="DocumentFile.Name"
+                                                Caption="@L["FileName"]">
+                                </DataGridColumn>
+                                <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto"
+                                                Field="DocumentFile.CreationTime"
+                                                Caption="@L["CreationTime"]">
+                                    <DisplayTemplate>
+                                        @context.DocumentFile.CreationTime.ToString("dd/MM/yyyy HH:mm")
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto" Caption="@L["Actions"]">
+                                    <DisplayTemplate>
+                                        <div class="hc-action-icons">
+                                            <i class="bi bi-eye-fill hc-action-icon hc-action-view"
+                                               title="@L["View"]"
+                                               @onclick="@(() => ViewFileAsync(context.DocumentFile))"
+                                               style="cursor: pointer;"></i>
+                                            <i class="bi bi-download-fill hc-action-icon hc-action-download"
+                                               title="@L["Download"]"
+                                               @onclick="@(() => DownloadFileAsync(context.DocumentFile))"
+                                               style="cursor: pointer;"></i>
+                                        </div>
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                            </DataGridColumns>
+                        </DataGrid>
+                    }
+                    else
+                    {
+                        <Alert Color="Color.Info">
+                            <AlertMessage>@L["NoFilesAvailable"]</AlertMessage>
+                        </Alert>
+                    }
+                </Column>
+                
+                <!-- Right Column: PDF Viewer (6 columns) -->
+                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    @if (IsPdfAvailable && !string.IsNullOrEmpty(PdfFileUrl))
+                    {
+                        <PdfViewerContainer Height="Height.Rem(65)">
+                            <PdfViewerToolbar />
+                            <PdfViewer Source="@PdfFileUrl" />
+                        </PdfViewerContainer>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center justify-content-center" style="height: 65rem; background-color: #f8f9fa; border-radius: 0.25rem;">
+                            <div class="text-center">
+                                <Heading Size="HeadingSize.Is5" TextAlignment="TextAlignment.Center" Class="mb-3">@L["NoPdfAvailable"]</Heading>
+                                <Text TextAlignment="TextAlignment.Center" Class="text-muted">
+                                    @if (DocumentFilesList.Any())
+                                    {
+                                        @L["NoPdfFileInDocument"]
+                                    }
+                                    else
+                                    {
+                                        @L["NoFilesAvailable"]
+                                    }
+                                </Text>
+                            </div>
+                        </div>
+                    }
                 </Column>
             </Row>
-        </CardBody>
-    </Card>
-
-    <!-- Document Files Section -->
-    <Card class="mt-3">
-        <CardBody>
-            <h5 class="mb-3">@L["DocumentFiles"]</h5>
-            @if (DocumentFilesList.Any())
-            {
-                <DataGrid TItem="DocumentFileWithNavigationPropertiesDto"
-                          Data="DocumentFilesList"
-                          ShowPager="false"
-                          Responsive="true">
-                    <DataGridColumns>
-                        <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto"
-                                        Field="DocumentFile.FileName"
-                                        Caption="@L["FileName"]">
-                        </DataGridColumn>
-                        <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto"
-                                        Field="DocumentFile.CreationTime"
-                                        Caption="@L["CreationTime"]">
-                            <DisplayTemplate>
-                                @context.DocumentFile.CreationTime.ToString("dd/MM/yyyy HH:mm")
-                            </DisplayTemplate>
-                        </DataGridColumn>
-                        <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto" Caption="@L["Actions"]">
-                            <DisplayTemplate>
-                                <div class="hc-action-icons">
-                                    <i class="bi bi-eye-fill hc-action-icon hc-action-view"
-                                       title="@L["View"]"
-                                       @onclick="@(() => ViewFileAsync(context.DocumentFile))"
-                                       style="cursor: pointer;"></i>
-                                    <i class="bi bi-download-fill hc-action-icon hc-action-download"
-                                       title="@L["Download"]"
-                                       @onclick="@(() => DownloadFileAsync(context.DocumentFile))"
-                                       style="cursor: pointer;"></i>
-                                </div>
-                            </DisplayTemplate>
-                        </DataGridColumn>
-                    </DataGridColumns>
-                </DataGrid>
-            }
-            else
-            {
-                <Alert Color="Color.Info">
-                    <AlertMessage>@L["NoFilesAvailable"]</AlertMessage>
-                </Alert>
-            }
         </CardBody>
     </Card>
 }
@@ -219,25 +254,3 @@ else
         </CardBody>
     </Card>
 }
-
-<!-- PDF Viewer Modal -->
-<Modal @ref="PdfViewerModal">
-    <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
-        <ModalHeader>
-            <ModalTitle>@L["ViewFile"]</ModalTitle>
-            <CloseButton Clicked="@(() => PdfViewerModal.Hide())" />
-        </ModalHeader>
-        <ModalBody Style="height: 80vh;">
-            @if (!string.IsNullOrWhiteSpace(PdfFileUrl))
-            {
-                <PdfViewerContainer Height="Height.Rem(35)">
-                    <PdfViewerToolbar />
-                    <PdfViewer Source="@PdfFileUrl" />
-                </PdfViewerContainer>
-            }
-        </ModalBody>
-        <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="@(() => PdfViewerModal.Hide())">@L["Close"]</Button>
-        </ModalFooter>
-    </ModalContent>
-</Modal>

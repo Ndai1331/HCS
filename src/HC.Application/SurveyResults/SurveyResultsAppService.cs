@@ -43,8 +43,8 @@ public abstract class SurveyResultsAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<SurveyResultWithNavigationPropertiesDto>> GetListAsync(GetSurveyResultsInput input)
     {
-        var totalCount = await _surveyResultRepository.GetCountAsync(input.FilterText, input.RatingMin, input.RatingMax, input.SurveyCriteriaId, input.SurveySessionId);
-        var items = await _surveyResultRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.RatingMin, input.RatingMax, input.SurveyCriteriaId, input.SurveySessionId, input.Sorting, input.MaxResultCount, input.SkipCount);
+        var totalCount = await _surveyResultRepository.GetCountAsync(input.FilterText, input.RatingMin, input.RatingMax, input.SurveyCriteriaId, input.SurveySessionId, input.SurveyLocationId);
+        var items = await _surveyResultRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.RatingMin, input.RatingMax, input.SurveyCriteriaId, input.SurveySessionId, input.SurveyLocationId, input.Sorting, input.MaxResultCount, input.SkipCount);
         return new PagedResultDto<SurveyResultWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,
@@ -135,8 +135,13 @@ public abstract class SurveyResultsAppServiceBase : HCAppService
             throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
         }
 
-        var surveyResults = await _surveyResultRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.RatingMin, input.RatingMax, input.SurveyCriteriaId, input.SurveySessionId);
-        var items = surveyResults.Select(item => new { Rating = item.SurveyResult.Rating, SurveyCriteria = item.SurveyCriteria?.Name, SurveySession = item.SurveySession?.SessionDisplay, });
+        var surveyResults = await _surveyResultRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.RatingMin, input.RatingMax, input.SurveyCriteriaId, input.SurveySessionId, input.SurveyLocationId);
+        var items = surveyResults.Select(item => new {
+             Rating = item.SurveyResult.Rating,
+            SurveyCriteria = item.SurveyCriteria?.Name,
+            SurveySession = item.SurveySession?.SessionDisplay,
+            SurveyLocation = item.SurveyLocation?.Name,
+        });
         var memoryStream = new MemoryStream();
         await memoryStream.SaveAsAsync(items);
         memoryStream.Seek(0, SeekOrigin.Begin);

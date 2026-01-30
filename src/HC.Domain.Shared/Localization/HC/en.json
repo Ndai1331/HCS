@@ -938,6 +938,10 @@
     "Rejected": "Rejected",
     "Process": "Process",
     "Sign": "Sign",
-    "ViewDocumentDetail": "View Document Detail"
+    "ViewDocumentDetail": "View Document Detail",
+    "FileNotFound": "File not found",
+    "NotAPdfFile": "This is not a PDF file",
+    "NoPdfAvailable": "No PDF Available",
+    "NoPdfFileInDocument": "No PDF file found in this document"
   }
 }
