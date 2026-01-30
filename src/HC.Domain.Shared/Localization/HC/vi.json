@@ -229,6 +229,7 @@
     "Enum:SignMode.PARALLEL": "Song song",
     "Enum:WorkflowStepType.PROCESS": "Xử lý",
     "Enum:WorkflowStepType.SIGN": "Ký",
+    "Enum:WorkflowStepType.VIEW": "Xem",
     "Menu:Chats": "Chat nội bộ",
     "Menu:Notifications": "Thông báo",
     "Menu:Categories": "Danh mục",

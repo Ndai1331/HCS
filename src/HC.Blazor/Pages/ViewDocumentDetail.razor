@@ -1,0 +1,240 @@
+@page "/view-document-detail"
+@page "/view-document-detail/{DocumentId:guid}"
+@attribute [Authorize(HCPermissions.Documents.Default)]
+@using HC.Documents
+@using HC.DocumentFiles
+@using HC.Localization
+@using HC.Shared
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Caching.Memory
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.Components.Web
+@using Blazorise
+@using Blazorise.Components
+@using Volo.Abp.AspNetCore.Components.BlockUi
+@using Volo.Abp.AspNetCore.Components.Web
+@using Volo.Abp.BlazoriseUI
+@using Volo.Abp.BlazoriseUI.Components
+@using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
+@using HC.Permissions
+@using HC.MasterDatas
+@using HC.Units
+@using Microsoft.AspNetCore.Components
+@using System.IO
+@using System.Security.Cryptography
+@using System.Text
+@using Blazorise.PdfViewer
+@using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars
+@using Volo.Abp.Http.Client
+@inherits HCComponentBase
+@inject IDocumentsAppService DocumentsAppService
+@inject IDocumentFilesAppService DocumentFilesAppService
+@inject IMasterDatasAppService MasterDatasAppService
+@inject IUnitsAppService UnitsAppService
+@inject AbpBlazorMessageLocalizerHelper<HCResource> LH
+@inject NavigationManager NavigationManager
+@inject IMemoryCache __MemoryCache
+@inject Volo.Abp.BlobStoring.IBlobContainer BlobContainer
+@inject IJSRuntime JSRuntime
+@inject IUiMessageService UiMessageService
+
+<PageHeader Title="@PageTitle" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
+</PageHeader>
+
+<style>
+    .hc-field-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    .hc-field-value {
+        color: #212529;
+    }
+</style>
+
+@if (DocumentData != null)
+{
+    <Card>
+        <CardBody>
+            <Row>
+                <!-- Left Column: Document Information -->
+                <Column ColumnSize="ColumnSize.Is12">
+                    <h5 class="mb-3">@L["DocumentInformation"]</h5>
+                    
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["DocumentNumber"]</FieldLabel>
+                                <div class="hc-field-value">@DocumentData.No</div>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["StorageNumber"]</FieldLabel>
+                                <div class="hc-field-value">@DocumentData.StorageNumber</div>
+                            </Field>
+                        </Column>
+                    </Row>
+
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Title"]</FieldLabel>
+                                <div class="hc-field-value">@DocumentData.Title</div>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["ImcommingDate"]</FieldLabel>
+                                <div class="hc-field-value">@DocumentData.IncommingDate.ToString("dd/MM/yyyy HH:mm")</div>
+                            </Field>
+                        </Column>
+                    </Row>
+
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Type"]</FieldLabel>
+                                <div class="hc-field-value">@TypeName</div>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Field"]</FieldLabel>
+                                <div class="hc-field-value">@FieldName</div>
+                            </Field>
+                        </Column>
+                    </Row>
+
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["UrgencyLevel"]</FieldLabel>
+                                <div class="hc-field-value">@UrgencyLevelName</div>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["SecrecyLevel"]</FieldLabel>
+                                <div class="hc-field-value">@SecrecyLevelName</div>
+                            </Field>
+                        </Column>
+                    </Row>
+
+                    <Row>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["CurrentStatus"]</FieldLabel>
+                                <div class="hc-field-value">@StatusName</div>
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                            <Field>
+                                <FieldLabel>@L["Unit"]</FieldLabel>
+                                <div class="hc-field-value">@UnitName</div>
+                            </Field>
+                        </Column>
+                    </Row>
+@* 
+                    @if (!string.IsNullOrWhiteSpace(DocumentData.Signer))
+                    {
+                        <Row>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Signer"]</FieldLabel>
+                                    <div class="hc-field-value">@DocumentData.Signer</div>
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["SignPosition"]</FieldLabel>
+                                    <div class="hc-field-value">@DocumentData.SignPosition</div>
+                                </Field>
+                            </Column>
+                        </Row>
+                    } *@
+                </Column>
+            </Row>
+        </CardBody>
+    </Card>
+
+    <!-- Document Files Section -->
+    <Card class="mt-3">
+        <CardBody>
+            <h5 class="mb-3">@L["DocumentFiles"]</h5>
+            @if (DocumentFilesList.Any())
+            {
+                <DataGrid TItem="DocumentFileWithNavigationPropertiesDto"
+                          Data="DocumentFilesList"
+                          ShowPager="false"
+                          Responsive="true">
+                    <DataGridColumns>
+                        <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto"
+                                        Field="DocumentFile.FileName"
+                                        Caption="@L["FileName"]">
+                        </DataGridColumn>
+                        <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto"
+                                        Field="DocumentFile.CreationTime"
+                                        Caption="@L["CreationTime"]">
+                            <DisplayTemplate>
+                                @context.DocumentFile.CreationTime.ToString("dd/MM/yyyy HH:mm")
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                        <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto" Caption="@L["Actions"]">
+                            <DisplayTemplate>
+                                <div class="hc-action-icons">
+                                    <i class="bi bi-eye-fill hc-action-icon hc-action-view"
+                                       title="@L["View"]"
+                                       @onclick="@(() => ViewFileAsync(context.DocumentFile))"
+                                       style="cursor: pointer;"></i>
+                                    <i class="bi bi-download-fill hc-action-icon hc-action-download"
+                                       title="@L["Download"]"
+                                       @onclick="@(() => DownloadFileAsync(context.DocumentFile))"
+                                       style="cursor: pointer;"></i>
+                                </div>
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                    </DataGridColumns>
+                </DataGrid>
+            }
+            else
+            {
+                <Alert Color="Color.Info">
+                    <AlertMessage>@L["NoFilesAvailable"]</AlertMessage>
+                </Alert>
+            }
+        </CardBody>
+    </Card>
+}
+else
+{
+    <Card>
+        <CardBody>
+            <div class="text-center py-5">
+                <Heading Size="HeadingSize.Is4" TextAlignment="TextAlignment.Center">@L["NoDataAvailable"]</Heading>
+            </div>
+        </CardBody>
+    </Card>
+}
+
+<!-- PDF Viewer Modal -->
+<Modal @ref="PdfViewerModal">
+    <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
+        <ModalHeader>
+            <ModalTitle>@L["ViewFile"]</ModalTitle>
+            <CloseButton Clicked="@(() => PdfViewerModal.Hide())" />
+        </ModalHeader>
+        <ModalBody Style="height: 80vh;">
+            @if (!string.IsNullOrWhiteSpace(PdfFileUrl))
+            {
+                <PdfViewerContainer Height="Height.Rem(35)">
+                    <PdfViewerToolbar />
+                    <PdfViewer Source="@PdfFileUrl" />
+                </PdfViewerContainer>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@(() => PdfViewerModal.Hide())">@L["Close"]</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>

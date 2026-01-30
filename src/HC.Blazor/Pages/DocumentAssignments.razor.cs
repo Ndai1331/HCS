@@ -84,6 +84,8 @@ public partial class DocumentAssignments
     protected override async Task OnInitializedAsync()
     {
         await SetPermissionsAsync();
+        // Set ReceiverUserId filter to current user
+        Filter.ReceiverUserId = CurrentUser.Id;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -139,6 +141,7 @@ public partial class DocumentAssignments
         Filter.MaxResultCount = PageSize;
         Filter.SkipCount = (CurrentPage - 1) * PageSize;
         Filter.Sorting = CurrentSorting;
+        Filter.ReceiverUserId = CurrentUser.Id; // Ensure filter is set to current user
         var result = await DocumentAssignmentsAppService.GetListAsync(Filter);
         DocumentAssignmentList = result.Items;
         TotalCount = (int)result.TotalCount;
@@ -410,5 +413,10 @@ public partial class DocumentAssignments
         SelectedDocumentAssignments.Clear();
         AllDocumentAssignmentsSelected = false;
         await GetDocumentAssignmentsAsync();
+    }
+
+    private void ViewDocumentAsync(DocumentAssignmentWithNavigationPropertiesDto input)
+    {
+        NavigationManager.NavigateTo($"/view-document-detail/{input.DocumentAssignment.DocumentId}");
     }
 }

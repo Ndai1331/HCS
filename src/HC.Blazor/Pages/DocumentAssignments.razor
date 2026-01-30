@@ -1,7 +1,6 @@
 @page "/document-assignments"
 @attribute [Authorize(HCPermissions.DocumentAssignments.Default)]
 @using HC.DocumentAssignments
-@using HC.DocumentAssignments
 @using HC.Localization
 @using HC.Shared
 @using Microsoft.AspNetCore.Authorization
@@ -334,6 +333,10 @@
                 <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto" Caption="@L["Actions"]">
                     <DisplayTemplate>
                         <div class="hc-action-icons">
+                            <i class="bi bi-eye-fill hc-action-icon hc-action-view" 
+                               title="@L["View"]"
+                               @onclick="@(() => ViewDocumentAsync(context))"
+                               style="cursor: pointer;"></i>
                             @if (CanEditDocumentAssignment)
                             {
                                 <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 

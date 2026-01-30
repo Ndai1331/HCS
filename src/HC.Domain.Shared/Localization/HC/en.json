@@ -428,6 +428,7 @@
     "Enum:SignMode.PARALLEL": "Parallel",
     "Enum:WorkflowStepType.PROCESS": "Process",
     "Enum:WorkflowStepType.SIGN": "Sign",
+    "Enum:WorkflowStepType.VIEW": "View",
     "Menu:PersonalCalendars": "Personal calendars",
     "Menu:ProjectAndTaskCalendars": "Project and task calendars",
     "Menu:EventManagements": "Event management",
