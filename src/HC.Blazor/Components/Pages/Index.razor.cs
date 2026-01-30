@@ -9,6 +9,7 @@ using HC.CalendarEvents;
 using HC.Documents;
 using HC.NotificationReceivers;
 using HC.Notifications;
+using HC.DocumentAssignments;
 using Humanizer;
 
 namespace HC.Blazor.Components.Pages;
@@ -23,6 +24,7 @@ public partial class Index
     [Inject] private ICalendarEventsAppService CalendarEventsAppService { get; set; } = default!;
     [Inject] private IDocumentsAppService DocumentsAppService { get; set; } = default!;
     [Inject] private INotificationReceiversAppService NotificationReceiversAppService { get; set; } = default!;
+    [Inject] private IDocumentAssignmentsAppService DocumentAssignmentsAppService { get; set; } = default!;
 
     // Active Projects data
     private List<ProjectWithNavigationPropertiesDto> ActiveProjectsList { get; set; } = new();
@@ -36,8 +38,8 @@ public partial class Index
     // Calendar events data
     private List<CalendarEventDto> CalendarEventsList { get; set; } = new();
 
-    // Documents data
-    private List<DocumentWithNavigationPropertiesDto> RecentDocumentsList { get; set; } = new();
+    // Documents data - Loaded from DocumentAssignment for the current user
+    private List<DocumentAssignmentWithNavigationPropertiesDto> RecentDocumentsList { get; set; } = new();
 
     // Notifications data
     private List<NotificationReceiverWithNavigationPropertiesDto> RecentNotificationsList { get; set; } = new();
@@ -163,16 +165,17 @@ public partial class Index
     {
         try
         {
-            var result = await DocumentsAppService.GetListAsync(new GetDocumentsInput
+            // Load documents assigned to current user from DocumentAssignment
+            var result = await DocumentAssignmentsAppService.GetListAsync(new GetDocumentAssignmentsInput
             {
-                CreatorId = CurrentUser.Id,
+                ReceiverUserId = CurrentUser.Id,
                 MaxResultCount = 10,
                 SkipCount = 0,
-                Sorting = "Document.CreationTime DESC"
+                Sorting = "DocumentAssignment.CreationTime DESC"
             });
 
             RecentDocumentsList = result.Items.ToList();
-            LastDocumentTimeAgo = result.Items.Any() ? result.Items.Last().Document.CreationTime.Humanize() : string.Empty;
+            LastDocumentTimeAgo = result.Items.Any() ? result.Items.Last().DocumentAssignment.CreationTime.Humanize() : string.Empty;
         }
         catch (Exception ex)
         {
