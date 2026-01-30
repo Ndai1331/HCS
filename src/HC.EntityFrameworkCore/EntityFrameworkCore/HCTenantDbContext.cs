@@ -165,20 +165,6 @@ public class HCTenantDbContext : HCDbContextBase<HCTenantDbContext>
             b.HasOne<WorkflowTemplate>().WithMany().IsRequired().HasForeignKey(x => x.WorkflowTemplateId).OnDelete(DeleteBehavior.NoAction);
             b.HasOne<WorkflowStepTemplate>().WithMany().IsRequired().HasForeignKey(x => x.CurrentStepId).OnDelete(DeleteBehavior.NoAction);
         });
-        builder.Entity<DocumentAssignment>(b => {
-            b.ToTable(HCConsts.DbTablePrefix + "DocumentAssignments", HCConsts.DbSchema);
-            b.ConfigureByConvention();
-            b.Property(x => x.TenantId).HasColumnName(nameof(DocumentAssignment.TenantId));
-            b.Property(x => x.StepOrder).HasColumnName(nameof(DocumentAssignment.StepOrder)).HasMaxLength(DocumentAssignmentConsts.StepOrderMaxLength);
-            b.Property(x => x.ActionType).HasColumnName(nameof(DocumentAssignment.ActionType)).IsRequired().HasMaxLength(DocumentAssignmentConsts.ActionTypeMaxLength);
-            b.Property(x => x.Status).HasColumnName(nameof(DocumentAssignment.Status)).IsRequired().HasMaxLength(DocumentAssignmentConsts.StatusMaxLength);
-            b.Property(x => x.AssignedAt).HasColumnName(nameof(DocumentAssignment.AssignedAt));
-            b.Property(x => x.ProcessedAt).HasColumnName(nameof(DocumentAssignment.ProcessedAt));
-            b.Property(x => x.IsCurrent).HasColumnName(nameof(DocumentAssignment.IsCurrent));
-            b.HasOne<Document>().WithMany().IsRequired().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.NoAction);
-            b.HasOne<WorkflowStepTemplate>().WithMany().IsRequired().HasForeignKey(x => x.StepId).OnDelete(DeleteBehavior.NoAction);
-            b.HasOne<IdentityUser>().WithMany().IsRequired().HasForeignKey(x => x.ReceiverUserId).OnDelete(DeleteBehavior.NoAction);
-        });
         builder.Entity<DocumentHistory>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "DocumentHistories", HCConsts.DbSchema);
             b.ConfigureByConvention();
@@ -431,6 +417,20 @@ public class HCTenantDbContext : HCDbContextBase<HCTenantDbContext>
             b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.TypeId).OnDelete(DeleteBehavior.NoAction);
             b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.UrgencyLevelId).OnDelete(DeleteBehavior.NoAction);
             b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.SecrecyLevelId).OnDelete(DeleteBehavior.NoAction);
+        });
+        builder.Entity<DocumentAssignment>(b => {
+            b.ToTable(HCConsts.DbTablePrefix + "DocumentAssignments", HCConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.TenantId).HasColumnName(nameof(DocumentAssignment.TenantId));
+            b.Property(x => x.StepOrder).HasColumnName(nameof(DocumentAssignment.StepOrder)).HasMaxLength(DocumentAssignmentConsts.StepOrderMaxLength);
+            b.Property(x => x.ActionType).HasColumnName(nameof(DocumentAssignment.ActionType)).IsRequired().HasMaxLength(DocumentAssignmentConsts.ActionTypeMaxLength);
+            b.Property(x => x.Status).HasColumnName(nameof(DocumentAssignment.Status)).IsRequired().HasMaxLength(DocumentAssignmentConsts.StatusMaxLength);
+            b.Property(x => x.AssignedAt).HasColumnName(nameof(DocumentAssignment.AssignedAt));
+            b.Property(x => x.ProcessedAt).HasColumnName(nameof(DocumentAssignment.ProcessedAt));
+            b.Property(x => x.IsCurrent).HasColumnName(nameof(DocumentAssignment.IsCurrent));
+            b.HasOne<Document>().WithMany().IsRequired().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.NoAction);
+            b.HasOne<WorkflowStepTemplate>().WithMany().HasForeignKey(x => x.WorkflowStepTemplateId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<IdentityUser>().WithMany().IsRequired().HasForeignKey(x => x.ReceiverUserId).OnDelete(DeleteBehavior.NoAction);
         });
     }
 }

@@ -168,12 +168,12 @@
                     <Field>
                         <FieldLabel>@L["WorkflowStepTemplate"]</FieldLabel>
                         <Select TValue="Guid?"
-		SelectedValue="@Filter.StepId"
-		SelectedValueChanged="@OnStepIdChangedAsync">
+		SelectedValue="@Filter.WorkflowStepTemplateId"
+		SelectedValueChanged="@OnWorkflowStepTemplateIdChangedAsync">
 <SelectItem></SelectItem>
 @foreach(var item in WorkflowStepTemplatesCollection)
 {
-	<SelectItem TValue="Guid" Value="@item.Id">
+	<SelectItem TValue="Guid?" Value="@item.Id">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -278,30 +278,74 @@
                 {
                     <DataGridMultiSelectColumn TItem="DocumentAssignmentWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
                 }
+             
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="DocumentAssignment.StepOrder"
                       Caption="@L["StepOrder"]">
+
+                       <DisplayTemplate> 
+                            @if(context.DocumentAssignment.StepOrder == (int)DocumentAssignmentStepOrder.ORIGINAL)
+                            {
+                                <small class="badge bg-info me-1"> @L["Original"]</small>
+                            }
+                            else if(context.DocumentAssignment.StepOrder == (int)DocumentAssignmentStepOrder.GENERATED)
+                            {
+                                <small class="badge bg-primary me-1"> @L["Generated"]</small>
+                            }
+                            else if(context.DocumentAssignment.StepOrder == (int)DocumentAssignmentStepOrder.SIGNED)
+                            {
+                                <small class="badge bg-success me-1"> @L["Signed"]</small>
+                            }
+                      </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="DocumentAssignment.ActionType"
                       Caption="@L["ActionType"]">
+                      <DisplayTemplate> 
+                            @if(context.DocumentAssignment.ActionType == DocumentAssignmentActionType.PROCESS.ToString())
+                            {
+                                <small class="badge bg-info me-1"> @L["Process"]</small>
+                            }
+                            else if(context.DocumentAssignment.ActionType == DocumentAssignmentActionType.SIGN.ToString())
+                            {
+                                <small class="badge bg-primary me-1"> @L["Sign"]</small>
+                            }
+                            else if(context.DocumentAssignment.ActionType == DocumentAssignmentActionType.VIEW.ToString())
+                            {
+                                <small class="badge bg-success me-1"> @L["View"]</small>
+                            }
+                      </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="DocumentAssignment.Status"
                       Caption="@L["Status"]">
+                      <DisplayTemplate>
+                            @if(context.DocumentAssignment.Status == DocumentAssignmentStatus.PENDING.ToString())
+                            {
+                                <small class="badge bg-warning me-1"> @L["Pending"]</small>
+                            }
+                            else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.DONE.ToString())
+                            {
+                                <small class="badge bg-success me-1"> @L["Done"]</small>
+                            }
+                            else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.REJECTED.ToString())
+                            {
+                                <small class="badge bg-danger me-1"> @L["Rejected"]</small>
+                            }
+                      </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="DocumentAssignment.AssignedAt"
                       Caption="@L["AssignedAt"]">
                   <DisplayTemplate>
-                        @context.DocumentAssignment.AssignedAt.ToShortDateString()
+                        @context.DocumentAssignment.AssignedAt.ToString("dd/MM/yyyy HH:mm")
                   </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="DocumentAssignment.ProcessedAt"
                       Caption="@L["ProcessedAt"]">
                   <DisplayTemplate>
-                        @context.DocumentAssignment.ProcessedAt.ToShortDateString()
+                        @context.DocumentAssignment.ProcessedAt.ToString("dd/MM/yyyy HH:mm")
                   </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
@@ -323,43 +367,34 @@
                       Caption="@L["Document"]">
               </DataGridColumn>
               <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
-                      Field="Step.Name"
-                      Caption="@L["Step"]">
+                      Field="WorkflowStepTemplate.Name"
+                      Caption="@L["WorkflowStepTemplate"]">
               </DataGridColumn>
-              <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
+              @* <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                       Field="ReceiverUser.Name"
                       Caption="@L["ReceiverUser"]">
-              </DataGridColumn>
-                <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto" Caption="@L["Actions"]">
+              </DataGridColumn> *@
+
+                 <DataGridEntityActionsColumn TItem="DocumentAssignmentWithNavigationPropertiesDto" @ref="@EntityActionsColumn">
                     <DisplayTemplate>
-                        <div class="hc-action-icons">
-                            <i class="bi bi-eye-fill hc-action-icon hc-action-view" 
-                               title="@L["View"]"
-                               @onclick="@(() => ViewDocumentAsync(context))"
-                               style="cursor: pointer;"></i>
-                            @if (CanEditDocumentAssignment)
-                            {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditDocumentAssignmentModalAsync(context))"
-                                   style="cursor: pointer;"></i>
-                            }
-                            @if (CanDeleteDocumentAssignment)
-                            {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteDocumentAssignmentWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
-                            }
+                        <div class="d-flex gap-1">
+                               <Button
+                                    Color="Color.Secondary"
+                                    Outline
+                                    Size="Size.Small"
+                                    Title="@L["View"]"
+                                    Clicked="@(() => NavigationManager.NavigateTo("/view-document-detail/" + context.DocumentAssignment.Id))">
+                                    <Icon Name="IconName.Eye" />
+                            </Button>
                         </div>
-@*//<suite-custom-code-block-4>*@
-@*//</suite-custom-code-block-4>*@
                     </DisplayTemplate>
-                </DataGridColumn>
+                </DataGridEntityActionsColumn>
             </DataGridColumns>
         </DataGrid>
     </CardBody>
 </Card>
+
+
 @* ************************* CREATE MODAL ************************* *@
 <Modal @ref="CreateDocumentAssignmentModal" Closing="@CreateDocumentAssignmentModal.CancelClosingModalWhenFocusLost">
     <ModalContent Centered="true">
@@ -388,21 +423,21 @@
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["ActionType"] *</FieldLabel>
-                            <TextEdit @bind-Text="@NewDocumentAssignment.ActionType" MaxLength="DocumentAssignmentConsts.ActionTypeMaxLength"  >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
+                            <Select TValue="DocumentAssignmentActionType" @bind-SelectedValue="@NewDocumentAssignment.ActionType" >
+                                <SelectItem Value="DocumentAssignmentActionType.PROCESS">@L["Process"]</SelectItem>
+                                <SelectItem Value="DocumentAssignmentActionType.SIGN">@L["Sign"]</SelectItem>
+                                <SelectItem Value="DocumentAssignmentActionType.VIEW">@L["View"]</SelectItem>
+                            </Select>
                         </Field>
                     </Validation>
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["Status"] *</FieldLabel>
-                            <TextEdit @bind-Text="@NewDocumentAssignment.Status" MaxLength="DocumentAssignmentConsts.StatusMaxLength"  >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
+                            <Select TValue="DocumentAssignmentStatus" SelectedValue="@NewDocumentAssignment.Status" SelectedValueChanged="@((DocumentAssignmentStatus value) => { NewDocumentAssignment.Status = value; })" >
+                                <SelectItem Value="DocumentAssignmentStatus.PENDING">@L["Pending"]</SelectItem>
+                                <SelectItem Value="DocumentAssignmentStatus.DONE">@L["Done"]</SelectItem>
+                                <SelectItem Value="DocumentAssignmentStatus.REJECTED">@L["Rejected"]</SelectItem>
+                            </Select>
                         </Field>
                     </Validation>
                     <Validation MessageLocalizer="@LH.Localize">
@@ -440,14 +475,14 @@
                                       Placeholder="&#8212;" />
                     </Field>
                     <Field>
-                        <FieldLabel>@L["WorkflowStepTemplate"] *</FieldLabel>
+                        <FieldLabel>@L["WorkflowStepTemplate"] </FieldLabel>
                         <Autocomplete Data="@WorkflowStepTemplatesCollection"
                                       TItem="LookupDto<Guid>"
-                                      TValue="Guid"
+                                      TValue="Guid?"
                                       TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id ?? default)"
+                                      ValueField="@((item) => item?.Id )"
                                       SearchChanged="@GetWorkflowStepTemplateCollectionLookupAsync"
-                                      @bind-SelectedValue="@NewDocumentAssignment.StepId"
+                                      @bind-SelectedValue="@NewDocumentAssignment.WorkflowStepTemplateId"
                                       Placeholder="&#8212;" />
                     </Field>
                     <Field>
@@ -557,14 +592,14 @@
                                       Placeholder="&#8212;" />
                     </Field>
                     <Field>
-                        <FieldLabel>@L["WorkflowStepTemplate"] *</FieldLabel>
+                        <FieldLabel>@L["WorkflowStepTemplate"] </FieldLabel>
                         <Autocomplete Data="@WorkflowStepTemplatesCollection"
                                       TItem="LookupDto<Guid>"
-                                      TValue="Guid"
+                                      TValue="Guid?"
                                       TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id ?? default)"
+                                      ValueField="@((item) => item?.Id )"
                                       SearchChanged="@GetWorkflowStepTemplateCollectionLookupAsync"
-                                      @bind-SelectedValue="@EditingDocumentAssignment.StepId"
+                                      @bind-SelectedValue="@EditingDocumentAssignment.WorkflowStepTemplateId"
                                       Placeholder="&#8212;" />
                     </Field>
                     <Field>

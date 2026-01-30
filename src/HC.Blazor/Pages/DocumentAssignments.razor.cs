@@ -84,7 +84,6 @@ public partial class DocumentAssignments
     protected override async Task OnInitializedAsync()
     {
         await SetPermissionsAsync();
-        // Set ReceiverUserId filter to current user
         Filter.ReceiverUserId = CurrentUser.Id;
     }
 
@@ -141,7 +140,6 @@ public partial class DocumentAssignments
         Filter.MaxResultCount = PageSize;
         Filter.SkipCount = (CurrentPage - 1) * PageSize;
         Filter.Sorting = CurrentSorting;
-        Filter.ReceiverUserId = CurrentUser.Id; // Ensure filter is set to current user
         var result = await DocumentAssignmentsAppService.GetListAsync(Filter);
         DocumentAssignmentList = result.Items;
         TotalCount = (int)result.TotalCount;
@@ -166,7 +164,7 @@ public partial class DocumentAssignments
         }
 
         await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-        NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/document-assignments/as-excel-file?DownloadToken={token}&FilterText={HttpUtility.UrlEncode(Filter.FilterText)}{culture}&StepOrderMin={Filter.StepOrderMin}&StepOrderMax={Filter.StepOrderMax}&ActionType={HttpUtility.UrlEncode(Filter.ActionType)}&Status={HttpUtility.UrlEncode(Filter.Status)}&AssignedAtMin={Filter.AssignedAtMin?.ToString("O")}&AssignedAtMax={Filter.AssignedAtMax?.ToString("O")}&ProcessedAtMin={Filter.ProcessedAtMin?.ToString("O")}&ProcessedAtMax={Filter.ProcessedAtMax?.ToString("O")}&IsCurrent={Filter.IsCurrent}&DocumentId={Filter.DocumentId}&StepId={Filter.StepId}&ReceiverUserId={Filter.ReceiverUserId}", forceLoad: true);
+        NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/document-assignments/as-excel-file?DownloadToken={token}&FilterText={HttpUtility.UrlEncode(Filter.FilterText)}{culture}&StepOrderMin={Filter.StepOrderMin}&StepOrderMax={Filter.StepOrderMax}&ActionType={HttpUtility.UrlEncode(Filter.ActionType)}&Status={HttpUtility.UrlEncode(Filter.Status)}&AssignedAtMin={Filter.AssignedAtMin?.ToString("O")}&AssignedAtMax={Filter.AssignedAtMax?.ToString("O")}&ProcessedAtMin={Filter.ProcessedAtMin?.ToString("O")}&ProcessedAtMax={Filter.ProcessedAtMax?.ToString("O")}&IsCurrent={Filter.IsCurrent}&DocumentId={Filter.DocumentId}&WorkflowStepTemplateId={Filter.WorkflowStepTemplateId}&ReceiverUserId={Filter.ReceiverUserId}", forceLoad: true);
     }
 
     private async Task OnDataGridReadAsync(DataGridReadDataEventArgs<DocumentAssignmentWithNavigationPropertiesDto> e)
@@ -219,14 +217,6 @@ public partial class DocumentAssignments
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
-        }
-    }
-
-    private async Task DeleteDocumentAssignmentWithConfirmationAsync(DocumentAssignmentWithNavigationPropertiesDto input)
-    {
-        if (await UiMessageService.Confirm(L["DeleteConfirmationMessage"].Value))
-        {
-            await DeleteDocumentAssignmentAsync(input);
         }
     }
 
@@ -343,9 +333,9 @@ public partial class DocumentAssignments
         await SearchAsync();
     }
 
-    protected virtual async Task OnStepIdChangedAsync(Guid? stepId)
+    protected virtual async Task OnWorkflowStepTemplateIdChangedAsync(Guid? workflowStepTemplateId)
     {
-        Filter.StepId = stepId;
+        Filter.WorkflowStepTemplateId = workflowStepTemplateId;
         await SearchAsync();
     }
 
@@ -413,10 +403,5 @@ public partial class DocumentAssignments
         SelectedDocumentAssignments.Clear();
         AllDocumentAssignmentsSelected = false;
         await GetDocumentAssignmentsAsync();
-    }
-
-    private void ViewDocumentAsync(DocumentAssignmentWithNavigationPropertiesDto input)
-    {
-        NavigationManager.NavigateTo($"/view-document-detail/{input.DocumentAssignment.DocumentId}");
     }
 }

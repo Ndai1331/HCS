@@ -26,7 +26,7 @@ public abstract class DocumentAssignmentUpdateDtoBase : IHasConcurrencyStamp
 
     public Guid DocumentId { get; set; }
 
-    public Guid StepId { get; set; }
+    public Guid? WorkflowStepTemplateId { get; set; }
 
     public Guid ReceiverUserId { get; set; }
 

@@ -11,6 +11,7 @@ public abstract class DocumentAssignmentWithNavigationPropertiesBase
 {
     public DocumentAssignment DocumentAssignment { get; set; } = null!;
     public Document Document { get; set; } = null!;
-    public WorkflowStepTemplate Step { get; set; } = null!;
+    public WorkflowStepTemplate? WorkflowStepTemplate { get; set; }
+
     public IdentityUser ReceiverUser { get; set; } = null!;
 }

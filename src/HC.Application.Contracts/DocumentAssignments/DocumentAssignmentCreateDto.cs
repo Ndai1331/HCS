@@ -10,10 +10,10 @@ public abstract class DocumentAssignmentCreateDtoBase
     public int StepOrder { get; set; } = 0;
     [Required]
     [StringLength(DocumentAssignmentConsts.ActionTypeMaxLength)]
-    public string ActionType { get; set; } = "PROCESS";
+    public DocumentAssignmentActionType ActionType { get; set; } = DocumentAssignmentActionType.PROCESS;
     [Required]
     [StringLength(DocumentAssignmentConsts.StatusMaxLength)]
-    public string Status { get; set; } = "PENDING";
+    public DocumentAssignmentStatus Status { get; set; } = DocumentAssignmentStatus.PENDING;
     public DateTime AssignedAt { get; set; }
 
     public DateTime ProcessedAt { get; set; }
@@ -21,7 +21,7 @@ public abstract class DocumentAssignmentCreateDtoBase
     public bool IsCurrent { get; set; } = true;
     public Guid DocumentId { get; set; }
 
-    public Guid StepId { get; set; }
+    public Guid? WorkflowStepTemplateId { get; set; }
 
     public Guid ReceiverUserId { get; set; }
 }

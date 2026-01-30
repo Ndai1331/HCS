@@ -148,11 +148,11 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                 var now = DateTime.Now;
                 var documentAssignment = await _documentAssignmentManager.CreateAsync(
                     input.DocumentId,
-                    Guid.Empty, // StepId = null (use Empty Guid since entity doesn't allow null)
+                    null,
                     receiverUserId,
-                    DocumentAssignmentConsts.StepOrderOriginal, // ORIGINAL
-                    WorkflowStepType.VIEW.ToString(), // VIEW
-                    "DONE",
+                    (int)DocumentAssignmentStepOrder.ORIGINAL, // ORIGINAL
+                    DocumentAssignmentActionType.VIEW.ToString(), // VIEW
+                    DocumentAssignmentStatus.DONE.ToString(),
                     now, // AssignedAt
                     now, // ProcessedAt
                     true // IsCurrent

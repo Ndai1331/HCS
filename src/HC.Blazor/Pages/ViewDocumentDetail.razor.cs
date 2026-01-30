@@ -78,18 +78,22 @@ public partial class ViewDocumentDetail
         }
     }
 
-    private async Task SetBreadcrumbItemsAsync()
+    protected virtual ValueTask SetBreadcrumbItemsAsync()
     {
         BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["DocumentAssignments"], "/document-assignments"));
         BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["ViewDocumentDetail"]));
+        return ValueTask.CompletedTask;
     }
 
-    private async Task SetToolbarItemsAsync()
+    protected virtual ValueTask SetToolbarItemsAsync()
     {
-        Toolbar.AddButton(L["Back"], async () =>
+        Toolbar.AddButton(L["Back"], () =>
         {
             NavigationManager.NavigateTo("/document-assignments");
+            return  Task.CompletedTask;
         }, IconName.ArrowLeft);
+
+        return ValueTask.CompletedTask;
     }
 
     private async Task LoadDocumentAsync()

@@ -13,7 +13,4 @@ public static class DocumentAssignmentConsts
     public const int StepOrderMaxLength = 20;
     public const int ActionTypeMaxLength = 20;
     public const int StatusMaxLength = 20;
-
-    // StepOrder constants
-    public const int StepOrderOriginal = 0; // ORIGINAL step order for sent documents
 }

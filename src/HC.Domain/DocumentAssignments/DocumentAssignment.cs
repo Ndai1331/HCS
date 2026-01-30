@@ -33,7 +33,7 @@ public abstract class DocumentAssignmentBase : FullAuditedAggregateRoot<Guid>, I
 
     public Guid DocumentId { get; set; }
 
-    public Guid StepId { get; set; }
+    public Guid? WorkflowStepTemplateId { get; set; }
 
     public Guid ReceiverUserId { get; set; }
 
@@ -41,7 +41,7 @@ public abstract class DocumentAssignmentBase : FullAuditedAggregateRoot<Guid>, I
     {
     }
 
-    public DocumentAssignmentBase(Guid id, Guid documentId, Guid stepId, Guid receiverUserId, int stepOrder, string actionType, string status, DateTime assignedAt, DateTime processedAt, bool isCurrent)
+    public DocumentAssignmentBase(Guid id, Guid documentId, Guid? workflowStepTemplateId, Guid receiverUserId, int stepOrder, string actionType, string status, DateTime assignedAt, DateTime processedAt, bool isCurrent)
     {
         Id = id;
         if (stepOrder < DocumentAssignmentConsts.StepOrderMinLength)
@@ -65,7 +65,7 @@ public abstract class DocumentAssignmentBase : FullAuditedAggregateRoot<Guid>, I
         ProcessedAt = processedAt;
         IsCurrent = isCurrent;
         DocumentId = documentId;
-        StepId = stepId;
+        WorkflowStepTemplateId = workflowStepTemplateId;
         ReceiverUserId = receiverUserId;
     }
 }

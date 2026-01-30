@@ -21,7 +21,7 @@
   "ShouldExportExcel": true,
   "ShouldAddMigration": true,
   "ShouldUpdateDatabase": true,
-  "CreateTests": true,
+  "CreateTests": false,
   "Properties": [
     {
       "Id": "87853f7f-2776-4090-a966-92ca106ae840",
@@ -218,14 +218,14 @@
       "IsFilterable": true
     },
     {
-      "EntityNameWithDuplicationNumber": "Step",
+      "EntityNameWithDuplicationNumber": "WorkflowStepTemplate",
       "EntitySetNameWithDuplicationNumber": "WorkflowStepTemplates",
-      "ReferencePropertyName": "Step",
+      "ReferencePropertyName": "WorkflowStepTemplate",
       "UiPickType": "Typeahead",
-      "IsRequired": true,
+      "IsRequired": false,
       "IncludeEntitiesFromModules": false,
       "FromAbpModule": false,
-      "Name": "StepId",
+      "Name": "WorkflowStepTemplateId",
       "DisplayProperty": "Name",
       "Namespace": "HC.WorkflowStepTemplates",
       "EntityName": "WorkflowStepTemplate",

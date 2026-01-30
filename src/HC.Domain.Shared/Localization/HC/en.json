@@ -928,6 +928,16 @@
     "Update": "Update",
     "Personal": "Personal",
     "SendDocument": "Send Document",
-    "SendTo": "Send To"
+    "SendTo": "Send To",
+    "WorkflowStepTemplate": "Workflow step template",
+    "Original": "Original",
+    "Generated": "Generated",
+    "Signed": "Signed",
+    "Pending": "Pending",
+    "Done": "Done",
+    "Rejected": "Rejected",
+    "Process": "Process",
+    "Sign": "Sign",
+    "ViewDocumentDetail": "View Document Detail"
   }
 }

@@ -20,6 +20,7 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
+using HC.Shared;
 
 namespace HC.DocumentAssignments;
 
@@ -46,8 +47,8 @@ public abstract class DocumentAssignmentsAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<DocumentAssignmentWithNavigationPropertiesDto>> GetListAsync(GetDocumentAssignmentsInput input)
     {
-        var totalCount = await _documentAssignmentRepository.GetCountAsync(input.FilterText, input.StepOrderMin, input.StepOrderMax, input.ActionType, input.Status, input.AssignedAtMin, input.AssignedAtMax, input.ProcessedAtMin, input.ProcessedAtMax, input.IsCurrent, input.DocumentId, input.StepId, input.ReceiverUserId);
-        var items = await _documentAssignmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.StepOrderMin, input.StepOrderMax, input.ActionType, input.Status, input.AssignedAtMin, input.AssignedAtMax, input.ProcessedAtMin, input.ProcessedAtMax, input.IsCurrent, input.DocumentId, input.StepId, input.ReceiverUserId, input.Sorting, input.MaxResultCount, input.SkipCount);
+        var totalCount = await _documentAssignmentRepository.GetCountAsync(input.FilterText, input.StepOrderMin, input.StepOrderMax, input.ActionType, input.Status, input.AssignedAtMin, input.AssignedAtMax, input.ProcessedAtMin, input.ProcessedAtMax, input.IsCurrent, input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId);
+        var items = await _documentAssignmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.StepOrderMin, input.StepOrderMax, input.ActionType, input.Status, input.AssignedAtMin, input.AssignedAtMax, input.ProcessedAtMin, input.ProcessedAtMax, input.IsCurrent, input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId, input.Sorting, input.MaxResultCount, input.SkipCount);
         return new PagedResultDto<DocumentAssignmentWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,
@@ -115,17 +116,12 @@ public abstract class DocumentAssignmentsAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["Document"]]);
         }
 
-        if (input.StepId == default)
-        {
-            throw new UserFriendlyException(L["The {0} field is required.", L["WorkflowStepTemplate"]]);
-        }
-
         if (input.ReceiverUserId == default)
         {
             throw new UserFriendlyException(L["The {0} field is required.", L["IdentityUser"]]);
         }
 
-        var documentAssignment = await _documentAssignmentManager.CreateAsync(input.DocumentId, input.StepId, input.ReceiverUserId, input.StepOrder, input.ActionType, input.Status, input.AssignedAt, input.ProcessedAt, input.IsCurrent);
+        var documentAssignment = await _documentAssignmentManager.CreateAsync(input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId, input.StepOrder, input.ActionType.ToString(), input.Status.ToString(), input.AssignedAt, input.ProcessedAt, input.IsCurrent);
         return ObjectMapper.Map<DocumentAssignment, DocumentAssignmentDto>(documentAssignment);
     }
 
@@ -137,17 +133,12 @@ public abstract class DocumentAssignmentsAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["Document"]]);
         }
 
-        if (input.StepId == default)
-        {
-            throw new UserFriendlyException(L["The {0} field is required.", L["WorkflowStepTemplate"]]);
-        }
-
         if (input.ReceiverUserId == default)
         {
             throw new UserFriendlyException(L["The {0} field is required.", L["IdentityUser"]]);
         }
 
-        var documentAssignment = await _documentAssignmentManager.UpdateAsync(id, input.DocumentId, input.StepId, input.ReceiverUserId, input.StepOrder, input.ActionType, input.Status, input.AssignedAt, input.ProcessedAt, input.IsCurrent, input.ConcurrencyStamp);
+        var documentAssignment = await _documentAssignmentManager.UpdateAsync(id, input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId, input.StepOrder, input.ActionType, input.Status, input.AssignedAt, input.ProcessedAt, input.IsCurrent, input.ConcurrencyStamp);
         return ObjectMapper.Map<DocumentAssignment, DocumentAssignmentDto>(documentAssignment);
     }
 
@@ -160,8 +151,8 @@ public abstract class DocumentAssignmentsAppServiceBase : HCAppService
             throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
         }
 
-        var documentAssignments = await _documentAssignmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.StepOrderMin, input.StepOrderMax, input.ActionType, input.Status, input.AssignedAtMin, input.AssignedAtMax, input.ProcessedAtMin, input.ProcessedAtMax, input.IsCurrent, input.DocumentId, input.StepId, input.ReceiverUserId);
-        var items = documentAssignments.Select(item => new { StepOrder = item.DocumentAssignment.StepOrder, ActionType = item.DocumentAssignment.ActionType, Status = item.DocumentAssignment.Status, AssignedAt = item.DocumentAssignment.AssignedAt, ProcessedAt = item.DocumentAssignment.ProcessedAt, IsCurrent = item.DocumentAssignment.IsCurrent, Document = item.Document?.Title, Step = item.Step?.Name, ReceiverUser = item.ReceiverUser?.Name, });
+        var documentAssignments = await _documentAssignmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.StepOrderMin, input.StepOrderMax, input.ActionType, input.Status, input.AssignedAtMin, input.AssignedAtMax, input.ProcessedAtMin, input.ProcessedAtMax, input.IsCurrent, input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId);
+        var items = documentAssignments.Select(item => new { StepOrder = item.DocumentAssignment.StepOrder, ActionType = item.DocumentAssignment.ActionType, Status = item.DocumentAssignment.Status, AssignedAt = item.DocumentAssignment.AssignedAt, ProcessedAt = item.DocumentAssignment.ProcessedAt, IsCurrent = item.DocumentAssignment.IsCurrent, Document = item.Document?.Title, WorkflowStepTemplate = item.WorkflowStepTemplate?.Name, ReceiverUser = item.ReceiverUser?.Name, });
         var memoryStream = new MemoryStream();
         await memoryStream.SaveAsAsync(items);
         memoryStream.Seek(0, SeekOrigin.Begin);
@@ -177,7 +168,7 @@ public abstract class DocumentAssignmentsAppServiceBase : HCAppService
     [Authorize(HCPermissions.DocumentAssignments.Delete)]
     public virtual async Task DeleteAllAsync(GetDocumentAssignmentsInput input)
     {
-        await _documentAssignmentRepository.DeleteAllAsync(input.FilterText, input.StepOrderMin, input.StepOrderMax, input.ActionType, input.Status, input.AssignedAtMin, input.AssignedAtMax, input.ProcessedAtMin, input.ProcessedAtMax, input.IsCurrent, input.DocumentId, input.StepId, input.ReceiverUserId);
+        await _documentAssignmentRepository.DeleteAllAsync(input.FilterText, input.StepOrderMin, input.StepOrderMax, input.ActionType, input.Status, input.AssignedAtMin, input.AssignedAtMax, input.ProcessedAtMin, input.ProcessedAtMax, input.IsCurrent, input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId);
     }
 
     public virtual async Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync()

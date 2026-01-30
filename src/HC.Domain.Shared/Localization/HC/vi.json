@@ -970,6 +970,26 @@
     "MaxIncommingDate" : "Ngày nhận tối đa",
     "Personal" : "Cá nhân",
     "SendDocument" : "Gửi tài liệu",
-    "SendTo" : "Gửi đến"
+    "SendTo" : "Gửi đến",
+    "Original" : "Gốc",
+    "Generated" : "Tạo mới",
+    "Signed" : "Ký",
+    "Pending" : "Chờ xử lý",
+    "Done" : "Hoàn thành",
+    "Rejected" : "Từ chối",
+    "Process" : "Xử lý",
+    "Sign" : "Ký",
+    "ActionType" : "Loại hành động",
+    "StepOrder" : "Thứ tự bước",
+    "ProcessedAt" : "Ngày xử lý",
+    "IsCurrent" : "Bước hiện tại",
+    "DocumentAssignments" : "Phân công văn bản",
+    "MinStepOrder" : "Thứ tự bước tối thiểu",
+    "MinAssignedAt" : "Ngày giao tối thiểu",
+    "MinProcessedAt" : "Ngày xử lý tối thiểu",
+    "MaxStepOrder" : "Thứ tự bước tối đa",
+    "MaxAssignedAt" : "Ngày giao tối đa",
+    "MaxProcessedAt" : "Ngày xử lý tối đa",
+    "ViewDocumentDetail" : "Xem chi tiết văn bản"
   }
 }

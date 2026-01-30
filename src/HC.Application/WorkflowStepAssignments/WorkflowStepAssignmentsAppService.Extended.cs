@@ -90,7 +90,7 @@ public class WorkflowStepAssignmentsAppService : WorkflowStepAssignmentsAppServi
         {
             var documentAssignmentsQueryable = await _documentAssignmentRepository.GetQueryableAsync();
             var documentAssignment = documentAssignmentsQueryable
-                .Where(x => x.StepId == input.StepId.Value)
+                .Where(x => x.WorkflowStepTemplateId == input.StepId)
                 .FirstOrDefault();
             
             if (documentAssignment != null)

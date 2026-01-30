@@ -1,6 +1,9 @@
 @page "/view-document-detail"
 @page "/view-document-detail/{DocumentId:guid}"
 @attribute [Authorize(HCPermissions.Documents.Default)]
+@attribute [Authorize(HCPermissions.Documents.MyDocuments)]
+@attribute [Authorize(HCPermissions.DocumentAssignments.Default)]
+
 @using HC.Documents
 @using HC.DocumentFiles
 @using HC.Localization
