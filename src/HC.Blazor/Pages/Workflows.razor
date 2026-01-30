@@ -231,24 +231,24 @@
               </DataGridColumn>
                 <DataGridColumn TItem="WorkflowWithNavigationPropertiesDto" Caption="@L["Actions"]">
                     <DisplayTemplate>
-                        <div class="hc-action-icons">
+                        <div class="d-flex gap-1">
                             @if (CanEditWorkflow)
                             {
-                                @* <i class="fas fa-eye hc-action-icon hc-action-view" 
-                                   title="@L["Detail"]"
-                                   @onclick="@(() => NavigateToDetailAsync(context.Workflow.Id))"
-                                   style="cursor: pointer;"></i> *@
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => NavigateToDetailAsync(context.Workflow.Id))"
-                                   style="cursor: pointer;"></i>
+                                <Button Color="Color.Primary" 
+                                    Outline Size="Size.Small" 
+                                    Title="@L["Edit"]"
+                                    Clicked="@(() => NavigateToDetailAsync(context.Workflow.Id))">
+                                    <Icon Name="IconName.Edit" />
+                                </Button>
                             }
                             @if (CanDeleteWorkflow)
                             {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteWorkflowWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Color="Color.Danger" 
+                                    Outline Size="Size.Small" 
+                                    Title="@L["Delete"]"
+                                    Clicked="@(() => DeleteWorkflowWithConfirmationAsync(context))">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
                             }
                         </div>
 @*//<suite-custom-code-block-4>*@

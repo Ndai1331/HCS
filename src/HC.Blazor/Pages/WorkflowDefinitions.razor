@@ -209,20 +209,24 @@
               </DataGridColumn>
                 <DataGridColumn TItem="WorkflowDefinitionDto" Caption="@L["Actions"]">
                     <DisplayTemplate>
-                        <div class="hc-action-icons">
+                        <div class="d-flex gap-1">
                             @if (CanEditWorkflowDefinition)
                             {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditWorkflowDefinitionModalAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Color="Color.Primary" 
+                                    Outline Size="Size.Small" 
+                                    Title="@L["Edit"]"
+                                    Clicked="@(() => OpenEditWorkflowDefinitionModalAsync(context))">
+                                    <Icon Name="IconName.Edit" />
+                                </Button>
                             }
                             @if (CanDeleteWorkflowDefinition)
                             {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteWorkflowDefinitionWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Color="Color.Danger" 
+                                    Outline Size="Size.Small" 
+                                    Title="@L["Delete"]"
+                                    Clicked="@(() => DeleteWorkflowDefinitionWithConfirmationAsync(context))">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
                             }
                         </div>
 @*//<suite-custom-code-block-4>*@
