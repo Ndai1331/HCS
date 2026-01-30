@@ -69,7 +69,7 @@
                         }
                         else
                         {
-                            @foreach (var project in ActiveProjectsList)
+                            @foreach (var project in ActiveProjectsList.OrderByDescending(x => x.Project.Status).ThenByDescending(x => x.Project.CreationTime))
                             {
                                 var progress = CalculateProjectProgress(project.Project.Status);
                                 var progressColor = EnumStatusColorHelper.GetProjectStatusProgressBarColor(project.Project.Status);
@@ -473,12 +473,12 @@
 
     private List<string> TaskChartColors => TasksByStatus.OrderBy(x => x.Key).Select(x => x.Key switch
     {
-        "TODO" => "#6c5dd3",           // Secondary - purple
-        "IN_PROGRESS" => "#438aa7",    // Info - blue
-        "WAITING" => "#ff9f38",        // Warning - orange
-        "DONE" => "#4fbf67",           // Success - green
-        "CANCELLED" => "#c00d49",      // Danger - red
-        _ => "6c5dd3"                 // Default - purple
+        "TODO" => "#355dff",           // primary
+        "IN_PROGRESS" => "#4fbf67",    // success
+        "WAITING" => "#ff9f38",        // warning
+        "DONE" => "#f72585",           // brand
+        "CANCELLED" => "#c00d49",      // danger
+        _ => "#355dff"                 // primary
     }).ToList();
 
 }
