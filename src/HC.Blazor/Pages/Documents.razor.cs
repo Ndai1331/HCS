@@ -49,10 +49,6 @@ public partial class Documents
     private bool CanSubmitForSigning { get; set; }
 
     private GetDocumentsInput Filter { get; set; } = new GetDocumentsInput();
-
-    private DataGridEntityActionsColumn<DocumentWithNavigationPropertiesDto> EntityActionsColumn { get; set; } = new();
-
-    private IReadOnlyList<LookupDto<Guid>> MasterDatasCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> UnitsCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> WorkflowsCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> StatusMasterDataCollection { get; set; } = new List<LookupDto<Guid>>();
@@ -62,23 +58,8 @@ public partial class Documents
     private IReadOnlyList<LookupDto<Guid>> FieldMasterDataCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<DocumentWithNavigationPropertiesDto> SelectedDocuments { get; set; } = new();
     private bool AllDocumentsSelected { get; set; } = false;
-    private bool ExpandDepartmentTree { get; set; } = true;
 
     private Modal SendDocumentModal { get; set; } = new();
-    private static readonly object no_render = new object();
-    private static readonly CheckboxFragment checkbox_template_matblazor =
-        (value, indeterminate, value_changed, disabled) =>
-            (builder) =>
-            {
-                builder.OpenComponent<Check<bool?>>(0);
-                builder.AddAttribute(1, nameof(Check<bool?>.Checked), indeterminate ? null : value);
-                builder.AddAttribute(2, nameof(Check<bool?>.CheckedChanged), EventCallback.Factory.Create<bool?>(no_render, (v) => { if (v != null) { value_changed(v.Value); } }));
-                builder.AddAttribute(3, nameof(Check<bool?>.Indeterminate), true);
-                builder.AddAttribute(4, nameof(Check<bool?>.Disabled), disabled);
-                builder.AddAttribute(5, "onclick", EventCallback.Factory.Create<MouseEventArgs>(no_render, (e) => {
-                    value_changed(true); }));
-                builder.CloseComponent();
-            };
 
 
     public Documents()
@@ -289,17 +270,6 @@ public partial class Documents
         Filter.SecrecyLevelId = secrecyLevelId;
         await SearchAsync();
     }
-
-    private async Task GetMasterDataCollectionLookupAsync(string? newValue = null)
-    {
-        MasterDatasCollection = (await DocumentsAppService.GetMasterDataLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
-    }
-    
-    private async Task GetWorkflowCollectionLookupAsync(string? newValue = null)
-    {
-        WorkflowsCollection = (await DocumentsAppService.GetWorkflowLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
-    }
-
     private async Task<List<LookupDto<Guid>>> GetTypeMasterDataLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
         var result = await MasterDatasAppService.GetListAsync(new GetMasterDatasInput
@@ -431,7 +401,7 @@ public partial class Documents
     private List<DepartmentTreeView> AllDepartmentsForSelect2 { get; set; } = new List<DepartmentTreeView>();
     private SendDocumentInput SendDocumentInput { get; set; } = new();
     private DocumentWithNavigationPropertiesDto DocumentToSend { get; set; } = new();
-    private bool IsPersonal { get; set; } = true;
+    private bool IsPersonal { get; set; } = false;
     private IReadOnlyList<LookupDto<Guid>> RecipientsCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> DepartmentsCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<LookupDto<Guid>> SelectedRecipients { get; set; } = new();
@@ -450,7 +420,7 @@ public partial class Documents
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);  
             DocumentToSend = document;
-            IsPersonal = true;
+            IsPersonal = false;
             SelectedDepartments.Clear();
             SelectedRecipients.Clear();
             SendDocumentInput.DocumentId = DocumentToSend.Document.Id;

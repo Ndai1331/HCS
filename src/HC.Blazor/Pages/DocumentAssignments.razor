@@ -197,15 +197,10 @@
                     </Field>
                 </Column>
             </Row>
-@*//<suite-custom-code-block-2>*@
-@*//</suite-custom-code-block-2>*@
         </div>
         </Row>
-@*//<suite-custom-code-block-3>*@
-@*//</suite-custom-code-block-3>*@
     </CardBody>
 </Card>
-@* ************************* DATA GRID ************************* *@
 <Card>
     <CardBody>        
         <Div  Visibility="@(SelectedDocumentAssignments.Any() ? Visibility.Visible : Visibility.Invisible)"
@@ -278,109 +273,103 @@
                 {
                     <DataGridMultiSelectColumn TItem="DocumentAssignmentWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
                 }
-             
-              <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
-                      Field="DocumentAssignment.StepOrder"
-                      Caption="@L["StepOrder"]"
-                      Width="150px">
-
-                       <DisplayTemplate> 
-                            @if(context.DocumentAssignment.StepOrder == (int)DocumentAssignmentStepOrder.ORIGINAL)
-                            {
-                                <small class="badge bg-info me-1"> @L["Original"]</small>
-                            }
-                            else if(context.DocumentAssignment.StepOrder == (int)DocumentAssignmentStepOrder.GENERATED)
-                            {
-                                <small class="badge bg-primary me-1"> @L["Generated"]</small>
-                            }
-                            else if(context.DocumentAssignment.StepOrder == (int)DocumentAssignmentStepOrder.SIGNED)
-                            {
-                                <small class="badge bg-success me-1"> @L["Signed"]</small>
-                            }
-                      </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
-                      Field="DocumentAssignment.ActionType"
-                      Caption="@L["ActionType"]"
-                      Width="150px">
-                      <DisplayTemplate> 
-                            @if(context.DocumentAssignment.ActionType == DocumentAssignmentActionType.PROCESS.ToString())
-                            {
-                                <small class="badge bg-info me-1"> @L["Process"]</small>
-                            }
-                            else if(context.DocumentAssignment.ActionType == DocumentAssignmentActionType.SIGN.ToString())
-                            {
-                                <small class="badge bg-primary me-1"> @L["Sign"]</small>
-                            }
-                            else if(context.DocumentAssignment.ActionType == DocumentAssignmentActionType.VIEW.ToString())
-                            {
-                                <small class="badge bg-success me-1"> @L["View"]</small>
-                            }
-                      </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
-                      Field="DocumentAssignment.Status"
-                      Caption="@L["Status"]">
-                      <DisplayTemplate>
-                            @if(context.DocumentAssignment.Status == DocumentAssignmentStatus.PENDING.ToString())
-                            {
-                                <small class="badge bg-warning me-1"> @L["Pending"]</small>
-                            }
-                            else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.DONE.ToString())
-                            {
-                                <small class="badge bg-success me-1"> @L["Done"]</small>
-                            }
-                            else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.REJECTED.ToString())
-                            {
-                                <small class="badge bg-danger me-1"> @L["Rejected"]</small>
-                            }
-                            else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.REVOKED.ToString())
-                            {
-                                <small class="badge bg-danger me-1"> @L["Revoked"]</small>
-                            }
-                      </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
-                      Field="DocumentAssignment.AssignedAt"
-                      Caption="@L["AssignedAt"]" Width="150px">
-                  <DisplayTemplate>
-                        @context.DocumentAssignment.AssignedAt.ToString("dd/MM/yyyy HH:mm")
-                  </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
-                      Field="DocumentAssignment.ProcessedAt"
-                      Caption="@L["ProcessedAt"]" Width="150px">
-                  <DisplayTemplate>
-                        @context.DocumentAssignment.ProcessedAt.ToString("dd/MM/yyyy HH:mm")
-                  </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
-                      Field="DocumentAssignment.IsCurrent"
-                      Caption="@L["IsCurrent"]" Width="100px">
+                <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
+                        Field="Document.Title"
+                        Caption="@L["Document"]"
+                        Width="300px">
+                        <DisplayTemplate> 
+                            <div class="row">
+                                <div class="col">
+                                <h5 class="card-title question-title pb-2">
+                                    @context.Document.Title
+                                </h5>
+                                <div class="d-flex pb-2 mb-2">
+                                    <p class="mb-0">
+                                        @if(context.DocumentAssignment.StepOrder == (int)DocumentAssignmentStepOrder.ORIGINAL)
+                                        {
+                                            <small class="badge bg-info me-1"> @L["Original"]</small>
+                                        }
+                                        else if(context.DocumentAssignment.StepOrder == (int)DocumentAssignmentStepOrder.GENERATED)
+                                        {
+                                            <small class="badge bg-primary me-1"> @L["Generated"]</small>
+                                        }
+                                        else if(context.DocumentAssignment.StepOrder == (int)DocumentAssignmentStepOrder.SIGNED)
+                                        {
+                                            <small class="badge bg-success me-1"> @L["Signed"]</small>
+                                        }
+                                        |  
+                                        @if(context.DocumentAssignment.ActionType == DocumentAssignmentActionType.PROCESS.ToString())
+                                        {
+                                        <small class="badge bg-info me-1"> @L["Process"]</small>
+                                    }
+                                    else if(context.DocumentAssignment.ActionType == DocumentAssignmentActionType.SIGN.ToString())
+                                    {
+                                        <small class="badge bg-primary me-1"> @L["Sign"]</small>
+                                    }
+                                    else if(context.DocumentAssignment.ActionType == DocumentAssignmentActionType.VIEW.ToString())
+                                    {
+                                        <small class="badge bg-success me-1"> @L["View"]</small>
+                                    }
+                                    </p>
+                                </div>
+                                </div>
+                            </div>
+                        </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
+                        Field="DocumentAssignment.Status"
+                        Caption="@L["Status"]">
+                        <DisplayTemplate>
+                                @if(context.DocumentAssignment.Status == DocumentAssignmentStatus.PENDING.ToString())
+                                {
+                                    <small class="badge bg-warning me-1"> @L["Pending"]</small>
+                                }
+                                else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.DONE.ToString())
+                                {
+                                    <small class="badge bg-success me-1"> @L["Done"]</small>
+                                }
+                                else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.REJECTED.ToString())
+                                {
+                                    <small class="badge bg-danger me-1"> @L["Rejected"]</small>
+                                }
+                                else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.REVOKED.ToString())
+                                {
+                                    <small class="badge bg-danger me-1"> @L["Revoked"]</small>
+                                }
+                        </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
+                        Field="DocumentAssignment.AssignedAt"
+                        Caption="@L["AssignedAt"]" Width="165px">
                     <DisplayTemplate>
-                        @if (context.DocumentAssignment.IsCurrent)
-                        {
-                            <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
-                        }
-                        else
-                        {
-                            <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
-                        }
+                            @context.DocumentAssignment.AssignedAt.ToString("dd/MM/yyyy HH:mm")
                     </DisplayTemplate>
-              </DataGridColumn>
-              <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
-                      Field="Document.Title"
-                      Caption="@L["Document"]">
-              </DataGridColumn>
-              <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
-                      Field="WorkflowStepTemplate.Name"
-                      Caption="@L["WorkflowStepTemplate"]" Width="150px">
-              </DataGridColumn>
-              @* <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
-                      Field="ReceiverUser.Name"
-                      Caption="@L["ReceiverUser"]">
-              </DataGridColumn> *@
-
+                </DataGridColumn>
+                <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
+                        Field="DocumentAssignment.ProcessedAt"
+                        Caption="@L["ProcessedAt"]" Width="165px">
+                    <DisplayTemplate>
+                            @context.DocumentAssignment.ProcessedAt.ToString("dd/MM/yyyy HH:mm")
+                    </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
+                        Field="DocumentAssignment.IsCurrent"
+                        Caption="@L["IsCurrent"]" Width="100px">
+                        <DisplayTemplate>
+                            @if (context.DocumentAssignment.IsCurrent)
+                            {
+                                <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
+                            }
+                            else
+                            {
+                                <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
+                            }
+                        </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
+                        Field="WorkflowStepTemplate.Name"
+                        Caption="@L["WorkflowStepTemplate"]" Width="150px">
+                </DataGridColumn>
                 <DataGridEntityActionsColumn TItem="DocumentAssignmentWithNavigationPropertiesDto" @ref="@EntityActionsColumn">
                 <DisplayTemplate>
                     <div class="d-flex gap-1">
