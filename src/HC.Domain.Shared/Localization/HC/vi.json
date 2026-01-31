@@ -983,7 +983,7 @@
     "StepOrder" : "Thứ tự bước",
     "ProcessedAt" : "Ngày xử lý",
     "IsCurrent" : "Bước hiện tại",
-    "DocumentAssignments" : "Phân công văn bản",
+    "DocumentAssignments" : "Phân công văn bản/Văn bản của tôi",
     "MinStepOrder" : "Thứ tự bước tối thiểu",
     "MinAssignedAt" : "Ngày giao tối thiểu",
     "MinProcessedAt" : "Ngày xử lý tối thiểu",
@@ -1013,6 +1013,7 @@
     "DocumentRevokedMessage": "Văn bản '{0}: {1}' đã bị thu hồi bởi {2}",
     "DocumentNotFound": "Không tìm thấy văn bản",
     "Revoked": "Thu hồi",
-    "ViewDocumentDetail": "Xem chi tiết văn bản"
+    "ViewDocumentDetail": "Xem chi tiết văn bản",
+    "Recipients" : "Người nhận"
   }
 }

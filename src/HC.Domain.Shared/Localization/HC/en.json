@@ -959,6 +959,7 @@
     "FailedToRevokeDocument": "Failed to revoke document",
     "DocumentNotFound": "Document not found",
     "Revoked": "Revoked", 
-    "ViewDocumentDetail": "View Document Detail"
+    "ViewDocumentDetail": "View Document Detail",
+    "Recipients" : "Recipients"
   }
 }

@@ -50,3 +50,9 @@ DocumentAssignments.ReceiverUserId = user chỉ định
   - DocumentHistory : Comment là thu hồi văn bản Name bởi người dùng abc 
 
 4. Văn bản bị xoá ở bảng Documents thì qua bên DocumentAssignment ko cần load văn bản đó ra hiện đang lỗi logic get văn bản đã bị xoá 
+
+
+=====UPDATE INDEX.Razor
+
+RecentDocumentsList chính là DocumentAssignment list được assign 
+ 

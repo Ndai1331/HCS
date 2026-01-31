@@ -553,11 +553,12 @@
                 }
                 else
                 {
-                    <TreeView Items="DepartmentTreeViews"
-                              GetChildren="@(item => item.Children)"
-                              HasChildren="@(item => item.HasChildren)"
-                               AllowSelection="true"
-                                @bind-SelectedItems="SelectedDepartments">
+                    <TreeView 
+                            Items="DepartmentTreeViews"
+                            GetChildren="@(item => item.Children)"
+                            HasChildren="@(item => item.HasChildren)"
+                            AllowSelection="true"
+                            @bind-SelectedItems="SelectedDepartments">
                         <ItemTemplate>
                             <div @onclick="() => { SelectedItem = (SelectedItem != context.Item) ? context.Item : new DepartmentTreeView(); }" 
                                 style="background-color: @(SelectedItem?.Id == context.Item.Id ? "Highlight" : "inherit")">
@@ -566,9 +567,6 @@
                             </div>
                         </ItemTemplate>
                     </TreeView>
-
-
-
                 }
             }
         </Form>
@@ -630,3 +628,33 @@
     </ModalFooter>
     </ModalContent>
 </Modal>
+
+
+
+<style>
+    input[type="checkbox"] {
+        border-radius: 0.25rem;
+        border-width: 1px;
+        border-color: #e8eef3 !important;
+        --bs-form-check-bg: #f0f4f7;
+        flex-shrink: 0;
+        width: 1.25em;
+        height: 1.25em;
+        margin-top: 0.125em;
+        vertical-align: top;
+        appearance: none;
+        background-color: var(--bs-form-check-bg);
+        background-image: var(--bs-form-check-bg-image);
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        border: 1px solid #f0f4f7;
+        print-color-adjust: exact;
+    }
+    input[type="checkbox"]:checked 
+    {
+        --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+        border-color: #f72585 !important;
+        background-color: #f72585 !important;
+    }
+</style>
