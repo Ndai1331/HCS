@@ -24,11 +24,11 @@ public class EnumStatusColorHelper
     {
         return projectStatus switch
         {
-            ProjectStatus.PLANNING => "info",
-            ProjectStatus.IN_PROGRESS => "brand",
-            ProjectStatus.COMPLETED => "success",
+            ProjectStatus.PLANNING => "success",
+            ProjectStatus.IN_PROGRESS => "warning",
+            ProjectStatus.COMPLETED => "brand",
             ProjectStatus.CANCELLED => "danger",
-            _ => "info",
+            _ => "success",
         };
     }
 
@@ -49,12 +49,12 @@ public class EnumStatusColorHelper
     {
         return projectTaskStatus switch
         {
-            ProjectTaskStatus.TODO => "secondary",
-            ProjectTaskStatus.IN_PROGRESS => "info",
+            ProjectTaskStatus.TODO => "primary",
+            ProjectTaskStatus.IN_PROGRESS => "success",
             ProjectTaskStatus.WAITING => "warning",
-            ProjectTaskStatus.DONE => "success",
+            ProjectTaskStatus.DONE => "brand",
             ProjectTaskStatus.CANCELLED => "danger",
-            _ => "secondary",
+            _ => "primary",
         };
     }
 

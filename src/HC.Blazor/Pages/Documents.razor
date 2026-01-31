@@ -2,6 +2,7 @@
 @attribute [Authorize(HCPermissions.Documents.Default)]
 @using HC.Departments
 @using HC.Documents
+@using HC.MasterDatas
 @using HC.Localization
 @using HC.Shared
 @using HC.UserDepartments
@@ -31,6 +32,7 @@
 @inject IBlockUiService BlockUiService
 @inject IUserDepartmentsAppService UserDepartmentsAppService
 @inject IDepartmentsAppService DepartmentsAppService
+@inject IMasterDatasAppService MasterDatasAppService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
 @inject NavigationManager NavigationManager
@@ -81,20 +83,26 @@
             <Row>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
-                        <FieldLabel>@L["No"]</FieldLabel>
-                        <TextEdit Text="@Filter.No" TextChanged="@OnNoChangedAsync" />                       
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is3">
-                    <Field>
                         <FieldLabel>@L["Title"]</FieldLabel>
                         <TextEdit Text="@Filter.Title" TextChanged="@OnTitleChangedAsync" />                       
                     </Field>
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
+                        <FieldLabel>@L[name: "DocumentNumber"]</FieldLabel>
+                        <TextEdit Text="@Filter.No" TextChanged="@OnNoChangedAsync" />                       
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is3">
+                    <Field>
+                        <FieldLabel>@L["StorageNumber"]</FieldLabel>
+                        <TextEdit Text="@Filter.StorageNumber" TextChanged="@OnStorageNumberChangedAsync" />                       
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is3">
+                    <Field>
                         <FieldLabel>@L["CurrentStatus"]</FieldLabel>
-                        <TextEdit Text="@Filter.CurrentStatus" TextChanged="@OnCurrentStatusChangedAsync" />                       
+                        <TextEdit Text="@Filter.CurrentStatus" TextChanged="@OnCurrentStatusChangedAsync" />                  
                     </Field>
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
@@ -119,12 +127,6 @@
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
-                        <FieldLabel>@L["StorageNumber"]</FieldLabel>
-                        <TextEdit Text="@Filter.StorageNumber" TextChanged="@OnStorageNumberChangedAsync" />                       
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is3">
-                    <Field>
                         <FieldLabel>@L["MinIncommingDate"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
             InputMode="DateInputMode.Date"
@@ -145,12 +147,12 @@
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
-                        <FieldLabel>@L["MasterData"]</FieldLabel>
+                        <FieldLabel>@L["Field"]</FieldLabel>
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.FieldId"
 		SelectedValueChanged="@OnFieldIdChangedAsync">
 <SelectItem></SelectItem>
-@foreach(var item in MasterDatasCollection)
+@foreach(var item in FieldMasterDataCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">
 		@item.DisplayName
@@ -177,6 +179,70 @@
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
+                        <FieldLabel>@L["Status"]</FieldLabel>
+                        <Select TValue="Guid?"
+		SelectedValue="@Filter.StatusId"
+		SelectedValueChanged="@OnStatusIdChangedAsync">
+<SelectItem></SelectItem>
+@foreach(var item in StatusMasterDataCollection)
+{
+	<SelectItem TValue="Guid?" Value="@item.Id">
+		@item.DisplayName
+	</SelectItem>
+}
+</Select>                       
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is3">
+                    <Field>
+                        <FieldLabel>@L["Type"]</FieldLabel>
+                        <Select TValue="Guid?"
+		SelectedValue="@Filter.TypeId"
+		SelectedValueChanged="@OnTypeIdChangedAsync">
+<SelectItem></SelectItem>
+@foreach(var item in TypeMasterDataCollection)
+{
+	<SelectItem TValue="Guid" Value="@item.Id">
+		@item.DisplayName
+	</SelectItem>
+}
+</Select>                       
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is3">
+                    <Field>
+                        <FieldLabel>@L["UrgencyLevel"]</FieldLabel>
+                        <Select TValue="Guid?"
+		SelectedValue="@Filter.UrgencyLevelId"
+		SelectedValueChanged="@OnUrgencyLevelIdChangedAsync">
+<SelectItem></SelectItem>
+@foreach(var item in UrgencyLevelMasterDataCollection)
+{
+	<SelectItem TValue="Guid" Value="@item.Id">
+		@item.DisplayName
+	</SelectItem>
+}
+</Select>                       
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is3">
+                    <Field>
+                        <FieldLabel>@L["SecrecyLevel"]</FieldLabel>
+                        <Select TValue="Guid?"
+		SelectedValue="@Filter.SecrecyLevelId"
+		SelectedValueChanged="@OnSecrecyLevelIdChangedAsync">
+<SelectItem></SelectItem>
+@foreach(var item in SecrecyLevelMasterDataCollection)
+{
+	<SelectItem TValue="Guid" Value="@item.Id">
+		@item.DisplayName
+	</SelectItem>
+}
+</Select>                       
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is3">
+                    <Field>
                         <FieldLabel>@L["Workflow"]</FieldLabel>
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.WorkflowId"
@@ -185,70 +251,6 @@
 @foreach(var item in WorkflowsCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">
-		@item.DisplayName
-	</SelectItem>
-}
-</Select>                       
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is3">
-                    <Field>
-                        <FieldLabel>@L["MasterData"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.StatusId"
-		SelectedValueChanged="@OnStatusIdChangedAsync">
-<SelectItem></SelectItem>
-@foreach(var item in MasterDatasCollection)
-{
-	<SelectItem TValue="Guid?" Value="@item.Id">
-		@item.DisplayName
-	</SelectItem>
-}
-</Select>                       
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is3">
-                    <Field>
-                        <FieldLabel>@L["MasterData"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.TypeId"
-		SelectedValueChanged="@OnTypeIdChangedAsync">
-<SelectItem></SelectItem>
-@foreach(var item in MasterDatasCollection)
-{
-	<SelectItem TValue="Guid" Value="@item.Id">
-		@item.DisplayName
-	</SelectItem>
-}
-</Select>                       
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is3">
-                    <Field>
-                        <FieldLabel>@L["MasterData"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.UrgencyLevelId"
-		SelectedValueChanged="@OnUrgencyLevelIdChangedAsync">
-<SelectItem></SelectItem>
-@foreach(var item in MasterDatasCollection)
-{
-	<SelectItem TValue="Guid" Value="@item.Id">
-		@item.DisplayName
-	</SelectItem>
-}
-</Select>                       
-                    </Field>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is3">
-                    <Field>
-                        <FieldLabel>@L["MasterData"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.SecrecyLevelId"
-		SelectedValueChanged="@OnSecrecyLevelIdChangedAsync">
-<SelectItem></SelectItem>
-@foreach(var item in MasterDatasCollection)
-{
-	<SelectItem TValue="Guid" Value="@item.Id">
 		@item.DisplayName
 	</SelectItem>
 }
