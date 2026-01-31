@@ -211,12 +211,17 @@ public partial class SurveyLocations
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await SurveyLocationsAppService.DeleteAsync(input.Id);
             await GetSurveyLocationsAsync();
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -237,6 +242,7 @@ public partial class SurveyLocations
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await SurveyLocationsAppService.CreateAsync(NewSurveyLocation);
             await GetSurveyLocationsAsync();
             await CloseCreateSurveyLocationModalAsync();
@@ -244,6 +250,10 @@ public partial class SurveyLocations
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -261,6 +271,7 @@ public partial class SurveyLocations
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await SurveyLocationsAppService.UpdateAsync(EditingSurveyLocationId, EditingSurveyLocation);
             await GetSurveyLocationsAsync();
             await EditSurveyLocationModal.Hide();
@@ -268,6 +279,10 @@ public partial class SurveyLocations
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -336,18 +351,29 @@ public partial class SurveyLocations
             return;
         }
 
-        if (AllSurveyLocationsSelected)
-        {
-            await SurveyLocationsAppService.DeleteAllAsync(Filter);
-        }
-        else
-        {
-            await SurveyLocationsAppService.DeleteByIdsAsync(SelectedSurveyLocations.Select(x => x.Id).ToList());
-        }
+        try{        
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
+            if (AllSurveyLocationsSelected)
+            {
+                await SurveyLocationsAppService.DeleteAllAsync(Filter);
+            }
+            else
+            {
+                await SurveyLocationsAppService.DeleteByIdsAsync(SelectedSurveyLocations.Select(x => x.Id).ToList());
+            }
 
-        SelectedSurveyLocations.Clear();
-        AllSurveyLocationsSelected = false;
-        await GetSurveyLocationsAsync();
+            SelectedSurveyLocations.Clear();
+            AllSurveyLocationsSelected = false;
+            await GetSurveyLocationsAsync();            
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }                
     }
 
     private async Task CopySurveyLocationToClipboardAsync(SurveyLocationDto input)

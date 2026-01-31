@@ -16,7 +16,7 @@ namespace HC.Controllers.DocumentAssignments;
 [RemoteService]
 [Area("app")]
 [ControllerName("DocumentAssignment")]
-[Route("api/app/document-assignments")]
+[Route("api/app56")]
 public abstract class DocumentAssignmentControllerBase : AbpController
 {
     protected IDocumentAssignmentsAppService _documentAssignmentsAppService;

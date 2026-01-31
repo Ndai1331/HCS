@@ -415,6 +415,7 @@ public partial class Departments
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             var createdDepartment = await DepartmentsAppService.CreateAsync(NewDepartment);
 
             var createdDepartmentTreeView =
@@ -437,6 +438,10 @@ public partial class Departments
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -476,6 +481,7 @@ public partial class Departments
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
         EditingDepartment.ParentId = SelectedDepartment.ParentId;
 
         await DepartmentsAppService.UpdateAsync(EditingDepartmentId, EditingDepartment);
@@ -487,6 +493,10 @@ public partial class Departments
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -523,6 +533,7 @@ public partial class Departments
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await DepartmentsAppService.DeleteAsync(SelectedDepartment.Id);
 
             await GetDepartmentsAsync();
@@ -531,6 +542,10 @@ public partial class Departments
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
         

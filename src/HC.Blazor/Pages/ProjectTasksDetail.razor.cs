@@ -308,6 +308,7 @@ public partial class ProjectTasksDetail : HCComponentBase
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             var updated = await ProjectTasksAppService.UpdateAsync(ProjectTaskId, EditingProjectTask);
             
             // Reload data
@@ -320,6 +321,7 @@ public partial class ProjectTasksDetail : HCComponentBase
         }
         finally
         {
+            await BlockUiService.UnBlock();
             IsUpdatingProjectTask = false;
             await InvokeAsync(StateHasChanged);
         }
@@ -497,6 +499,7 @@ public partial class ProjectTasksDetail : HCComponentBase
         {
             await InvokeAsync(StateHasChanged);
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             var userId = EditAssignmentsUsersToAdd[0].Id;
             var input = new ProjectTaskAssignmentCreateDto
             {
@@ -520,6 +523,7 @@ public partial class ProjectTasksDetail : HCComponentBase
         }
         finally
         {
+            await BlockUiService.UnBlock();
             IsAddingAssignment = false;
             await InvokeAsync(StateHasChanged);
         }
@@ -534,6 +538,7 @@ public partial class ProjectTasksDetail : HCComponentBase
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await ProjectTaskAssignmentsAppService.DeleteAsync(row.ProjectTaskAssignment.Id);
             await LoadEditAssignmentsAsync();
             await UiMessageService.Success(L["SuccessfullyDeleted"]);
@@ -541,6 +546,10 @@ public partial class ProjectTasksDetail : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -581,6 +590,7 @@ public partial class ProjectTasksDetail : HCComponentBase
         {
             await InvokeAsync(StateHasChanged);
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             var documentId = EditDocumentsToAdd[0].Id;
             await ProjectTaskDocumentsAppService.CreateAsync(new ProjectTaskDocumentCreateDto
             {
@@ -607,6 +617,7 @@ public partial class ProjectTasksDetail : HCComponentBase
         }
         finally
         {
+            await BlockUiService.UnBlock();
             IsAddingDocument = false;
             await InvokeAsync(StateHasChanged);
         }
@@ -621,6 +632,7 @@ public partial class ProjectTasksDetail : HCComponentBase
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await ProjectTaskDocumentsAppService.DeleteAsync(row.ProjectTaskDocument.Id);
             
             if (row.Document?.Id != null)
@@ -634,6 +646,10 @@ public partial class ProjectTasksDetail : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 

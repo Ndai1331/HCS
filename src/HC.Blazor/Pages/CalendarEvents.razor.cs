@@ -873,6 +873,7 @@ public partial class CalendarEvents : HCComponentBase
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await CalendarEventParticipantsAppService.DeleteAsync(row.CalendarEventParticipant.Id);
             await LoadCreateParticipantsAsync();
             await InvokeAsync(StateHasChanged);
@@ -880,6 +881,10 @@ public partial class CalendarEvents : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 

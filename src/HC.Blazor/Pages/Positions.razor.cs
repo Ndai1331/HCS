@@ -203,12 +203,17 @@ public partial class Positions
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await PositionsAppService.DeleteAsync(input.Id);
             await GetPositionsAsync();
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -229,6 +234,7 @@ public partial class Positions
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await PositionsAppService.CreateAsync(NewPosition);
             await GetPositionsAsync();
             await CloseCreatePositionModalAsync();
@@ -236,6 +242,10 @@ public partial class Positions
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -253,6 +263,7 @@ public partial class Positions
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await PositionsAppService.UpdateAsync(EditingPositionId, EditingPosition);
             await GetPositionsAsync();
             await EditPositionModal.Hide();
@@ -260,6 +271,10 @@ public partial class Positions
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -334,17 +349,28 @@ public partial class Positions
             return;
         }
 
-        if (AllPositionsSelected)
-        {
-            await PositionsAppService.DeleteAllAsync(Filter);
-        }
-        else
-        {
-            await PositionsAppService.DeleteByIdsAsync(SelectedPositions.Select(x => x.Id).ToList());
-        }
+        try{
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
+            if (AllPositionsSelected)
+            {
+                await PositionsAppService.DeleteAllAsync(Filter);
+            }
+            else
+            {
+                await PositionsAppService.DeleteByIdsAsync(SelectedPositions.Select(x => x.Id).ToList());
+            }
 
-        SelectedPositions.Clear();
-        AllPositionsSelected = false;
-        await GetPositionsAsync();
+            SelectedPositions.Clear();
+            AllPositionsSelected = false;
+            await GetPositionsAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 }

@@ -576,6 +576,8 @@ public partial class CalendarEventDetail : HCComponentBase
                 await InvokeAsync(StateHasChanged);
                 return;
             }
+            
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
 
             // Set RelatedId based on RelatedType
             if (NewCalendarEvent != null && NewCalendarEvent.RelatedType == RelatedType.PROJECT.ToString())
@@ -601,6 +603,10 @@ public partial class CalendarEventDetail : HCComponentBase
         {
             await HandleErrorAsync(ex);
         }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task UpdateCalendarEventAsync()
@@ -613,7 +619,8 @@ public partial class CalendarEventDetail : HCComponentBase
                 await InvokeAsync(StateHasChanged);
                 return;
             }
-
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            
             // Set RelatedId based on RelatedType
             if (EditingCalendarEvent != null && EditingCalendarEvent.RelatedType == RelatedType.PROJECT.ToString())
             {
@@ -637,6 +644,10 @@ public partial class CalendarEventDetail : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 

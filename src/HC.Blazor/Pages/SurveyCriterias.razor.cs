@@ -241,12 +241,17 @@ public partial class SurveyCriterias
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await SurveyCriteriasAppService.DeleteAsync(input.SurveyCriteria.Id);
             await GetSurveyCriteriasAsync();
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -267,6 +272,7 @@ public partial class SurveyCriterias
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await SurveyCriteriasAppService.CreateAsync(NewSurveyCriteria);
             await GetSurveyCriteriasAsync();
             await CloseCreateSurveyCriteriaModalAsync();
@@ -274,6 +280,10 @@ public partial class SurveyCriterias
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -294,6 +304,7 @@ public partial class SurveyCriterias
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await SurveyCriteriasAppService.UpdateAsync(EditingSurveyCriteriaId, EditingSurveyCriteria);
             await GetSurveyCriteriasAsync();
             await EditSurveyCriteriaModal.Hide();
@@ -301,6 +312,10 @@ public partial class SurveyCriterias
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -517,17 +532,28 @@ public partial class SurveyCriterias
             return;
         }
 
-        if (AllSurveyCriteriasSelected)
-        {
-            await SurveyCriteriasAppService.DeleteAllAsync(Filter);
-        }
-        else
-        {
-            await SurveyCriteriasAppService.DeleteByIdsAsync(SelectedSurveyCriterias.Select(x => x.SurveyCriteria.Id).ToList());
-        }
+        try{        
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
+            if (AllSurveyCriteriasSelected)
+            {
+                await SurveyCriteriasAppService.DeleteAllAsync(Filter);
+            }
+            else
+            {
+                await SurveyCriteriasAppService.DeleteByIdsAsync(SelectedSurveyCriterias.Select(x => x.SurveyCriteria.Id).ToList());
+            }
 
-        SelectedSurveyCriterias.Clear();
-        AllSurveyCriteriasSelected = false;
-        await GetSurveyCriteriasAsync();
+            SelectedSurveyCriterias.Clear();
+            AllSurveyCriteriasSelected = false;            
+            await GetSurveyCriteriasAsync();            
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }                
     }
 }
