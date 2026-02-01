@@ -23,4 +23,5 @@ src/HC.Api/
 
 == Bổ sung thêm 
 1. Khi gửi tin nhắn update số tin nhắn chưa đọc HC.Blazor/Components/Pages/Notification.razor realtime
-2. Api /api/chat/contact chưa load được unreadMessageCount
+2. Api /api/chat/contact chưa load được unreadMessageCount (public virtual async Task<List<ChatContactDto>> GetContactsAsync(GetContactsInput input)) nên khi vào chat chưa hiển thị số tin nhắn chưa đọc trên mỗi conversation
+
