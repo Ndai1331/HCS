@@ -203,12 +203,17 @@ public partial class Units
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await UnitsAppService.DeleteAsync(input.Id);
             await GetUnitsAsync();
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -229,6 +234,7 @@ public partial class Units
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await UnitsAppService.CreateAsync(NewUnit);
             await GetUnitsAsync();
             await CloseCreateUnitModalAsync();
@@ -236,6 +242,10 @@ public partial class Units
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -253,6 +263,7 @@ public partial class Units
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await UnitsAppService.UpdateAsync(EditingUnitId, EditingUnit);
             await GetUnitsAsync();
             await EditUnitModal.Hide();
@@ -260,6 +271,10 @@ public partial class Units
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -334,17 +349,29 @@ public partial class Units
             return;
         }
 
-        if (AllUnitsSelected)
+        try
         {
-            await UnitsAppService.DeleteAllAsync(Filter);
-        }
-        else
-        {
-            await UnitsAppService.DeleteByIdsAsync(SelectedUnits.Select(x => x.Id).ToList());
-        }
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            if (AllUnitsSelected)
+            {
+                await UnitsAppService.DeleteAllAsync(Filter);
+            }
+            else
+            {
+                await UnitsAppService.DeleteByIdsAsync(SelectedUnits.Select(x => x.Id).ToList());
+            }
 
-        SelectedUnits.Clear();
-        AllUnitsSelected = false;
-        await GetUnitsAsync();
+            SelectedUnits.Clear();
+            AllUnitsSelected = false;
+            await GetUnitsAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 }

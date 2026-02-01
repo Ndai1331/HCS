@@ -216,12 +216,17 @@ public partial class SignatureSettings : HCComponentBase
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await SignatureSettingsAppService.DeleteAsync(input.Id);
             await GetSignatureSettingsAsync();
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -244,6 +249,7 @@ public partial class SignatureSettings : HCComponentBase
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await SignatureSettingsAppService.CreateAsync(NewSignatureSetting);
             await GetSignatureSettingsAsync();
             await CloseCreateSignatureSettingModalAsync();
@@ -251,6 +257,10 @@ public partial class SignatureSettings : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -333,6 +343,7 @@ public partial class SignatureSettings : HCComponentBase
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await SignatureSettingsAppService.UpdateAsync(EditingSignatureSettingId, EditingSignatureSetting);
             await GetSignatureSettingsAsync();
             await EditSignatureSettingModal.Hide();
@@ -340,6 +351,10 @@ public partial class SignatureSettings : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -555,18 +570,29 @@ public partial class SignatureSettings : HCComponentBase
             return;
         }
 
-        if (AllSignatureSettingsSelected)
-        {
-            await SignatureSettingsAppService.DeleteAllAsync(Filter);
-        }
-        else
-        {
-            await SignatureSettingsAppService.DeleteByIdsAsync(SelectedSignatureSettings.Select(x => x.Id).ToList());
-        }
+        try{        
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
+            if (AllSignatureSettingsSelected)
+            {
+                await SignatureSettingsAppService.DeleteAllAsync(Filter);
+            }
+            else
+            {
+                await SignatureSettingsAppService.DeleteByIdsAsync(SelectedSignatureSettings.Select(x => x.Id).ToList());
+            }
 
-        SelectedSignatureSettings.Clear();
-        AllSignatureSettingsSelected = false;
-        await GetSignatureSettingsAsync();
+            SelectedSignatureSettings.Clear();
+            AllSignatureSettingsSelected = false;            
+            await GetSignatureSettingsAsync();            
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }                
     }
 
     // Helper properties for enum conversion

@@ -426,92 +426,104 @@ public partial class ProjectTasks
 
     private async Task UpdateProjectTaskStatusAsync(KanbanItem item, ProjectTaskStatus newStatus)
     {
-        // Store old status to update counts
-        var oldStatus = item.Status;
-        
-        var input = new ProjectTaskUpdateDto
+        try
         {
-            ParentTaskId = item.ProjectTask.ParentTaskId,
-            Code = item.ProjectTask.Code,
-            Title = item.ProjectTask.Title,
-            Description = item.ProjectTask.Description,
-            StartDate = item.ProjectTask.StartDate,
-            DueDate = item.ProjectTask.DueDate,
-            Priority = item.ProjectTask.Priority,
-            Status = newStatus.ToString(),
-            ProgressPercent = item.ProjectTask.ProgressPercent,
-            ProjectId = item.ProjectTask.ProjectId,
-            ConcurrencyStamp = item.ProjectTask.ConcurrencyStamp
-        };
-
-        await ProjectTasksAppService.UpdateAsync(item.ProjectTask.Id, input);
-
-        // Update local state after the server call succeeds.
-        item.ProjectTask.Status = input.Status;
-        item.Status = newStatus;
-        
-        // Update AllKanbanItems to reflect the status change
-        var allItem = AllKanbanItems.FirstOrDefault(x => x.Id == item.Id);
-        if (allItem != null)
-        {
-            allItem.Status = newStatus;
-            allItem.ProjectTask.Status = input.Status;
-        }
-        
-        // Update total counts for old and new status by querying API
-        if (oldStatus != newStatus)
-        {
-            // Query total count for old status
-            var oldStatusInput = new GetProjectTasksInput
-            {
-                FilterText = Filter.FilterText,
-                ParentTaskId = Filter.ParentTaskId,
-                Code = Filter.Code,
-                Title = Filter.Title,
-                Description = Filter.Description,
-                StartDateMin = Filter.StartDateMin,
-                StartDateMax = Filter.StartDateMax,
-                DueDateMin = Filter.DueDateMin,
-                DueDateMax = Filter.DueDateMax,
-                Priority = Filter.Priority,
-                Status = oldStatus.ToString(),
-                ProgressPercentMin = Filter.ProgressPercentMin,
-                ProgressPercentMax = Filter.ProgressPercentMax,
-                ProjectId = Filter.ProjectId,
-                SkipCount = 0,
-                MaxResultCount = 1,
-                Sorting = string.Empty
-            };
-            var oldStatusResult = await ProjectTasksAppService.GetListAsync(oldStatusInput);
-            KanbanTotalCounts[oldStatus] = (int)oldStatusResult.TotalCount;
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            // Store old status to update counts
+            var oldStatus = item.Status;
             
-            // Query total count for new status
-            var newStatusInput = new GetProjectTasksInput
+            var input = new ProjectTaskUpdateDto
             {
-                FilterText = Filter.FilterText,
-                ParentTaskId = Filter.ParentTaskId,
-                Code = Filter.Code,
-                Title = Filter.Title,
-                Description = Filter.Description,
-                StartDateMin = Filter.StartDateMin,
-                StartDateMax = Filter.StartDateMax,
-                DueDateMin = Filter.DueDateMin,
-                DueDateMax = Filter.DueDateMax,
-                Priority = Filter.Priority,
+                ParentTaskId = item.ProjectTask.ParentTaskId,
+                Code = item.ProjectTask.Code,
+                Title = item.ProjectTask.Title,
+                Description = item.ProjectTask.Description,
+                StartDate = item.ProjectTask.StartDate,
+                DueDate = item.ProjectTask.DueDate,
+                Priority = item.ProjectTask.Priority,
                 Status = newStatus.ToString(),
-                ProgressPercentMin = Filter.ProgressPercentMin,
-                ProgressPercentMax = Filter.ProgressPercentMax,
-                ProjectId = Filter.ProjectId,
-                SkipCount = 0,
-                MaxResultCount = 1,
-                Sorting = string.Empty
+                ProgressPercent = item.ProjectTask.ProgressPercent,
+                ProjectId = item.ProjectTask.ProjectId,
+                ConcurrencyStamp = item.ProjectTask.ConcurrencyStamp
             };
-            var newStatusResult = await ProjectTasksAppService.GetListAsync(newStatusInput);
-            KanbanTotalCounts[newStatus] = (int)newStatusResult.TotalCount;
+
+            await ProjectTasksAppService.UpdateAsync(item.ProjectTask.Id, input);
+
+            // Update local state after the server call succeeds.
+            item.ProjectTask.Status = input.Status;
+            item.Status = newStatus;
+            
+            // Update AllKanbanItems to reflect the status change
+            var allItem = AllKanbanItems.FirstOrDefault(x => x.Id == item.Id);
+            if (allItem != null)
+            {
+                allItem.Status = newStatus;
+                allItem.ProjectTask.Status = input.Status;
+            }
+            
+            // Update total counts for old and new status by querying API
+            if (oldStatus != newStatus)
+            {
+                // Query total count for old status
+                var oldStatusInput = new GetProjectTasksInput
+                {
+                    FilterText = Filter.FilterText,
+                    ParentTaskId = Filter.ParentTaskId,
+                    Code = Filter.Code,
+                    Title = Filter.Title,
+                    Description = Filter.Description,
+                    StartDateMin = Filter.StartDateMin,
+                    StartDateMax = Filter.StartDateMax,
+                    DueDateMin = Filter.DueDateMin,
+                    DueDateMax = Filter.DueDateMax,
+                    Priority = Filter.Priority,
+                    Status = oldStatus.ToString(),
+                    ProgressPercentMin = Filter.ProgressPercentMin,
+                    ProgressPercentMax = Filter.ProgressPercentMax,
+                    ProjectId = Filter.ProjectId,
+                    SkipCount = 0,
+                    MaxResultCount = 1,
+                    Sorting = string.Empty
+                };
+                var oldStatusResult = await ProjectTasksAppService.GetListAsync(oldStatusInput);
+                KanbanTotalCounts[oldStatus] = (int)oldStatusResult.TotalCount;
+                
+                // Query total count for new status
+                var newStatusInput = new GetProjectTasksInput
+                {
+                    FilterText = Filter.FilterText,
+                    ParentTaskId = Filter.ParentTaskId,
+                    Code = Filter.Code,
+                    Title = Filter.Title,
+                    Description = Filter.Description,
+                    StartDateMin = Filter.StartDateMin,
+                    StartDateMax = Filter.StartDateMax,
+                    DueDateMin = Filter.DueDateMin,
+                    DueDateMax = Filter.DueDateMax,
+                    Priority = Filter.Priority,
+                    Status = newStatus.ToString(),
+                    ProgressPercentMin = Filter.ProgressPercentMin,
+                    ProgressPercentMax = Filter.ProgressPercentMax,
+                    ProjectId = Filter.ProjectId,
+                    SkipCount = 0,
+                    MaxResultCount = 1,
+                    Sorting = string.Empty
+                };
+                var newStatusResult = await ProjectTasksAppService.GetListAsync(newStatusInput);
+                KanbanTotalCounts[newStatus] = (int)newStatusResult.TotalCount;
+            }
+            
+            // Refresh displayed items
+            UpdateDisplayedKanbanItems();
         }
-        
-        // Refresh displayed items
-        UpdateDisplayedKanbanItems();
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task RefreshKanbanAsync()
@@ -1008,21 +1020,33 @@ public partial class ProjectTasks
             return;
         }
 
-        if (AllProjectTasksSelected)
+        try
         {
-            await ProjectTasksAppService.DeleteAllAsync(Filter);
-        }
-        else
-        {
-            await ProjectTasksAppService.DeleteByIdsAsync(SelectedProjectTasks.Select(x => x.ProjectTask.Id).ToList());
-        }
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            if (AllProjectTasksSelected)
+            {
+                await ProjectTasksAppService.DeleteAllAsync(Filter);
+            }
+            else
+            {
+                await ProjectTasksAppService.DeleteByIdsAsync(SelectedProjectTasks.Select(x => x.ProjectTask.Id).ToList());
+            }
 
-        SelectedProjectTasks.Clear();
-        AllProjectTasksSelected = false;
+            SelectedProjectTasks.Clear();
+            AllProjectTasksSelected = false;
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         
-        // Reload kanban after deletion
-        await RefreshKanbanAsync();
-        await GetProjectTasksAsync();
+            // Reload kanban after deletion
+            await RefreshKanbanAsync();
+            await GetProjectTasksAsync();
+        }
     }
     
     // PDF Viewer and File Download methods

@@ -805,17 +805,29 @@ public partial class Projects : HCComponentBase
             return;
         }
 
-        await ProjectMembersAppService.UpdateAsync(EditingProjectMemberIdInModal, new ProjectMemberUpdateDto
+        try
         {
-            ProjectId = ProjectMembersProjectId,
-            UserId = EditingProjectMemberUserIdInModal,
-            MemberRole = ProjectMembersRoleToAdd,
-            JoinedAt = EditingProjectMemberJoinedAtInModal,
-            ConcurrencyStamp = EditingProjectMemberConcurrencyStampInModal
-        });
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await ProjectMembersAppService.UpdateAsync(EditingProjectMemberIdInModal, new ProjectMemberUpdateDto
+            {
+                ProjectId = ProjectMembersProjectId,
+                UserId = EditingProjectMemberUserIdInModal,
+                MemberRole = ProjectMembersRoleToAdd,
+                JoinedAt = EditingProjectMemberJoinedAtInModal,
+                ConcurrencyStamp = EditingProjectMemberConcurrencyStampInModal
+            });
 
-        await LoadProjectMembersListAsync(ProjectMembersCurrentPage);
-        CancelProjectMemberRoleEdit();
+            await LoadProjectMembersListAsync(ProjectMembersCurrentPage);
+            CancelProjectMemberRoleEdit();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task DeleteProjectMemberAsync(ProjectMemberWithNavigationPropertiesDto input)
@@ -830,21 +842,38 @@ public partial class Projects : HCComponentBase
             return;
         }
 
-        await ProjectMembersAppService.DeleteAsync(input.ProjectMember.Id);
-        await LoadProjectMembersListAsync(ProjectMembersCurrentPage);
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await ProjectMembersAppService.DeleteAsync(input.ProjectMember.Id);
+            await LoadProjectMembersListAsync(ProjectMembersCurrentPage);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task DeleteProjectAsync(ProjectWithNavigationPropertiesDto input)
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await ProjectsAppService.DeleteAsync(input.Project.Id);
             await GetProjectsAsync();
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -933,6 +962,7 @@ public partial class Projects : HCComponentBase
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             var createdProject = await ProjectsAppService.CreateAsync(NewProject);
             CreatedProjectId = createdProject.Id;
             await GetProjectsAsync();
@@ -941,6 +971,10 @@ public partial class Projects : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
     
@@ -995,62 +1029,74 @@ public partial class Projects : HCComponentBase
     
     private async Task SaveProjectMembersAsync(Guid projectId)
     {
-        // Load all existing members using pagination
-        var firstInput = new GetProjectMembersInput 
-        { 
-            ProjectId = projectId, 
-            MaxResultCount = PageSize,
-            SkipCount = 0
-        };
-        var firstResult = await ProjectMembersAppService.GetListAsync(firstInput);
-        var allExistingMembers = new List<ProjectMemberWithNavigationPropertiesDto>(firstResult.Items);
-        
-        // Load remaining members if any
-        if (firstResult.TotalCount > PageSize)
+        try
         {
-            var skipCount = PageSize;
-            while (skipCount < firstResult.TotalCount)
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            // Load all existing members using pagination
+            var firstInput = new GetProjectMembersInput 
+            { 
+                ProjectId = projectId, 
+                MaxResultCount = PageSize,
+                SkipCount = 0
+            };
+            var firstResult = await ProjectMembersAppService.GetListAsync(firstInput);
+            var allExistingMembers = new List<ProjectMemberWithNavigationPropertiesDto>(firstResult.Items);
+            
+            // Load remaining members if any
+            if (firstResult.TotalCount > PageSize)
             {
-                var input = new GetProjectMembersInput 
-                { 
-                    ProjectId = projectId, 
-                    MaxResultCount = PageSize,
-                    SkipCount = skipCount
-                };
-                var result = await ProjectMembersAppService.GetListAsync(input);
-                allExistingMembers.AddRange(result.Items);
-                skipCount += PageSize;
-                
-                if (result.Items.Count < PageSize)
+                var skipCount = PageSize;
+                while (skipCount < firstResult.TotalCount)
                 {
-                    break;
+                    var input = new GetProjectMembersInput 
+                    { 
+                        ProjectId = projectId, 
+                        MaxResultCount = PageSize,
+                        SkipCount = skipCount
+                    };
+                    var result = await ProjectMembersAppService.GetListAsync(input);
+                    allExistingMembers.AddRange(result.Items);
+                    skipCount += PageSize;
+                    
+                    if (result.Items.Count < PageSize)
+                    {
+                        break;
+                    }
                 }
             }
-        }
-        
-        var existingUserIds = allExistingMembers.Select(x => x.ProjectMember.UserId).ToHashSet();
-        
-        // Get selected user IDs
-        var selectedUserIds = SelectedProjectMembers.Select(x => x.Id).ToHashSet();
-        
-        // Delete members that are not in selected list
-        var membersToDelete = allExistingMembers.Where(x => !selectedUserIds.Contains(x.ProjectMember.UserId)).ToList();
-        foreach (var member in membersToDelete)
-        {
-            await ProjectMembersAppService.DeleteAsync(member.ProjectMember.Id);
-        }
-        
-        // Add new members that are not in existing list
-        var membersToAdd = SelectedProjectMembers.Where(x => !existingUserIds.Contains(x.Id)).ToList();
-        foreach (var user in membersToAdd)
-        {
-            await ProjectMembersAppService.CreateAsync(new ProjectMemberCreateDto
+            
+            var existingUserIds = allExistingMembers.Select(x => x.ProjectMember.UserId).ToHashSet();
+            
+            // Get selected user IDs
+            var selectedUserIds = SelectedProjectMembers.Select(x => x.Id).ToHashSet();
+            
+            // Delete members that are not in selected list
+            var membersToDelete = allExistingMembers.Where(x => !selectedUserIds.Contains(x.ProjectMember.UserId)).ToList();
+            foreach (var member in membersToDelete)
             {
-                ProjectId = projectId,
-                UserId = user.Id,
-                MemberRole = ProjectMemberRole.MEMBER,
-                JoinedAt = DateTime.Now
-            });
+                await ProjectMembersAppService.DeleteAsync(member.ProjectMember.Id);
+            }
+            
+            // Add new members that are not in existing list
+            var membersToAdd = SelectedProjectMembers.Where(x => !existingUserIds.Contains(x.Id)).ToList();
+            foreach (var user in membersToAdd)
+            {
+                await ProjectMembersAppService.CreateAsync(new ProjectMemberCreateDto
+                {
+                    ProjectId = projectId,
+                    UserId = user.Id,
+                    MemberRole = ProjectMemberRole.MEMBER,
+                    JoinedAt = DateTime.Now
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -1070,6 +1116,7 @@ public partial class Projects : HCComponentBase
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await ProjectsAppService.UpdateAsync(EditingProjectId, EditingProject);
             
             // Save project members if members tab was visited (members may be edited then user returns to main tab)
@@ -1084,6 +1131,10 @@ public partial class Projects : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -1232,24 +1283,37 @@ public partial class Projects : HCComponentBase
 
     private async Task DeleteSelectedProjectsAsync()
     {
-        var message = AllProjectsSelected ? L["DeleteAllRecords"].Value : L["DeleteSelectedRecords", SelectedProjects.Count].Value;
-        if (!await UiMessageService.Confirm(message))
+        try
         {
-            return;
-        }
+            var message = AllProjectsSelected ? L["DeleteAllRecords"].Value : L["DeleteSelectedRecords", SelectedProjects.Count].Value;
+            if (!await UiMessageService.Confirm(message))
+            {
+                return;
+            }
 
-        if (AllProjectsSelected)
-        {
-            await ProjectsAppService.DeleteAllAsync(Filter);
-        }
-        else
-        {
-            await ProjectsAppService.DeleteByIdsAsync(SelectedProjects.Select(x => x.Project.Id).ToList());
-        }
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
 
-        SelectedProjects.Clear();
-        AllProjectsSelected = false;
-        await GetProjectsAsync();
+            if (AllProjectsSelected)
+            {
+                await ProjectsAppService.DeleteAllAsync(Filter);
+            }
+            else
+            {
+                await ProjectsAppService.DeleteByIdsAsync(SelectedProjects.Select(x => x.Project.Id).ToList());
+            }
+
+            SelectedProjects.Clear();
+            AllProjectsSelected = false;
+            await GetProjectsAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
 

@@ -14,6 +14,7 @@
 @using Blazorise
 @using Blazorise.Components
 @using Blazorise.DataGrid
+@using Volo.Abp.AspNetCore.Components.BlockUi
 @using Volo.Abp.BlazoriseUI
 @using Volo.Abp.BlazoriseUI.Components
 @using Volo.Abp.ObjectMapping
@@ -28,6 +29,7 @@
 @using Microsoft.Extensions.Caching.Memory
 @inherits ValidationPageBase
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
+@inject IBlockUiService BlockUiService
 
 @* ************************* PAGE HEADER ************************* *@
 <PageHeader Title="@L["WorkflowDetail"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">

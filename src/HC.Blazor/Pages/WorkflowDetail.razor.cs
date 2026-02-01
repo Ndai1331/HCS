@@ -234,6 +234,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             CurrentWorkflow.WorkflowDefinitionId = SelectedWorkflowDefinition?.FirstOrDefault()?.Id ?? default;
 
             var created = await WorkflowsAppService.CreateAsync(CurrentWorkflow);
@@ -265,6 +266,10 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -304,6 +309,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             EditingWorkflow.WorkflowDefinitionId = SelectedWorkflowDefinition?.FirstOrDefault()?.Id ?? default;
 
             await WorkflowsAppService.UpdateAsync(CurrentWorkflowId, EditingWorkflow);
@@ -313,6 +319,10 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -515,6 +525,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            
             NewWorkflowTemplate.WorkflowId = CurrentWorkflowId;
             NewWorkflowTemplate.OutputFormat = NewWorkflowTemplateOutputFormat?.ToString();
             NewWorkflowTemplate.SignMode = NewWorkflowTemplateSignMode?.ToString();
@@ -564,6 +576,10 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         {
             await HandleErrorAsync(ex);
         }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private bool ValidateWorkflowTemplateEdit()
@@ -588,6 +604,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             EditingWorkflowTemplate.WorkflowId = CurrentWorkflowId;
             EditingWorkflowTemplate.OutputFormat = EditingWorkflowTemplateOutputFormat?.ToString();
             EditingWorkflowTemplate.SignMode = EditingWorkflowTemplateSignMode?.ToString();
@@ -601,6 +618,10 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         {
             await HandleErrorAsync(ex);
         }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task DeleteWorkflowTemplateAsync()
@@ -612,6 +633,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await WorkflowTemplatesAppService.DeleteAsync(CurrentWorkflowTemplate!.Id);
             CurrentWorkflowTemplateNav = null;
             IsTemplateSaved = false;
@@ -623,6 +645,10 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -714,7 +740,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 await InvokeAsync(StateHasChanged);
                 return;
             }
-
+            
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             NewStepTemplate.Type = NewStepTemplateType.ToString();
             await WorkflowStepTemplatesAppService.CreateAsync(NewStepTemplate);
             await LoadWorkflowStepTemplatesAsync();
@@ -725,6 +752,10 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -765,6 +796,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             EditingStepTemplate.Type = EditingStepTemplateType.ToString();
             await WorkflowStepTemplatesAppService.UpdateAsync(EditingStepTemplateId, EditingStepTemplate);
             await LoadWorkflowStepTemplatesAsync();
@@ -776,12 +808,17 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         {
             await HandleErrorAsync(ex);
         }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task DeleteStepTemplateAsync(WorkflowStepTemplateDto input)
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await WorkflowStepTemplatesAppService.DeleteAsync(input.Id);
             await LoadWorkflowStepTemplatesAsync();
             HasWorkflowSteps = WorkflowStepTemplatesNavList.Any();
@@ -791,6 +828,10 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -887,6 +928,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             NewStepAssignment.StepId = SelectedNewStepTemplate?.FirstOrDefault()?.Id;
             NewStepAssignment.DefaultUserId = SelectedNewIdentityUser?.FirstOrDefault()?.Id;
             await WorkflowStepAssignmentsAppService.CreateAsync(NewStepAssignment);
@@ -896,6 +938,10 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -954,6 +1000,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             EditingStepAssignment.StepId = SelectedEditStepTemplate?.FirstOrDefault()?.Id;
             EditingStepAssignment.DefaultUserId = SelectedEditIdentityUser?.FirstOrDefault()?.Id;
             await WorkflowStepAssignmentsAppService.UpdateAsync(EditingStepAssignmentId, EditingStepAssignment);
@@ -964,18 +1011,27 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         {
             await HandleErrorAsync(ex);
         }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task DeleteStepAssignmentAsync(WorkflowStepAssignmentWithNavigationPropertiesDto input)
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await WorkflowStepAssignmentsAppService.DeleteAsync(input.WorkflowStepAssignment.Id);
             await LoadWorkflowStepAssignmentsAsync();
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 

@@ -383,62 +383,74 @@ public partial class ProjectDetail : HCComponentBase
 
     private async Task AddOrUpdateMemberAsync()
     {
-        if (ProjectId == Guid.Empty)
+        try
         {
-            return;
-        }
-
-        if (IsMemberRoleEditMode)
-        {
-            await UpdateMemberRoleAsync();
-            return;
-        }
-
-        if (!CanCreateProjectMember)
-        {
-            return;
-        }
-
-        if (MembersToAdd is null || MembersToAdd.Count == 0)
-        {
-            return;
-        }
-
-        foreach (var user in MembersToAdd)
-        {
-            try
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            if (ProjectId == Guid.Empty)
             {
-                // Avoid duplicate adds with a cheap existence check
-                var exists = await ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
-                {
-                    ProjectId = ProjectId,
-                    UserId = user.Id,
-                    MaxResultCount = 1
-                });
+                return;
+            }
 
-                if (exists.TotalCount > 0)
+            if (IsMemberRoleEditMode)
+            {
+                await UpdateMemberRoleAsync();
+                return;
+            }
+
+            if (!CanCreateProjectMember)
+            {
+                return;
+            }
+
+            if (MembersToAdd is null || MembersToAdd.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var user in MembersToAdd)
+            {
+                try
                 {
-                    continue;
+                    // Avoid duplicate adds with a cheap existence check
+                    var exists = await ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
+                    {
+                        ProjectId = ProjectId,
+                        UserId = user.Id,
+                        MaxResultCount = 1
+                    });
+
+                    if (exists.TotalCount > 0)
+                    {
+                        continue;
+                    }
+
+                    await ProjectMembersAppService.CreateAsync(new ProjectMemberCreateDto
+                    {
+                        ProjectId = ProjectId,
+                        UserId = user.Id,
+                        MemberRole = MembersRoleToAdd,
+                        JoinedAt = DateTime.Now
+                    });
                 }
-
-                await ProjectMembersAppService.CreateAsync(new ProjectMemberCreateDto
+                catch (Exception ex)
                 {
-                    ProjectId = ProjectId,
-                    UserId = user.Id,
-                    MemberRole = MembersRoleToAdd,
-                    JoinedAt = DateTime.Now
-                });
+                    await HandleErrorAsync(ex);
+                }
             }
-            catch (Exception ex)
-            {
-                await HandleErrorAsync(ex);
-            }
-        }
 
-        MembersToAdd = new List<LookupDto<Guid>>();
-        await LoadMembersAsync(page: MembersCurrentPage);
-        await LoadProjectAsync();
-        await InvokeAsync(StateHasChanged);
+            MembersToAdd = new List<LookupDto<Guid>>();
+            await LoadMembersAsync(page: MembersCurrentPage);
+            await LoadProjectAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private void CancelMemberRoleEdit()
@@ -496,18 +508,30 @@ public partial class ProjectDetail : HCComponentBase
             return;
         }
 
-        await ProjectMembersAppService.UpdateAsync(EditingMemberId, new ProjectMemberUpdateDto
+        try
         {
-            ProjectId = ProjectId,
-            UserId = EditingMemberUserId,
-            MemberRole = MembersRoleToAdd,
-            JoinedAt = EditingMemberJoinedAt,
-            ConcurrencyStamp = EditingMemberConcurrencyStamp
-        });
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await ProjectMembersAppService.UpdateAsync(EditingMemberId, new ProjectMemberUpdateDto
+            {
+                ProjectId = ProjectId,
+                UserId = EditingMemberUserId,
+                MemberRole = MembersRoleToAdd,
+                JoinedAt = EditingMemberJoinedAt,
+                ConcurrencyStamp = EditingMemberConcurrencyStamp
+            });
 
-        await LoadMembersAsync(page: MembersCurrentPage);
-        await LoadProjectAsync();
-        CancelMemberRoleEdit();
+            await LoadMembersAsync(page: MembersCurrentPage);
+            await LoadProjectAsync();
+            CancelMemberRoleEdit();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task DeleteMemberAsync(ProjectMemberWithNavigationPropertiesDto input)
@@ -522,10 +546,22 @@ public partial class ProjectDetail : HCComponentBase
             return;
         }
 
-        await ProjectMembersAppService.DeleteAsync(input.ProjectMember.Id);
-        await LoadMembersAsync(page: MembersCurrentPage);
-        await LoadProjectAsync();
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await ProjectMembersAppService.DeleteAsync(input.ProjectMember.Id);
+            await LoadMembersAsync(page: MembersCurrentPage);
+            await LoadProjectAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     // -------------------------------
@@ -610,6 +646,7 @@ public partial class ProjectDetail : HCComponentBase
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             var createdProject = await ProjectsAppService.CreateAsync(NewProject);
             await UiMessageService.Success(L["SuccessfullyCreated"]);
 
@@ -619,6 +656,10 @@ public partial class ProjectDetail : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -633,6 +674,7 @@ public partial class ProjectDetail : HCComponentBase
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await ProjectsAppService.UpdateAsync(ProjectId, EditingProject);
             await UiMessageService.Success(L["SuccessfullyUpdated"]);
 
@@ -642,6 +684,10 @@ public partial class ProjectDetail : HCComponentBase
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 

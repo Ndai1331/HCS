@@ -203,12 +203,17 @@ public partial class WorkflowDefinitions
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await WorkflowDefinitionsAppService.DeleteAsync(input.Id);
             await GetWorkflowDefinitionsAsync();
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -229,6 +234,7 @@ public partial class WorkflowDefinitions
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await WorkflowDefinitionsAppService.CreateAsync(NewWorkflowDefinition);
             await GetWorkflowDefinitionsAsync();
             await CloseCreateWorkflowDefinitionModalAsync();
@@ -236,6 +242,10 @@ public partial class WorkflowDefinitions
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -253,6 +263,7 @@ public partial class WorkflowDefinitions
                 return;
             }
 
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await WorkflowDefinitionsAppService.UpdateAsync(EditingWorkflowDefinitionId, EditingWorkflowDefinition);
             await GetWorkflowDefinitionsAsync();
             await EditWorkflowDefinitionModal.Hide();
@@ -260,6 +271,10 @@ public partial class WorkflowDefinitions
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 

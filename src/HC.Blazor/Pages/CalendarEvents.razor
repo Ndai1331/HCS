@@ -14,6 +14,7 @@
 @using Blazorise.Scheduler
 @using Blazorise.Extensions
 @using Microsoft.Extensions.Logging
+@using Volo.Abp.AspNetCore.Components.BlockUi
 @using Volo.Abp.BlazoriseUI
 @using Volo.Abp.BlazoriseUI.Components
 @using Volo.Abp.ObjectMapping
@@ -27,6 +28,7 @@
 @inherits HCComponentBase
 @inject ICalendarEventsAppService CalendarEventsAppService
 @inject IUiMessageService UiMessageService
+@inject IBlockUiService BlockUiService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
 @inject NavigationManager NavigationManager

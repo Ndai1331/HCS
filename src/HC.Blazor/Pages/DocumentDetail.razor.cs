@@ -611,6 +611,8 @@ public partial class DocumentDetail : HCComponentBase
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            
             if (DocumentUpdateData != null)
             {
                 if (!ValidateEditDocument())
@@ -681,6 +683,7 @@ public partial class DocumentDetail : HCComponentBase
         }
         finally
         {
+            await BlockUiService.UnBlock();
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -781,6 +784,7 @@ public partial class DocumentDetail : HCComponentBase
 
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             var fileBytes = await BlobContainer.GetAllBytesAsync(filePath);
             
             // Create blob URL and download using JavaScript
@@ -807,6 +811,10 @@ public partial class DocumentDetail : HCComponentBase
             Logger.LogError(ex, $"Error downloading file. FilePath: {filePath}, FileName: {fileName}");
             await HandleErrorAsync(ex);
         }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task DeleteFileAsync(DocumentFileWithNavigationPropertiesDto file)
@@ -817,6 +825,8 @@ public partial class DocumentDetail : HCComponentBase
             {
                 return;
             }
+
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
 
             if (!string.IsNullOrEmpty(file.DocumentFile.Path))
             {
@@ -844,6 +854,10 @@ public partial class DocumentDetail : HCComponentBase
         {
             Logger.LogError(ex, $"Error deleting file. FileId: {file.DocumentFile.Id}");
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
