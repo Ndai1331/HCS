@@ -78,6 +78,22 @@ public class ChatEventHandler :
                 "Successfully sent chat message to user: TargetUserId={TargetUserId}, MessageId={MessageId}",
                 targetUserIdString,
                 eventData.MessageId);
+            
+            // Also send ChatUnreadCountChanged event to update the badge on notification bar
+            try
+            {
+                await _hubContext.Clients
+                    .User(targetUserIdString)
+                    .SendAsync("ChatUnreadCountChanged");
+                
+                _logger.LogInformation(
+                    "Successfully sent ChatUnreadCountChanged event: TargetUserId={TargetUserId}",
+                    targetUserIdString);
+            }
+            catch (Exception ex2)
+            {
+                _logger.LogError(ex2, "Error sending ChatUnreadCountChanged event");
+            }
         }
         catch (Exception ex)
         {

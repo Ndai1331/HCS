@@ -121,6 +121,13 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             conversation.SetLastMessage(messageText, now);
             await _conversationRepository.UpdateAsync(conversation);
             
+            // Increment unread count for all active members except sender
+            foreach (var member in activeMembers.Where(m => m.UserId != currentUserId))
+            {
+                member.IncrementUnreadCount();
+                await _conversationMemberRepository.UpdateAsync(member);
+            }
+            
             await uow.CompleteAsync();
         }
 
@@ -788,6 +795,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                 IsActive = member.IsActive,
                 IsPinned = member.IsPinned,
                 PinnedDate = member.PinnedDate,
+                UnreadMessageCount = member.UnreadMessageCount,
                 JoinedDate = member.JoinedDate,
                 UserInfo = user != null ? new ChatTargetUserInfo
                 {
@@ -1451,6 +1459,57 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         }
         return fileDto;
     }
+
+    public virtual async Task UpdateUnreadCountAsync(UpdateUnreadCountInput input)
+    {
+        var currentUserId = CurrentUser.GetId();
+        var member = await _conversationMemberRepository.GetByConversationAndUserAsync(input.ConversationId, currentUserId);
+        
+        if (member == null)
+        {
+            throw new BusinessException("HC.Chat:UserNotMember");
+        }
+        
+        if (input.IncrementBy > 0)
+        {
+            member.IncrementUnreadCount();
+        }
+        else if (input.IncrementBy < 0)
+        {
+            member.DecrementUnreadCount(Math.Abs(input.IncrementBy));
+        }
+        
+        await _conversationMemberRepository.UpdateAsync(member);
+    }
+    
+    public virtual async Task ResetUnreadCountAsync(ResetUnreadCountInput input)
+    {
+        var currentUserId = CurrentUser.GetId();
+        var member = await _conversationMemberRepository.GetByConversationAndUserAsync(input.ConversationId, currentUserId);
+        
+        if (member == null)
+        {
+            throw new BusinessException("HC.Chat:UserNotMember");
+        }
+        
+        member.ResetUnreadCount();
+        await _conversationMemberRepository.UpdateAsync(member);
+    }
+    
+    public virtual async Task<TotalUnreadCountDto> GetTotalUnreadCountAsync()
+    {
+        var currentUserId = CurrentUser.GetId();
+        var allMembers = await _conversationMemberRepository.GetByUserIdAsync(currentUserId);
+        
+        var totalUnreadCount = allMembers
+            .Where(m => m.IsActive)
+            .Sum(m => m.UnreadMessageCount);
+        
+        return new TotalUnreadCountDto
+        {
+            TotalUnreadCount = totalUnreadCount
+        };
+    }
     
     #region helpers
     // Helper methods
@@ -1472,7 +1531,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             MemberCount = members.Count(m => m.IsActive),
             LastMessage = conversation.LastMessage,
             LastMessageDate = conversation.LastMessageDate,
-            UnreadMessageCount = 0 // TODO: Calculate from ConversationMember per-user read status
+            UnreadMessageCount = member?.UnreadMessageCount ?? 0
         };
         
         // For User type, get target user info (from members, not TargetUserId)
@@ -1510,6 +1569,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                     IsActive = m.IsActive,
                     IsPinned = m.IsPinned,
                     PinnedDate = m.PinnedDate,
+                    UnreadMessageCount = m.UnreadMessageCount,
                     JoinedDate = m.JoinedDate,
                     UserInfo = user != null ? new ChatTargetUserInfo
                     {

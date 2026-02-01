@@ -12,6 +12,7 @@ public class ConversationMemberDto
     public bool IsActive { get; set; }
     public bool IsPinned { get; set; }
     public DateTime? PinnedDate { get; set; }
+    public int UnreadMessageCount { get; set; }
     public DateTime JoinedDate { get; set; }
     public ChatTargetUserInfo UserInfo { get; set; }
 }

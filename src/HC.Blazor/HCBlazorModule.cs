@@ -622,17 +622,51 @@ public class HCBlazorModule : AbpModule
 
     private void ConfigureEventHandlers(ServiceConfigurationContext context)
     {
+        // Legacy event handlers (DISABLED - using enhanced handlers instead)
+        // Uncomment if need to rollback to legacy implementation
+        // context.Services.AddTransient<
+        //     Volo.Abp.EventBus.Distributed.IDistributedEventHandler<HC.Chat.Messages.ChatMessageEto>,
+        //     HC.Blazor.EventHandlers.ChatEventHandler>();
+        // context.Services.AddTransient<
+        //     Volo.Abp.EventBus.Distributed.IDistributedEventHandler<HC.Chat.Messages.ChatDeletedMessageEto>,
+        //     HC.Blazor.EventHandlers.ChatEventHandler>();
+        // context.Services.AddTransient<
+        //     Volo.Abp.EventBus.Distributed.IDistributedEventHandler<HC.Chat.Messages.ChatDeletedConversationEto>,
+        //     HC.Blazor.EventHandlers.ChatEventHandler>();
+
+        // Enhanced event handlers with retry, circuit breaker, and dead letter queue
         context.Services.AddTransient<
             Volo.Abp.EventBus.Distributed.IDistributedEventHandler<HC.Chat.Messages.ChatMessageEto>,
-            HC.Blazor.EventHandlers.ChatEventHandler>();
+            HC.Blazor.EventHandlers.ChatEventHandlerWithRetry>();
 
         context.Services.AddTransient<
             Volo.Abp.EventBus.Distributed.IDistributedEventHandler<HC.Chat.Messages.ChatDeletedMessageEto>,
-            HC.Blazor.EventHandlers.ChatEventHandler>();
+            HC.Blazor.EventHandlers.ChatEventHandlerWithRetry>();
 
         context.Services.AddTransient<
             Volo.Abp.EventBus.Distributed.IDistributedEventHandler<HC.Chat.Messages.ChatDeletedConversationEto>,
-            HC.Blazor.EventHandlers.ChatEventHandler>();
+            HC.Blazor.EventHandlers.ChatEventHandlerWithRetry>();
+
+        context.Services.AddTransient<
+            Volo.Abp.EventBus.Distributed.IDistributedEventHandler<HC.Chat.Conversations.ConversationCreatedEto>,
+            HC.Blazor.EventHandlers.ChatEventHandlerWithRetry>();
+
+        context.Services.AddTransient<
+            Volo.Abp.EventBus.Distributed.IDistributedEventHandler<HC.Notifications.NotificationCreatedEto>,
+            HC.Blazor.EventHandlers.NotificationEventHandlerWithParallel>();
+
+        // Chat services - Register for dependency injection
+        context.Services.AddSingleton<HC.Blazor.Services.IChatMetrics, HC.Blazor.Services.ChatMetrics>();
+        context.Services.AddSingleton<HC.Blazor.Services.IDeadLetterQueue, HC.Blazor.Services.InMemoryDeadLetterQueue>();
+        
+        // CircuitBreaker and RetryPolicy - register as concrete types (no interface)
+        context.Services.AddSingleton<HC.Blazor.Services.CircuitBreaker>();
+        context.Services.AddScoped<HC.Blazor.Services.RetryPolicy>();
+        
+        context.Services.AddScoped<HC.Blazor.Services.IChatHubConnectionService, HC.Blazor.Services.ChatHubConnectionService>();
+        
+        // Chat handler factory - Used by Chat1 component to create handlers with component-specific state
+        context.Services.AddScoped<Pages.Chat1.Handlers.IChatHandlerFactory, Pages.Chat1.Handlers.ChatHandlerFactory>();
     }
 
     public override void OnPostApplicationInitialization(ApplicationInitializationContext context)
