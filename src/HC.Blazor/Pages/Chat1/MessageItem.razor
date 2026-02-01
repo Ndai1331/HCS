@@ -42,7 +42,7 @@
             {
                 <div class="forward-box mb-1">
                     <div class="d-flex align-items-start">
-                        <i class="bi bi-forward-fill forward-icon me-2"></i>
+                        <i class="bi bi-forward-fill text-primary forward-icon me-2"></i>
                         <div class="flex-grow-1">
                             <small class="forward-title d-block">
                                 @L["ForwardedFrom"]:
@@ -94,7 +94,7 @@
                                         <small class="text-truncate flex-grow-1">@file.FileName</small>
                                         <button class="btn btn-sm"
                                                 @onclick="() => OnDownloadFileAsync(file.Id)">
-                                            <i class="bi bi-download"></i>
+                                            <i class="bi bi-download text-primary"></i>
                                         </button>
                                     </div>
                                 }
@@ -105,7 +105,7 @@
                     @if (Message.IsPinned)
                     {
                         <small class="d-block mt-1">
-                            <i class="bi bi-pin-fill text-warning"></i> @L["Pinned"]
+                            <i class="bi bi-pin-fill text-warning me-1"></i> @L["Pinned"]
                         </small>
                     }
                 </div>
@@ -124,18 +124,18 @@
             <ul class="dropdown-menu">
                 <li>
                     <a class="dropdown-item" @onclick="OnReplyAsync">
-                        <i class="bi bi-reply mx-1"></i> @L["Reply"]
+                        <i class="bi bi-reply text-primary mx-1"></i> @L["Reply"]
                     </a>
                 </li>
                 <li>
                     <a class="dropdown-item" @onclick="OnTogglePinAsync">
                         @if (Message.IsPinned)
                         {
-                            <i class="bi bi-pin-angle mx-1"></i> @L["UnpinMessage"]
+                            <i class="bi bi-pin-angle text-warning mx-1"></i> @L["UnpinMessage"]
                         }
                         else
                         {
-                            <i class="bi bi-pin-fill mx-1"></i> @L["PinMessage"]
+                            <i class="bi bi-pin-fill text-warning mx-1"></i> @L["PinMessage"]
                         }
                     </a>
                 </li>
@@ -154,7 +154,7 @@
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item text-danger" @onclick="OnDeleteAsync">
-                            <i class="bi bi-trash mx-1"></i> @L["Delete"]
+                            <i class="bi bi-trash text-danger mx-1"></i> @L["Delete"]
                         </a>
                     </li>
                 }

@@ -21,9 +21,10 @@ window.baseHub = {
      * @param {string} hubName - Unique name for this hub (e.g., "chat")
      * @param {object} dotnetHelper - DotNetObjectReference for JS interop
      * @param {object} options - Configuration options
+     * @param {function} registerHandlersFn - Function to register event handlers (called before connection starts for new connections)
      * @returns {object} - The SignalR connection object
      */
-    createOrReuseConnection: function(hubUrl, hubName, dotnetHelper, options = {}) {
+    createOrReuseConnection: function(hubUrl, hubName, dotnetHelper, options = {}, registerHandlersFn = null) {
         const {
             enableCrossTabSync = false,
             channelName = null,
@@ -35,20 +36,20 @@ window.baseHub = {
         // Reuse existing connection if available
         if (this._connections[hubName]) {
             console.log(`${hubName} Hub: Connection already exists, reusing...`);
-            
+
             const connection = this._connections[hubName];
-            
+
             // Initialize helpers array if not exists
             if (!connection._dotnetHelpers) {
                 connection._dotnetHelpers = [];
             }
-            
+
             // Add helper if not already in array
             if (!connection._dotnetHelpers.includes(dotnetHelper)) {
                 connection._dotnetHelpers.push(dotnetHelper);
                 console.log(`${hubName} Hub: Added new helper, total helpers: ${connection._dotnetHelpers.length}`);
             }
-            
+
             return connection;
         }
 
@@ -62,7 +63,7 @@ window.baseHub = {
             // Listen for messages from other tabs
             this._broadcastChannels[hubName].onmessage = (event) => {
                 console.log(`${hubName} Hub: Received message from another tab:`, event.data);
-                
+
                 if (event.data.type === 'hub-message' && onReceivingMessage) {
                     // Forward to all local helpers
                     const connection = this._connections[hubName];
@@ -104,6 +105,22 @@ window.baseHub = {
         connection._hubName = hubName;
         connection._hubUrl = hubUrl;
 
+        // IMPORTANT: Store connection in registry FIRST
+        // This allows registerEventHandler to find it when called from registerHandlersFn
+        this._connections[hubName] = connection;
+        this._connections[hubName]._options = options;
+
+        // IMPORTANT: Register event handlers BEFORE starting connection
+        // This prevents race conditions where messages arrive before handlers are ready
+        if (registerHandlersFn && typeof registerHandlersFn === 'function') {
+            console.log(`${hubName} Hub: 🎯 Registering event handlers BEFORE connection starts...`);
+            registerHandlersFn(connection);
+            connection._handlersRegistered = true;
+            console.log(`${hubName} Hub: ✅ Event handlers registered successfully`);
+        } else {
+            console.warn(`${hubName} Hub: ⚠️ No registerHandlersFn provided, handlers may not be registered!`);
+        }
+
         // Connection lifecycle event handlers
         connection.onreconnecting(error => {
             console.log(`${hubName} Hub: Connection lost, reconnecting...`, error);
@@ -123,19 +140,16 @@ window.baseHub = {
             console.log(`${hubName} Hub: Connection closed`, error);
         });
 
-        // Start the connection
+        // Start the connection AFTER handlers are registered
+        console.log(`${hubName} Hub: 🚀 Starting connection...`);
         connection.start()
             .then(() => {
-                console.log(`${hubName} Hub: Connected successfully`);
+                console.log(`${hubName} Hub: ✅ Connected successfully`);
             })
             .catch(err => {
-                console.error(`${hubName} Hub: Connection error:`, err);
+                console.error(`${hubName} Hub: ❌ Connection error:`, err);
                 console.error(`${hubName} Hub: Make sure the hub URL is correct and server is running`);
             });
-
-        // Store connection
-        this._connections[hubName] = connection;
-        this._connections[hubName]._options = options;
 
         return connection;
     },
@@ -153,49 +167,53 @@ window.baseHub = {
             return;
         }
 
+        console.log(`${hubName} Hub: 📝 Registering handler for event: ${eventName}`);
         connection.on(eventName, async (data) => {
-            console.log(`${hubName} Hub: Received event '${eventName}'`, data);
-            
+            console.log(`${hubName} Hub: 🔔 Received event '${eventName}'`, data);
+
             if (connection._dotnetHelpers && connection._dotnetHelpers.length > 0) {
                 // Create a copy to avoid modification during iteration
                 const helpers = [...connection._dotnetHelpers];
-                
+                console.log(`${hubName} Hub: 👥 Processing event for ${helpers.length} helpers`);
+
                 for (let i = 0; i < helpers.length; i++) {
                     const helper = helpers[i];
-                    
+
                     if (!helper) {
-                        console.warn(`${hubName} Hub: Helper ${i} is null, skipping`);
+                        console.warn(`${hubName} Hub: ⚠️ Helper ${i} is null, skipping`);
                         continue;
                     }
-                    
+
                     try {
+                        console.log(`${hubName} Hub: → Calling handler for helper ${i}`);
                         await handler(helper, data, i);
                     } catch (err) {
-                        console.error(`${hubName} Hub: Error in ${eventName} handler for helper ${i}:`, err);
-                        
+                        console.error(`${hubName} Hub: ❌ Error in ${eventName} handler for helper ${i}:`, err);
+
                         // Check if error is due to disposed helper
-                        if (err.message && 
+                        if (err.message &&
                             (err.message.includes("DotNetObjectReference instance was already disposed") ||
                              err.message.includes("does not contain a public invokable method"))) {
-                            
-                            console.log(`${hubName} Hub: Helper ${i} is disposed or invalid, removing from array...`);
-                            
+
+                            console.log(`${hubName} Hub: 🗑️ Helper ${i} is disposed or invalid, removing from array...`);
+
                             const helperIndex = connection._dotnetHelpers.indexOf(helper);
                             if (helperIndex > -1) {
                                 connection._dotnetHelpers.splice(helperIndex, 1);
-                                console.log(`${hubName} Hub: Removed disposed/invalid helper. Remaining: ${connection._dotnetHelpers.length}`);
+                                console.log(`${hubName} Hub: ✅ Removed disposed/invalid helper. Remaining: ${connection._dotnetHelpers.length}`);
                             }
                         }
                     }
                 }
-                
+
                 if (connection._dotnetHelpers.length === 0) {
-                    console.warn(`${hubName} Hub: No valid helpers remaining for event '${eventName}'`);
+                    console.warn(`${hubName} Hub: ⚠️ No valid helpers remaining for event '${eventName}'`);
                 }
             } else {
-                console.log(`${hubName} Hub: No helpers available for event '${eventName}'`);
+                console.log(`${hubName} Hub: ℹ️ No helpers available for event '${eventName}'`);
             }
         });
+        console.log(`${hubName} Hub: ✅ Handler registered for '${eventName}'`);
     },
 
     /**

@@ -140,15 +140,17 @@
                                                 <div class="media-body ms-2">
                                                     <div class="d-flex align-items-center justify-content-between mb-1">
                                                         <h6 class="mb-0 me-1">
-                                                            @if (chatContact.UnreadMessageCount > 0)
-                                                            {
-                                                                <small class="badge bg-success me-1">@chatContact.UnreadMessageCount</small>
-                                                            }
+                                                            
                                                             @if (chatContact.IsPinned)
                                                             {
                                                                 <i class="bi bi-pin-fill text-warning me-1" title="@L["Pinned"]"></i>
                                                             }
                                                             @(GetContactDisplayName(chatContact).TruncateWithPostfix(36,"..."))
+
+                                                            @if (chatContact.UnreadMessageCount > 0)
+                                                            {
+                                                                <small class="badge bg-brand ms-1">@chatContact.UnreadMessageCount</small>
+                                                            }
                                                         </h6>
                                                         
                                                     </div>
@@ -176,11 +178,11 @@
                                                             <a class="dropdown-item" @onclick="async () => await TogglePinConversationAsync(chatContact)">
                                                                 @if (chatContact.IsPinned)
                                                                 {
-                                                                    <i class="bi bi-pin-angle"></i> @L["UnpinConversation"]
+                                                                    <i class="bi bi-pin-angle text-warning me-1"></i> @L["UnpinConversation"]
                                                                 }
                                                                 else
                                                                 {
-                                                                    <i class="bi bi-pin-fill"></i> @L["PinConversation"]
+                                                                    <i class="bi bi-pin-fill text-warning me-1"></i> @L["PinConversation"]
                                                                 }
                                                             </a>
                                                         </li>
@@ -188,7 +190,7 @@
                                                         {
                                                             <li>    
                                                                 <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(new RemoveMemberInput { ConversationId = chatContact.ConversationId.Value, UserId = CurrentUser.Id.Value })">
-                                                                        <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
+                                                                        <i class="bi bi-arrow-bar-left text-danger me-1"></i> @L["LeaveConversation"]
                                                                 </a>
                                                             </li>
                                                         }
@@ -197,7 +199,9 @@
                                                     @if (IsDeletingConversationEnabled() && chatContact.MemberRole == "ADMIN")
                                                     {
                                                         <li>
-                                                            <a class="dropdown-item delete-conversation-btn" @onclick="async () => await DeleteConversationAsync()">@L["Delete"]</a>
+                                                            <a class="dropdown-item delete-conversation-btn" @onclick="async () => await DeleteConversationAsync()">
+                                                                <i class="bi bi-trash text-danger me-1"></i> @L["Delete"]
+                                                                </a>
                                                         </li>
                                                     }
                                                 </ul>

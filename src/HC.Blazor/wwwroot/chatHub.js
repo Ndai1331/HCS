@@ -12,7 +12,7 @@ window.chatHub = {
      */
     start: function (dotnetHelper) {
         console.log("Chat Hub: Initializing...");
-        
+
         const connection = window.baseHub.createOrReuseConnection(
             "/chatHub",                    // hubUrl
             "chat",                         // hubName
@@ -24,14 +24,9 @@ window.chatHub = {
                     // Handle cross-tab messages
                     await helper.invokeMethodAsync("HandleCrossTabMessageJson", messageData);
                 }
-            }
+            },
+            this._registerEventHandlers.bind(this)  // Register handlers BEFORE connection starts
         );
-
-        // Register event handlers only if not already registered
-        if (!connection._handlersRegistered) {
-            this._registerEventHandlers(connection);
-            connection._handlersRegistered = true;
-        }
 
         window._chatConnection = connection;
         console.log("Chat Hub: Initialization complete");
@@ -47,20 +42,23 @@ window.chatHub = {
 
         // Register ReceiveMessage handler
         window.baseHub.registerEventHandler("chat", "ReceiveMessage", async (helper, messageData) => {
-            console.log("Chat Hub: Calling HandleSignalRMessageJson for helper");
-            
-            // Only call HandleSignalRMessageJson if this is NOT the notification helper
-            if (helper !== window._chatNotificationHelper) {
+            // Determine helper type
+            const isNotificationBarHelper = helper._isNotificationBarHelper === true;
+            const isNotificationToastHelper = window._chatNotificationHelper && helper === window._chatNotificationHelper;
+            const isChatHubServiceHelper = !isNotificationBarHelper && !isNotificationToastHelper;
+
+            // Only call HandleSignalRMessageJson for ChatHubConnectionService (from Chat1.razor)
+            if (isChatHubServiceHelper) {
+                console.log("Chat Hub: Calling HandleSignalRMessageJson for ChatHubConnectionService helper");
                 await helper.invokeMethodAsync("HandleSignalRMessageJson", messageData)
                     .then(() => console.log("Chat Hub: HandleSignalRMessageJson call completed"))
                     .catch(err => {
                         console.error("Chat Hub: Error calling HandleSignalRMessageJson:", err);
-                        // Disposal handled by baseHub
                     });
             }
 
-            // Only call NotificationToast helper if this IS the notification helper
-            if (window._chatNotificationHelper && helper === window._chatNotificationHelper) {
+            // Only call OnChatMessageReceived for NotificationToast helper
+            if (isNotificationToastHelper) {
                 console.log("Chat Hub: Calling OnChatMessageReceived for NotificationToast helper");
                 const messageJson = JSON.stringify(messageData);
                 await helper.invokeMethodAsync("OnChatMessageReceived", messageJson)
@@ -68,7 +66,7 @@ window.chatHub = {
                     .catch(err => {
                         console.error("Chat Hub: Error calling OnChatMessageReceived for NotificationToast:", err);
                         if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
-                            console.log("Chat Hub: Notification helper was disposed, cleaning up...");
+                            console.log("Chat Hub: NotificationToast helper was disposed, cleaning up...");
                             window._chatNotificationHelper = null;
                         }
                     });
@@ -125,16 +123,28 @@ window.chatHub = {
             }
         });
 
-        // Register ChatUnreadCountChanged handler - notifies all listeners when chat unread count changes
+        // Register ChatUnreadCountChanged handler - notifies listeners when chat unread count changes
         window.baseHub.registerEventHandler("chat", "ChatUnreadCountChanged", async (helper) => {
             console.log("Chat Hub: ChatUnreadCountChanged event received");
-            
-            // Only call if this is a notification helper (for Notification.razor)
-            if (helper === window._chatNotificationHelper || helper._isNotificationBarHelper) {
+
+            // Determine helper type
+            const isNotificationBarHelper = helper._isNotificationBarHelper === true;
+            const isNotificationToastHelper = window._chatNotificationHelper && helper === window._chatNotificationHelper;
+            const isChatHubServiceHelper = !isNotificationBarHelper && !isNotificationToastHelper;
+
+            // Call OnChatUnreadCountChanged for Notification.razor and ChatHubConnectionService
+            // Skip NotificationToast helper as it doesn't need to handle unread count changes
+            if (isNotificationBarHelper || isChatHubServiceHelper) {
                 await helper.invokeMethodAsync("OnChatUnreadCountChanged")
                     .then(() => console.log("Chat Hub: OnChatUnreadCountChanged completed"))
                     .catch(err => {
                         console.error("Chat Hub: Error calling OnChatUnreadCountChanged:", err);
+                        if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
+                            console.log("Chat Hub: Helper was disposed, cleaning up...");
+                            if (helper === window._chatNotificationHelper) {
+                                window._chatNotificationHelper = null;
+                            }
+                        }
                     });
             }
         });
@@ -148,7 +158,7 @@ window.chatHub = {
      */
     startForNotifications: function (dotnetHelper) {
         console.log("Chat Hub: startForNotifications called for NotificationToast");
-        
+
         // Store notification helper
         if (!window._chatNotificationHelper) {
             window._chatNotificationHelper = dotnetHelper;
@@ -158,7 +168,7 @@ window.chatHub = {
         // Reuse existing connection if available
         if (!window._chatConnection) {
             console.log("Chat Hub: No existing connection, creating new one for notifications...");
-            
+
             // Create connection with the notification helper
             const connection = window.baseHub.createOrReuseConnection(
                 "/chatHub",
@@ -166,7 +176,8 @@ window.chatHub = {
                 dotnetHelper,
                 {
                     enableCrossTabSync: false
-                }
+                },
+                this._registerEventHandlers.bind(this)  // Register handlers BEFORE start
             );
 
             window._chatConnection = connection;
@@ -175,11 +186,18 @@ window.chatHub = {
             console.log("Chat Hub: Reusing existing connection for notifications");
             // Add notification helper to existing connection's helper array
             const connection = window._chatConnection;
-            
+
             // Only add if not already in array
             if (!connection._dotnetHelpers.includes(dotnetHelper)) {
                 connection._dotnetHelpers.push(dotnetHelper);
                 console.log("Chat Hub: Notification helper added to existing connection");
+            }
+
+            // Ensure handlers are registered on existing connection
+            if (!connection._handlersRegistered) {
+                console.log("Chat Hub: Registering handlers on existing connection for notifications");
+                this._registerEventHandlers(connection);
+                connection._handlersRegistered = true;
             }
         }
     },
@@ -190,14 +208,14 @@ window.chatHub = {
      */
     startForNotificationBar: function (dotnetHelper) {
         console.log("Chat Hub: startForNotificationBar called for Notification.razor");
-        
+
         // Mark this helper as notification bar helper
         dotnetHelper._isNotificationBarHelper = true;
-        
+
         // Reuse existing connection if available
         if (!window._chatConnection) {
             console.log("Chat Hub: No existing connection, creating new one for notification bar...");
-            
+
             // Create connection with the notification bar helper
             const connection = window.baseHub.createOrReuseConnection(
                 "/chatHub",
@@ -205,7 +223,8 @@ window.chatHub = {
                 dotnetHelper,
                 {
                     enableCrossTabSync: false
-                }
+                },
+                this._registerEventHandlers.bind(this)  // Register handlers BEFORE start
             );
 
             window._chatConnection = connection;
@@ -214,11 +233,18 @@ window.chatHub = {
             console.log("Chat Hub: Reusing existing connection for notification bar");
             // Add notification bar helper to existing connection's helper array
             const connection = window._chatConnection;
-            
+
             // Only add if not already in array
             if (!connection._dotnetHelpers.includes(dotnetHelper)) {
                 connection._dotnetHelpers.push(dotnetHelper);
                 console.log("Chat Hub: Notification bar helper added to existing connection");
+            }
+
+            // Ensure handlers are registered on existing connection
+            if (!connection._handlersRegistered) {
+                console.log("Chat Hub: Registering handlers on existing connection for notification bar");
+                this._registerEventHandlers(connection);
+                connection._handlersRegistered = true;
             }
         }
     },
@@ -262,6 +288,40 @@ window.chatHub = {
         }
         
         // Note: We don't stop the connection here because it might still be used by other components
+    },
+
+    /**
+     * Broadcast ChatUnreadCountChanged event locally
+     * Called when user clicks on a conversation to reset unread count
+     * This updates the notification icon without server roundtrip
+     */
+    broadcastUnreadCountChanged: function() {
+        console.log("Chat Hub: Broadcasting ChatUnreadCountChanged locally...");
+
+        if (!window._chatConnection || !window._chatConnection._dotnetHelpers) {
+            console.warn("Chat Hub: No connection or helpers available for broadcast");
+            return;
+        }
+
+        // Create a local event to update notification icons
+        const helpers = [...window._chatConnection._dotnetHelpers];
+        console.log(`Chat Hub: Broadcasting unread count changed to ${helpers.length} helpers`);
+
+        helpers.forEach(async (helper, index) => {
+            try {
+                // Only call for Notification.razor helpers
+                if (helper._isNotificationBarHelper === true) {
+                    console.log(`Chat Hub: Calling OnChatUnreadCountChanged for helper ${index}`);
+                    await helper.invokeMethodAsync("OnChatUnreadCountChanged")
+                        .then(() => console.log("Chat Hub: OnChatUnreadCountChanged call completed"))
+                        .catch(err => {
+                            console.error("Chat Hub: Error calling OnChatUnreadCountChanged:", err);
+                        });
+                }
+            } catch (err) {
+                console.error(`Chat Hub: Error broadcasting to helper ${index}:`, err);
+            }
+        });
     },
 
     /**
