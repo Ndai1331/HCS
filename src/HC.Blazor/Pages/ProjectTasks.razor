@@ -543,7 +543,17 @@ else
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["ParentTaskId"]</FieldLabel>
-                        <TextEdit Text="@Filter.ParentTaskId" TextChanged="@OnParentTaskIdChangedAsync" />                       
+                        <div class="hc-select2-full">
+                            <Select2 IdSelector="c => c.Id.ToString()"
+                                     TextSelector="c => c.DisplayName"
+                                     FilterFunction="GetParentTaskCollectionLookupAsync"
+                                     GetElementById="async (items, id, token) => items.Where(x => x.Id == id).FirstOrDefault()!"
+                                     Datasource="ParentTasksCollection"
+                                     Value="@SelectedFilterParentTask"
+                                     OnValueChanged="@(() => OnParentTaskIdChangedAsync())"
+                                     Cache="__MemoryCache"
+                                     Multiselect="false" />
+                        </div>                     
                     </Field>
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
@@ -607,13 +617,29 @@ else
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Priority"]</FieldLabel>
-                        <TextEdit Text="@Filter.Priority" TextChanged="@OnPriorityChangedAsync" />                       
+                        <Select TValue="string" SelectedValue="@Filter.Priority" SelectedValueChanged="@OnPriorityChangedAsync">
+                            <SelectItem></SelectItem>
+                            @foreach (var priority in Enum.GetValues<ProjectTaskPriority>())
+                            {
+                                <SelectItem TValue="string" Value="@priority.ToString()">
+                                    @L[$"Enum:ProjectTaskPriority.{priority}"]
+                                </SelectItem>
+                            }
+                        </Select>                    
                     </Field>
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Status"]</FieldLabel>
-                        <TextEdit Text="@Filter.Status" TextChanged="@OnStatusChangedAsync" />                       
+                        <Select TValue="string" SelectedValue="@Filter.Status" SelectedValueChanged="@OnStatusChangedAsync">
+                            <SelectItem></SelectItem>
+                            @foreach (var status in Enum.GetValues<ProjectTaskStatus>())
+                            {
+                                <SelectItem TValue="string" Value="@status.ToString()">
+                                    @L[$"Enum:ProjectTaskStatus.{status}"]
+                                </SelectItem>
+                            }
+                        </Select>                    
                     </Field>
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">

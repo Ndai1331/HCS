@@ -367,6 +367,9 @@
                       Caption="@L["DefaultSignType"]"
                       CellStyle="@((item) => "min-width: 200px")"
                       Width="200px">
+                    <DisplayTemplate>
+                        @L[$"Enum:SignType.{context.DefaultSignType}"]
+                    </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
                       Field="AllowElectronicSign"

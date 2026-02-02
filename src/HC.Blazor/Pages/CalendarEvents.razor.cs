@@ -105,6 +105,7 @@ public partial class CalendarEvents : HCComponentBase
         public string DisplayName { get; init; } = string.Empty;
     }
     private IReadOnlyList<ProjectSelectItem> ProjectsCollection { get; set; } = new List<ProjectSelectItem>();
+    private List<ProjectSelectItem> SelectedFilterProject { get; set; } = new();
     private List<ProjectSelectItem> SelectedNewProject { get; set; } = new();
     private List<ProjectSelectItem> SelectedEditProject { get; set; } = new();
 
@@ -115,6 +116,7 @@ public partial class CalendarEvents : HCComponentBase
         public string DisplayName { get; init; } = string.Empty;
     }
     private IReadOnlyList<ProjectTaskSelectItem> ProjectTasksCollection { get; set; } = new List<ProjectTaskSelectItem>();
+    private List<ProjectTaskSelectItem> SelectedFilterProjectTask { get; set; } = new();
     private List<ProjectTaskSelectItem> SelectedNewProjectTask { get; set; } = new();
     private List<ProjectTaskSelectItem> SelectedEditProjectTask { get; set; } = new();
 
@@ -1259,8 +1261,34 @@ public partial class CalendarEvents : HCComponentBase
 
     protected virtual async Task OnFilterRelatedTypeChangedAsync(RelatedType? relatedType)
     {
+        //clear Filter.RelatedId nếu relatedType khác với Filter.RelatedType
+        if (relatedType.ToString() != Filter.RelatedType)
+        {
+            Filter.RelatedId = null;
+            SelectedFilterProject.Clear();
+            SelectedFilterProjectTask.Clear();
+        }
+
         FilterRelatedType = relatedType;
         Filter.RelatedType = relatedType?.ToString();
+
+        await SearchAsync();
+    }
+
+    protected virtual async Task OnFilterRelatedIdChangedAsync()
+    {
+        if (FilterRelatedType == RelatedType.PROJECT)
+        {
+            Filter.RelatedId = SelectedFilterProject?.FirstOrDefault()?.Id;
+        }
+        else if (FilterRelatedType == RelatedType.TASK)
+        {
+            Filter.RelatedId = SelectedFilterProjectTask?.FirstOrDefault()?.Id;
+        }
+        else
+        {
+            Filter.RelatedId = null;
+        }
         await SearchAsync();
     }
 

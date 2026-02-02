@@ -176,6 +176,7 @@ public partial class Projects : HCComponentBase
         {
             await SetBreadcrumbItemsAsync();
             await SetToolbarItemsAsync();
+            await GetDepartmentCollectionLookupAsync();
             await InvokeAsync(StateHasChanged);
         }
     }
