@@ -68,36 +68,10 @@
                               HasChildren="@(item => item.HasChildren)">
                         <ItemTemplate>
                             <Excubo.Blazor.TreeViews.Collapse @bind-Value="@context.Item.Collapsed"/>
-                            <Dropdown>
-                                <span class="ml-1 mr-1 @(SelectedDepartment?.Id == context.Item.Id ? "text-primary" : "")" style="cursor: pointer" @onclick="() => OnSelectedDepartmentNodeChangedAsync(context.Item)">
-                                    &nbsp;<i class="fas fa-person-shelter"></i>&nbsp;
-                                    @context.Item.Name
-                                </span>
-                                <DropdownToggle Padding="Padding.Is0" Color="Color.Default" Size="Size.ExtraSmall" Split="true"/>
-                                <DropdownMenu>
-                                    @if (CanCreateDepartment)
-                                    {
-                                        <DropdownItem Style="cursor: pointer" Clicked="() => OpenCreateDepartmentModal(context.Item)">
-                                            @L["AddSubDepartment"]
-                                        </DropdownItem>
-                                    }
-                                    @if (CanEditDepartment)
-                                    {
-                                        <DropdownItem Style="cursor: pointer" Clicked="() => OpenEditDepartmentModal(context.Item)">
-                                            @L["Edit"]
-                                        </DropdownItem>
-                                        <DropdownItem Style="cursor: pointer" Clicked="() => OpenMoveDepartmentModal(context.Item)">
-                                            @L["Move"]
-                                        </DropdownItem>
-                                    }
-                                    @if (CanDeleteDepartment)
-                                    {
-                                        <DropdownItem Style="cursor: pointer;" Clicked="() => OpenDeleteDepartmentModalAsync(context.Item)">
-                                            @L["Delete"]
-                                        </DropdownItem>
-                                    }
-                                </DropdownMenu>
-                            </Dropdown>
+                            <span class="ml-1 mr-1 @(SelectedDepartment?.Id == context.Item.Id ? "text-primary" : "")" style="cursor: pointer" @onclick="() => OnSelectedDepartmentNodeChangedAsync(context.Item)" @onclick:stopPropagation="true">
+                                &nbsp;<i class="fas fa-person-shelter"></i>&nbsp;
+                                @context.Item.Name
+                            </span>
                         </ItemTemplate>
                     </TreeView>
                 }
@@ -118,50 +92,91 @@
                 }
             </CardHeader>
             <CardBody>
-                <Row>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["ParentDepartment"]</FieldLabel>
-                            <TextEdit @bind-Text="@ParentDepartmentName" Disabled="true" />
-                        </Field>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["HeadOfDepartment"]</FieldLabel>
-                            <TextEdit @bind-Text="@SelectedDepartmentLeaderUser" Disabled="true" />
-                        </Field>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["Code"]</FieldLabel>
-                            <TextEdit @bind-Text="@SelectedDepartmentCode" Disabled="true" />
-                        </Field>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["Name"]</FieldLabel>
-                            <TextEdit @bind-Text="@SelectedDepartmentName" Disabled="true" />
-                        </Field>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["Level"]</FieldLabel>
-                            <NumericEdit TValue="int" @bind-Value="@SelectedDepartmentLevel" Disabled="true" />
-                        </Field>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["SortOrder"]</FieldLabel>
-                            <NumericEdit TValue="int" @bind-Value="@SelectedDepartmentSortOrder" Disabled="true" />
-                        </Field>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["IsActive"]</FieldLabel>
-                            <Check TValue="bool" Checked="@(SelectedDepartment?.IsActive ?? false)" Disabled="true" />
-                        </Field>
-                    </Column>
-                </Row>
+                @if (SelectedDepartment == null || SelectedDepartment.Id == Guid.Empty)
+                {
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-hand-pointer fa-3x mb-3"></i>
+                        <p>@L["SelectDepartmentToViewDetails"]</p>
+                    </div>
+                }
+                else
+                {
+                        <Row>
+                            @* <Column ColumnSize="ColumnSize.Is12">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0">@SelectedDepartment.Name @L["Details"].Value.ToLower()</h5>
+                                    <div class="d-flex gap-2">
+                                        @if (CanCreateDepartment)
+                                        {
+                                            <Button Color="Color.Success" Size="Size.Small" Clicked="() => OpenCreateDepartmentModal(SelectedDepartment)">
+                                                <Icon Name="IconName.Add" Margin="Margin.Is1.FromEnd"></Icon>@L["AddSubDepartment"]
+                                            </Button>
+                                        }
+                                        @if (CanEditDepartment)
+                                        {
+                                            <Button Color="Color.Primary" Size="Size.Small" Clicked="() => OpenEditDepartmentModal(SelectedDepartment)">
+                                                <Icon Name="IconName.Edit" Margin="Margin.Is1.FromEnd"></Icon>@L["Edit"]
+                                            </Button>
+                                        }
+                                        @if (CanEditDepartment)
+                                        {
+                                            <Button Color="Color.Info" Size="Size.Small" Clicked="() => OpenMoveDepartmentModal(SelectedDepartment)">
+                                                <Icon Name="IconName.ArrowRight" Margin="Margin.Is1.FromEnd"></Icon>@L["Move"]
+                                            </Button>
+                                        }
+                                        @if (CanDeleteDepartment)
+                                        {
+                                            <Button Color="Color.Danger" Size="Size.Small" Clicked="() => OpenDeleteDepartmentModalAsync(SelectedDepartment)">
+                                                <Icon Name="IconName.Delete" Margin="Margin.Is1.FromEnd"></Icon>@L["Delete"]
+                                            </Button>
+                                        }
+                                    </div>
+                                </div>
+                            </Column> *@
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["ParentDepartment"]</FieldLabel>
+                                    <TextEdit @bind-Text="@ParentDepartmentName" Disabled="true" />
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["HeadOfDepartment"]</FieldLabel>
+                                    <TextEdit @bind-Text="@SelectedDepartmentLeaderUser" Disabled="true" />
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Code"]</FieldLabel>
+                                    <TextEdit @bind-Text="@SelectedDepartmentCode" Disabled="true" />
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Name"]</FieldLabel>
+                                    <TextEdit @bind-Text="@SelectedDepartmentName" Disabled="true" />
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Level"]</FieldLabel>
+                                    <NumericEdit TValue="int" @bind-Value="@SelectedDepartmentLevel" Disabled="true" />
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["SortOrder"]</FieldLabel>
+                                    <NumericEdit TValue="int" @bind-Value="@SelectedDepartmentSortOrder" Disabled="true" />
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["IsActive"]</FieldLabel>
+                                    <Check TValue="bool" Checked="@(SelectedDepartment?.IsActive ?? false)" Disabled="true" />
+                                </Field>
+                            </Column>
+                        </Row>
+                }
             </CardBody>
         </Card>
     </Column>
@@ -186,18 +201,15 @@
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["ParentDepartment"]</FieldLabel>
-                            <Select TValue="string?" @bind-SelectedValue="@NewDepartment.ParentId">
-                                <SelectItem TValue="string?" Value="null">@L["Root"]</SelectItem>
-                                @if (AllDepartmentsForSelect2 != null && AllDepartmentsForSelect2.Any())
-                                {
-                                    @foreach (var department in AllDepartmentsForSelect2.Where(d => d.Id != Guid.Empty))
-                                    {
-                                        <SelectItem TValue="string" Value="@department.Id.ToString()">
-                                            @GetDepartmentDisplayName(department)
-                                        </SelectItem>
-                                    }
-                                }
-                            </Select>
+                            <Select2 IdSelector="c => c.Id.ToString()"
+                                        TextSelector="c => c.DisplayName"
+                                        FilterFunction="GetDepartmentCollectionLookupAsync"
+                                        GetElementById="async (items, id, token) => await GetDepartmentByIdAsync(items, id, token)"
+                                        Datasource="DepartmentLookupDtos"
+                                        Value="@NewDepartmentParentUser"
+                                        OnValueChanged="OnNewDepartmentParentChanged"                
+                                        Cache="__MemoryCache"
+                                        Multiselect="false" />
                         </Field>
                     </Validation>
                     </Column>
@@ -301,33 +313,30 @@
                     <Validation MessageLocalizer="@LH.Localize">
                         <Field>
                             <FieldLabel>@L["ParentDepartment"]</FieldLabel>
-                            <Select TValue="string?" @bind-SelectedValue="@EditingDepartment.ParentId">
-                                <SelectItem TValue="string?" Value="null">@L["Root"]</SelectItem>
-                                @if (DepartmentTreeViews != null)
-                                {
-                                    @foreach (var department in DepartmentTreeViews)
-                                    {
-                                        <SelectItem TValue="string" Value="@department.Id.ToString()">
-                                            @department.Name
-                                        </SelectItem>
-                                    }
-                                }
-                            </Select>
+                            <Select2 IdSelector="c => c.Id.ToString()"
+                                        TextSelector="c => c.DisplayName"
+                                        FilterFunction="GetDepartmentCollectionLookupAsync"
+                                        GetElementById="async (items, id, token) => await GetDepartmentByIdAsync(items, id, token)"
+                                        Datasource="DepartmentLookupDtos"
+                                        Value="@EditingModalParentUser"
+                                        OnValueChanged="OnEditingModalParentDepartmentChanged"                
+                                        Cache="__MemoryCache"
+                                        Multiselect="false" />
                         </Field>
                     </Validation>
                     </Column>
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                     <Field>
                         <FieldLabel>@L["HeadOfDepartment"]</FieldLabel>
-                        <Select TValue="Guid?" @bind-SelectedValue="@EditingDepartment.LeaderUserId">
-                            <SelectItem TValue="Guid?" Value="null"></SelectItem>
-                            @foreach (var identityUser in IdentityUsersCollection)
-                            {
-                                <SelectItem TValue="Guid?" Value="@(identityUser.Id)">
-                                    @(identityUser.DisplayName)
-                                </SelectItem>
-                            }
-                        </Select>
+                        <Select2 IdSelector="c => c.Id.ToString()"
+                                    TextSelector="c => c.DisplayName"
+                                    FilterFunction="GetIdentityUserCollectionLookupAsync"
+                                    GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
+                                    Datasource="IdentityUsersCollection"
+                                    Value="@EditingModalLeaderUser"
+                                    OnValueChanged="OnEditingModalLeaderUserIdChanged"                
+                                    Cache="__MemoryCache"
+                                    Multiselect="false" />
                     </Field>
                     </Column>
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">

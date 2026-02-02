@@ -522,7 +522,7 @@
     "AllDepartments": "All Departments",
     "Details": "Details",
     "Root": "Root",
-    "MoveDepartment": "Move Department {0}",
+    "MoveDepartment": "Move Department",
     "DeleteSubDepartments": "Cannot delete department with sub departments",
     "DepartmentDeleteWarningMessage": "Are you sure you want to delete department {0}?",
     "DepartmentMoveConfirmMessage": "Are you sure you want to move {0} to {1}?",
@@ -960,6 +960,7 @@
     "DocumentNotFound": "Document not found",
     "Revoked": "Revoked", 
     "ViewDocumentDetail": "View Document Detail",
-    "Recipients" : "Recipients"
+    "Recipients" : "Recipients",
+    "SelectDepartmentToViewDetails": "Select a department to view details"
   }
 }

@@ -150,6 +150,8 @@ window.baseHub = {
                 console.error(`${hubName} Hub: ❌ Connection error:`, err);
                 console.error(`${hubName} Hub: Make sure the hub URL is correct and server is running`);
             });
+            
+            console.log(`1.22232321321.`);
 
         return connection;
     },

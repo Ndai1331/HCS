@@ -589,7 +589,7 @@
     "AllDepartments": "Tất cả phòng ban",
     "Details": "Chi tiết",
     "Root": "Gốc",
-    "MoveDepartment": "Di chuyển phòng ban {0}",
+    "MoveDepartment": "Di chuyển phòng ban",
     "DeleteSubDepartments": "Không thể xóa phòng ban có phòng ban con",
     "DepartmentDeleteWarningMessage": "Bạn có chắc chắn muốn xóa phòng ban {0}?",
     "DepartmentMoveConfirmMessage": "Bạn có chắc chắn muốn di chuyển {0} đến {1}?",
@@ -1014,6 +1014,7 @@
     "DocumentNotFound": "Không tìm thấy văn bản",
     "Revoked": "Thu hồi",
     "ViewDocumentDetail": "Xem chi tiết văn bản",
-    "Recipients" : "Người nhận"
+    "Recipients" : "Người nhận",
+    "SelectDepartmentToViewDetails": "Chọn phòng ban để xem chi tiết"
   }
 }
