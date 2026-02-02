@@ -71,336 +71,755 @@
         border-radius: 6px;
     }
 
-    
+    /* Mobile-specific styles */
+    @@media (max-width: 767.98px) {
+        /* Force hide all views initially on mobile */
+        #chat_wrapper .col-md-3,
+        #chat_wrapper .col-md-6,
+        #chat_wrapper .col-md-9 {
+            display: none !important;
+        }
+
+        /* Only show mobile-specific elements */
+        #chat_wrapper .mobile-view-visible {
+            display: flex !important;
+        }
+
+        #chat_wrapper .container-fluid {
+            padding: 0;
+        }
+
+        #chat_wrapper .row {
+            margin: 0;
+        }
+
+        #chat_wrapper > .container-fluid > .row > div {
+            padding: 0;
+        }
+
+        /* Ensure col-12 mobile views are visible */
+        #chat_wrapper .col-12.d-flex {
+            display: flex !important;
+        }
+    }
+
+    /* Desktop-specific styles */
+    @@media (min-width: 768px) {
+        /* Hide mobile-specific views on desktop */
+        #chat_wrapper .mobile-only {
+            display: none !important;
+        }
+
+        /* Show desktop layout */
+        #chat_wrapper .col-md-3,
+        #chat_wrapper .col-md-6,
+        #chat_wrapper .col-md-9 {
+            display: flex !important;
+        }
+    }
 </style>
+
+<script>
+    // Initialize mobile detection
+    function initializeMobileDetection(dotnetHelper) {
+        checkMobileMode();
+
+        window.addEventListener('resize', function() {
+            checkMobileMode();
+        });
+
+        function checkMobileMode() {
+            const isMobile = window.innerWidth < 768;
+            dotnetHelper.invokeMethodAsync('SetMobileMode', isMobile);
+        }
+    }
+</script>
 
 <div id="chat_wrapper">
     <div class="container-fluid">
         <div class="row">
-            <!-- Users box-->
-            <div class="col-12 col-md-3  d-flex align-items-stretch">
-                <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
-                    <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden;">
-                        <div class=" mb-2 rounded-2" id="SearchBox">
-                            <div class="row">
-                                <div class="col">
-                                    <input type="search"
-                                       @oninput="@((e) => { SearchValue = (string)e.Value;})"
-                                       @onchange="@(async e => await OnSearchChangeAsync(e.Value?.ToString()))"
-                                       @onkeyup="@(async e => await OnSearchKeyupAsync(e))"
-                                       class="form-control form-control-sm"
-                                       placeholder="@L["SearchInContacts"].Value"
-                                       aria-label="@L["SearchInContacts"].Value"
-                                       autocomplete="off" spellcheck="false"
-                                       aria-autocomplete="list"
-                                       role="combobox"
-                                       aria-expanded="false"
-                                       aria-owns="algolia-autocomplete-listbox-0"
-                                       dir="auto">
-                                </div>
-                            </div>
-                            <!-- Create Conversation Buttons -->
-                            <div class="row mt-2">
-                                <div class="col-12">
-                                    <div class="btn-group w-100" role="group">
-                                        <button type="button" class="btn btn-sm btn-outline-info" @onclick="async () => await ShowCreateDirectModalAsync()" title="@L["StartConversation"]">
-                                            <i class="bi bi-person"></i> @L["User"]
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowCreateGroupModalAsync()" title="@L["CreateGroup"]">
-                                            <i class="bi bi-people"></i> @L["Group"]
-                                        </button>
-                                      
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="messages-box lpx-ps-scroll-container m-0 p-0 ps ps--active-y" id="chat-messages-container" style="flex: 1; overflow-y: auto; min-height: 0;">
-                            <div class="list-group rounded-3 contract-list" id="contact_list">
-                                @{
-                                    foreach (var chatContact in ChatContactDtos)
-                                    {
-                                        <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2 @(ChatContactsActive.ContainsKey(chatContact) ? ChatContactsActive[chatContact] : string.Empty)">
-                                            <div class="media" @onclick="async () => await SetActiveAsync(chatContact)" >
-                                                @if (chatContact.Type == ConversationType.User)
-                                                {
-                                                    <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="24" Height="24"></canvas>
-                                                }
-                                                else if (chatContact.Type == ConversationType.Group)
-                                                {
-                                                    <i class="bi bi-people-fill fs-3 text-primary"></i>
-                                                }
-                                                else if (chatContact.Type == ConversationType.Project)
-                                                {
-                                                    <i class="bi bi-folder-fill fs-3 text-success"></i>
-                                                }
-                                                else if (chatContact.Type == ConversationType.Task)
-                                                {
-                                                    <i class="bi bi-check2-square fs-3 text-warning"></i>
-                                                }
-                                                <div class="media-body ms-2">
-                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                        <h6 class="mb-0 me-1">
-                                                            
-                                                            @if (chatContact.IsPinned)
-                                                            {
-                                                                <i class="bi bi-pin-fill text-warning me-1" title="@L["Pinned"]"></i>
-                                                            }
-                                                            @(GetContactDisplayName(chatContact).TruncateWithPostfix(36,"..."))
+            <!-- MOBILE: Single view based on CurrentMobileView -->
+            @if (IsMobileMode)
+            {
+                @switch (CurrentMobileView)
+                {
+                    case MobileViewType.ConversationList:
+                        <!-- Users box - Conversation List (Mobile only) -->
+                        <div class="col-12 d-flex align-items-stretch">
+                            <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
+                                <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden;">
+                                    <div class=" mb-2 rounded-2" id="SearchBox">
+                                        <div class="row">
+                                            <div class="col">
+                                                <input type="search"
+                                                   @oninput="@((e) => { SearchValue = (string)e.Value;})"
+                                                   @onchange="@(async e => await OnSearchChangeAsync(e.Value?.ToString()))"
+                                                   @onkeyup="@(async e => await OnSearchKeyupAsync(e))"
+                                                   class="form-control form-control-sm"
+                                                   placeholder="@L["SearchInContacts"].Value"
+                                                   aria-label="@L["SearchInContacts"].Value"
+                                                   autocomplete="off" spellcheck="false"
+                                                   aria-autocomplete="list"
+                                                   role="combobox"
+                                                   aria-expanded="false"
+                                                   aria-owns="algolia-autocomplete-listbox-0"
+                                                   dir="auto">
+                                                </div>
+                                        </div>
+                                        <!-- Create Conversation Buttons -->
+                                        <div class="row mt-2">
+                                            <div class="col-12">
+                                                <div class="btn-group w-100" role="group">
+                                                    <button type="button" class="btn btn-sm btn-outline-info" @onclick="async () => await ShowCreateDirectModalAsync()" title="@L["StartConversation"]">
+                                                        <i class="bi bi-person"></i> @L["User"]
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowCreateGroupModalAsync()" title="@L["CreateGroup"]">
+                                                        <i class="bi bi-people"></i> @L["Group"]
+                                                    </button>
 
-                                                            @if (chatContact.UnreadMessageCount > 0)
-                                                            {
-                                                                <small class="badge bg-brand ms-1">@chatContact.UnreadMessageCount</small>
-                                                            }
-                                                        </h6>
-                                                        
-                                                    </div>
-                                                    <p class="d-flex justify-content-between gap-1 mb-0 small last-message">
-                                                        @if(!string.IsNullOrEmpty(chatContact.LastMessage))
-                                                        {
-                                                            <span class="text-muted">@chatContact.LastMessage?.TruncateWithPostfix(36,"...")</span>
-                                                            <span class="text-muted"> @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("d") @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("t")</span>
-                                                        }
-                                                    </p>
-                                                    @* @if (chatContact.Type != ConversationType.User && chatContact.MemberCount > 0)
-                                                    {
-                                                        <small class="text-muted"><i class="bi bi-people"></i> @chatContact.MemberCount @L["Member"]</small>
-                                                    } *@
                                                 </div>
                                             </div>
-                                            <div class="dropdown position-absolute top-0 end-0">
-                                                <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="lpx-caret bi-three-dots" aria-hidden="true"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    @if (chatContact.Type != ConversationType.User)
-                                                    {
-                                                        <li>
-                                                            <a class="dropdown-item" @onclick="async () => await TogglePinConversationAsync(chatContact)">
-                                                                @if (chatContact.IsPinned)
+                                        </div>
+                                    </div>
+                                    <div class="messages-box lpx-ps-scroll-container m-0 p-0 ps ps--active-y" id="chat-messages-container" style="flex: 1; overflow-y: auto; min-height: 0;">
+                                        <div class="list-group rounded-3 contract-list" id="contact_list">
+                                            @{
+                                                foreach (var chatContact in ChatContactDtos)
+                                                {
+                                                    <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2 @(ChatContactsActive.ContainsKey(chatContact) ? ChatContactsActive[chatContact] : string.Empty)">
+                                                        <div class="media" @onclick="async () => await SetActiveAsync(chatContact)" >
+                                                            @if (chatContact.Type == ConversationType.User)
+                                                            {
+                                                                <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="24" Height="24"></canvas>
+                                                            }
+                                                            else if (chatContact.Type == ConversationType.Group)
+                                                            {
+                                                                <i class="bi bi-people-fill fs-3 text-primary"></i>
+                                                            }
+                                                            else if (chatContact.Type == ConversationType.Project)
+                                                            {
+                                                                <i class="bi bi-folder-fill fs-3 text-success"></i>
+                                                            }
+                                                            else if (chatContact.Type == ConversationType.Task)
+                                                            {
+                                                                <i class="bi bi-check2-square fs-3 text-warning"></i>
+                                                            }
+                                                            <div class="media-body ms-2">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <h6 class="mb-0 me-1">
+
+                                                                        @if (chatContact.IsPinned)
+                                                                        {
+                                                                            <i class="bi bi-pin-fill text-warning me-1" title="@L["Pinned"]"></i>
+                                                                        }
+                                                                        @(GetContactDisplayName(chatContact).TruncateWithPostfix(36,"..."))
+
+                                                                        @if (chatContact.UnreadMessageCount > 0)
+                                                                        {
+                                                                            <small class="badge bg-brand ms-1">@chatContact.UnreadMessageCount</small>
+                                                                        }
+                                                                    </h6>
+
+                                                                </div>
+                                                                <p class="d-flex justify-content-between gap-1 mb-0 small last-message">
+                                                                    @if(!string.IsNullOrEmpty(chatContact.LastMessage))
+                                                                    {
+                                                                        <span class="text-muted">@chatContact.LastMessage?.TruncateWithPostfix(36,"...")</span>
+                                                                        <span class="text-muted"> @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("d") @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("t")</span>
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="dropdown position-absolute top-0 end-0">
+                                                            <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <i class="lpx-caret bi-three-dots" aria-hidden="true"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                @if (chatContact.Type != ConversationType.User)
                                                                 {
-                                                                    <i class="bi bi-pin-angle text-warning me-1"></i> @L["UnpinConversation"]
+                                                                    <li>
+                                                                        <a class="dropdown-item" @onclick="async () => await TogglePinConversationAsync(chatContact)">
+                                                                            @if (chatContact.IsPinned)
+                                                                            {
+                                                                                <i class="bi bi-pin-angle text-warning me-1"></i> @L["UnpinConversation"]
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <i class="bi bi-pin-fill text-warning me-1"></i> @L["PinConversation"]
+                                                                            }
+                                                                        </a>
+                                                                    </li>
+                                                                    @if (chatContact.MemberRole == "MEMBER")
+                                                                    {
+                                                                        <li>
+                                                                            <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(new RemoveMemberInput { ConversationId = chatContact.ConversationId.Value, UserId = CurrentUser.Id.Value })">
+                                                                                <i class="bi bi-arrow-bar-left text-danger me-1"></i> @L["LeaveConversation"]
+                                                                            </a>
+                                                                        </li>
+                                                                    }
+
                                                                 }
-                                                                else
+                                                                @if (IsDeletingConversationEnabled() && chatContact.MemberRole == "ADMIN")
                                                                 {
-                                                                    <i class="bi bi-pin-fill text-warning me-1"></i> @L["PinConversation"]
+                                                                    <li>
+                                                                        <a class="dropdown-item delete-conversation-btn" @onclick="async () => await DeleteConversationAsync()">
+                                                                            <i class="bi bi-trash text-danger me-1"></i> @L["Delete"]
+                                                                            </a>
+                                                                    </li>
                                                                 }
-                                                            </a>
-                                                        </li>
-                                                        @if (chatContact.MemberRole == "MEMBER")
+                                                            </ul>
+                                                        </div>
+                                                    </a>
+                                                }
+                                            }
+                                            @* Load More Conversations Button *@
+                                            @if (_hasMoreConversations)
+                                            {
+                                                <div class="list-group-item text-center py-2">
+                                                    <button class="btn btn-sm btn-outline-primary" @onclick="LoadMoreConversationsAsync" disabled="@_isLoadingMoreConversations">
+                                                        @if (_isLoadingMoreConversations)
                                                         {
-                                                            <li>    
-                                                                <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(new RemoveMemberInput { ConversationId = chatContact.ConversationId.Value, UserId = CurrentUser.Id.Value })">
-                                                                        <i class="bi bi-arrow-bar-left text-danger me-1"></i> @L["LeaveConversation"]
-                                                                </a>
-                                                            </li>
+                                                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                                                         }
-
-                                                    }
-                                                    @if (IsDeletingConversationEnabled() && chatContact.MemberRole == "ADMIN")
-                                                    {
-                                                        <li>
-                                                            <a class="dropdown-item delete-conversation-btn" @onclick="async () => await DeleteConversationAsync()">
-                                                                <i class="bi bi-trash text-danger me-1"></i> @L["Delete"]
-                                                                </a>
-                                                        </li>
-                                                    }
-                                                </ul>
-                                            </div>
-                                        </a>
-                                    }
-                                }
-                                @* Load More Conversations Button *@
-                                @if (_hasMoreConversations)
-                                {
-                                    <div class="list-group-item text-center py-2">
-                                        <button class="btn btn-sm btn-outline-primary" @onclick="LoadMoreConversationsAsync" disabled="@_isLoadingMoreConversations">
-                                            @if (_isLoadingMoreConversations)
-                                            {
-                                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                            }
-                                            @L["LoadMore"]
-                                        </button>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- Chat Box-->
-            <div id="chatBox" class="col-12 @(ShowInfoBox ? "col-md-6" : "col-md-9") p-0 d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
-                <div class="card w-100 mb-0" style="height: 100%; display: flex; flex-direction: column;">
-                    <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
-                        <div id="AvatarId" class="px-2 py-1 border mb-2 rounded-2">
-                            <div class="row d-flex align-items-center">
-                                <div class="col-auto pe-0">
-                                    @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
-                                    {
-                                        <canvas @ref="CurrentChatContactCanvas" class="rounded-circle mt-1" width="36" height="36"></canvas>
-                                    }
-                                    else if (CurrentChatContact != null)
-                                    {
-                                        @if (CurrentChatContact.Type == ConversationType.Group)
-                                        {
-                                            <i class="bi bi-people-fill fs-4 text-primary mt-1"></i>
-                                        }
-                                        else if (CurrentChatContact.Type == ConversationType.Project)
-                                        {
-                                            <i class="bi bi-folder-fill fs-4 text-success mt-1"></i>
-                                        }
-                                        else if (CurrentChatContact.Type == ConversationType.Task)
-                                        {
-                                            <i class="bi bi-check2-square fs-4 text-warning mt-1"></i>
-                                        }
-                                    }
-                                </div>
-                                <div class="col d-flex flex-column justify-content-center">
-                                    <h5 id="Conversation_Title" class="m-0">
-                                        @if (CurrentChatContact != null)
-                                        {
-                                            @if (CurrentChatContact.Type == ConversationType.User)
-                                            {
-                                                @(GetName(CurrentChatContact) + (CurrentChatContact.HasChatPermission ? string.Empty : $" - {L["Volo.Chat:010004"]}"))
-                                            }
-                                            else
-                                            {
-                                                @(CurrentChatContact.ConversationName ?? GetName(CurrentChatContact))
-                                            }
-                                        }
-                                    </h5>
-                                </div>
-
-                                @if (CurrentChatContact != null)
-                                {
-                                    <div class="col-auto pe-0 mx-2">
-                                        <i class="bi bi-info-circle fs-4 text-brand mt-1 cursor-pointer" @onclick="async () => await ShowInfoBoxAsync()" title="@L["ShowInfoBox"]"></i>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                        @if (IsLoadingMessages)
-                        {
-                            <div id="chatBox" class="card-body pt-12 pb-12 text-center">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <p class="mt-2">@L["Loading"]</p>
-                            </div>
-                        }
-                        else if (ChatConversationDto == null)
-                        {
-                            <div id="EmptyTemplate" class="card-body pt-12 pb-12 text-center">
-                                <i class="fa fa-commenting-o fs-2" aria-hidden="true"></i>
-                                <p>@L["NoMessageYetMessage"].Value</p>
-                            </div>
-                        }else{
-                            <div id="chat_conversation_wrapper" class="chat-box mb-2" style="flex: 1; overflow-y: auto; min-height: 0;" @onscroll="OnConversationScroll">
-                                <div class="chat-box-container" id="chat_conversation">
-                                    @if (_isLoadingMoreMessages)
-                                    {
-                                        <div class="text-center py-2">
-                                            <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
-                                        </div>
-                                    }
-                                    @foreach (var message in GetMessagesSnapshot())
-                                    {
-                                        <MessageItem 
-                                            Message="@message"
-                                            CurrentChatContact="@CurrentChatContact"
-                                            OnReply="@ReplyToMessageAsync"
-                                            OnTogglePin="@TogglePinMessageAsync"
-                                            OnForward="@ForwardMessageAsync"
-                                            OnCreateTask="@CreateTaskFromMessageAsync"
-                                            OnDelete="@DeleteMessageAsync"
-                                            OnDownloadFile="@DownloadFileAsync"
-                                            GetImageUrl="@GetImageUrl"
-                                            OnOpenImageViewer="@OpenImageViewerAsync"
-                                            IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
-                                    }
-                                </div>
-                            </div>
-                        }
-
-                        <!-- Typing area -->
-                        @if (ChatConversationDto != null)
-                        {
-                            <div class="bg-light rounded-3 m-0">
-                                <div class="p-2 p-lg-3">
-                                    @* Reply Preview *@
-                                    @if (ReplyingToMessage != null)
-                                    {
-                                        <div class="bg-info bg-opacity-10 rounded p-2 mb-2 d-flex justify-content-between align-items-center">
-                                            <div class="flex-grow-1">
-                                                <small class="text-muted d-block">@L["ReplyingTo"]:</small>
-                                                <small class="text-truncate d-block">@ReplyingToMessage.Message.TruncateWithPostfix(50, "...")</small>
-                                            </div>
-                                            <button class="btn btn-sm btn-link p-0" @onclick="() => ReplyingToMessage = null">
-                                                <i class="bi bi-x"></i>
-                                            </button>
-                                        </div>
-                                    }
-                                    @* Uploaded Files Preview *@
-                                    @if (UploadedFiles != null && UploadedFiles.Any())
-                                    {
-                                        <div class="mb-2">
-                                            @foreach (var file in UploadedFiles)
-                                            {
-                                                <div class="d-inline-block me-2 mb-1 p-2 bg-white rounded border">
-                                                    <small class="d-block">@file.FileName</small>
-                                                    <button class="btn btn-sm btn-link p-0 text-danger" @onclick="() => UploadedFiles.Remove(file)">
-                                                        <i class="bi bi-x-circle"></i>
+                                                        @L["LoadMore"]
                                                     </button>
                                                 </div>
                                             }
                                         </div>
-                                    }
-                                    <div class="d-flex align-items-center" style="background: #f4f4f4; border-radius: 4px; padding: 5px;">
-                                        <label class="btn btn-sm btn-outline-secondary me-2" title="@L["AttachFile"]" style="cursor: pointer;">
-                                            <i class="bi bi-paperclip"></i>
-                                            <InputFile OnChange="OnFileSelected" multiple class="d-none" />
-                                        </label>
-                                        <textarea @ref="MessageTextArea"
-                                        @bind="Message"
-                                        @bind:event="oninput"
-                                        @onkeydown="@(async e => await OnMessageEntryAsync(e))"
-                                        type="text" placeholder="@L["TypeMessage"].Value" class="form-control rounded py-2 flex-grow-1"></textarea>
-                                    </div>
-                                    <div class="form-check float-start mt-3">
-                                        <input @bind="SendOnEnter" type="checkbox" class="form-check-input  border shadow-sm" id="Send_On_Enter">
-                                        <label class="form-check-label" for="Send_On_Enter">@L["SendOnEnter"].Value</label>
-                                    </div>
-                                    <div class="mt-2 text-end">
-                                        <button disabled="@(Message.IsNullOrWhiteSpace() && (UploadedFiles == null || !UploadedFiles.Any()))" @onclick="async () => await SendMessageAsync()" type="submit" class="btn btn-primary px-3">
-                                            @L["Send"]
-                                            <i class="fa fa-paper-plane ms-2"></i>
-                                        </button>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        break;
+
+                    case MobileViewType.ChatConversation:
+                        <!-- Chat Box (Mobile only) -->
+                        <div id="chatBox" class="col-12 p-0 d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
+                            <div class="card w-100 mb-0" style="height: 100%; display: flex; flex-direction: column;">
+                                <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
+                                    <div id="AvatarId" class="px-2 py-1 border mb-2 rounded-2">
+                                        <div class="row d-flex align-items-center">
+                                            <!-- Mobile back button -->
+                                            <div class="col-auto pe-0">
+                                                <button class="btn btn-sm btn-outline-secondary" @onclick="async () => await ShowConversationListAsync()" title="@L["Back"]">
+                                                    <i class="bi bi-arrow-left"></i>
+                                                </button>
+                                            </div>
+                                            <div class="col-auto pe-0">
+                                                @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
+                                                {
+                                                    <canvas @ref="CurrentChatContactCanvas" class="rounded-circle mt-1" width="36" height="36"></canvas>
+                                                }
+                                                else if (CurrentChatContact != null)
+                                                {
+                                                    @if (CurrentChatContact.Type == ConversationType.Group)
+                                                    {
+                                                        <i class="bi bi-people-fill fs-4 text-primary mt-1"></i>
+                                                    }
+                                                    else if (CurrentChatContact.Type == ConversationType.Project)
+                                                    {
+                                                        <i class="bi bi-folder-fill fs-4 text-success mt-1"></i>
+                                                    }
+                                                    else if (CurrentChatContact.Type == ConversationType.Task)
+                                                    {
+                                                        <i class="bi bi-check2-square fs-4 text-warning mt-1"></i>
+                                                    }
+                                                }
+                                            </div>
+                                            <div class="col d-flex flex-column justify-content-center">
+                                                <h5 id="Conversation_Title" class="m-0">
+                                                    @if (CurrentChatContact != null)
+                                                    {
+                                                        @if (CurrentChatContact.Type == ConversationType.User)
+                                                        {
+                                                            @(GetName(CurrentChatContact) + (CurrentChatContact.HasChatPermission ? string.Empty : $" - {L["Volo.Chat:010004"]}"))
+                                                        }
+                                                        else
+                                                        {
+                                                            @(CurrentChatContact.ConversationName ?? GetName(CurrentChatContact))
+                                                        }
+                                                    }
+                                                </h5>
+                                            </div>
+
+                                            @if (CurrentChatContact != null)
+                                            {
+                                                <div class="col-auto pe-0 mx-2">
+                                                    <i class="bi bi-info-circle fs-4 text-brand mt-1 cursor-pointer" @onclick="async () => await ShowConversationInfoAsync()" title="@L["ShowInfoBox"]"></i>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    @if (IsLoadingMessages)
+                                    {
+                                        <div id="chatBox" class="card-body pt-12 pb-12 text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            <p class="mt-2">@L["Loading"]</p>
+                                        </div>
+                                    }
+                                    else if (ChatConversationDto == null)
+                                    {
+                                        <div id="EmptyTemplate" class="card-body pt-12 pb-12 text-center">
+                                            <i class="fa fa-commenting-o fs-2" aria-hidden="true"></i>
+                                            <p>@L["NoMessageYetMessage"].Value</p>
+                                        </div>
+                                    }else{
+                                        <div id="chat_conversation_wrapper" class="chat-box mb-2" style="flex: 1; overflow-y: auto; min-height: 0;" @onscroll="OnConversationScroll">
+                                            <div class="chat-box-container" id="chat_conversation">
+                                                @if (_isLoadingMoreMessages)
+                                                {
+                                                    <div class="text-center py-2">
+                                                        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+                                                    </div>
+                                                }
+                                                @foreach (var message in GetMessagesSnapshot())
+                                                {
+                                                    <MessageItem
+                                                        Message="@message"
+                                                        CurrentChatContact="@CurrentChatContact"
+                                                        OnReply="@ReplyToMessageAsync"
+                                                        OnTogglePin="@TogglePinMessageAsync"
+                                                        OnForward="@ForwardMessageAsync"
+                                                        OnCreateTask="@CreateTaskFromMessageAsync"
+                                                        OnDelete="@DeleteMessageAsync"
+                                                        OnDownloadFile="@DownloadFileAsync"
+                                                        GetImageUrl="@GetImageUrl"
+                                                        OnOpenImageViewer="@OpenImageViewerAsync"
+                                                        IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <!-- Typing area -->
+                                    @if (ChatConversationDto != null)
+                                    {
+                                        <div class="bg-light rounded-3 m-0">
+                                            <div class="p-2 p-lg-3">
+                                                @* Reply Preview *@
+                                                @if (ReplyingToMessage != null)
+                                                {
+                                                    <div class="bg-info bg-opacity-10 rounded p-2 mb-2 d-flex justify-content-between align-items-center">
+                                                        <div class="flex-grow-1">
+                                                            <small class="text-muted d-block">@L["ReplyingTo"]:</small>
+                                                            <small class="text-truncate d-block">@ReplyingToMessage.Message.TruncateWithPostfix(50, "...")</small>
+                                                        </div>
+                                                        <button class="btn btn-sm btn-link p-0" @onclick="() => ReplyingToMessage = null">
+                                                            <i class="bi bi-x"></i>
+                                                        </button>
+                                                    </div>
+                                                }
+                                                @* Uploaded Files Preview *@
+                                                @if (UploadedFiles != null && UploadedFiles.Any())
+                                                {
+                                                    <div class="mb-2">
+                                                        @foreach (var file in UploadedFiles)
+                                                        {
+                                                            <div class="d-inline-block me-2 mb-1 p-2 bg-white rounded border">
+                                                                <small class="d-block">@file.FileName</small>
+                                                                <button class="btn btn-sm btn-link p-0 text-danger" @onclick="() => UploadedFiles.Remove(file)">
+                                                                    <i class="bi bi-x-circle"></i>
+                                                                </button>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                <div class="d-flex align-items-center" style="background: #f4f4f4; border-radius: 4px; padding: 5px;">
+                                                    <label class="btn btn-sm btn-outline-secondary me-2" title="@L["AttachFile"]" style="cursor: pointer;">
+                                                        <i class="bi bi-paperclip"></i>
+                                                        <InputFile OnChange="OnFileSelected" multiple class="d-none" />
+                                                    </label>
+                                                    <textarea @ref="MessageTextArea"
+                                                    @bind="Message"
+                                                    @bind:event="oninput"
+                                                    @onkeydown="@(async e => await OnMessageEntryAsync(e))"
+                                                    type="text" placeholder="@L["TypeMessage"].Value" class="form-control rounded py-2 flex-grow-1"></textarea>
+                                                </div>
+                                                <div class="form-check float-start mt-3">
+                                                    <input @bind="SendOnEnter" type="checkbox" class="form-check-input  border shadow-sm" id="Send_On_Enter">
+                                                    <label class="form-check-label" for="Send_On_Enter">@L["SendOnEnter"].Value</label>
+                                                </div>
+                                                <div class="mt-2 text-end">
+                                                    <button disabled="@(Message.IsNullOrWhiteSpace() && (UploadedFiles == null || !UploadedFiles.Any()))" @onclick="async () => await SendMessageAsync()" type="submit" class="btn btn-primary px-3">
+                                                        @L["Send"]
+                                                        <i class="fa fa-paper-plane ms-2"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        break;
+
+                    case MobileViewType.ConversationInfo:
+                        <!-- Info box (Mobile only) -->
+                        @if (ShowInfoBox)
+                        {
+                            <div class="col-12 p-0 d-flex align-items-stretch">
+                                <InfoBox
+                                    CurrentChatContact="@CurrentChatContact"
+                                    ShowInfoBoxAsync="@ShowConversationInfoAsync"
+                                    HideInfoBoxAsync="@HideConversationInfoAsync"
+                                    GetName="@GetName"
+                                    GetContactDisplayName="@GetContactDisplayName"
+                                    CanvasElementReferences="@CanvasElementReferences"
+                                    CurrentUserId="@CurrentUser.Id"
+                                    AddMembersAsync="@AddMembersAsync"
+                                    RemoveMemberAsync="@RemoveMemberAsync"
+                                    LeaveConversationAsync="@LeaveConversationAsync"
+                                    DownloadFileAsync ="@DownloadFileAsync"
+                                    SendMessageToMemberAsync="@SendMessageToMemberAsync"
+                                    GetImageUrl="@GetImageUrl"
+                                    OnOpenImageViewer="@OpenImageViewerAsync"
+                                    IsMobileMode="@IsMobileMode"
+
+                                />
+                            </div>
                         }
+                        break;
+                }
+            }
+            else
+            {
+                <!-- DESKTOP: Original 3-column layout -->
+                <!-- Users box-->
+                <div class="col-12 col-md-3  d-flex align-items-stretch">
+                    <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
+                        <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden;">
+                            <div class=" mb-2 rounded-2" id="SearchBox">
+                                <div class="row">
+                                    <div class="col">
+                                        <input type="search"
+                                           @oninput="@((e) => { SearchValue = (string)e.Value;})"
+                                           @onchange="@(async e => await OnSearchChangeAsync(e.Value?.ToString()))"
+                                           @onkeyup="@(async e => await OnSearchKeyupAsync(e))"
+                                           class="form-control form-control-sm"
+                                           placeholder="@L["SearchInContacts"].Value"
+                                           aria-label="@L["SearchInContacts"].Value"
+                                           autocomplete="off" spellcheck="false"
+                                           aria-autocomplete="list"
+                                           role="combobox"
+                                           aria-expanded="false"
+                                           aria-owns="algolia-autocomplete-listbox-0"
+                                           dir="auto">
+                                        </div>
+                                </div>
+                                <!-- Create Conversation Buttons -->
+                                <div class="row mt-2">
+                                    <div class="col-12">
+                                        <div class="btn-group w-100" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-info" @onclick="async () => await ShowCreateDirectModalAsync()" title="@L["StartConversation"]">
+                                                <i class="bi bi-person"></i> @L["User"]
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="async () => await ShowCreateGroupModalAsync()" title="@L["CreateGroup"]">
+                                                <i class="bi bi-people"></i> @L["Group"]
+                                            </button>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="messages-box lpx-ps-scroll-container m-0 p-0 ps ps--active-y" id="chat-messages-container" style="flex: 1; overflow-y: auto; min-height: 0;">
+                                <div class="list-group rounded-3 contract-list" id="contact_list">
+                                    @{
+                                        foreach (var chatContact in ChatContactDtos)
+                                        {
+                                            <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2 @(ChatContactsActive.ContainsKey(chatContact) ? ChatContactsActive[chatContact] : string.Empty)">
+                                                <div class="media" @onclick="async () => await SetActiveAsync(chatContact)" >
+                                                    @if (chatContact.Type == ConversationType.User)
+                                                    {
+                                                        <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="24" Height="24"></canvas>
+                                                    }
+                                                    else if (chatContact.Type == ConversationType.Group)
+                                                    {
+                                                        <i class="bi bi-people-fill fs-3 text-primary"></i>
+                                                    }
+                                                    else if (chatContact.Type == ConversationType.Project)
+                                                    {
+                                                        <i class="bi bi-folder-fill fs-3 text-success"></i>
+                                                    }
+                                                    else if (chatContact.Type == ConversationType.Task)
+                                                    {
+                                                        <i class="bi bi-check2-square fs-3 text-warning"></i>
+                                                    }
+                                                    <div class="media-body ms-2">
+                                                        <div class="d-flex align-items-center justify-content-between mb-1">
+                                                            <h6 class="mb-0 me-1">
+
+                                                                @if (chatContact.IsPinned)
+                                                                {
+                                                                    <i class="bi bi-pin-fill text-warning me-1" title="@L["Pinned"]"></i>
+                                                                }
+                                                                @(GetContactDisplayName(chatContact).TruncateWithPostfix(36,"..."))
+
+                                                                @if (chatContact.UnreadMessageCount > 0)
+                                                                {
+                                                                    <small class="badge bg-brand ms-1">@chatContact.UnreadMessageCount</small>
+                                                                }
+                                                            </h6>
+
+                                                        </div>
+                                                        <p class="d-flex justify-content-between gap-1 mb-0 small last-message">
+                                                            @if(!string.IsNullOrEmpty(chatContact.LastMessage))
+                                                            {
+                                                                <span class="text-muted">@chatContact.LastMessage?.TruncateWithPostfix(36,"...")</span>
+                                                                <span class="text-muted"> @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("d") @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("t")</span>
+                                                            }
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="dropdown position-absolute top-0 end-0">
+                                                    <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <i class="lpx-caret bi-three-dots" aria-hidden="true"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        @if (chatContact.Type != ConversationType.User)
+                                                        {
+                                                            <li>
+                                                                <a class="dropdown-item" @onclick="async () => await TogglePinConversationAsync(chatContact)">
+                                                                    @if (chatContact.IsPinned)
+                                                                    {
+                                                                        <i class="bi bi-pin-angle text-warning me-1"></i> @L["UnpinConversation"]
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <i class="bi bi-pin-fill text-warning me-1"></i> @L["PinConversation"]
+                                                                    }
+                                                                </a>
+                                                            </li>
+                                                            @if (chatContact.MemberRole == "MEMBER")
+                                                            {
+                                                                <li>
+                                                                    <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(new RemoveMemberInput { ConversationId = chatContact.ConversationId.Value, UserId = CurrentUser.Id.Value })">
+                                                                        <i class="bi bi-arrow-bar-left text-danger me-1"></i> @L["LeaveConversation"]
+                                                                    </a>
+                                                                </li>
+                                                            }
+
+                                                        }
+                                                        @if (IsDeletingConversationEnabled() && chatContact.MemberRole == "ADMIN")
+                                                        {
+                                                            <li>
+                                                                <a class="dropdown-item delete-conversation-btn" @onclick="async () => await DeleteConversationAsync()">
+                                                                    <i class="bi bi-trash text-danger me-1"></i> @L["Delete"]
+                                                                    </a>
+                                                            </li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            </a>
+                                        }
+                                    }
+                                    @* Load More Conversations Button *@
+                                    @if (_hasMoreConversations)
+                                    {
+                                        <div class="list-group-item text-center py-2">
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="LoadMoreConversationsAsync" disabled="@_isLoadingMoreConversations">
+                                                @if (_isLoadingMoreConversations)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                }
+                                                @L["LoadMore"]
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <!-- Info box-->
-            @if (ShowInfoBox)
-            {
-               
-                <InfoBox 
-                    CurrentChatContact="@CurrentChatContact"
-                    ShowInfoBoxAsync="@ShowInfoBoxAsync"
-                    GetName="@GetName"
-                    GetContactDisplayName="@GetContactDisplayName"
-                    CanvasElementReferences="@CanvasElementReferences"
-                    CurrentUserId="@CurrentUser.Id"
-                    AddMembersAsync="@AddMembersAsync"
-                    RemoveMemberAsync="@RemoveMemberAsync"
-                    LeaveConversationAsync="@LeaveConversationAsync"
-                    DownloadFileAsync ="@DownloadFileAsync"
-                    SendMessageToMemberAsync="@SendMessageToMemberAsync"
-                    GetImageUrl="@GetImageUrl"
-                    OnOpenImageViewer="@OpenImageViewerAsync"
+                <!-- Chat Box-->
+                <div id="chatBox" class="col-12 @(ShowInfoBox ? "col-md-6" : "col-md-9") p-0 d-flex align-items-stretch @(IsMobileMode && CurrentMobileView != MobileViewType.ChatConversation ? "mobile-view-hidden" : "")" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
+                    <div class="card w-100 mb-0" style="height: 100%; display: flex; flex-direction: column;">
+                        <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
+                            <div id="AvatarId" class="px-2 py-1 border mb-2 rounded-2">
+                                <div class="row d-flex align-items-center">
+                                    <!-- Mobile back button -->
+                                    @if (IsMobileMode)
+                                    {
+                                        <div class="col-auto pe-0">
+                                            <button class="btn btn-sm btn-outline-secondary" @onclick="async () => await ShowConversationListAsync()" title="@L["Back"]">
+                                                <i class="bi bi-arrow-left"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                    <div class="col-auto pe-0">
+                                        @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
+                                        {
+                                            <canvas @ref="CurrentChatContactCanvas" class="rounded-circle mt-1" width="36" height="36"></canvas>
+                                        }
+                                        else if (CurrentChatContact != null)
+                                        {
+                                            @if (CurrentChatContact.Type == ConversationType.Group)
+                                            {
+                                                <i class="bi bi-people-fill fs-4 text-primary mt-1"></i>
+                                            }
+                                            else if (CurrentChatContact.Type == ConversationType.Project)
+                                            {
+                                                <i class="bi bi-folder-fill fs-4 text-success mt-1"></i>
+                                            }
+                                            else if (CurrentChatContact.Type == ConversationType.Task)
+                                            {
+                                                <i class="bi bi-check2-square fs-4 text-warning mt-1"></i>
+                                            }
+                                        }
+                                    </div>
+                                    <div class="col d-flex flex-column justify-content-center">
+                                        <h5 id="Conversation_Title" class="m-0">
+                                            @if (CurrentChatContact != null)
+                                            {
+                                                @if (CurrentChatContact.Type == ConversationType.User)
+                                                {
+                                                    @(GetName(CurrentChatContact) + (CurrentChatContact.HasChatPermission ? string.Empty : $" - {L["Volo.Chat:010004"]}"))
+                                                }
+                                                else
+                                                {
+                                                    @(CurrentChatContact.ConversationName ?? GetName(CurrentChatContact))
+                                                }
+                                            }
+                                        </h5>
+                                    </div>
 
-                />
+                                    @if (CurrentChatContact != null)
+                                    {
+                                        <div class="col-auto pe-0 mx-2">
+                                            <i class="bi bi-info-circle fs-4 text-brand mt-1 cursor-pointer" @onclick="async () => await ShowConversationInfoAsync()" title="@L["ShowInfoBox"]"></i>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            @if (IsLoadingMessages)
+                            {
+                                <div id="chatBox" class="card-body pt-12 pb-12 text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">@L["Loading"]</p>
+                                </div>
+                            }
+                            else if (ChatConversationDto == null)
+                            {
+                                <div id="EmptyTemplate" class="card-body pt-12 pb-12 text-center">
+                                    <i class="fa fa-commenting-o fs-2" aria-hidden="true"></i>
+                                    <p>@L["NoMessageYetMessage"].Value</p>
+                                </div>
+                            }else{
+                                <div id="chat_conversation_wrapper" class="chat-box mb-2" style="flex: 1; overflow-y: auto; min-height: 0;" @onscroll="OnConversationScroll">
+                                    <div class="chat-box-container" id="chat_conversation">
+                                        @if (_isLoadingMoreMessages)
+                                        {
+                                            <div class="text-center py-2">
+                                                <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+                                            </div>
+                                        }
+                                        @foreach (var message in GetMessagesSnapshot())
+                                        {
+                                            <MessageItem 
+                                                Message="@message"
+                                                CurrentChatContact="@CurrentChatContact"
+                                                OnReply="@ReplyToMessageAsync"
+                                                OnTogglePin="@TogglePinMessageAsync"
+                                                OnForward="@ForwardMessageAsync"
+                                                OnCreateTask="@CreateTaskFromMessageAsync"
+                                                OnDelete="@DeleteMessageAsync"
+                                                OnDownloadFile="@DownloadFileAsync"
+                                                GetImageUrl="@GetImageUrl"
+                                                OnOpenImageViewer="@OpenImageViewerAsync"
+                                                IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Typing area -->
+                            @if (ChatConversationDto != null)
+                            {
+                                <div class="bg-light rounded-3 m-0">
+                                    <div class="p-2 p-lg-3">
+                                        @* Reply Preview *@
+                                        @if (ReplyingToMessage != null)
+                                        {
+                                            <div class="bg-info bg-opacity-10 rounded p-2 mb-2 d-flex justify-content-between align-items-center">
+                                                <div class="flex-grow-1">
+                                                    <small class="text-muted d-block">@L["ReplyingTo"]:</small>
+                                                    <small class="text-truncate d-block">@ReplyingToMessage.Message.TruncateWithPostfix(50, "...")</small>
+                                                </div>
+                                                <button class="btn btn-sm btn-link p-0" @onclick="() => ReplyingToMessage = null">
+                                                    <i class="bi bi-x"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                        @* Uploaded Files Preview *@
+                                        @if (UploadedFiles != null && UploadedFiles.Any())
+                                        {
+                                            <div class="mb-2">
+                                                @foreach (var file in UploadedFiles)
+                                                {
+                                                    <div class="d-inline-block me-2 mb-1 p-2 bg-white rounded border">
+                                                        <small class="d-block">@file.FileName</small>
+                                                        <button class="btn btn-sm btn-link p-0 text-danger" @onclick="() => UploadedFiles.Remove(file)">
+                                                            <i class="bi bi-x-circle"></i>
+                                                        </button>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        <div class="d-flex align-items-center" style="background: #f4f4f4; border-radius: 4px; padding: 5px;">
+                                            <label class="btn btn-sm btn-outline-secondary me-2" title="@L["AttachFile"]" style="cursor: pointer;">
+                                                <i class="bi bi-paperclip"></i>
+                                                <InputFile OnChange="OnFileSelected" multiple class="d-none" />
+                                            </label>
+                                            <textarea @ref="MessageTextArea"
+                                            @bind="Message"
+                                            @bind:event="oninput"
+                                            @onkeydown="@(async e => await OnMessageEntryAsync(e))"
+                                            type="text" placeholder="@L["TypeMessage"].Value" class="form-control rounded py-2 flex-grow-1"></textarea>
+                                        </div>
+                                        <div class="form-check float-start mt-3">
+                                            <input @bind="SendOnEnter" type="checkbox" class="form-check-input  border shadow-sm" id="Send_On_Enter">
+                                            <label class="form-check-label" for="Send_On_Enter">@L["SendOnEnter"].Value</label>
+                                        </div>
+                                        <div class="mt-2 text-end">
+                                            <button disabled="@(Message.IsNullOrWhiteSpace() && (UploadedFiles == null || !UploadedFiles.Any()))" @onclick="async () => await SendMessageAsync()" type="submit" class="btn btn-primary px-3">
+                                                @L["Send"]
+                                                <i class="fa fa-paper-plane ms-2"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <!-- Info box-->
+                @if (ShowInfoBox)
+                {
+                    <div class="col-12 col-md-3 p-0 d-flex align-items-stretch @(IsMobileMode && CurrentMobileView != MobileViewType.ConversationInfo ? "mobile-view-hidden" : "")">
+
+                    <InfoBox
+                        CurrentChatContact="@CurrentChatContact"
+                        ShowInfoBoxAsync="@ShowConversationInfoAsync"
+                        HideInfoBoxAsync="@HideConversationInfoAsync"
+                        GetName="@GetName"
+                        GetContactDisplayName="@GetContactDisplayName"
+                        CanvasElementReferences="@CanvasElementReferences"
+                        CurrentUserId="@CurrentUser.Id"
+                        AddMembersAsync="@AddMembersAsync"
+                        RemoveMemberAsync="@RemoveMemberAsync"
+                        LeaveConversationAsync="@LeaveConversationAsync"
+                        DownloadFileAsync ="@DownloadFileAsync"
+                        SendMessageToMemberAsync="@SendMessageToMemberAsync"
+                        GetImageUrl="@GetImageUrl"
+                        OnOpenImageViewer="@OpenImageViewerAsync"
+                        IsMobileMode="@IsMobileMode"
+
+                    />
+                    </div>
+                }
             }
         </div>
     </div>

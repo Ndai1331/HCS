@@ -70,8 +70,19 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     public bool SendOnEnter { get; set; } = true; // Default: Enter to send
     
     public bool ShowInfoBox { get; set; } = false;
-    
-    
+
+    // Mobile view state management
+    public enum MobileViewType
+    {
+        ConversationList,
+        ChatConversation,
+        ConversationInfo
+    }
+
+    public MobileViewType CurrentMobileView { get; set; } = MobileViewType.ConversationList;
+    public bool IsMobileMode { get; set; } = false;
+
+
     // Loading state
     public bool IsLoadingMessages { get; set; }
     public bool IsSendingMessage { get; set; } // Loading state for send button (shows spinner but doesn't block)
@@ -574,9 +585,34 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         if(firstRender)
         {
+            // Initialize mobile detection using IJSRuntime
+            try
+            {
+                // Check initial screen size
+                var isMobile = await JsRuntime.InvokeAsync<bool>("eval", "window.innerWidth < 768");
+                _logger.LogInformation($"Initial mobile detection: {isMobile}");
+                SetMobileMode(isMobile);
+
+                // Set up resize listener
+                await JsRuntime.InvokeVoidAsync("eval", @"
+                    window.addEventListener('resize', function() {
+                        const isMobile = window.innerWidth < 768;
+                        // Store in a global variable for polling
+                        window._isMobile = isMobile;
+                    });
+                ");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize mobile detection");
+                // Fallback
+                IsMobileMode = true;
+                CurrentMobileView = MobileViewType.ConversationList;
+            }
+
             await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
             await GetContactsAsync(isSetActive: false);
-            
+
             if(RedirectToConversationId.HasValue)
             {
                 ChatContactDto? conversationNeedToActive = null;
@@ -946,6 +982,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         try
         {
+            await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
             // OPTIMIZATION: If clicking the same conversation that's already active, skip reload
             bool isSameConversation = CurrentChatContact != null &&
                                      CurrentChatContact.ConversationId.HasValue &&
@@ -1107,12 +1144,18 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
             
             IsLoadingMessages = false;
-            
+
             if (CurrentChatContact?.Type == ConversationType.User)
             {
                 _shouldUpdateAvatar = true;
             }
-            
+
+            // Mobile: switch to chat conversation view
+            if (IsMobileMode)
+            {
+                await ShowChatConversationAsync();
+            }
+
             await InvokeAsync(StateHasChanged);
 
             if (contactDto.UnreadMessageCount > 0)
@@ -1147,6 +1190,10 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -2054,7 +2101,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
 
             // State doesn't implement IAsyncDisposable, so no need to dispose
-            
+
             _logger.LogDebug("Chat1 disposal completed");
         }
         catch (Exception ex)
@@ -2066,5 +2113,83 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     //     {
     //         await asyncDisposable.DisposeAsync();
     //     }
+    }
+
+    // Mobile view management methods
+    private DotNetObjectReference<Chat1> _dotNetRef;
+
+    private void CheckMobileMode()
+    {
+        // Detect if we're in mobile mode based on screen width
+        // This will be called from JavaScript
+    }
+
+    [JSInvokable]
+    public void SetMobileMode(bool isMobile)
+    {
+        var previousMode = IsMobileMode;
+        IsMobileMode = isMobile;
+
+        // Set initial mobile view based on URL parameter
+        if (isMobile && !previousMode)
+        {
+            // First time switching to mobile mode
+            if (RedirectToConversationId.HasValue)
+            {
+                // Has conversation parameter -> show chat directly
+                CurrentMobileView = MobileViewType.ChatConversation;
+            }
+            else
+            {
+                // No conversation parameter -> show list
+                CurrentMobileView = MobileViewType.ConversationList;
+            }
+        }
+        else if (!isMobile)
+        {
+            // Reset to default view when switching to desktop
+            CurrentMobileView = MobileViewType.ConversationList;
+        }
+
+        _logger.LogInformation($"Mobile mode changed: {previousMode} -> {isMobile}, CurrentView: {CurrentMobileView}");
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async Task ShowConversationListAsync()
+    {
+        if (IsMobileMode)
+        {
+            CurrentMobileView = MobileViewType.ConversationList;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task ShowChatConversationAsync()
+    {
+        if (IsMobileMode)
+        {
+            CurrentMobileView = MobileViewType.ChatConversation;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task ShowConversationInfoAsync()
+    {
+        if (IsMobileMode)
+        {
+            CurrentMobileView = MobileViewType.ConversationInfo;
+        }
+        ShowInfoBox = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task HideConversationInfoAsync()
+    {
+        if (IsMobileMode)
+        {
+            CurrentMobileView = MobileViewType.ChatConversation;
+        }
+        ShowInfoBox = false;
+        await InvokeAsync(StateHasChanged);
     }
 }

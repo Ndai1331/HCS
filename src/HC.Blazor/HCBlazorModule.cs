@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
@@ -555,6 +556,8 @@ public class HCBlazorModule : AbpModule
         Configure<LeptonXThemeBlazorOptions>(options =>
         {
             options.Layout = LeptonXBlazorLayouts.TopMenu;
+            options.MobileMenuSelector = items => 
+            items.Where(x => x.MenuItem.Name == HCMenus.Home || x.MenuItem.Name == HCMenus.Chat);
         });
     }
 

@@ -28,7 +28,13 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
     [Parameter]
     public Func<Task> ShowInfoBoxAsync { get; set; } = null!;
-    
+
+    [Parameter]
+    public Func<Task> HideInfoBoxAsync { get; set; } = null!;
+
+    [Parameter]
+    public bool IsMobileMode { get; set; }
+
     [Parameter]
     public Func<string, string> GetImageUrl { get; set; } = null!;
     [Parameter]

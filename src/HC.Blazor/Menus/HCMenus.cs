@@ -4,6 +4,7 @@ public class HCMenus
 {
     private const string Prefix = "HC";
     public const string Home = Prefix + ".Home";
+    public const string Chat = Prefix + ".Chat";
     public const string HostDashboard = Prefix + ".HostDashboard";
     public const string TenantDashboard = Prefix + ".TenantDashboard";
     public const string Positions = Prefix + ".Positions";

@@ -37,6 +37,9 @@ public class HCMenuContributor : IMenuContributor
         else if (context.Menu.Name == StandardMenus.User)
         {
             await ConfigureUserMenuAsync(context);
+        }else if (context.Menu.Name == StandardMenus.Shortcut   )
+        {
+            await ConfigureMobileMenuAsync(context);
         }
     }
 
@@ -87,8 +90,16 @@ public class HCMenuContributor : IMenuContributor
         context.Menu.AddItem(new ApplicationMenuItem("Menu:Personal", hcResource["Menu:Personal"], url: "~/my-profile", icon: "bi-sliders", order: int.MaxValue - 1000).RequireAuthenticated());
         context.Menu.AddItem(new ApplicationMenuItem("Menu:FileManagement", hcResource["Menu:FileManagement"], url: "~/file-management", icon: "fa fa-file-alt", order: int.MaxValue - 1000).RequireAuthenticated());
         context.Menu.AddItem(new ApplicationMenuItem("Menu:Notifications", hcResource["Menu:Notifications"], url: "~/notification-receivers", icon: "fa fa-bell", order: int.MaxValue - 1000).RequireAuthenticated());
-        context.Menu.AddItem(new ApplicationMenuItem("Menu:Chats", hcResource["Menu:Chats"], url: "~/chat", icon: "bi bi-chat-dots-fill", order: int.MaxValue - 1000).RequireAuthenticated());
+        context.Menu.AddItem(new ApplicationMenuItem(HCMenus.Chat, hcResource["Menu:Chat"], url: "~/chat", icon: "bi bi-chat-dots-fill", order: int.MaxValue - 1000).RequireAuthenticated());
         context.Menu.AddItem(new ApplicationMenuItem("Account.Logout", uiResource["Logout"], url: "~/Account/Logout", icon: "fa fa-power-off", order: int.MaxValue - 1000).RequireAuthenticated());
+        return Task.CompletedTask;
+    }
+
+    private Task ConfigureMobileMenuAsync(MenuConfigurationContext context)
+    {
+        var hcResource = context.GetLocalizer<HCResource>();
+        context.Menu.AddItem(new ApplicationMenuItem(HCMenus.Home, hcResource["Menu:Home"], url: "~/", icon: "bi bi-house-fill", order: int.MaxValue - 1000).RequireAuthenticated());
+        context.Menu.AddItem(new ApplicationMenuItem(HCMenus.Chat, hcResource["Menu:Chat"], url: "~/chat", icon: "bi bi-chat-dots-fill", order: int.MaxValue - 1000).RequireAuthenticated());
         return Task.CompletedTask;
     }
 }
