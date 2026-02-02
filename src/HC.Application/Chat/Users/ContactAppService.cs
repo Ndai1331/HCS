@@ -47,10 +47,11 @@ public class ContactAppService : ChatAppService, IContactAppService
             {
                 if (x?.Conversation == null) continue;
                 
-                // Get pin status, pinned date, and role for current user
+                // Get pin status, pinned date, role, and unread count for current user
                 var isPinned = false;
                 DateTime? pinnedDate = null;
                 string memberRole = null;
+                int unreadMessageCount = 0;
                 if (x.Conversation.Type != ConversationType.User)
                 {
                     try
@@ -59,6 +60,7 @@ public class ContactAppService : ChatAppService, IContactAppService
                         isPinned = member?.IsPinned ?? false;
                         pinnedDate = member?.PinnedDate;
                         memberRole = member?.Role; // ADMIN or MEMBER
+                        unreadMessageCount = member?.UnreadMessageCount ?? 0; // Get unread count from member
                     }
                     catch
                     {
@@ -66,6 +68,20 @@ public class ContactAppService : ChatAppService, IContactAppService
                         isPinned = false;
                         pinnedDate = null;
                         memberRole = null;
+                        unreadMessageCount = 0;
+                    }
+                }
+                else
+                {
+                    // For User conversations, also get unread count
+                    try
+                    {
+                        var member = await _conversationMemberRepository.GetByConversationAndUserAsync(x.Conversation.Id, currentUserId);
+                        unreadMessageCount = member?.UnreadMessageCount ?? 0;
+                    }
+                    catch
+                    {
+                        unreadMessageCount = 0;
                     }
                 }
                 
@@ -93,7 +109,7 @@ public class ContactAppService : ChatAppService, IContactAppService
                     Username = x.TargetUser?.UserName,
                     LastMessage = x.Conversation.LastMessage,
                     LastMessageDate = x.Conversation.LastMessageDate,
-                    UnreadMessageCount = 0, // TODO: Calculate from ConversationMember per-user read status
+                    UnreadMessageCount = unreadMessageCount, // Get from ConversationMember
                     Type = x.Conversation.Type,
                     ConversationName = x.Conversation.Name,
                     ConversationId = x.Conversation.Id,
@@ -220,7 +236,21 @@ public class ContactAppService : ChatAppService, IContactAppService
 
     public virtual async Task<int> GetTotalUnreadMessageCountAsync()
     {
-        // TODO: Calculate from ConversationMember per-user read status
-        return 0;
+        try
+        {
+            var currentUserId = CurrentUser.GetId();
+            var allMembers = await _conversationMemberRepository.GetByUserIdAsync(currentUserId);
+            
+            var totalUnreadCount = allMembers
+                .Where(m => m.IsActive)
+                .Sum(m => m.UnreadMessageCount);
+            
+            return totalUnreadCount;
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error in GetTotalUnreadMessageCountAsync");
+            return 0;
+        }
     }
 }

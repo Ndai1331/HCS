@@ -23,6 +23,7 @@ using HC.Shared;
 using HC.Blazor.Extensions;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Http.Client;
+using HC.Blazor.Pages.Chat1.Handlers;
 
 
 namespace HC.Blazor.Pages.Chat1;
@@ -69,8 +70,19 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     public bool SendOnEnter { get; set; } = true; // Default: Enter to send
     
     public bool ShowInfoBox { get; set; } = false;
-    
-    
+
+    // Mobile view state management
+    public enum MobileViewType
+    {
+        ConversationList,
+        ChatConversation,
+        ConversationInfo
+    }
+
+    public MobileViewType CurrentMobileView { get; set; } = MobileViewType.ConversationList;
+    public bool IsMobileMode { get; set; } = false;
+
+
     // Loading state
     public bool IsLoadingMessages { get; set; }
     public bool IsSendingMessage { get; set; } // Loading state for send button (shows spinner but doesn't block)
@@ -91,6 +103,10 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     
     // Flag to update avatar after render
     private bool _shouldUpdateAvatar = false;
+    
+    // Track processed message IDs to prevent duplicate UnreadMessageCount increments
+    private HashSet<Guid> _processedMessageIds = new HashSet<Guid>();
+    private const int MaxProcessedIdsCacheSize = 1000; // Cleanup when cache gets too large
     
     // New properties for expanded features
     public ChatMessageDto ReplyingToMessage { get; set; }
@@ -143,7 +159,20 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     [Inject]
     private IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider { get; set; } = default!;
 
+    // === NEW: Handler Factory for Refactored Code ===
+    [Inject]
+    private Pages.Chat1.Handlers.IChatHandlerFactory HandlerFactory { get; set; }
+
     private string? _apiBaseUrl;
+
+    // === NEW: Refactored Components (Gradual Integration) ===
+    private ChatState _state = new ChatState();
+    private PaginationState _pagination = new PaginationState();
+    
+    private IChatMessageHandler _messageHandler;
+    private IChatFileHandler _fileHandler;
+    private IChatPaginationHandler _paginationHandler;
+    private IChatOptimizationHandler _optimizationHandler;
     [JSInvokable]
     public async Task HandleSignalRMessage(object messageData)
     {
@@ -217,6 +246,30 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 return;
             }
 
+            // Check if this message was already processed (prevent duplicate UnreadMessageCount increments)
+            bool isFirstProcessing = false;
+            if (!_processedMessageIds.Contains(message.Id))
+            {
+                lock (_processedMessageIds)
+                {
+                    if (!_processedMessageIds.Contains(message.Id))
+                    {
+                        _processedMessageIds.Add(message.Id);
+                        isFirstProcessing = true;
+                        
+                        // Cleanup cache if it gets too large
+                        if (_processedMessageIds.Count > MaxProcessedIdsCacheSize)
+                        {
+                            var oldIds = _processedMessageIds.Take(MaxProcessedIdsCacheSize / 2).ToList();
+                            foreach (var oldId in oldIds)
+                            {
+                                _processedMessageIds.Remove(oldId);
+                            }
+                        }
+                    }
+                }
+            }
+
             // Check if message is for current conversation
             bool isForCurrentConversation = false;
 
@@ -253,19 +306,47 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
             if (isForCurrentConversation)
             {
+                // OPTIMIZATION: If message is for the currently active conversation,
+                // reset the unread count to avoid showing badge on active conversation
+                if (isFirstProcessing && CurrentChatContact != null && CurrentChatContact.UnreadMessageCount > 0 && CurrentChatContact.ConversationId.HasValue)
+                {
+                    try
+                    {
+                        await ConversationAppService.ResetUnreadCountAsync(new ResetUnreadCountInput
+                        {
+                            ConversationId = CurrentChatContact.ConversationId.Value
+                        });
+                        CurrentChatContact.UnreadMessageCount = 0;
+
+                        // Broadcast to update notification icon (since unread count decreased)
+                        try
+                        {
+                            await JSRuntime.InvokeVoidAsync("chatHub.broadcastUnreadCountChanged");
+                        }
+                        catch (Exception ex2)
+                        {
+                            _logger.LogWarning(ex2, "Failed to broadcast unread count changed event");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to reset unread count for active conversation {ConversationId}", CurrentChatContact.ConversationId);
+                    }
+                }
+
                 // Refresh conversation
-                if (CurrentChatContact.Type == ConversationType.User)
+                if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
                 {
                     ChatConversationDto = await ConversationAppService.GetConversationAsync(
                         new GetConversationInput { TargetUserId = CurrentChatContact.UserId, MaxResultCount = 100 });
                 }
-                else if (CurrentChatContact.ConversationId.HasValue)
+                else if (CurrentChatContact != null && CurrentChatContact.ConversationId.HasValue)
                 {
                     ChatConversationDto = await ConversationAppService.GetConversationAsync(
                         new GetConversationInput { ConversationId = CurrentChatContact.ConversationId.Value, TargetUserId = Guid.Empty, MaxResultCount = 100 });
                 }
 
-                if (CurrentChatContact.UnreadMessageCount > 0 && CurrentChatContact.Type == ConversationType.User)
+                if (CurrentChatContact != null && CurrentChatContact.UnreadMessageCount > 0 && CurrentChatContact.Type == ConversationType.User)
                 {
                     await ConversationAppService.MarkConversationAsReadAsync(
                         new MarkConversationAsReadInput { TargetUserId = CurrentChatContact.UserId });
@@ -275,8 +356,14 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 {
                     ChatConversationDto.Messages.Reverse();
                     var lastMessage = ChatConversationDto.Messages.LastOrDefault();
-                    CurrentChatContact.LastMessage = lastMessage?.Message;
-                    CurrentChatContact.LastMessageDate = lastMessage?.MessageDate;
+                    if (CurrentChatContact != null)
+                    {
+                        CurrentChatContact.LastMessage = lastMessage?.Message;
+                    }
+                    if (CurrentChatContact != null)
+                    {
+                        CurrentChatContact.LastMessageDate = lastMessage?.MessageDate;
+                    }
                 }
 
                 // Auto scroll to bottom when receiving new message
@@ -293,24 +380,24 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 ChatContactDto targetContact = null;
                 
                 // For User (1-1) conversation: find by SenderUserId
-                if (message.ConversationId.HasValue)
+                if (ChatContactDtos != null && message.ConversationId.HasValue)
                 {
                     // Try to find by ConversationId first (works for all types)
-                    targetContact = ChatContactDtos.FirstOrDefault(c => 
+                    targetContact = ChatContactDtos.FirstOrDefault(c => c != null && 
                         c.ConversationId.HasValue && c.ConversationId.Value == message.ConversationId.Value);
                 }
                 
                 // Fallback: For User type, find by UserId (sender)
                 if (targetContact == null && message.SenderUserId != CurrentUser.Id)
                 {
-                    targetContact = ChatContactDtos.FirstOrDefault(c => 
+                    targetContact = ChatContactDtos.FirstOrDefault(c => c != null && 
                         c.Type == ConversationType.User && c.UserId == message.SenderUserId);
                 }
                 
                 if (targetContact != null)
                 {
-                    // Update unread count (only if message is from someone else)
-                    if (message.SenderUserId != CurrentUser.Id)
+                    // Update unread count (only if message is from someone else AND this is first processing)
+                    if (message.SenderUserId != CurrentUser.Id && isFirstProcessing)
                     {
                         targetContact.UnreadMessageCount++;
                     }
@@ -320,7 +407,11 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                     targetContact.LastMessageDate = DateTime.Now;
                     
                     // Move conversation to top of list for better UX
-                    ChatContactDtos.Remove(targetContact);
+                    if (ChatContactDtos != null)
+                    {
+                        ChatContactDtos.Remove(targetContact);
+                    }
+                    ChatContactDtos = ChatContactDtos == null ? new List<ChatContactDto>() : ChatContactDtos;
                     ChatContactDtos.Insert(0, targetContact);
                     
                     // Update active dictionary
@@ -432,6 +523,13 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 await ProcessConversationCreated(conversationData);
             });
 
+            await ChatHubConnectionService.OnChatUnreadCountChangedAsync(async () =>
+            {
+                // Refresh contacts list to get updated unread counts
+                await RefreshContactsListAsync();
+                await InvokeAsync(StateHasChanged);
+            });
+
             // Initialize SignalR with service reference
             await ChatHubConnectionService.InitializeAsync("/chatHub", string.Empty);
         }
@@ -439,15 +537,82 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         {
             _logger.LogError(ex, "Failed to initialize chat SignalR connection");
         }
+
+        // === NEW: Initialize ChatState and Handlers ===
+        try
+        {
+            // Set up state change notification for UI updates
+            _state.OnChange = async () =>
+            {
+                await InvokeAsync(StateHasChanged);
+            };
+
+            // Initialize state with existing data (keep in sync)
+            _state.CurrentConversation = ChatConversationDto;
+            _state.CurrentConversationId = CurrentConversationId;
+            _state.MessageText = Message;
+            _state.MessageTextArea = MessageTextArea;
+            _state.SendOnEnter = SendOnEnter;
+            _state.ShowInfoBox = ShowInfoBox;
+            _state.SearchValue = SearchValue;
+            _state.ReplyingToMessage = ReplyingToMessage;
+            _state.UploadedFiles = UploadedFiles;
+            
+            // Convert ICurrentUser to CurrentUserDto
+            _state.CurrentUser = new CurrentUserDto
+            {
+                Id = CurrentUser.Id,
+                UserName = CurrentUser.UserName,
+                Name = CurrentUser.Name,
+                SurName = CurrentUser.SurName
+            };
+
+            // Create handlers using factory
+            _messageHandler = HandlerFactory.CreateMessageHandler(_state);
+            _fileHandler = HandlerFactory.CreateFileHandler(_state);
+            _paginationHandler = HandlerFactory.CreatePaginationHandler(_state, _pagination);
+            _optimizationHandler = HandlerFactory.CreateOptimizationHandler(_state);
+
+            _logger.LogInformation("Chat handlers initialized successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize chat handlers");
+        }
     }
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
         if(firstRender)
         {
+            // Initialize mobile detection using IJSRuntime
+            try
+            {
+                // Check initial screen size
+                var isMobile = await JsRuntime.InvokeAsync<bool>("eval", "window.innerWidth < 768");
+                _logger.LogInformation($"Initial mobile detection: {isMobile}");
+                SetMobileMode(isMobile);
+
+                // Set up resize listener
+                await JsRuntime.InvokeVoidAsync("eval", @"
+                    window.addEventListener('resize', function() {
+                        const isMobile = window.innerWidth < 768;
+                        // Store in a global variable for polling
+                        window._isMobile = isMobile;
+                    });
+                ");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize mobile detection");
+                // Fallback
+                IsMobileMode = true;
+                CurrentMobileView = MobileViewType.ConversationList;
+            }
+
             await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
             await GetContactsAsync(isSetActive: false);
-            
+
             if(RedirectToConversationId.HasValue)
             {
                 ChatContactDto? conversationNeedToActive = null;
@@ -572,93 +737,108 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
      bool loadMore = false,
      bool isSetActive = true)
     {
-        if (!loadMore)
+        try
         {
-            _conversationsSkipCount = 0;
-            _hasMoreConversations = true;
-            CanvasElementReferences.Clear();
-        }
-        
-        var currentContactId = preserveCurrentContact && CurrentChatContact != null 
-            ? (CurrentChatContact.Type == ConversationType.User 
-                ? CurrentChatContact.UserId 
-                : CurrentChatContact.ConversationId)
-            : (Guid?)null;
-
-        if (!loadMore)
-        {
-            ChatContactsActive.Clear();
-        }
-
-        var input = new GetContactsInput
-        {
-            Filter = SearchValue ?? string.Empty,
-            IncludeOtherContacts = includeOtherContacts,
-            SkipCount = _conversationsSkipCount,
-            MaxResultCount = ConversationsPageSize
-        };
-        
-        var newContacts = await ContactAppService.GetContactsAsync(input);
-
-        if (loadMore)
-        {
-            ChatContactDtos.AddRange(newContacts);
-            if (newContacts.Count < ConversationsPageSize)
+            if (!loadMore)
             {
-                _hasMoreConversations = false;
+                _conversationsSkipCount = 0;
+                _hasMoreConversations = true;
+                CanvasElementReferences.Clear();
             }
-            else
-            {
-                _conversationsSkipCount += newContacts.Count;
-            }
-        }
-        else
-        {
-            ChatContactDtos = newContacts;
             
-            if (newContacts.Count < ConversationsPageSize)
-            {
-                _hasMoreConversations = false;
-            }
-            else
-            {
-                _conversationsSkipCount = newContacts.Count;
-            }
-        }
+            var currentContactId = preserveCurrentContact && CurrentChatContact != null 
+                ? (CurrentChatContact.Type == ConversationType.User 
+                    ? CurrentChatContact.UserId 
+                    : CurrentChatContact.ConversationId)
+                : (Guid?)null;
 
-        foreach (var contactDto in newContacts)
-        {
-            if (!ChatContactsActive.ContainsKey(contactDto))
+            if (!loadMore)
             {
-                ChatContactsActive[contactDto] = "";
+                ChatContactsActive.Clear();
             }
-        }
 
-        if(isSetActive)
-        {
-            if (preserveCurrentContact && currentContactId.HasValue)
+            var input = new GetContactsInput
             {
-                CurrentChatContact = ChatContactDtos.FirstOrDefault(c => 
-                    (c.Type == ConversationType.User && c.UserId == currentContactId.Value) ||
-                    (c.Type != ConversationType.User && c.ConversationId == currentContactId.Value));
-            }
-            else
+                Filter = SearchValue ?? string.Empty,
+                IncludeOtherContacts = includeOtherContacts,
+                SkipCount = _conversationsSkipCount,
+                MaxResultCount = ConversationsPageSize
+            };
+            
+            var newContacts = await ContactAppService.GetContactsAsync(input);
+            if (loadMore)
             {
-                CurrentChatContact = ChatContactDtos.FirstOrDefault();
-                if (CurrentChatContact != null)
+                ChatContactDtos.AddRange(newContacts);
+                if (newContacts.Count < ConversationsPageSize)
                 {
-                    await SetActiveAsync(CurrentChatContact);
+                    _hasMoreConversations = false;
                 }
                 else
                 {
-                    ChatConversationDto = null;
+                    _conversationsSkipCount += newContacts.Count;
+                }
+            }
+            else
+            {
+                ChatContactDtos = newContacts;
+                
+                if (newContacts.Count < ConversationsPageSize)
+                {
+                    _hasMoreConversations = false;
+                }
+                else
+                {
+                    _conversationsSkipCount = newContacts.Count;
                 }
             }
 
+            foreach (var contactDto in newContacts)
+            {
+                if (!ChatContactsActive.ContainsKey(contactDto))
+                {
+                    ChatContactsActive[contactDto] = "";
+                }
+            }
+
+            if(isSetActive)
+            {
+                if (preserveCurrentContact && currentContactId.HasValue)
+                {
+                    CurrentChatContact = ChatContactDtos.FirstOrDefault(c => 
+                        (c.Type == ConversationType.User && c.UserId == currentContactId.Value) ||
+                        (c.Type != ConversationType.User && c.ConversationId == currentContactId.Value));
+                }
+                else
+                {
+                    CurrentChatContact = ChatContactDtos.FirstOrDefault();
+                    if (CurrentChatContact != null)
+                    {
+                        await SetActiveAsync(CurrentChatContact);
+                    }
+                    else
+                    {
+                        ChatConversationDto = null;
+                    }
+                }
+
+                
+            }
             
+            await InvokeAsync(StateHasChanged);
         }
-        
-        await InvokeAsync(StateHasChanged);
+        catch (AbpRemoteCallException ex)
+        {
+            _logger.LogError(ex, "API error when getting contacts");
+            // Don't show error to user on first load - it might be a temporary issue
+            // Just return empty list
+            ChatContactDtos = new List<ChatContactDto>();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error when getting contacts");
+            await HandleErrorAsync(ex);
+        }
     }
     private async Task RefreshContactsListAsync()
     {
@@ -802,11 +982,60 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         try
         {
+            await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
+            // OPTIMIZATION: If clicking the same conversation that's already active, skip reload
+            bool isSameConversation = CurrentChatContact != null &&
+                                     CurrentChatContact.ConversationId.HasValue &&
+                                     contactDto.ConversationId.HasValue &&
+                                     CurrentChatContact.ConversationId.Value == contactDto.ConversationId.Value;
+
+            if (isSameConversation)
+            {
+                _logger.LogDebug("Conversation {ConversationId} is already active, skipping reload", contactDto.ConversationId);
+
+                // Still need to reset unread count and update notification icon if there are unread messages
+                if (contactDto.UnreadMessageCount > 0 && contactDto.ConversationId.HasValue)
+                {
+                    try
+                    {
+                        await ConversationAppService.ResetUnreadCountAsync(new ResetUnreadCountInput
+                        {
+                            ConversationId = contactDto.ConversationId.Value
+                        });
+                        contactDto.UnreadMessageCount = 0;
+
+                        // Update notification icon
+                        try
+                        {
+                            await JSRuntime.InvokeVoidAsync("chatHub.broadcastUnreadCountChanged");
+                        }
+                        catch (Exception ex2)
+                        {
+                            _logger.LogWarning(ex2, "Failed to broadcast unread count changed event");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to reset unread count for conversation {ConversationId}", contactDto.ConversationId);
+                    }
+                }
+
+                // Update active state styling
+                ChatContactsActive[contactDto] = "active";
+                foreach (var dto in ChatContactsActive.Where(x => x.Key != contactDto))
+                {
+                    ChatContactsActive[dto.Key] = "";
+                }
+                await InvokeAsync(StateHasChanged);
+
+                return; // Skip full reload
+            }
+
             // Show loading spinner
             IsLoadingMessages = true;
             ChatConversationDto = null; // Clear previous messages
             await InvokeAsync(StateHasChanged);
-            
+
             // Get chat settings safely
             try
             {
@@ -816,9 +1045,36 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             {
                 // If settings fail, continue with default behavior
             }
-            
+
             CurrentChatContact = contactDto;
-            
+
+            // Reset unread count when opening a conversation
+            if (contactDto.UnreadMessageCount > 0 && contactDto.ConversationId.HasValue)
+            {
+                try
+                {
+                    await ConversationAppService.ResetUnreadCountAsync(new ResetUnreadCountInput
+                    {
+                        ConversationId = contactDto.ConversationId.Value
+                    });
+                    contactDto.UnreadMessageCount = 0;
+
+                    // Broadcast unread count changed to update notification icon
+                    try
+                    {
+                        await JSRuntime.InvokeVoidAsync("chatHub.broadcastUnreadCountChanged");
+                    }
+                    catch (Exception ex2)
+                    {
+                        _logger.LogWarning(ex2, "Failed to broadcast unread count changed event");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to reset unread count for conversation {ConversationId}", contactDto.ConversationId);
+                }
+            }
+
             ChatContactsActive[contactDto] = "active";
             foreach (var dto in ChatContactsActive.Where(x => x.Key != contactDto))
             {
@@ -888,12 +1144,18 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
             
             IsLoadingMessages = false;
-            
+
             if (CurrentChatContact?.Type == ConversationType.User)
             {
                 _shouldUpdateAvatar = true;
             }
-            
+
+            // Mobile: switch to chat conversation view
+            if (IsMobileMode)
+            {
+                await ShowChatConversationAsync();
+            }
+
             await InvokeAsync(StateHasChanged);
 
             if (contactDto.UnreadMessageCount > 0)
@@ -928,6 +1190,10 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -1825,9 +2091,105 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     
     public async ValueTask DisposeAsync()
     {
+        try
+        {
+            // === NEW: Dispose refactored handlers ===
+            if (_messageHandler is IAsyncDisposable disposableMessageHandler)
+            {
+                await disposableMessageHandler.DisposeAsync();
+                _logger.LogDebug("MessageHandler disposed");
+            }
+
+            // State doesn't implement IAsyncDisposable, so no need to dispose
+
+            _logger.LogDebug("Chat1 disposal completed");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during Chat1 handler disposal");
+        }
+
     //     if (ChatHubConnectionService is IAsyncDisposable asyncDisposable)
     //     {
     //         await asyncDisposable.DisposeAsync();
     //     }
+    }
+
+    // Mobile view management methods
+    private DotNetObjectReference<Chat1> _dotNetRef;
+
+    private void CheckMobileMode()
+    {
+        // Detect if we're in mobile mode based on screen width
+        // This will be called from JavaScript
+    }
+
+    [JSInvokable]
+    public void SetMobileMode(bool isMobile)
+    {
+        var previousMode = IsMobileMode;
+        IsMobileMode = isMobile;
+
+        // Set initial mobile view based on URL parameter
+        if (isMobile && !previousMode)
+        {
+            // First time switching to mobile mode
+            if (RedirectToConversationId.HasValue)
+            {
+                // Has conversation parameter -> show chat directly
+                CurrentMobileView = MobileViewType.ChatConversation;
+            }
+            else
+            {
+                // No conversation parameter -> show list
+                CurrentMobileView = MobileViewType.ConversationList;
+            }
+        }
+        else if (!isMobile)
+        {
+            // Reset to default view when switching to desktop
+            CurrentMobileView = MobileViewType.ConversationList;
+        }
+
+        _logger.LogInformation($"Mobile mode changed: {previousMode} -> {isMobile}, CurrentView: {CurrentMobileView}");
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async Task ShowConversationListAsync()
+    {
+        if (IsMobileMode)
+        {
+            CurrentMobileView = MobileViewType.ConversationList;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task ShowChatConversationAsync()
+    {
+        if (IsMobileMode)
+        {
+            CurrentMobileView = MobileViewType.ChatConversation;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task ShowConversationInfoAsync()
+    {
+        if (IsMobileMode)
+        {
+            CurrentMobileView = MobileViewType.ConversationInfo;
+        }
+        ShowInfoBox = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task HideConversationInfoAsync()
+    {
+        if (IsMobileMode)
+        {
+            CurrentMobileView = MobileViewType.ChatConversation;
+        }
+        ShowInfoBox = false;
+        await InvokeAsync(StateHasChanged);
     }
 }

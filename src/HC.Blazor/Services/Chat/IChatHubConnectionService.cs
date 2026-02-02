@@ -24,6 +24,10 @@ public interface IChatHubConnectionService
 
     Task OnConversationCreatedAsync(Func<object, Task> func);
 
+    Task ChatUnreadCountChangedAsync();  // NEW
+
+    Task OnChatUnreadCountChangedAsync(Func<Task> func);  // NEW
+
     Task InitializeAsync(string hubUrl, string accessToken);
 
     bool IsConnected { get; }

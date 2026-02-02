@@ -16,6 +16,7 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
      private readonly List<Func<Guid, Task>> _messageDeleted;
      private readonly List<Func<Guid, Task>> _conversationDeleted;
      private readonly List<Func<object, Task>> _conversationCreated;
+     private readonly List<Func<Task>> _chatUnreadCountChanged;  // NEW
      private readonly ILogger<ChatHubConnectionService> _logger;
      private readonly IJSRuntime _jsRuntime;
 
@@ -27,6 +28,7 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
           _messageDeleted = new List<Func<Guid, Task>>();
           _conversationDeleted = new List<Func<Guid, Task>>();
           _conversationCreated = new List<Func<object, Task>>();
+          _chatUnreadCountChanged = new List<Func<Task>>();  // NEW
           _logger = logger;
           _jsRuntime = jsRuntime;
      }
@@ -114,6 +116,31 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
           _logger.LogInformation("ChatHubConnectionService: Registering OnConversationCreatedAsync callback");
           _conversationCreated.Add(func);
           _logger.LogInformation($"ChatHubConnectionService: Total conversation created callbacks registered: {_conversationCreated.Count}");
+          return Task.CompletedTask;
+     }
+
+     public async Task ChatUnreadCountChangedAsync()
+     {
+          _logger.LogInformation($"ChatHubConnectionService: ChatUnreadCountChangedAsync called, calling {_chatUnreadCountChanged.Count} registered callbacks");
+
+          // Create a snapshot to avoid "Collection was modified" errors
+          var callbacks = _chatUnreadCountChanged.ToList();
+
+          foreach (var func in callbacks)
+          {
+               _logger.LogInformation("ChatHubConnectionService: Calling chat unread count changed callback...");
+               await func();
+               _logger.LogInformation("ChatHubConnectionService: Chat unread count changed callback completed");
+          }
+
+          _logger.LogInformation("ChatHubConnectionService: All chat unread count changed callbacks completed");
+     }
+
+     public Task OnChatUnreadCountChangedAsync(Func<Task> func)
+     {
+          _logger.LogInformation("ChatHubConnectionService: Registering OnChatUnreadCountChangedAsync callback");
+          _chatUnreadCountChanged.Add(func);
+          _logger.LogInformation($"ChatHubConnectionService: Total chat unread count changed callbacks registered: {_chatUnreadCountChanged.Count}");
           return Task.CompletedTask;
      }
 
@@ -341,6 +368,13 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
           await ConversationCreatedAsync(conversationData);
      }
 
+     [JSInvokable]
+     public async Task OnChatUnreadCountChanged()
+     {
+          _logger.LogInformation("ChatHubConnectionService: OnChatUnreadCountChanged called from JavaScript");
+          await ChatUnreadCountChangedAsync();
+     }
+
      public async ValueTask DisposeAsync()
      {
           // IMPORTANT: Don't stop chatHub connection here!
@@ -353,11 +387,12 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
           _messageDeleted.Clear();
           _conversationDeleted.Clear();
           _conversationCreated.Clear();
+          _chatUnreadCountChanged.Clear();  // NEW
 
           // Dispose object reference
           _objRef?.Dispose();
           _objRef = null;
-          
+
           await Task.CompletedTask;
      }
 

@@ -72,5 +72,10 @@ public interface IConversationAppService : IApplicationService
 
     Task<List<MessageFileDto>> FindMediaAndFileInConversationAsync(FindMediaAndFileInConversationInput input);
     Task<ConversationDto> FindConversationByProjectIdAsync(Guid projectId);
+    
+    // Unread message count methods
+    Task UpdateUnreadCountAsync(UpdateUnreadCountInput input);
+    Task ResetUnreadCountAsync(ResetUnreadCountInput input);
+    Task<TotalUnreadCountDto> GetTotalUnreadCountAsync();
 
 }

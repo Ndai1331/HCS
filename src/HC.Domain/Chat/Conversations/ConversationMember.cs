@@ -14,6 +14,7 @@ public class ConversationMember : Entity<Guid>, IMultiTenant
     public virtual bool IsActive { get; protected set; }
     public virtual bool IsPinned { get; protected set; } // Per-user pin status
     public virtual DateTime? PinnedDate { get; protected set; } // When user pinned this conversation
+    public virtual int UnreadMessageCount { get; protected set; } // Track unread messages for this user
     
     // Navigation
     public virtual Conversation Conversation { get; protected set; }
@@ -65,5 +66,25 @@ public class ConversationMember : Entity<Guid>, IMultiTenant
     public virtual void Activate()
     {
         IsActive = true;
+    }
+    
+    public virtual void IncrementUnreadCount()
+    {
+        UnreadMessageCount++;
+    }
+    
+    public virtual void DecrementUnreadCount(int count = 1)
+    {
+        UnreadMessageCount = Math.Max(0, UnreadMessageCount - count);
+    }
+    
+    public virtual void ResetUnreadCount()
+    {
+        UnreadMessageCount = 0;
+    }
+    
+    public virtual void SetUnreadCount(int count)
+    {
+        UnreadMessageCount = Math.Max(0, count);
     }
 }

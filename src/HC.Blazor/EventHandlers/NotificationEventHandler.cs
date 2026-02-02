@@ -9,9 +9,12 @@ using HC.Blazor.Hubs;
 
 namespace HC.Blazor.EventHandlers;
 
-public class NotificationEventHandler :
-    IDistributedEventHandler<NotificationCreatedEto>,
-    ITransientDependency
+// DISABLED: Using NotificationEventHandlerWithParallel instead
+// Remove ITransientDependency to disable auto-registration
+// public class NotificationEventHandler :
+//     IDistributedEventHandler<NotificationCreatedEto>,
+//     ITransientDependency
+public class NotificationEventHandler // : ITransientDependency // DISABLED
 {
     private readonly IHubContext<NotificationHub> _hubContext;
     private readonly ILogger<NotificationEventHandler> _logger;

@@ -31,7 +31,7 @@ if (-not (Test-Path $publishPathFull)) {
 Write-Host "Publish successful. Output: $publishPathFull" -ForegroundColor Green
 Write-Host "Building Docker image for API (linux/amd64)..." -ForegroundColor Yellow
 try {
-    docker buildx build --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-api:$version -t longnguyen1331/hc-api:latest . --push
+    docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-api:$version -t longnguyen1331/hc-api:latest . --push
     if (-not $?) {
         throw "docker build failed"
     }
@@ -69,7 +69,7 @@ if (-not (Test-Path $publishPathFull)) {
 Write-Host "Publish successful. Output: $publishPathFull" -ForegroundColor Green
 Write-Host "Building Docker image for Blazor (linux/amd64)..." -ForegroundColor Yellow
 try {
-    docker buildx build --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-blazor:$version -t longnguyen1331/hc-blazor:latest . --push
+    docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-blazor:$version -t longnguyen1331/hc-blazor:latest . --push
     if (-not $?) {
         throw "docker build failed"
     }
@@ -84,3 +84,13 @@ Set-Location $currentFolder
 exit 0
 
 
+
+
+# cd /Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor && docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-blazor:latest -t longnguyen1331/hc-blazor:latest . --push
+# cd /Users/nguyenlong/Documents/Projects/HCS/src/HC.HttpApi.Host && docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-api:latest -t longnguyen1331/hc-api:latest . --push
+# cd /Users/nguyenlong/Documents/Projects/HCS/src/HC.AuthServer && docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-authserver:latest -t longnguyen1331/hc-authserver:latest . --push
+
+# docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-blazor:latest -t longnguyen1331/hc-blazor:latest . --push
+# docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-api:latest -t longnguyen1331/hc-api:latest . --push
+# docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-authserver:latest -t longnguyen1331/hc-authserver:latest . --push
+# docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-db-migrator:latest -t longnguyen1331/hc-db-migrator:latest . --push

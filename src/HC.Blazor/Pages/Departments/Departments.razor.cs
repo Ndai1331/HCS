@@ -13,7 +13,7 @@ using HC.Permissions;
 using HC.Shared;
 using System.Threading;
 
-namespace HC.Blazor.Pages;
+namespace HC.Blazor.Pages.Departments;
 
 public partial class Departments
 {
@@ -24,7 +24,7 @@ public partial class Departments
     
     private DepartmentTreeView SelectedDepartment { get; set; } = new();
     
-    // Properties for binding (fields are disabled, so setters are no-op)
+    // Properties for binding (disabled mode - display only)
     private string ParentDepartmentName
     {
         get => GetParentDepartmentName();
@@ -61,8 +61,15 @@ public partial class Departments
     }
     private Modal CreateDepartmentModal { get; set; } = new();
     private DepartmentCreateDto NewDepartment { get; set; }
+    
+    // For Create Modal Select2 bindings
+    private List<LookupDto<Guid>> NewDepartmentParentUser { get; set; } = new();
     private Modal EditDepartmentModal { get; set; } = new();
     private DepartmentUpdateDto EditingDepartment { get; set; }
+    
+    // For Edit Modal Select2 bindings
+    private List<LookupDto<Guid>> EditingModalLeaderUser { get; set; } = new();
+    private List<LookupDto<Guid>> EditingModalParentUser { get; set; } = new();
         
     private DepartmentTreeView? NewParentDepartment { get; set; }
     private DepartmentTreeView? MovingDepartment { get; set; }
@@ -96,17 +103,16 @@ public partial class Departments
 
     protected override async Task OnInitializedAsync()
     {
-        await SetPermissionsAsync();
-        await GetDepartmentsAsync();
-        await GetIdentityUserCollectionLookupAsync();
-
-        BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Departments"]));
+       
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            await SetPermissionsAsync();
+            await GetDepartmentsAsync();
+            await GetIdentityUserCollectionLookupAsync();
             await SetBreadcrumbItemsAsync();
             await SetToolbarItemsAsync();
             await InvokeAsync(StateHasChanged);
@@ -115,14 +121,53 @@ public partial class Departments
 
     protected virtual ValueTask SetBreadcrumbItemsAsync()
     {
+        BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Departments"]));
         return ValueTask.CompletedTask;
     }
 
     protected virtual ValueTask SetToolbarItemsAsync()
     {
-        Toolbar.AddButton(L["NewDepartment"], async () => {
-            await OpenCreateDepartmentModal();
-        }, IconName.Add, requiredPolicyName: HCPermissions.Departments.Create);
+        if(CanCreateDepartment)
+        {
+            Toolbar.AddButton(L["NewDepartment"], async () => {
+                await OpenCreateDepartmentModal();
+            }, IconName.Add, 
+            Color.Primary,
+            requiredPolicyName: HCPermissions.Departments.Create);
+        }
+        if(CanEditDepartment)
+        {
+            Toolbar.AddButton(L["AddSubDepartment"], async () => {
+                await OpenCreateDepartmentModal(SelectedDepartment);
+            }, IconName.Add, 
+            Color.Success,
+            requiredPolicyName: HCPermissions.Departments.Create);
+
+            Toolbar.AddButton(L["Edit"], async () => {
+                await OpenEditDepartmentModal(SelectedDepartment);
+            }, IconName.Edit, 
+            Color.Primary,
+            requiredPolicyName: HCPermissions.Departments.Edit);
+        }
+
+        if(CanEditDepartment)
+        {
+            Toolbar.AddButton(L["MoveDepartment"], async () => {
+                await OpenMoveDepartmentModal(SelectedDepartment);
+            }, IconName.ArrowRight, 
+            Color.Info,
+            requiredPolicyName: HCPermissions.Departments.Edit);
+        }
+
+        if(CanDeleteDepartment)
+        {
+            Toolbar.AddButton(L["Delete"], async () => {
+                await OpenDeleteDepartmentModalAsync(SelectedDepartment);
+            }, IconName.Delete, 
+            Color.Danger,
+            requiredPolicyName: HCPermissions.Departments.Delete);
+        }
+
         return ValueTask.CompletedTask;
     }
 
@@ -207,6 +252,9 @@ public partial class Departments
         });
         // Add all departments
         AllDepartmentsForSelect2.AddRange(AllDepartmentsFlat);
+        
+        // Create LookupDto list for Select2 component
+        DepartmentLookupDtos = CreateDepartmentLookupDtos();
     }
     
     // Helper method to expand all nodes recursively
@@ -240,6 +288,36 @@ public partial class Departments
         }
         return result;
     }
+    
+    // Create LookupDto from DepartmentTreeView for Select2
+    private List<LookupDto<Guid>> CreateDepartmentLookupDtos()
+    {
+        var result = new List<LookupDto<Guid>>();
+        
+        // Add root option
+        result.Add(new LookupDto<Guid>
+        {
+            Id = Guid.Empty,
+            DisplayName = L["Root"].Value
+        });
+        
+        // Add all departments with proper display name
+        if (AllDepartmentsFlat != null)
+        {
+            foreach (var dept in AllDepartmentsFlat)
+            {
+                result.Add(new LookupDto<Guid>
+                {
+                    Id = dept.Id,
+                    DisplayName = GetDepartmentDisplayName(dept)
+                });
+            }
+        }
+        
+        return result;
+    }
+    
+    private List<LookupDto<Guid>> DepartmentLookupDtos { get; set; } = new List<LookupDto<Guid>>();
     
     // Format department name with dashes based on tree level
     private string GetDepartmentDisplayName(DepartmentTreeView department)
@@ -369,6 +447,9 @@ public partial class Departments
     {
         NewDepartmentValidations?.ClearAll();
 
+        // Initialize Select2 value for parent department
+        NewDepartmentParentUser = new List<LookupDto<Guid>>();
+
         // If node is provided, set it as default parent
         if (node != null)
         {
@@ -381,6 +462,13 @@ public partial class Departments
                 ParentId = node.Id.ToString(),
                 LeaderUserId = null
             };
+            
+            // Set Select2 value
+            var parent = DepartmentLookupDtos?.FirstOrDefault(d => d.Id == node.Id);
+            if (parent != null)
+            {
+                NewDepartmentParentUser.Add(parent);
+            }
         }
         else
         {
@@ -391,6 +479,13 @@ public partial class Departments
                 ParentId = null,
                 LeaderUserId = null
             };
+            
+            // Set Select2 value to Root
+            var root = DepartmentLookupDtos?.FirstOrDefault(d => d.Id == Guid.Empty);
+            if (root != null)
+            {
+                NewDepartmentParentUser.Add(root);
+            }
         }
 
         // Reset leader user selection
@@ -459,6 +554,37 @@ public partial class Departments
         EditingDepartmentId = node.Id;
         // Map directly from DepartmentTreeView to DepartmentUpdateDto
         EditingDepartment = ObjectMapper.Map<DepartmentTreeView, DepartmentUpdateDto>(node);
+
+        // Initialize Select2 values for Edit modal
+        EditingModalLeaderUser = new List<LookupDto<Guid>>();
+        if (EditingDepartment.LeaderUserId.HasValue)
+        {
+            var user = IdentityUsersCollection?.FirstOrDefault(u => u.Id == EditingDepartment.LeaderUserId.Value);
+            if (user != null)
+            {
+                EditingModalLeaderUser.Add(user);
+            }
+        }
+        
+        EditingModalParentUser = new List<LookupDto<Guid>>();
+        if (!string.IsNullOrEmpty(EditingDepartment.ParentId))
+        {
+            var parentId = Guid.TryParse(EditingDepartment.ParentId, out var parsedId) ? parsedId : Guid.Empty;
+            var parent = DepartmentLookupDtos?.FirstOrDefault(d => d.Id == parentId);
+            if (parent != null)
+            {
+                EditingModalParentUser.Add(parent);
+            }
+        }
+        else
+        {
+            // Default to Root
+            var root = DepartmentLookupDtos?.FirstOrDefault(d => d.Id == Guid.Empty);
+            if (root != null)
+            {
+                EditingModalParentUser.Add(root);
+            }
+        }
 
         if (string.IsNullOrEmpty(EditingDepartment.ParentId))
         {
@@ -661,6 +787,40 @@ public partial class Departments
     {
         NewDepartment.LeaderUserId = SelectedLeaderUser.FirstOrDefault()?.Id ?? Guid.Empty;
     }
+    
+    // Handle parent department change in Create modal
+    protected virtual void OnNewDepartmentParentChanged()
+    {
+        var selected = NewDepartmentParentUser.FirstOrDefault();
+        if (selected != null)
+        {
+            NewDepartment.ParentId = selected.Id == Guid.Empty ? null : selected.Id.ToString();
+        }
+        else
+        {
+            NewDepartment.ParentId = null;
+        }
+    }
+    
+    // Handle leader user change in Edit modal
+    protected virtual void OnEditingModalLeaderUserIdChanged()
+    {
+        EditingDepartment.LeaderUserId = EditingModalLeaderUser.FirstOrDefault()?.Id;
+    }
+    
+    // Handle parent department change in Edit modal
+    protected virtual void OnEditingModalParentDepartmentChanged()
+    {
+        var selected = EditingModalParentUser.FirstOrDefault();
+        if (selected != null)
+        {
+            EditingDepartment.ParentId = selected.Id == Guid.Empty ? null : selected.Id.ToString();
+        }
+        else
+        {
+            EditingDepartment.ParentId = null;
+        }
+    }
 
     private async Task GetIdentityUserCollectionLookupAsync(string? newValue = null)
     {
@@ -671,6 +831,46 @@ public partial class Departments
     {
         IdentityUsersCollection = (await DepartmentsAppService.GetIdentityUserLookupAsync(new LookupRequestDto { Filter = filter })).Items;
         return IdentityUsersCollection.ToList();
+    }
+    
+    private async Task<List<LookupDto<Guid>>> GetDepartmentCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    {
+        // Return departments for Select2 filtering
+        if (string.IsNullOrEmpty(filter))
+        {
+            return DepartmentLookupDtos?.ToList() ?? new List<LookupDto<Guid>>();
+        }
+        
+        // Simple filter by name (case-insensitive)
+        return DepartmentLookupDtos?
+            .Where(d => d.DisplayName != null && d.DisplayName.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
+            .ToList() ?? new List<LookupDto<Guid>>();
+    }
+    
+    // For editing leader user in right column
+    private async Task<LookupDto<Guid>?> GetDepartmentByIdAsync(IReadOnlyList<LookupDto<Guid>> items, string id, CancellationToken token)
+    {
+        if (items == null || items.Count == 0)
+        {
+            return null;
+        }
+        
+        if (string.IsNullOrEmpty(id) || id == "null")
+        {
+            return items.FirstOrDefault(x => x.Id == Guid.Empty);
+        }
+            
+        if (Guid.TryParse(id, out var guidId))
+        {
+            var department = items.FirstOrDefault(x => x.Id == guidId);
+            if (department != null)
+            {
+                return department;
+            }
+        }
+        
+        // Return root option as fallback
+        return items.FirstOrDefault(x => x.Id == Guid.Empty);
     }
 }
 

@@ -240,4 +240,26 @@ public class ConversationController : ChatController, IConversationAppService
     {
         return _conversationAppService.FindConversationByProjectIdAsync(projectId);
     }
+    
+    // Unread message count endpoints
+    [HttpPost]
+    [Route("update-unread-count")]
+    public Task UpdateUnreadCountAsync([FromBody] UpdateUnreadCountInput input)
+    {
+        return _conversationAppService.UpdateUnreadCountAsync(input);
+    }
+    
+    [HttpPost]
+    [Route("reset-unread-count")]
+    public Task ResetUnreadCountAsync([FromBody] ResetUnreadCountInput input)
+    {
+        return _conversationAppService.ResetUnreadCountAsync(input);
+    }
+    
+    [HttpGet]
+    [Route("total-unread-count")]
+    public Task<TotalUnreadCountDto> GetTotalUnreadCountAsync()
+    {
+        return _conversationAppService.GetTotalUnreadCountAsync();
+    }
 }

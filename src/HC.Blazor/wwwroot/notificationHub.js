@@ -1,95 +1,95 @@
+/**
+ * Notification Hub Manager - Refactored to use baseHub.js
+ * Handles real-time notifications with SignalR
+ * 
+ * Dependencies: baseHub.js
+ */
+
 window.notificationHub = {
+    /**
+     * Initialize notification hub connection
+     * @param {object} dotnetHelper - DotNetObjectReference for JS interop
+     */
     start: function (dotnetHelper) {
-        // Prevent duplicate connections - check if connection already exists
-        if (window._notificationConnection) {
-            console.log("SignalR connection already exists, reusing...");
-            // Store helper in array to support multiple components
-            if (!window._notificationConnection._dotnetHelpers) {
-                window._notificationConnection._dotnetHelpers = [];
+        console.log("Notification Hub: Initializing...");
+        
+        // Use baseHub to create or reuse connection
+        const connection = window.baseHub.createOrReuseConnection(
+            "/notificationHub",              // hubUrl
+            "notification",                  // hubName
+            dotnetHelper,                    // dotnetHelper
+            {
+                enableCrossTabSync: false    // No cross-tab sync needed for notifications
             }
-            // Check if this helper already exists
-            if (!window._notificationConnection._dotnetHelpers.includes(dotnetHelper)) {
-                window._notificationConnection._dotnetHelpers.push(dotnetHelper);
-            }
-            return;
+        );
+
+        // Register event handlers only if not already registered
+        if (!connection._handlersRegistered) {
+            this._registerEventHandlers(connection);
+            connection._handlersRegistered = true;
         }
-
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/notificationHub")
-            .withAutomaticReconnect()
-            .build();
-
-        // Store dotnetHelper references in array to support multiple components
-        connection._dotnetHelpers = [dotnetHelper];
-
-        // Register event handler only once
-        // Note: connection.on() can be called multiple times, but we only register once per connection
-        connection.on("ReceiveNotification", function (notificationId) {
-            if (connection._dotnetHelpers) {
-                // Create a copy to avoid modification during iteration
-                const helpers = [...connection._dotnetHelpers];
-                helpers.forEach((helper, index) => {
-                    if (helper) {
-                        helper.invokeMethodAsync("OnNotificationReceived", notificationId)
-                            .catch(err => {
-                                console.error("Error calling OnNotificationReceived:", err);
-                                // If helper is disposed, remove it from array
-                                if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
-                                    console.log("Notification SignalR: Helper was disposed, removing from array...");
-                                    const helperIndex = connection._dotnetHelpers.indexOf(helper);
-                                    if (helperIndex > -1) {
-                                        connection._dotnetHelpers.splice(helperIndex, 1);
-                                    }
-                                }
-                            });
-                    }
-                });
-            }
-        });
-
-        // Listen for unread count changes
-        connection.on("UnreadCountChanged", function () {
-            if (connection._dotnetHelpers) {
-                // Create a copy to avoid modification during iteration
-                const helpers = [...connection._dotnetHelpers];
-                helpers.forEach((helper, index) => {
-                    if (helper) {
-                        helper.invokeMethodAsync("OnUnreadCountChanged")
-                            .catch(err => {
-                                console.error("Error calling OnUnreadCountChanged:", err);
-                                // If helper is disposed, remove it from array
-                                if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
-                                    console.log("Notification SignalR: Helper was disposed, removing from array...");
-                                    const helperIndex = connection._dotnetHelpers.indexOf(helper);
-                                    if (helperIndex > -1) {
-                                        connection._dotnetHelpers.splice(helperIndex, 1);
-                                    }
-                                }
-                            });
-                    }
-                });
-            }
-        });
-
-        connection.start()
-            .then(() => console.log("SignalR connected"))
-            .catch(err => console.error("SignalR connection error:", err));
 
         window._notificationConnection = connection;
+        console.log("Notification Hub: Initialization complete");
     },
-    
+
+    /**
+     * Register all SignalR event handlers
+     * @private
+     * @param {object} connection - The SignalR connection
+     */
+    _registerEventHandlers: function(connection) {
+        console.log("Notification Hub: Registering event handlers...");
+
+        // Register ReceiveNotification handler
+        window.baseHub.registerEventHandler("notification", "ReceiveNotification", async (helper, notificationId) => {
+            await helper.invokeMethodAsync("OnNotificationReceived", notificationId)
+                .catch(err => {
+                    console.error("Notification Hub: Error calling OnNotificationReceived:", err);
+                    // Disposal handled by baseHub
+                });
+        });
+
+        // Register UnreadCountChanged handler
+        window.baseHub.registerEventHandler("notification", "UnreadCountChanged", async (helper) => {
+            await helper.invokeMethodAsync("OnUnreadCountChanged")
+                .catch(err => {
+                    console.error("Notification Hub: Error calling OnUnreadCountChanged:", err);
+                    // Disposal handled by baseHub
+                });
+        });
+
+        console.log("Notification Hub: All event handlers registered");
+    },
+
+    /**
+     * Stop notification hub connection and cleanup resources
+     */
     stop: function () {
-        if (window._notificationConnection) {
-            // Clear helper references FIRST (don't dispose from JS, let .NET handle it)
-            if (window._notificationConnection._dotnetHelpers) {
-                console.log("Notification SignalR: Clearing helper references...");
-                window._notificationConnection._dotnetHelpers = [];
-            }
-            
-            window._notificationConnection.stop()
-                .then(() => console.log("SignalR disconnected"))
-                .catch(err => console.error("SignalR disconnect error:", err));
-            window._notificationConnection = null;
+        console.log("Notification Hub: Stopping...");
+        
+        // Clear helper references FIRST (don't dispose from JS, let .NET handle it)
+        if (window._notificationConnection && window._notificationConnection._dotnetHelpers) {
+            console.log("Notification Hub: Clearing helper references...");
+            window._notificationConnection._dotnetHelpers = [];
         }
+        
+        // Stop connection via baseHub
+        window.baseHub.stopConnection("notification");
+        
+        // Clear global reference
+        window._notificationConnection = null;
+        
+        console.log("Notification Hub: Stopped successfully");
+    },
+
+    /**
+     * Get current connection status (for debugging)
+     */
+    getStatus: function() {
+        return window.baseHub.getConnectionStatus("notification");
     }
 };
+
+// Log on load
+console.log("Notification Hub module loaded successfully");

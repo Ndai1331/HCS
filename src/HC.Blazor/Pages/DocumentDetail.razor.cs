@@ -22,6 +22,7 @@ using Volo.Abp.BlobStoring;
 using Volo.Abp.Application.Dtos;
 using Blazorise.PdfViewer;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
+using System.Text.Json;
 
 namespace HC.Blazor.Pages;
 
@@ -107,6 +108,7 @@ public partial class DocumentDetail : HCComponentBase
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await SetPermissionsAsync();
+            await LoadLookupDataAsync();
             BreadcrumbItems.Clear();
             BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Documents"], "/manage-documents"));
             await SetToolbarItemsAsync();
@@ -133,12 +135,14 @@ public partial class DocumentDetail : HCComponentBase
                 if (DocumentCreateData.UrgencyLevelId != default)
                 {
                     var urgencyData = await GetMasterDataByIdAsync(DocumentCreateData.UrgencyLevelId, MasterDataType.UrgencyLevel);
+                    Logger.LogInformation($"UrgencyData: {JsonSerializer.Serialize(urgencyData)}");
                     if (urgencyData != null)
                         SelectedUrgencyLevelMasterData = new List<LookupDto<Guid>> { urgencyData };
                 }
                 if (DocumentCreateData.SecrecyLevelId != default)
                 {
                     var secrecyData = await GetMasterDataByIdAsync(DocumentCreateData.SecrecyLevelId, MasterDataType.SecrecyLevel);
+                    Logger.LogInformation($"SecrecyData: {JsonSerializer.Serialize(secrecyData)}");
                     if (secrecyData != null)
                         SelectedSecrecyLevelMasterData = new List<LookupDto<Guid>> { secrecyData };
                 }
@@ -146,6 +150,7 @@ public partial class DocumentDetail : HCComponentBase
                 if (DocumentCreateData.StatusId.HasValue && DocumentCreateData.StatusId.Value != default)
                 {
                     var statusData = await GetMasterDataByIdAsync(DocumentCreateData.StatusId.Value, MasterDataType.Status);
+                    Logger.LogInformation($"StatusData: {JsonSerializer.Serialize(statusData)}");
                     if (statusData != null)
                         SelectedStatusMasterData = new List<LookupDto<Guid>> { statusData };
                 }

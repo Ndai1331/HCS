@@ -2,7 +2,7 @@ using System;
 
 namespace HC.Chat.Messages;
 
-public class ChatMessageRdto //RDTO: Realtime Data Transfer Object :)
+public class ChatMessageRdto
 {
     public Guid SenderUserId { get; set; }
     public Guid Id { get; set; }
@@ -12,4 +12,5 @@ public class ChatMessageRdto //RDTO: Realtime Data Transfer Object :)
     public string? SenderSurname { get; set; }
     public string? Text { get; set; }
     public bool IsCrossTabMessage { get; set; }
+    public DateTime? MessageDate { get; set; }
 }
