@@ -961,6 +961,7 @@
     "Revoked": "Revoked", 
     "ViewDocumentDetail": "View Document Detail",
     "Recipients" : "Recipients",
-    "SelectDepartmentToViewDetails": "Select a department to view details"
+    "SelectDepartmentToViewDetails": "Select a department to view details",
+    "MyTasks": "My Tasks"
   }
 }

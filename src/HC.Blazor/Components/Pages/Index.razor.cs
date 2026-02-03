@@ -5,12 +5,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using HC.Projects;
 using HC.ProjectTasks;
+using HC.ProjectTaskAssignments;
+using HC.ProjectTaskDocuments;
 using HC.CalendarEvents;
 using HC.Documents;
 using HC.NotificationReceivers;
 using HC.Notifications;
 using HC.DocumentAssignments;
+using HC.DocumentFiles;
 using Humanizer;
+using Volo.Abp.BlobStoring;
+using Blazorise;
 
 namespace HC.Blazor.Components.Pages;
 
@@ -21,10 +26,14 @@ public partial class Index
 
     [Inject] private IProjectsAppService ProjectsAppService { get; set; } = default!;
     [Inject] private IProjectTasksAppService ProjectTasksAppService { get; set; } = default!;
+    [Inject] private IProjectTaskAssignmentsAppService ProjectTaskAssignmentsAppService { get; set; } = default!;
+    [Inject] private IProjectTaskDocumentsAppService ProjectTaskDocumentsAppService { get; set; } = default!;
     [Inject] private ICalendarEventsAppService CalendarEventsAppService { get; set; } = default!;
     [Inject] private IDocumentsAppService DocumentsAppService { get; set; } = default!;
     [Inject] private INotificationReceiversAppService NotificationReceiversAppService { get; set; } = default!;
     [Inject] private IDocumentAssignmentsAppService DocumentAssignmentsAppService { get; set; } = default!;
+    [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
+    [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
 
     // Active Projects data
     private List<ProjectWithNavigationPropertiesDto> ActiveProjectsList { get; set; } = new();
@@ -43,6 +52,22 @@ public partial class Index
 
     // Notifications data
     private List<NotificationReceiverWithNavigationPropertiesDto> RecentNotificationsList { get; set; } = new();
+
+    // My Tasks data - Tasks from last 60 days
+    private List<ProjectTaskWithNavigationPropertiesDto> MyTasksList { get; set; } = new();
+
+    // Task detail modal
+    private Modal? TaskDetailModal { get; set; }
+    private ProjectTaskWithNavigationPropertiesDto? SelectedTask { get; set; }
+    private IReadOnlyList<ProjectTaskAssignmentWithNavigationPropertiesDto> SelectedTaskAssignments { get; set; } = new List<ProjectTaskAssignmentWithNavigationPropertiesDto>();
+    private IReadOnlyList<ProjectTaskDocumentWithNavigationPropertiesDto> SelectedTaskDocuments { get; set; } = new List<ProjectTaskDocumentWithNavigationPropertiesDto>();
+    private string SelectedTab { get; set; } = "general";
+
+    // PDF viewer for task documents
+    private string? PdfFileUrl { get; set; }
+    private bool IsPdfFile { get; set; }
+    private Modal? PdfViewerModal { get; set; }
+    private Dictionary<Guid, bool> DocumentHasPdfCache { get; set; } = new();
 
     private bool IsLoading { get; set; } = true;
     private string LastNotificationTimeAgo { get; set; } = string.Empty;
@@ -67,7 +92,8 @@ public partial class Index
                 LoadTasksStatisticsAsync(),
                 LoadCalendarEventsAsync(),
                 LoadRecentDocumentsAsync(),
-                LoadRecentNotificationsAsync()
+                LoadRecentNotificationsAsync(),
+                LoadMyTasksAsync()
             );
 
             // Generate calendar tabs after loading events
@@ -207,6 +233,30 @@ public partial class Index
         }
     }
 
+    private async Task LoadMyTasksAsync()
+    {
+        try
+        {
+            // Get tasks from last 60 days based on StartDate
+            var now = DateTime.Now;
+            var startDate = now.AddDays(-60);
+
+            var result = await ProjectTasksAppService.GetListAsync(new GetProjectTasksInput
+            {
+                StartDateMin = startDate,
+                MaxResultCount = 1000,
+                SkipCount = 0,
+                Sorting = "ProjectTask.StartDate DESC"
+            });
+
+            MyTasksList = result.Items.ToList();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
     private string GetLocalizedTitle(NotificationDto notification)
     {
         if (string.IsNullOrEmpty(notification.Title))
@@ -280,5 +330,253 @@ public partial class Index
         if (TotalTasksCount == 0) return 0;
         if (!TasksByStatus.ContainsKey(status)) return 0;
         return Math.Round((double)TasksByStatus[status] / TotalTasksCount * 100, 1);
+    }
+
+    // Task detail modal methods
+    private async Task OpenTaskDetailModalAsync(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        try
+        {
+            SelectedTask = await ProjectTasksAppService.GetWithNavigationPropertiesAsync(task.ProjectTask.Id);
+            SelectedTab = "general";
+
+            // Load assignments
+            var assignmentsResult = await ProjectTaskAssignmentsAppService.GetListAsync(new GetProjectTaskAssignmentsInput
+            {
+                ProjectTaskId = SelectedTask.ProjectTask.Id,
+                MaxResultCount = 1000,
+                SkipCount = 0
+            });
+            SelectedTaskAssignments = assignmentsResult.Items;
+
+            // Load documents
+            var documentsResult = await ProjectTaskDocumentsAppService.GetListAsync(new GetProjectTaskDocumentsInput
+            {
+                ProjectTaskId = SelectedTask.ProjectTask.Id,
+                MaxResultCount = 1000,
+                SkipCount = 0
+            });
+            SelectedTaskDocuments = documentsResult.Items;
+
+            // Cache PDF info for documents
+            await CacheDocumentPdfInfoAsync(SelectedTaskDocuments);
+
+            if (TaskDetailModal != null)
+            {
+                await TaskDetailModal.Show();
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task CloseTaskDetailModalAsync()
+    {
+        if (TaskDetailModal != null)
+        {
+            await TaskDetailModal.Hide();
+        }
+        SelectedTask = null;
+        SelectedTaskAssignments = new List<ProjectTaskAssignmentWithNavigationPropertiesDto>();
+        SelectedTaskDocuments = new List<ProjectTaskDocumentWithNavigationPropertiesDto>();
+    }
+
+    private void OnSelectedTabChanged(string name)
+    {
+        SelectedTab = name;
+    }
+
+    private string GetUserDisplayName(Volo.Abp.Identity.IdentityUserDto user)
+    {
+        var fullName = $"{user.Name} {user.Surname}".Trim();
+        if (!string.IsNullOrWhiteSpace(fullName))
+        {
+            return fullName;
+        }
+
+        return user.UserName ?? string.Empty;
+    }
+
+    private string GetUserInitial(Volo.Abp.Identity.IdentityUserDto user)
+    {
+        var name = (user.Name ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            return name.Substring(0, 1).ToUpperInvariant();
+        }
+
+        var userName = (user.UserName ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(userName))
+        {
+            return userName.Substring(0, 1).ToUpperInvariant();
+        }
+
+        return "?";
+    }
+
+    // PDF viewer methods
+    private async Task CacheDocumentPdfInfoAsync(IEnumerable<ProjectTaskDocumentWithNavigationPropertiesDto> documents)
+    {
+        foreach (var doc in documents)
+        {
+            if (doc.Document != null && !DocumentHasPdfCache.ContainsKey(doc.Document.Id))
+            {
+                var hasPdf = await CheckIfDocumentHasPdfFileAsync(doc.Document.Id);
+                DocumentHasPdfCache[doc.Document.Id] = hasPdf;
+            }
+        }
+    }
+
+    private async Task<bool> CheckIfDocumentHasPdfFileAsync(Guid documentId)
+    {
+        try
+        {
+            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
+            {
+                DocumentId = documentId,
+                MaxResultCount = 1,
+                SkipCount = 0
+            });
+
+            if (!documentFilesResult.Items.Any())
+            {
+                return false;
+            }
+
+            var documentFile = documentFilesResult.Items.First();
+            return IsPdfFileExtension(documentFile.DocumentFile.Name) && !string.IsNullOrEmpty(documentFile.DocumentFile.Path);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private bool IsPdfFileExtension(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return false;
+        }
+
+        var extension = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
+        return extension == ".pdf";
+    }
+
+    private bool DocumentHasPdfFile(Guid documentId)
+    {
+        return DocumentHasPdfCache.TryGetValue(documentId, out var hasPdf) && hasPdf;
+    }
+
+    private async Task OpenPdfViewerModalForDocumentAsync(ProjectTaskDocumentWithNavigationPropertiesDto projectTaskDocument)
+    {
+        try
+        {
+            if (projectTaskDocument?.Document == null)
+            {
+                return;
+            }
+
+            // Get document files for this document
+            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
+            {
+                DocumentId = projectTaskDocument.Document.Id,
+                MaxResultCount = 1,
+                SkipCount = 0
+            });
+
+            if (documentFilesResult.Items.Any())
+            {
+                var documentFile = documentFilesResult.Items.First();
+
+                if (!string.IsNullOrEmpty(documentFile.DocumentFile.Path))
+                {
+                    // Get file bytes from MinIO
+                    var fileBytes = await BlobContainer.GetAllBytesAsync(documentFile.DocumentFile.Path);
+
+                    // Create data URL for PDF
+                    var base64 = Convert.ToBase64String(fileBytes);
+                    PdfFileUrl = $"data:application/pdf;base64,{base64}";
+                    IsPdfFile = true;
+
+                    // Open PDF viewer modal
+                    if (PdfViewerModal != null)
+                    {
+                        await PdfViewerModal.Show();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task ClosePdfViewerModalAsync()
+    {
+        if (PdfViewerModal != null)
+        {
+            await PdfViewerModal.Hide();
+        }
+        PdfFileUrl = null;
+        IsPdfFile = false;
+    }
+
+    protected string GetStatusBadgeColor(string status)
+    {
+        return status switch
+        {
+            "TODO" => "secondary",
+            "IN_PROGRESS" => "primary",
+            "WAITING" => "warning",
+            "DONE" => "success",
+            "CANCELLED" => "danger",
+            _ => "secondary",
+        };
+    }
+
+
+    protected string GetPriorityText(ProjectTaskPriority priority)
+    {
+        return L[$"Enum:ProjectTaskPriority.{priority}"];
+    }
+    
+    protected string GetPriorityBadgeColor(string priority)
+    {
+        return priority switch
+        {
+            "LOW" => "secondary",
+            "MEDIUM" => "info",
+            "HIGH" => "warning",
+            "URGENT" => "danger",
+            _ => "secondary",
+        };
+    }
+
+    
+    protected Color GetPercentBadgeColor(int progressPercent)
+    {
+        return progressPercent switch
+        {
+            < 30 => Color.Danger,
+            >= 30 and < 75 => Color.Warning,
+            >= 75 and < 100 => Color.Primary,
+            >= 100 => Color.Success
+        };
+    }
+
+    private string GetTaskPriorityBadgeClass(string priority)
+    {
+        return priority?.ToLower() switch
+        {
+            "low" => "hc-badge-secondary-subtle",
+            "medium" => "hc-badge-info-subtle",
+            "high" => "hc-badge-warning-subtle",
+            "critical" => "hc-badge-danger-subtle",
+            _ => "hc-badge-secondary-subtle"
+        };
     }
 }

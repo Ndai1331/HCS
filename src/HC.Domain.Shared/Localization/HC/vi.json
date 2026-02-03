@@ -1015,6 +1015,7 @@
     "Revoked": "Thu hồi",
     "ViewDocumentDetail": "Xem chi tiết văn bản",
     "Recipients" : "Người nhận",
-    "SelectDepartmentToViewDetails": "Chọn phòng ban để xem chi tiết"
+    "SelectDepartmentToViewDetails": "Chọn phòng ban để xem chi tiết",
+    "MyTasks": "Công việc của tôi"
   }
 }

@@ -117,7 +117,9 @@
                     </CardBody>
 
                     <CardFooter Class="bg-transparent border-0 pt-3">
-                        <Button Color="Color.Light" Class="w-100" Clicked="@(() => Navigation.NavigateTo("/projects"))">
+                        <Button Class="w-100 bg-brand text-white" 
+                        Color="Color.Light"
+                        Clicked="@(() => Navigation.NavigateTo("/projects"))">
                             <Icon Name="IconName.Add" Class="me-1" /> @L["NewProject"]
                         </Button>
                     </CardFooter>
@@ -243,7 +245,7 @@
                                 }
                                 else
                                 {
-                                    <div style="max-height: 335px;" class="overflow-auto">
+                                    <div style="max-height: 280px;" class="overflow-auto">
                                         <table class="table mb-0">
                                             <tbody>
                                                 @foreach (var ev in EventsByDay[tab.Key])
@@ -268,7 +270,10 @@
                                                         </td>
 
                                                         <td class="text-end">
-                                                            <Button Color="Color.Light" Size="Size.Small" Clicked="@(() => Navigation.NavigateTo($"/calendar-events"))">
+                                                            <Button 
+                                                             Size="Size.Small"
+                                                             Class="bg-brand text-white"
+                                                             Clicked="@(() => Navigation.NavigateTo($"/calendar-events"))">
                                                                 @L["View"]
                                                             </Button>
                                                         </td>
@@ -286,10 +291,87 @@
         </Card>
     </Column>
 
-    <!-- Documents -->
+    
+
+    <!-- Notifications -->
     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="d-flex">
         <Card Class="w-100">
 
+            <CardHeader>
+                <Heading Size="HeadingSize.Is4">@L["Notifications"]</Heading>
+                <small class="text-muted d-block text-truncate">
+                    @if (!string.IsNullOrEmpty(LastNotificationTimeAgo))
+                    {
+                        @L["Update"]@(" ")@LastNotificationTimeAgo
+                    }
+                    else
+                    {
+                        @L["NoRecentUpdates"]
+                    }
+                </small>
+            </CardHeader>
+
+            <CardBody>
+                @if (IsLoading)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">@L["Loading"]...</span>
+                        </div>
+                    </div>
+                }
+                else if (!RecentNotificationsList.Any())
+                {
+                    <div class="text-center py-4">
+                        <p class="text-muted">@L["NoRecentNotifications"]</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive overflow-auto" style="max-height: 280px;">
+                        <table class="table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>@L["Title"]</th>
+                                    <th>@L["View"]</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @foreach (var notification in RecentNotificationsList)
+                                {
+                                    <tr class="@(notification.NotificationReceiver.IsRead ? "" : "notification-unread")">
+                                        <td>
+                                            <div>
+                                                <h6 class="mb-0">@GetLocalizedTitle(notification.Notification)</h6>
+                                                @if (!string.IsNullOrEmpty(notification.Notification.Content))
+                                                {
+                                                    <small class="text-muted">@GetLocalizedContent(notification.Notification).Substring(0, Math.Min(70, @GetLocalizedContent(notification.Notification).Length))...</small>
+                                                }
+                                                <small class="text-muted">@notification.NotificationReceiver.CreationTime.ToString("dd/MM/yyyy")</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <Button Color="Color.Dark"
+                                                    Class="grey px-1 py-0 bg-brand text-white"
+                                                    Clicked="@(() => Navigation.NavigateTo($"/notification-receivers"))">
+                                                <i class="bi bi-arrow-right fs-5"></i>
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </CardBody>
+
+        </Card>
+    </Column>
+
+    <!-- Documents -->
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Class="d-flex">
+        <Card Class="w-100">
             <CardHeader>
                 <Heading Size="HeadingSize.Is4">@L["Documents"]</Heading>
                 <small class="text-muted d-block text-truncate">
@@ -345,7 +427,10 @@
                                         </td>
 
                                         <td class="text-end">
-                                            <Button Color="Color.Light" Size="Size.Small" Clicked="@(() => Navigation.NavigateTo($"/document-list"))">
+                                            <Button 
+                                            Class="bg-brand text-white"
+                                             Size="Size.Small" 
+                                             Clicked="@(() => Navigation.NavigateTo($"/document-list"))">
                                                 @L["View"]
                                             </Button>
                                         </td>
@@ -360,22 +445,13 @@
         </Card>
     </Column>
 
-    <!-- Notifications -->
-    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Class="d-flex">
-        <Card Class="w-100">
 
+    
+    <!-- My Tasks -->
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop" Class="d-flex">
+        <Card Class="w-100">
             <CardHeader>
-                <Heading Size="HeadingSize.Is4">@L["Notifications"]</Heading>
-                <small class="text-muted d-block text-truncate">
-                    @if (!string.IsNullOrEmpty(LastNotificationTimeAgo))
-                    {
-                        @L["Update"]@(" ")@LastNotificationTimeAgo
-                    }
-                    else
-                    {
-                        @L["NoRecentUpdates"]
-                    }
-                </small>
+                <Heading Size="HeadingSize.Is4">@L["MyTasks"]</Heading>
             </CardHeader>
 
             <CardBody>
@@ -387,57 +463,73 @@
                         </div>
                     </div>
                 }
-                else if (!RecentNotificationsList.Any())
+                else if (!MyTasksList.Any())
                 {
                     <div class="text-center py-4">
-                        <p class="text-muted">@L["NoRecentNotifications"]</p>
+                        <p class="text-muted">@L["NoRecentDocuments"]</p>
                     </div>
                 }
                 else
                 {
-                    <div class="table-responsive">
+                    <div class="table-responsive" style="max-height: 280px;">
                         <table class="table mb-0">
                             <thead>
                                 <tr>
                                     <th>@L["Title"]</th>
-                                    <th>@L["Date"]</th>
+                                    <th>@L["Description"]</th>
+                                    <th>@L["StartDateAndEndDate"]</th>
                                     <th>@L["Status"]</th>
-                                    <th>@L["View"]</th>
+                                    <th>@L["Priority"]</th>
+                                    <th>@L["ProgressPercent"]</th>
+                                    <th class="text-end">@L["Actions"]</th>
                                 </tr>
                             </thead>
-
                             <tbody>
-                                @foreach (var notification in RecentNotificationsList)
+                                @foreach (var task in MyTasksList)
                                 {
-                                    var statusClass = notification.NotificationReceiver.IsRead ? "bg-success" : "bg-warning";
-                                    var statusText = notification.NotificationReceiver.IsRead ? L["Read"] : L["Unread"];
-
                                     <tr>
                                         <td>
-                                            <div>
-                                                <h6 class="mb-0">@GetLocalizedTitle(notification.Notification)</h6>
-                                                @if (!string.IsNullOrEmpty(notification.Notification.Content))
-                                                {
-                                                    <small class="text-muted">@GetLocalizedContent(notification.Notification).Substring(0, Math.Min(70, @GetLocalizedContent(notification.Notification).Length))...</small>
-                                                }
+                                            <div class="d-flex align-items-center">
+                                                <h6 class="mb-0 text-dark">@task.ProjectTask.Title</h6>
+                                            </div>
+                                            <small class="text-muted">@task.ProjectTask.Code</small>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">@(task.ProjectTask.Description?.TruncateWithPostfix(50, "...") ?? "-")</small>
+                                        </td>
+                                        <td>
+                                           <small class="text-success">@task.ProjectTask.StartDate.ToString("dd/MM/yyyy HH:mm")</small> -
+                                           <small class="text-danger">@task.ProjectTask.DueDate.ToString("dd/MM/yyyy HH:mm")</small>
+                                        </td>
+                                        <td>
+                                            <span class="hc-badge-subtle
+                                                hc-badge-@(GetStatusBadgeColor(task.ProjectTask.Status))-subtle">
+                                                @L[$"Enum:ProjectTaskStatus.{task.ProjectTask.Status}"]
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                             <Badge Color="@GetPriorityBadgeColor(task.ProjectTask.Priority)">
+                                                @L[$"Enum:ProjectTaskPriority.{task.ProjectTask.Priority}"]
+                                            </Badge>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress" style="width: 80px; height: 8px;">
+                                                    <div class="progress-bar" 
+                                                         style="width: @task.ProjectTask.ProgressPercent%"
+                                                         role="progressbar">
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">@task.ProjectTask.ProgressPercent%</small>
                                             </div>
                                         </td>
-
-                                        <td>
-                                            <span class="text-muted">@notification.NotificationReceiver.CreationTime.ToString("dd/MM/yyyy")</span>
-                                        </td>
-
-                                        <td>
-                                            <div class="badge soft @statusClass">
-                                                @statusText
-                                            </div>
-                                        </td>
-
-                                        <td>
-                                            <Button Color="Color.Dark"
-                                                    Class="grey px-1 py-0"
-                                                    Clicked="@(() => Navigation.NavigateTo($"/notification-receivers"))">
-                                                <i class="bi bi-arrow-right fs-5"></i>
+                                        <td class="text-end">
+                                            <Button 
+                                                Size="Size.Small" 
+                                                Class="bg-brand text-white"
+                                                Clicked="@(() => OpenTaskDetailModalAsync(task))">
+                                                <Icon Name="IconName.Eye" />
                                             </Button>
                                         </td>
                                     </tr>
@@ -506,3 +598,232 @@
     }).ToList();
 
 }
+
+@* ************************* TASK DETAIL MODAL ************************* *@
+@if (SelectedTask != null)
+{
+    <Modal @ref="TaskDetailModal">
+        <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
+            <ModalHeader>
+                <ModalTitle>@L["TaskDetail"]</ModalTitle>
+                <CloseButton Clicked="CloseTaskDetailModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                <Tabs SelectedTab="@SelectedTab" SelectedTabChanged="OnSelectedTabChanged">
+                    <Items>
+                        <Tab Name="general">
+                            <Icon Name="IconName.Info" Class="me-1" />
+                            @L["Tab:GeneralInformation"]
+                        </Tab>
+                        <Tab Name="assignments">
+                            <Icon Name="IconName.Users" Class="me-1" />
+                            @L["Tab:Assignments"]
+                        </Tab>
+                        <Tab Name="documents">
+                            <Icon Name="IconName.File" Class="me-1" />
+                            @L["Tab:Documents"]
+                        </Tab>
+                    </Items>
+                    <Content>
+                        @* General Tab *@
+                        <TabPanel Name="general">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">@L["Code"]</label>
+                                <div>@SelectedTask.ProjectTask.Code</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">@L["Title"]</label>
+                                <div>@SelectedTask.ProjectTask.Title</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">@L["Description"]</label>
+                                <div>@(SelectedTask.ProjectTask.Description ?? "-")</div>
+                            </div>
+                            <Row class="g-3">
+                                <Column ColumnSize="ColumnSize.Is6">
+                                    <label class="form-label fw-bold">@L["Status"]</label>
+                                    <div>
+                                        <span class="badge @GetStatusBadgeColor(SelectedTask.ProjectTask.Status)">
+                                            @L[$"Enum:ProjectTaskStatus.{SelectedTask.ProjectTask.Status}"]
+                                        </span>
+                                    </div>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is6">
+                                    <label class="form-label fw-bold">@L["Priority"]</label>
+                                    <div>
+                                        <span class="badge @GetTaskPriorityBadgeClass(SelectedTask.ProjectTask.Priority)">
+                                            @L[$"Enum:ProjectTaskPriority.{SelectedTask.ProjectTask.Priority}"]
+                                        </span>
+                                    </div>
+                                </Column>
+                            </Row>
+                            <div class="mt-3">
+                                <label class="form-label fw-bold">@L["ProgressPercent"]</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress" style="flex: 1; height: 8px;">
+                                        <div class="progress-bar" 
+                                             style="width: @SelectedTask.ProjectTask.ProgressPercent%"
+                                             role="progressbar">
+                                        </div>
+                                    </div>
+                                    <span>@SelectedTask.ProjectTask.ProgressPercent%</span>
+                                </div>
+                            </div>
+                            <Row class="g-3 mt-3">
+                                <Column ColumnSize="ColumnSize.Is6">
+                                    <label class="form-label fw-bold">@L["StartDate"]</label>
+                                    <div>@SelectedTask.ProjectTask.StartDate.ToString("dd/MM/yyyy HH:mm")</div>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is6">
+                                    <label class="form-label fw-bold">@L["DueDate"]</label>
+                                    <div>@SelectedTask.ProjectTask.DueDate.ToString("dd/MM/yyyy HH:mm")</div>
+                                </Column>
+                            </Row>
+                            <div class="mt-3">
+                                <label class="form-label fw-bold">@L["Project"]</label>
+                                <div>@(SelectedTask.Project?.Name ?? "-")</div>
+                            </div>
+                        </TabPanel>
+
+                        @* Assignments Tab *@
+                        <TabPanel Name="assignments">
+                            @if (!SelectedTaskAssignments.Any())
+                            {
+                                <div class="text-center text-muted py-4">
+                                    @L["NoAssignments"]
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>@L["User"]</th>
+                                                <th>@L["Role"]</th>
+                                                <th>@L["AssignedAt"]</th>
+                                                <th>@L["Note"]</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var assignment in SelectedTaskAssignments)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                                                                 style="width: 32px; height: 32px;">
+                                                                <span class="fs-6">@GetUserInitial(assignment.User)</span>
+                                                            </div>
+                                                            <span>@GetUserDisplayName(assignment.User)</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info">
+                                                            @L[$"Enum:ProjectTaskAssignmentRole.{assignment.ProjectTaskAssignment.AssignmentRole}"]
+                                                        </span>
+                                                    </td>
+                                                    <td>@assignment.ProjectTaskAssignment.AssignedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                                    <td>@(assignment.ProjectTaskAssignment.Note ?? "-")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </TabPanel>
+
+                        @* Documents Tab *@
+                        <TabPanel Name="documents">
+                            @if (!SelectedTaskDocuments.Any())
+                            {
+                                <div class="text-center text-muted py-4">
+                                    @L["NoDocuments"]
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>@L["Title"]</th>
+                                                <th>@L["Purpose"]</th>
+                                                <th>@L["Actions"]</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var doc in SelectedTaskDocuments)
+                                            {
+                                                <tr>
+                                                    <td>@doc.Document?.Title</td>
+                                                    <td>
+                                                        <span class="badge bg-secondary">
+                                                            @L[$"Enum:ProjectTaskDocumentPurpose.{doc.ProjectTaskDocument.DocumentPurpose}"]
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        @if (doc.Document != null && DocumentHasPdfFile(doc.Document.Id))
+                                                        {
+                                                            <Button Color="Color.Info" Size="Size.Small" 
+                                                                    Clicked="@(() => OpenPdfViewerModalForDocumentAsync(doc))">
+                                                                <Icon Name="IconName.Eye" />
+                                                            </Button>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </TabPanel>
+                    </Content>
+                </Tabs>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseTaskDetailModalAsync">
+                    @L["Close"]
+                </Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
+}
+
+@* ************************* PDF VIEWER MODAL ************************* *@
+<Modal @ref="PdfViewerModal" Class="pdf-viewer-modal" Size="ModalSize.ExtraLarge" Centered="true">
+    <ModalContent>
+        <ModalHeader>
+            <ModalTitle>@L["DocumentPreview"]</ModalTitle>
+            <CloseButton Clicked="ClosePdfViewerModalAsync" />
+        </ModalHeader>
+        <ModalBody Class="pdf-viewer-modal-body">
+            @if (IsPdfFile && !string.IsNullOrEmpty(PdfFileUrl))
+            {
+                <PdfViewerContainer Height="Height.Rem(35)">
+                    <PdfViewerToolbar />
+                    <PdfViewer Source="@PdfFileUrl" />
+                </PdfViewerContainer>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="ClosePdfViewerModalAsync">
+                @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+<style>
+    /* PDF Viewer Modal */
+    .pdf-viewer-modal .modal-content {
+        position: relative;
+        max-height: 90vh;
+        overflow: hidden;
+    }
+    
+    .pdf-viewer-modal .modal-body {
+        max-height: calc(90vh - 120px);
+        overflow: auto;
+    }
+</style>
