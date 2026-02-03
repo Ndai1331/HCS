@@ -119,7 +119,7 @@
                     <CardFooter Class="bg-transparent border-0 pt-3">
                         <Button Class="w-100 bg-brand text-white" 
                         Color="Color.Light"
-                        Clicked="@(() => Navigation.NavigateTo("/projects"))">
+                        Clicked="OpenCreateProjectModalAsync">
                             <Icon Name="IconName.Add" Class="me-1" /> @L["NewProject"]
                         </Button>
                     </CardFooter>
@@ -429,10 +429,10 @@
 
                                         <td class="text-end">
                                             <Button 
-                                            Class="bg-brand text-white"
-                                             Size="Size.Small" 
-                                             Clicked="@(() => Navigation.NavigateTo($"/document-list"))">
-                                                @L["View"]
+                                                Class="bg-brand text-white"
+                                                Size="Size.Small" 
+                                                Clicked="@(() => OpenDocumentPdfViewerModalAsync(doc))">
+                                                <Icon Name="IconName.Eye" />
                                             </Button>
                                         </td>
                                     </tr>
@@ -811,6 +811,184 @@
         </ModalBody>
         <ModalFooter>
             <Button Color="Color.Secondary" Clicked="ClosePdfViewerModalAsync">
+                @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@* ************************* CREATE PROJECT MODAL ************************* *@
+<Modal @ref="CreateProjectModal">
+    <ModalContent Size="ModalSize.Large" Centered="true">
+        <Form id="CreateProjectForm">
+            <ModalHeader>
+                <ModalTitle>@L["NewProject"]</ModalTitle>
+                <CloseButton Clicked="CloseCreateProjectModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                @if (!string.IsNullOrWhiteSpace(CreateProjectValidationErrorKey))
+                {
+                    <Alert Color="Color.Danger">
+                        <AlertMessage>@L["NotificationError"]!</AlertMessage>
+                        <AlertDescription>@L[CreateProjectValidationErrorKey]</AlertDescription>
+                    </Alert>
+                }
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Code"] *</FieldLabel>
+                            <TextEdit Text="@NewProject.Code"
+                                      TextChanged="@((string value) => { NewProject.Code = value; CreateProjectFieldErrors.Remove("Code"); })"
+                                      MaxLength="ProjectConsts.CodeMaxLength"
+                                      Autofocus="true"
+                                      ReadOnly="true"
+                                      Style="@(HasCreateProjectFieldError("Code") ? "border-color: #dc3545;" : "")" />
+                            @if (HasCreateProjectFieldError("Code"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateProjectFieldError("Code")</div>
+                            }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Name"] *</FieldLabel>
+                            <TextEdit Text="@NewProject.Name"
+                                      TextChanged="@((string value) => { NewProject.Name = value; CreateProjectFieldErrors.Remove("Name"); })"
+                                      MaxLength="ProjectConsts.NameMaxLength"
+                                      Style="@(HasCreateProjectFieldError("Name") ? "border-color: #dc3545;" : "")" />
+                            @if (HasCreateProjectFieldError("Name"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateProjectFieldError("Name")</div>
+                            }
+                        </Field>
+                    </Column>
+                </Row>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Description"]</FieldLabel>
+                            <MemoEdit @bind-Text="@NewProject.Description" />
+                        </Field>
+                    </Column>
+                </Row>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["StartDate"]</FieldLabel>
+                            <Addons>
+                                <Addon AddonType="AddonType.Body">
+                                    <DatePicker TValue="DateTime"
+                                                InputMode="DateInputMode.DateTime"
+                                                Date="@NewProject.StartDate"
+                                                DateChanged="@(v => NewProject.StartDate = v)"
+                                                Placeholder="@string.Empty"
+                                                DisplayFormat="dd/MM/yyyy HH:mm"
+                                                InputFormat="dd/MM/yyyy HH:mm"
+                                                @ref="@NewProjectStartDateDatePicker" />
+                                </Addon>
+                                <Addon AddonType="AddonType.End">
+                                    <Button Color="Color.Light" Clicked="@(() => NewProjectStartDateDatePicker?.ToggleAsync())">
+                                        <Icon Name="IconName.CalendarDay" />
+                                    </Button>
+                                </Addon>
+                            </Addons>
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["EndDate"]</FieldLabel>
+                            <Addons>
+                                <Addon AddonType="AddonType.Body">
+                                    <DatePicker TValue="DateTime"
+                                                InputMode="DateInputMode.DateTime"
+                                                Date="@NewProject.EndDate"
+                                                DateChanged="@(v => NewProject.EndDate = v)"
+                                                Placeholder="@string.Empty"
+                                                DisplayFormat="dd/MM/yyyy HH:mm"
+                                                InputFormat="dd/MM/yyyy HH:mm"
+                                                @ref="@NewProjectEndDateDatePicker" />
+                                </Addon>
+                                <Addon AddonType="AddonType.End">
+                                    <Button Color="Color.Light" Clicked="@(() => NewProjectEndDateDatePicker?.ToggleAsync())">
+                                        <Icon Name="IconName.CalendarDay" />
+                                    </Button>
+                                </Addon>
+                            </Addons>
+                        </Field>
+                    </Column>
+                </Row>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Status"] *</FieldLabel>
+                            <Select TValue="ProjectStatus"
+                                    SelectedValue="@NewProject.Status"
+                                    SelectedValueChanged="@((ProjectStatus value) => { NewProject.Status = value; })">
+                                <ChildContent>
+                                    @foreach (var status in Enum.GetValues<ProjectStatus>())
+                                    {
+                                        <SelectItem TValue="ProjectStatus" Value="@status">
+                                            @L[$"Enum:ProjectStatus.{status}"]
+                                        </SelectItem>
+                                    }
+                                </ChildContent>
+                            </Select>
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <Field>
+                            <FieldLabel>@L["Department"]</FieldLabel>
+                            <Select2 IdSelector="c => c.Id.ToString()"
+                                    TextSelector="c => c.DisplayName"
+                                    FilterFunction="GetDepartmentCollectionLookupAsync"
+                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                    Datasource="DepartmentsCollection"
+                                    Value="@SelectedDepartment"
+                                    OnValueChanged="OnDepartmentIdChanged"
+                                    Cache="__MemoryCache"
+                                    Multiselect="false" />
+                        </Field>
+                    </Column>
+                </Row>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseCreateProjectModalAsync">
+                    @L["Cancel"]
+                </Button>
+                <Button Color="Color.Primary" 
+                        Type="ButtonType.Submit" 
+                        PreventDefaultOnSubmit="true"
+                        Clicked="CreateProjectAsync"
+                        Disabled="@IsCreatingProject">
+                    @if (IsCreatingProject)
+                    {
+                        <RadarSpinner Size="Size.Small" Class="me-2" />
+                    }
+                    @L["Save"]
+                </Button>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+@* ************************* DOCUMENT PDF VIEWER MODAL ************************* *@
+<Modal @ref="DocumentPdfViewerModal" Class="pdf-viewer-modal" Size="ModalSize.ExtraLarge" Centered="true">
+    <ModalContent>
+        <ModalHeader>
+            <ModalTitle>@L["DocumentPreview"]</ModalTitle>
+            <CloseButton Clicked="CloseDocumentPdfViewerModalAsync" />
+        </ModalHeader>
+        <ModalBody Class="pdf-viewer-modal-body">
+            @if (IsDocumentPdfFile && !string.IsNullOrEmpty(DocumentPdfFileUrl))
+            {
+                <PdfViewerContainer Height="Height.Rem(35)">
+                    <PdfViewerToolbar />
+                    <PdfViewer Source="@DocumentPdfFileUrl" />
+                </PdfViewerContainer>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseDocumentPdfViewerModalAsync">
                 @L["Close"]
             </Button>
         </ModalFooter>

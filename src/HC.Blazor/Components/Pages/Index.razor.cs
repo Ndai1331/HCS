@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using HC.Projects;
 using HC.ProjectTasks;
@@ -17,6 +18,10 @@ using Humanizer;
 using Volo.Abp.BlobStoring;
 using Blazorise;
 using Volo.Abp.AspNetCore.Components.BlockUi;
+using Microsoft.Extensions.Caching.Memory;
+using Volo.Abp.AspNetCore.Components.Messages;
+using Volo.Abp.Application.Dtos;
+using HC.Shared;
 
 namespace HC.Blazor.Components.Pages;
 
@@ -36,6 +41,7 @@ public partial class Index
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
     [Inject] private IBlockUiService BlockUiService { get; set; } = default!;
+    [Inject] private IMemoryCache __MemoryCache { get; set; } = default!;
 
     // Active Projects data
     private List<ProjectWithNavigationPropertiesDto> ActiveProjectsList { get; set; } = new();
@@ -57,6 +63,22 @@ public partial class Index
 
     // My Tasks data - Tasks from last 60 days
     private List<ProjectTaskWithNavigationPropertiesDto> MyTasksList { get; set; } = new();
+
+    // Create Project Modal
+    private Modal? CreateProjectModal { get; set; }
+    private ProjectCreateDto NewProject { get; set; } = new();
+    private string? CreateProjectValidationErrorKey { get; set; }
+    private Dictionary<string, string?> CreateProjectFieldErrors { get; set; } = new();
+    private IReadOnlyList<LookupDto<Guid>> DepartmentsCollection { get; set; } = new List<LookupDto<Guid>>();
+    private List<LookupDto<Guid>> SelectedDepartment { get; set; } = new();
+    private DatePicker<DateTime>? NewProjectStartDateDatePicker { get; set; }
+    private DatePicker<DateTime>? NewProjectEndDateDatePicker { get; set; }
+    private bool IsCreatingProject { get; set; }
+
+    // Document PDF Viewer Modal
+    private Modal DocumentPdfViewerModal { get; set; } = new();
+    private string? DocumentPdfFileUrl { get; set; }
+    private bool IsDocumentPdfFile { get; set; }
 
     // Task detail modal
     private Modal TaskDetailModal { get; set; } = default!;
@@ -582,5 +604,301 @@ public partial class Index
             "critical" => "hc-badge-danger-subtle",
             _ => "hc-badge-secondary-subtle"
         };
+    }
+
+    // -------------------------------
+    // Create Project Modal Methods
+    // -------------------------------
+
+    private async Task OpenCreateProjectModalAsync()
+    {
+        try
+        {
+            // Initialize new project
+            NewProject = new ProjectCreateDto
+            {
+                StartDate = DateTime.Now,
+                EndDate = DateTime.Now,
+                Code = await GenerateNextProjectCodeAsync(),
+                Status = ProjectStatus.PLANNING
+            };
+            SelectedDepartment = new List<LookupDto<Guid>>();
+            CreateProjectValidationErrorKey = null;
+            CreateProjectFieldErrors.Clear();
+
+            await GetDepartmentCollectionLookupAsync();
+
+            if (CreateProjectModal != null)
+            {
+                await CreateProjectModal.Show();
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task CloseCreateProjectModalAsync()
+    {
+        if (CreateProjectModal != null)
+        {
+            await CreateProjectModal.Hide();
+        }
+        NewProject = new ProjectCreateDto();
+        CreateProjectValidationErrorKey = null;
+        CreateProjectFieldErrors.Clear();
+        SelectedDepartment = new List<LookupDto<Guid>>();
+    }
+
+    private async Task CreateProjectAsync()
+    {
+        if (IsCreatingProject)
+        {
+            return;
+        }
+
+        IsCreatingProject = true;
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+
+            if (!ValidateCreateProject())
+            {
+                await UiMessageService.Warn(L[CreateProjectValidationErrorKey ?? "ValidationError"]);
+                await InvokeAsync(StateHasChanged);
+                return;
+            }   
+
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            var createdProject = await ProjectsAppService.CreateAsync(NewProject);
+            await UiMessageService.Success(L["SuccessfullyCreated"]);
+
+            // Reload projects list
+            await LoadActiveProjectsAsync();
+
+            await CloseCreateProjectModalAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsCreatingProject = false;
+            await BlockUiService.UnBlock();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private bool ValidateCreateProject()
+    {
+        // Reset error state
+        CreateProjectValidationErrorKey = null;
+        CreateProjectFieldErrors.Clear();
+
+        bool isValid = true;
+
+        // Required: Code
+        if (string.IsNullOrWhiteSpace(NewProject?.Code))
+        {
+            CreateProjectFieldErrors["Code"] = L["CodeRequired"];
+            CreateProjectValidationErrorKey = "CodeRequired";
+            isValid = false;
+        }
+
+        // Required: Name
+        if (string.IsNullOrWhiteSpace(NewProject?.Name))
+        {
+            CreateProjectFieldErrors["Name"] = L["NameRequired"];
+            if (isValid)
+            {
+                CreateProjectValidationErrorKey = "NameRequired";
+            }
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    private string? GetCreateProjectFieldError(string fieldName) => CreateProjectFieldErrors.GetValueOrDefault(fieldName);
+    private bool HasCreateProjectFieldError(string fieldName) => CreateProjectFieldErrors.ContainsKey(fieldName) && !string.IsNullOrWhiteSpace(CreateProjectFieldErrors[fieldName]);
+
+    private void OnDepartmentIdChanged()
+    {
+        if (SelectedDepartment != null && SelectedDepartment.Count > 0)
+        {
+            NewProject.OwnerDepartmentId = SelectedDepartment.FirstOrDefault()?.Id;
+        }
+        else
+        {
+            NewProject.OwnerDepartmentId = null;
+        }
+    }
+
+    private async Task GetDepartmentCollectionLookupAsync(string? newValue = null)
+    {
+        DepartmentsCollection = (await ProjectsAppService.GetDepartmentLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
+    }
+
+    protected async Task<List<LookupDto<Guid>>> GetDepartmentCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    {
+        DepartmentsCollection = (await ProjectsAppService.GetDepartmentLookupAsync(new LookupRequestDto { Filter = filter })).Items;
+        return DepartmentsCollection.ToList();
+    }
+
+    private async Task<string> GenerateNextProjectCodeAsync()
+    {
+        try
+        {
+            int maxNumber = 0;
+            const int pageSize = 1000;
+            int skipCount = 0;
+            bool hasMore = true;
+
+            // Query all projects in batches to find the highest "P" code
+            while (hasMore)
+            {
+                var input = new GetProjectsInput
+                {
+                    MaxResultCount = pageSize,
+                    SkipCount = skipCount,
+                    Sorting = "Project.Code DESC"
+                };
+
+                var result = await ProjectsAppService.GetListAsync(input);
+
+                if (result.Items == null || result.Items.Count == 0)
+                {
+                    hasMore = false;
+                    break;
+                }
+
+                // Iterate through items to find the highest "P" code
+                foreach (var project in result.Items)
+                {
+                    if (!string.IsNullOrWhiteSpace(project.Project.Code))
+                    {
+                        var code = project.Project.Code.Trim();
+
+                        // Check if code starts with "P" (case-insensitive) and has numeric suffix
+                        if (code.StartsWith("P", StringComparison.OrdinalIgnoreCase) && code.Length > 1)
+                        {
+                            // Extract number part after "P"
+                            var numberPart = code.Substring(1);
+                            if (int.TryParse(numberPart, out int number))
+                            {
+                                if (number > maxNumber)
+                                {
+                                    maxNumber = number;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Check if there are more items to process
+                if (result.Items.Count < pageSize || skipCount + pageSize >= result.TotalCount)
+                {
+                    hasMore = false;
+                }
+                else
+                {
+                    skipCount += pageSize;
+                }
+            }
+
+            // Generate next code: P + (maxNumber + 1) with 7 digits padding
+            return $"P{(maxNumber + 1):D7}";
+        }
+        catch
+        {
+            // Fallback to P0000001 if error occurs
+            return "P0000001";
+        }
+    }
+
+    // -------------------------------
+    // Document PDF Viewer Methods
+    // -------------------------------
+
+    private async Task OpenDocumentPdfViewerModalAsync(DocumentAssignmentWithNavigationPropertiesDto docAssignment)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            if (docAssignment?.Document == null)
+            {
+                return;
+            }
+
+            // Get document files for this document
+            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
+            {
+                DocumentId = docAssignment.Document.Id,
+                MaxResultCount = 1,
+                SkipCount = 0
+            });
+            
+            
+            var documentFile = documentFilesResult.Items.First();
+            string path = documentFile.DocumentFile?.Path ?? string.Empty;
+
+            if (!IsPdfFileExtension(documentFile.DocumentFile?.Name ?? string.Empty) 
+            || string.IsNullOrEmpty(path)
+            || !IsPdfFileExtension(path))
+            {
+                await UiMessageService.Warn(L["NoPdfAvailable"]);
+                return;
+            }
+            var fileBytes = await BlobContainer.GetAllBytesAsync(path);
+            var base64 = Convert.ToBase64String(fileBytes);
+            DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
+            IsDocumentPdfFile = true;
+            await DocumentPdfViewerModal.Show();
+            await BlockUiService.UnBlock();
+        }
+        catch (Exception ex)
+        {
+            await UiMessageService.Warn(L["NoPdfAvailable"] + ": " + ex.Message);
+            await BlockUiService.UnBlock();
+            return;
+        }
+    }
+
+
+    private async Task CloseDocumentPdfViewerModalAsync()
+    {
+        if (DocumentPdfViewerModal != null)
+        {
+            await DocumentPdfViewerModal.Hide();
+        }
+        DocumentPdfFileUrl = null;
+        IsDocumentPdfFile = false;
+    }
+
+    private async Task<bool> CheckIfDocumentHasPdfAsync(Guid documentId)
+    {
+        try
+        {
+            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
+            {
+                DocumentId = documentId,
+                MaxResultCount = 1,
+                SkipCount = 0
+            });
+
+            if (!documentFilesResult.Items.Any())
+            {
+                return false;
+            }
+
+            var documentFile = documentFilesResult.Items.First();
+            return IsPdfFileExtension(documentFile.DocumentFile.Name) && !string.IsNullOrEmpty(documentFile.DocumentFile.Path);
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
