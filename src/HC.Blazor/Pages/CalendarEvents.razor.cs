@@ -27,6 +27,7 @@ using Volo.Abp.Content;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.AspNetCore.Components.Messages;
 
 namespace HC.Blazor.Pages;
 
@@ -702,7 +703,8 @@ public partial class CalendarEvents : HCComponentBase
 
             if (!ValidateCreateGeneralInformation())
             {
-                await UiMessageService.Warn(L[CreateGeneralValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[CreateGeneralValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -835,21 +837,24 @@ public partial class CalendarEvents : HCComponentBase
         {
             if (!IsCreateWizardGeneralSaved)
             {
-                await UiMessageService.Error(L["CreateWizard:SaveGeneralFirst"]);
+                await UiMessageService.Error(L["CreateWizard:SaveGeneralFirst"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
             var userId = CreateParticipantsUserToAdd.FirstOrDefault()?.Id ?? Guid.Empty;
             if (userId == Guid.Empty)
             {
-                await UiMessageService.Error(L["CreateWizard:ParticipantRequired"]);
+                await UiMessageService.Error(L["CreateWizard:ParticipantRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
             // Check if user is already added
             if (CreateParticipantsList.Any(p => p.CalendarEventParticipant.IdentityUserId == userId))
             {
-                await UiMessageService.Warn(L["CreateWizard:ParticipantAlreadyAdded"]);
+                await UiMessageService.Warn(L["CreateWizard:ParticipantAlreadyAdded"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -938,14 +943,16 @@ public partial class CalendarEvents : HCComponentBase
             var userId = EditParticipantsUserToAdd.FirstOrDefault()?.Id ?? Guid.Empty;
             if (userId == Guid.Empty)
             {
-                await UiMessageService.Error(L["CreateWizard:ParticipantRequired"]);
+                await UiMessageService.Error(L["CreateWizard:ParticipantRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
             // Check if user is already added
             if (EditParticipantsList.Any(p => p.CalendarEventParticipant.IdentityUserId == userId))
             {
-                await UiMessageService.Warn(L["CreateWizard:ParticipantAlreadyAdded"]);
+                await UiMessageService.Warn(L["CreateWizard:ParticipantAlreadyAdded"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -1108,7 +1115,8 @@ public partial class CalendarEvents : HCComponentBase
         {
             if (!ValidateCreateCalendarEvent())
             {
-                await UiMessageService.Warn(L[CreateCalendarEventValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[CreateCalendarEventValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -1159,7 +1167,8 @@ public partial class CalendarEvents : HCComponentBase
         {
             if (!ValidateEditCalendarEvent())
             {
-                await UiMessageService.Warn(L[EditCalendarEventValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[EditCalendarEventValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }

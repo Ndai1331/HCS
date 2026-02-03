@@ -21,7 +21,7 @@ using Microsoft.JSInterop;
 using Volo.Abp;
 using Volo.Abp.Content;
 using Microsoft.Extensions.Caching.Memory;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
 
 public partial class Workflows
@@ -281,7 +281,8 @@ public partial class Workflows
             
             if (NewWorkflow.WorkflowDefinitionId == default)
             {
-                await UiMessageService.Warn(L["The {0} field is required.", L["WorkflowDefinition"]]);
+                await UiMessageService.Warn(L["The {0} field is required.", L["WorkflowDefinition"]],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -320,7 +321,8 @@ public partial class Workflows
             
             if (EditingWorkflow.WorkflowDefinitionId == default)
             {
-                await UiMessageService.Warn(L["The {0} field is required.", L["WorkflowDefinition"]]);
+                await UiMessageService.Warn(L["The {0} field is required.", L["WorkflowDefinition"]],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 

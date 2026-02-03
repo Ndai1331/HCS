@@ -10,6 +10,7 @@ using HC.ProjectTaskAssignments;
 using HC.Shared;
 using Microsoft.Extensions.Logging;
 using Blazorise;
+using Volo.Abp.AspNetCore.Components.Messages;
 
 namespace HC.Blazor.Pages.Chat1;
 
@@ -450,7 +451,8 @@ public partial class Chat1
             }
             
             // Show success message
-            await UiMessageService.Success(L["TaskCreatedSuccessfully"]);
+            await UiMessageService.Success(L["TaskCreatedSuccessfully"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             
             // Close modal
             CloseCreateTaskFromMessageModal();

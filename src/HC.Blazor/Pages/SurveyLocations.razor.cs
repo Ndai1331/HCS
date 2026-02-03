@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Volo.Abp.Http.Client;
 using Microsoft.Extensions.Configuration;
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
 
 
@@ -379,7 +380,8 @@ public partial class SurveyLocations
     private async Task CopySurveyLocationToClipboardAsync(SurveyLocationDto input)
     {
         await JSRuntime.InvokeVoidAsync("copyToClipboard", $"{_apiBaseUrl}survey-collections/{input.Id}");
-        await UiMessageService.Success(L["SurveyLocationCopiedToClipboard"].Value);
+        await UiMessageService.Success(L["SurveyLocationCopiedToClipboard"].Value,
+        options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         await InvokeAsync(StateHasChanged);
     }
 }

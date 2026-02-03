@@ -22,6 +22,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Volo.Abp.AspNetCore.Components.Messages;
 using Volo.Abp.Application.Dtos;
 using HC.Shared;
+using HC.Blazor.Shared;
 
 namespace HC.Blazor.Components.Pages;
 
@@ -665,14 +666,16 @@ public partial class Index
 
             if (!ValidateCreateProject())
             {
-                await UiMessageService.Warn(L[CreateProjectValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[CreateProjectValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }   
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             var createdProject = await ProjectsAppService.CreateAsync(NewProject);
-            await UiMessageService.Success(L["SuccessfullyCreated"]);
+            await UiMessageService.Success(L["SuccessfullyCreated"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
 
             // Reload projects list
             await LoadActiveProjectsAsync();
@@ -848,7 +851,8 @@ public partial class Index
             || string.IsNullOrEmpty(path)
             || !IsPdfFileExtension(path))
             {
-                await UiMessageService.Warn(L["NoPdfAvailable"]);
+                await UiMessageService.Warn(L["NoPdfAvailable"], 
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             var fileBytes = await BlobContainer.GetAllBytesAsync(path);
@@ -860,7 +864,8 @@ public partial class Index
         }
         catch (Exception ex)
         {
-            await UiMessageService.Warn(L["NoPdfAvailable"] + ": " + ex.Message);
+            await UiMessageService.Warn(L["NoPdfAvailable"] + ": " + ex.Message,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await BlockUiService.UnBlock();
             return;
         }

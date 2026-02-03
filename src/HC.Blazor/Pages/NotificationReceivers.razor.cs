@@ -22,7 +22,7 @@ using Volo.Abp;
 using Volo.Abp.Content;
 using Microsoft.AspNetCore.SignalR;
 using HC.Blazor.Hubs;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
 
 public partial class NotificationReceivers
@@ -311,7 +311,8 @@ public partial class NotificationReceivers
         try
         {
             await NotificationReceiversAppService.MarkAllAsReadAsync(Filter.SourceType);
-            await UiMessageService.Success(L["SuccessfullyMarkedAllAsRead"].Value);
+            await UiMessageService.Success(L["SuccessfullyMarkedAllAsRead"].Value,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await GetNotificationReceiversAsync();
             // Send SignalR message to refresh unread count only on success
             if (CurrentUser.Id.HasValue)
@@ -322,7 +323,8 @@ public partial class NotificationReceivers
         }
         catch
         {
-            await UiMessageService.Error(L["ErrorMarkingAllAsRead"].Value);
+            await UiMessageService.Error(L["ErrorMarkingAllAsRead"].Value,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             // Don't refresh on error
         }
         finally

@@ -12,7 +12,7 @@ using HC.Departments;
 using HC.Permissions;
 using HC.Shared;
 using System.Threading;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages.Departments;
 
 public partial class Departments
@@ -643,7 +643,8 @@ public partial class Departments
 
         if (SelectedDepartment.HasChildren)
         {
-            await UiMessageService.Error(L["DeleteSubDepartments"]);
+            await UiMessageService.Error(L["DeleteSubDepartments"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             return;
         }
 

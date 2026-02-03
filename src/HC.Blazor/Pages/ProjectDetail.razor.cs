@@ -16,6 +16,7 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.Blazor.Shared;
 using HC.Blazor.Components.ProjectTaskCreateModal;
+using Volo.Abp.AspNetCore.Components.Messages;
 
 namespace HC.Blazor.Pages;
 
@@ -641,14 +642,16 @@ public partial class ProjectDetail : HCComponentBase
         {
             if (!ValidateCreateProject())
             {
-                await UiMessageService.Warn(L[CreateProjectValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[CreateProjectValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             var createdProject = await ProjectsAppService.CreateAsync(NewProject);
-            await UiMessageService.Success(L["SuccessfullyCreated"]);
+            await UiMessageService.Success(L["SuccessfullyCreated"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
 
             // Navigate to the created project detail
             NavigationManager.NavigateTo($"/project-detail/{createdProject.Id}");
@@ -669,14 +672,16 @@ public partial class ProjectDetail : HCComponentBase
         {
             if (!ValidateEditProject())
             {
-                await UiMessageService.Warn(L[EditProjectValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[EditProjectValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await ProjectsAppService.UpdateAsync(ProjectId, EditingProject);
-            await UiMessageService.Success(L["SuccessfullyUpdated"]);
+            await UiMessageService.Success(L["SuccessfullyUpdated"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
 
             // Reload project data
             await LoadProjectAsync();
@@ -780,12 +785,14 @@ public partial class ProjectDetail : HCComponentBase
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
 
             await ProjectsAppService.DeleteAsync(ProjectId);
-            await UiMessageService.Success(L["SuccessfullyDeleted"]);
+            await UiMessageService.Success(L["SuccessfullyDeleted"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             NavigationManager.NavigateTo("/projects");
         }
         catch (Exception ex)
         {
-            await UiMessageService.Error(ex.Message);
+            await UiMessageService.Error(ex.Message,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         finally
         {

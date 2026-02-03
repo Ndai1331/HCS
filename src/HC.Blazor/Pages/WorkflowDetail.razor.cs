@@ -30,7 +30,7 @@ using Microsoft.Extensions.Logging;
 using Volo.Abp.BlobStoring;
 using Blazorise.Extensions;
 using System.IO;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
 
 public partial class WorkflowDetail : ValidationPageBase, IDisposable
@@ -369,7 +369,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             var canNavigate = CurrentWorkflow != null && CurrentWorkflowId != Guid.Empty;
             if (!canNavigate)
             {
-                await UiMessageService.Warn(L["WorkflowDetail:PleaseCreateWorkflow"]);
+                await UiMessageService.Warn(L["WorkflowDetail:PleaseCreateWorkflow"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 Logger?.LogInformation("[NextStepAsync] Cannot navigate from Step 1 to Step 2: Workflow not saved");
                 return;
             }
@@ -384,7 +385,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             
             if (!canNavigate)
             {
-                await UiMessageService.Warn(L["WorkflowDetail:PleaseCreateTemplate"]);
+                await UiMessageService.Warn(L["WorkflowDetail:PleaseCreateTemplate"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 Logger?.LogInformation("[NextStepAsync] Cannot navigate from Step 2 to Step 3: Template not saved");
                 return;
             }
@@ -399,7 +401,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             
             if (!canNavigate)
             {
-                await UiMessageService.Warn(L["WorkflowDetail:PleaseCreateStep"]);
+                await UiMessageService.Warn(L["WorkflowDetail:PleaseCreateStep"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 Logger?.LogInformation("[NextStepAsync] Cannot navigate from Step 3 to Step 4: No step templates");
                 return;
             }
@@ -521,7 +524,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
 
             if (CurrentWorkflowId == Guid.Empty)
             {
-                await UiMessageService.Warn(L["WorkflowDetail:WorkflowNotSaved"]);
+                await UiMessageService.Warn(L["WorkflowDetail:WorkflowNotSaved"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -698,7 +702,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     {
         if (CurrentWorkflowTemplate == null || CurrentWorkflowTemplate.Id == Guid.Empty)
         {
-            await UiMessageService.Warn(L["WorkflowDetail:SaveTemplateFirst"]);
+            await UiMessageService.Warn(L["WorkflowDetail:SaveTemplateFirst"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             return;
         }
 
@@ -886,7 +891,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     {
         if (WorkflowStepTemplatesList == null || !WorkflowStepTemplatesList.Any())
         {
-            await UiMessageService.Warn(L["WorkflowDetail:PleaseCreateStep"]);
+            await UiMessageService.Warn(L["WorkflowDetail:PleaseCreateStep"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             return;
         }
 
@@ -1162,7 +1168,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             // Validate file size (50MB max)
             if (file.Size > 52428800)
             {
-                await UiMessageService.Error(L["FileSizeTooLarge", 50]);
+                await UiMessageService.Error(L["FileSizeTooLarge", 50],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await WordTemplateFilePicker.Clear();
                 return;
             }
@@ -1171,7 +1178,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             var fileExtension = Path.GetExtension(file.Name).ToLowerInvariant();
             if (fileExtension != ".docx" && fileExtension != ".doc")
             {
-                await UiMessageService.Error(L["OnlyWordFilesAllowed"]);
+                await UiMessageService.Error(L["OnlyWordFilesAllowed"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await WordTemplateFilePicker.Clear();
                 return;
             }
@@ -1211,7 +1219,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             UploadedWordTemplateFileName = file.Name;
             WordTemplateFilePickerProgress = 100;
 
-            await UiMessageService.Success(L["FileUploadedSuccessfully"]);
+            await UiMessageService.Success(L["FileUploadedSuccessfully"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         catch (Exception ex)
         {
@@ -1255,7 +1264,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 NewWorkflowTemplate.WordTemplatePath = null;
             }
 
-            await UiMessageService.Success(L["FileDeletedSuccessfully"]);
+            await UiMessageService.Success(L["FileDeletedSuccessfully"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         catch (Exception ex)
         {

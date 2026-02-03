@@ -26,6 +26,7 @@ using Volo.Abp.Identity;
 using HC.DocumentFiles;
 using Volo.Abp.BlobStoring;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.AspNetCore.Components.Messages;  
 
 namespace HC.Blazor.Pages;
 
@@ -1139,7 +1140,8 @@ public partial class ProjectTasks
             
             if (documentFilesResult.Items == null || !documentFilesResult.Items.Any())
             {
-                await UiMessageService.Warn(L["NoFileAvailable"] ?? "No file available");
+                await UiMessageService.Warn(L["NoFileAvailable"] ?? L["NoFileAvailable"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             
@@ -1280,7 +1282,8 @@ public partial class ProjectTasks
             
             if (documentFilesResult.Items == null || !documentFilesResult.Items.Any())
             {
-                await UiMessageService.Warn(L["NoFileAvailable"]);
+                await UiMessageService.Warn(L["NoFileAvailable"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             
@@ -1288,7 +1291,8 @@ public partial class ProjectTasks
             
             if (string.IsNullOrEmpty(documentFile.DocumentFile.Path))
             {
-                await UiMessageService.Warn(L["NoFileAvailable"]);
+                await UiMessageService.Warn(L["NoFileAvailable"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             

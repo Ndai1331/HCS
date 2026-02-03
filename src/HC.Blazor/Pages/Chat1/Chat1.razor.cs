@@ -24,7 +24,7 @@ using HC.Blazor.Extensions;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Http.Client;
 using HC.Blazor.Pages.Chat1.Handlers;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 
 namespace HC.Blazor.Pages.Chat1;
 
@@ -1272,7 +1272,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
        }
        catch (Exception ex)
        {
-            await UiMessageService.Error(L["FailedToSendMessage"]  + " :"+  ex.Message);
+            await UiMessageService.Error(L["FailedToSendMessage"]  + " :"+  ex.Message,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
        }
        finally
        {
@@ -1433,12 +1434,14 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         {
             if (input.ConversationId == Guid.Empty)
             {
-                await UiMessageService.Error(L["ConversationNotFound"]);
+                await UiMessageService.Error(L["ConversationNotFound"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             if (input.UserId == Guid.Empty)
             {
-                await UiMessageService.Error(L["UserNotFound"]);
+                await UiMessageService.Error(L["UserNotFound"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
@@ -1448,7 +1451,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            await UiMessageService.Error(ex.Message);
+            await UiMessageService.Error(ex.Message,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         finally
         {
@@ -1461,19 +1465,22 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         {
             if (input == null || input.ConversationId == null)
             {
-                await UiMessageService.Error(L["ConversationNotFound"]);
+                await UiMessageService.Error(L["ConversationNotFound"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             if (input.UserIds == null || input.UserIds.Count == 0)
             {
-                await UiMessageService.Error(L["NoUsersSelected"]);
+                await UiMessageService.Error(L["NoUsersSelected"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
             var result = await ConversationAppService.AddMemberAsync(input);
             if(!string.IsNullOrEmpty(result))
             {
-                await UiMessageService.Error(L[result]);
+                await UiMessageService.Error(L[result],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             await GetContactsAsync();
@@ -1481,7 +1488,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            await UiMessageService.Error(ex.Message);
+            await UiMessageService.Error(ex.Message,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         finally
         {
@@ -1494,12 +1502,14 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         {
             if (contact.ConversationId == Guid.Empty)
             {
-                await UiMessageService.Error(L["ConversationNotFound"]);
+                await UiMessageService.Error(L["ConversationNotFound"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             if (CurrentUser.Id == Guid.Empty)
             {
-                await UiMessageService.Error(L["UserNotLoggedIn"]);
+                await UiMessageService.Error(L["UserNotLoggedIn"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
@@ -1508,7 +1518,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            await UiMessageService.Error(ex.Message);
+            await UiMessageService.Error(ex.Message,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         finally
         {

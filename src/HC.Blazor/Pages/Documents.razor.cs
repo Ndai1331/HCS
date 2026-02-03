@@ -21,6 +21,7 @@ using System.Threading;
 using Excubo.Blazor.TreeViews;
 using Microsoft.AspNetCore.Components.Web;
 using HC.MasterDatas;
+using Volo.Abp.AspNetCore.Components.Messages;
 
 namespace HC.Blazor.Pages;
 
@@ -462,7 +463,8 @@ public partial class Documents
             // Validate input
             if (SendDocumentInput.DocumentId == Guid.Empty)
             {
-                await UiMessageService.Error(L["DocumentId is required"]);
+                await UiMessageService.Error(L["DocumentIdIsRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -471,7 +473,8 @@ public partial class Documents
             {
                 if (SelectedRecipients == null || SelectedRecipients.Count == 0)
                 {
-                    await UiMessageService.Error(L["At least one recipient is required"]);
+                    await UiMessageService.Error(L["AtLeastOneRecipientIsRequired"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                     return;
                 }
                 SendDocumentInput.Recipients = SelectedRecipients.Select(x => x.Id).ToList();
@@ -481,7 +484,8 @@ public partial class Documents
             {
                 if (SelectedDepartments == null || SelectedDepartments.Count == 0)
                 {
-                    await UiMessageService.Error(L["At least one department is required"]);
+                    await UiMessageService.Error(L["AtLeastOneDepartmentIsRequired"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                     return;
                 }
                 SendDocumentInput.Departments = SelectedDepartments.Select(x => x.Id).ToList();
@@ -491,13 +495,15 @@ public partial class Documents
 
             if (result)
             {
-                await UiMessageService.Success(L["Document sent successfully"]);
+                await UiMessageService.Success(L["DocumentSentSuccessfully"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await GetDocumentsAsync();
                 await InvokeAsync(SendDocumentModal.Hide);
             }
             else
             {
-                await UiMessageService.Error(L["Failed to send document"]);
+                await UiMessageService.Error(L["FailedToSendDocument"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             }
         }
         catch (Exception ex)
@@ -667,7 +673,8 @@ public partial class Documents
 
             if (DocumentToDeleteOrRevoke == null || DocumentToDeleteOrRevoke.Document == null)
             {
-                await UiMessageService.Error(L["DocumentNotFound"]);
+                await UiMessageService.Error(L["DocumentNotFound"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -675,7 +682,8 @@ public partial class Documents
             {
                 // Delete document - keep existing logic
                 await DocumentsAppService.DeleteAsync(DocumentToDeleteOrRevoke.Document.Id);
-                await UiMessageService.Success(L["DocumentDeletedSuccessfully"]);
+                await UiMessageService.Success(L["DocumentDeletedSuccessfully"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             }
             else if (DeleteOrRevokeOption == "revoke")
             {
@@ -689,11 +697,13 @@ public partial class Documents
                 
                 if (result)
                 {
-                    await UiMessageService.Success(L["DocumentRevokedSuccessfully"]);
+                    await UiMessageService.Success(L["DocumentRevokedSuccessfully"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 }
                 else
                 {
-                        await UiMessageService.Error(L["FailedToRevokeDocument"]);
+                        await UiMessageService.Error(L["FailedToRevokeDocument"],
+                        options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                     return;
                 }
             }

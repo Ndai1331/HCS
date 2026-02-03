@@ -14,7 +14,7 @@ using Volo.Abp.BlobStoring;
 using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
 using HC.DocumentAssignments;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
 
 public partial class ViewDocumentDetail
@@ -375,7 +375,8 @@ public partial class ViewDocumentDetail
         // Load the selected file into PDF viewer
         if (string.IsNullOrEmpty(file.Path))
         {
-            await UiMessageService.Warn(L["FileNotFound"]);
+            await UiMessageService.Warn(L["FileNotFound"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             IsPdfAvailable = false;
             PdfFileUrl = null;
             await InvokeAsync(StateHasChanged);
@@ -384,7 +385,8 @@ public partial class ViewDocumentDetail
 
         if (!IsPdfFileExtension(file.Name))
         {
-            await UiMessageService.Warn(L["NotAPdfFile"]);
+            await UiMessageService.Warn(L["NotAPdfFile"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             IsPdfAvailable = false;
             PdfFileUrl = null;
             await InvokeAsync(StateHasChanged);
@@ -403,7 +405,8 @@ public partial class ViewDocumentDetail
             }
             else
             {
-                await UiMessageService.Warn(L["FileNotFound"]);
+                await UiMessageService.Warn(L["FileNotFound"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 IsPdfAvailable = false;
                 PdfFileUrl = null;
                 await InvokeAsync(StateHasChanged);
@@ -424,7 +427,8 @@ public partial class ViewDocumentDetail
         {
             if (string.IsNullOrEmpty(file.Path))
             {
-                await UiMessageService.Warn(L["FileNotFound"]);
+                await UiMessageService.Warn(L["FileNotFound"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
             var fileStream = await BlobContainer.GetAllBytesOrNullAsync(file.Path);
@@ -436,7 +440,8 @@ public partial class ViewDocumentDetail
             }
             else
             {
-                await UiMessageService.Warn(L["FileNotFound"]);
+                await UiMessageService.Warn(L["FileNotFound"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             }
         }
         catch (Exception ex)

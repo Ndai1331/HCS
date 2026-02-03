@@ -1018,6 +1018,12 @@
     "SelectDepartmentToViewDetails": "Chọn phòng ban để xem chi tiết",
     "MyTasks": "Công việc của tôi",
     "NoDocumentsAvailable": "Không có văn bản nào",
-    "TaskDetail": "Chi tiết công việc"
+    "TaskDetail": "Chi tiết công việc",
+    "DocumentIdIsRequired": "ID văn bản là bắt buộc",
+    "AtLeastOneRecipientIsRequired": "Ít nhất một người nhận là bắt buộc",
+    "AtLeastOneDepartmentIsRequired": "Ít nhất một phòng ban là bắt buộc",
+    "DocumentSentSuccessfully": "Gửi văn bản thành công",
+    "FailedToSendDocument": "Gửi văn bản thất bại",
+    "Ok": "Ok"
   }
 }

@@ -25,6 +25,7 @@ using Volo.Abp.Content;
 using HC.Blazor;
 using Microsoft.Extensions.Logging;
 using HC.Chat.Conversations;
+using Volo.Abp.AspNetCore.Components.Messages;
 
 namespace HC.Blazor.Pages;
 
@@ -235,11 +236,13 @@ public partial class Projects : HCComponentBase
 
                 if (conversation != null)
                 {
-                    await UiMessageService.Success(L["ProjectChatCreatedSuccessfully"]);
+                    await UiMessageService.Success(L["ProjectChatCreatedSuccessfully"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 }
                 else
                 {
-                    await UiMessageService.Error(L["ProjectChatCreationFailed"]);
+                    await UiMessageService.Error(L["ProjectChatCreationFailed"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 }
             }else {
                 if(conversation.Members.Any(m => m.UserId == CurrentUser.Id))
@@ -248,7 +251,8 @@ public partial class Projects : HCComponentBase
                 }
                 else
                 {
-                    await UiMessageService.Error(L["YouAreNotAMemberOfThisProjectChat"]);
+                    await UiMessageService.Error(L["YouAreNotAMemberOfThisProjectChat"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 }
             }
         }
@@ -958,7 +962,8 @@ public partial class Projects : HCComponentBase
         {
             if (!ValidateCreateProject())
             {
-                await UiMessageService.Warn(L[CreateProjectValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[CreateProjectValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -1112,7 +1117,8 @@ public partial class Projects : HCComponentBase
         {
             if (!ValidateEditProject())
             {
-                await UiMessageService.Warn(L[EditProjectValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[EditProjectValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }

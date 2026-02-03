@@ -17,7 +17,7 @@ using HC.Blazor.Shared;
 using HC.Projects;
 using HC.ProjectTasks;
 using Microsoft.Extensions.Logging;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
 
 public partial class CalendarEventDetail : HCComponentBase
@@ -572,7 +572,8 @@ public partial class CalendarEventDetail : HCComponentBase
         {
             if (!ValidateCreateCalendarEvent())
             {
-                await UiMessageService.Warn(L[CreateCalendarEventValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[CreateCalendarEventValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -594,7 +595,8 @@ public partial class CalendarEventDetail : HCComponentBase
             }
 
             var createdCalendarEvent = await CalendarEventsAppService.CreateAsync(NewCalendarEvent);
-            await UiMessageService.Success(L["SuccessfullyCreated"]);
+            await UiMessageService.Success(L["SuccessfullyCreated"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
 
             // Navigate to the created calendar-event detail
             NavigationManager.NavigateTo($"/calendar-event-detail/{createdCalendarEvent.Id}");
@@ -615,7 +617,8 @@ public partial class CalendarEventDetail : HCComponentBase
         {
             if (!ValidateEditCalendarEvent())
             {
-                await UiMessageService.Warn(L[EditCalendarEventValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[EditCalendarEventValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -636,7 +639,8 @@ public partial class CalendarEventDetail : HCComponentBase
             }
 
             await CalendarEventsAppService.UpdateAsync(CalendarEventId, EditingCalendarEvent);
-            await UiMessageService.Success(L["SuccessfullyUpdated"]);
+            await UiMessageService.Success(L["SuccessfullyUpdated"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
 
             // Reload calendar-event data
             await LoadCalendarEventAsync();
@@ -656,7 +660,8 @@ public partial class CalendarEventDetail : HCComponentBase
     {
         try
         {
-            if (!await UiMessageService.Confirm(L["DeleteConfirmationMessage"].Value))
+            if (!await UiMessageService.Confirm(L["DeleteConfirmationMessage"].Value,
+            options: new Action<UiMessageOptions>(options => options.ConfirmButtonText = L["Confirm"])))
             {
                 return;
             }
@@ -664,12 +669,14 @@ public partial class CalendarEventDetail : HCComponentBase
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
 
             await CalendarEventsAppService.DeleteAsync(CalendarEventId);
-            await UiMessageService.Success(L["SuccessfullyDeleted"]);
+            await UiMessageService.Success(L["SuccessfullyDeleted"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             NavigationManager.NavigateTo("/calendar-events");
         }
         catch (Exception ex)
         {
-            await UiMessageService.Error(ex.Message);
+            await UiMessageService.Error(ex.Message,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         finally
         {

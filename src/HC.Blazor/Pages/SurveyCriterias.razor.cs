@@ -22,6 +22,7 @@ using Volo.Abp;
 using Volo.Abp.Content;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.Http.Client;
+using Volo.Abp.AspNetCore.Components.Messages;
 
 namespace HC.Blazor.Pages;
 
@@ -431,7 +432,8 @@ public partial class SurveyCriterias
 
             if (!allowedExtensions.Contains(fileExtension))
             {
-                await UiMessageService.Error(L["OnlyImageFilesAllowed"]);
+                await UiMessageService.Error(L["OnlyImageFilesAllowed"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 // Clear the file picker to remove the invalid file from UI
                 if (isEditMode)
                 {
@@ -447,7 +449,8 @@ public partial class SurveyCriterias
             // Validate file size (50MB)
             if (file.Size > 52428800)
             {
-                await UiMessageService.Error(L["FileSizeTooLarge", 50]);
+                await UiMessageService.Error(L["FileSizeTooLarge", 50],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 // Clear the file picker to remove the invalid file from UI
                 if (isEditMode)
                 {
@@ -491,7 +494,8 @@ public partial class SurveyCriterias
             }
             ImageFilePickerProgress = 100;
 
-            await UiMessageService.Success(L["FileUploadedSuccessfully"]);
+            await UiMessageService.Success(L["FileUploadedSuccessfully"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         catch (Exception ex)
         {

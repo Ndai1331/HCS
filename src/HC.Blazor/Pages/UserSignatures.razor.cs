@@ -19,7 +19,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Volo.Abp;
 using Volo.Abp.Content;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
 
 public partial class UserSignatures
@@ -260,7 +260,8 @@ public partial class UserSignatures
         {
             if (!ValidateCreateUserSignature())
             {
-                await UiMessageService.Warn(L[CreateUserSignatureValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[CreateUserSignatureValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -333,7 +334,8 @@ public partial class UserSignatures
         {
             if (!ValidateEditUserSignature())
             {
-                await UiMessageService.Warn(L[EditUserSignatureValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[EditUserSignatureValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }

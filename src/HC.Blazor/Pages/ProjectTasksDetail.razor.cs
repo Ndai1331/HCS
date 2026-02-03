@@ -303,7 +303,8 @@ public partial class ProjectTasksDetail : HCComponentBase
 
             if (!ValidateEditGeneralInformation())
             {
-                await UiMessageService.Warn(L[EditGeneralValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[EditGeneralValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -313,7 +314,8 @@ public partial class ProjectTasksDetail : HCComponentBase
             
             // Reload data
             await LoadProjectTaskAsync();
-            await UiMessageService.Success(L["SuccessfullyUpdated"]);
+            await UiMessageService.Success(L["SuccessfullyUpdated"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         catch (Exception ex)
         {
@@ -641,7 +643,8 @@ public partial class ProjectTasksDetail : HCComponentBase
             }
             
             await LoadEditDocumentsAsync();
-            await UiMessageService.Success(L["SuccessfullyDeleted"]);
+            await UiMessageService.Success(L["SuccessfullyDeleted"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         catch (Exception ex)
         {
@@ -664,7 +667,8 @@ public partial class ProjectTasksDetail : HCComponentBase
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await ProjectTasksAppService.DeleteAsync(ProjectTaskId);
-            await UiMessageService.Success(L["SuccessfullyDeleted"]);
+            await UiMessageService.Success(L["SuccessfullyDeleted"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             NavigationManager.NavigateTo("/tasks");
         }
         catch (Exception ex)
@@ -693,7 +697,8 @@ public partial class ProjectTasksDetail : HCComponentBase
             
             if (!hasPdf)
             {
-                await UiMessageService.Warn(L["NoPdfFileAvailable"]);
+                await UiMessageService.Warn(L["NoPdfFileAvailable"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 

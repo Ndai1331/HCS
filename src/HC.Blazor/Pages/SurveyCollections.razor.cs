@@ -110,7 +110,8 @@ public partial class SurveyCollections
 
             if (criterias == null || !criterias.Any())
             {
-                await UiMessageService.Warn(L["SurveyCollections:NoCriteriaFound"]);
+                await UiMessageService.Warn(L["SurveyCollections:NoCriteriaFound"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 SurveyCriterias = new List<SurveyCriteriaWithNavigationPropertiesDto>();
                 return;
             }
@@ -149,13 +150,15 @@ public partial class SurveyCollections
         {
             if (string.IsNullOrWhiteSpace(NewSurveySession.FullName))
             {
-                await UiMessageService.Error(L["FullNameIsRequired"]);
+                await UiMessageService.Error(L["FullNameIsRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(NewSurveySession.PhoneNumber))
             {
-                await UiMessageService.Error(L["PhoneNumberIsRequired"]);
+                await UiMessageService.Error(L["PhoneNumberIsRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -165,7 +168,8 @@ public partial class SurveyCollections
             CurrentSurveySession = await SurveySessionsAppService.CreatePublicSurveySessionAsync(NewSurveySession);
             if (CurrentSurveySession == null)
             {
-                await UiMessageService.Error(L["SurveyCollections:FailedToCreateSurveySession"]);
+                await UiMessageService.Error(L["SurveyCollections:FailedToCreateSurveySession"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 throw new Exception(L["SurveyCollections:FailedToCreateSurveySession"]);
             }
 
@@ -178,7 +182,8 @@ public partial class SurveyCollections
 
                 if (createdSurveyFile == null)
                 {
-                    await UiMessageService.Error(L["SurveyCollections:FailedToCreateSurveyFile"]);
+                    await UiMessageService.Error(L["SurveyCollections:FailedToCreateSurveyFile"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                     throw new Exception(L["SurveyCollections:FailedToCreateSurveyFile"]);
                 }
             }
@@ -195,12 +200,14 @@ public partial class SurveyCollections
             if (surveyResults.Count > 0)
             {
                 IsShowThankYouMessage = true;
-                await UiMessageService.Success(L["SurveyCollections:SurveySessionCreatedSuccessfully"]);
+                await UiMessageService.Success(L["SurveyCollections:SurveySessionCreatedSuccessfully"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await CloseCreateSurveySessionModalAsync();
             }
             else
             {
-                await UiMessageService.Error(L["SurveyCollections:FailedToCreateSurveySession"]);
+                await UiMessageService.Error(L["SurveyCollections:FailedToCreateSurveySession"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 throw new Exception(L["SurveyCollections:FailedToCreateSurveySession"]);
             }
         }
@@ -235,7 +242,8 @@ public partial class SurveyCollections
             surveyResult.Rating = rating;
         }
         else
-            await UiMessageService.Error(L["SurveyCollections:FailedToSetRatingForCriteria"]);
+            await UiMessageService.Error(L["SurveyCollections:FailedToSetRatingForCriteria"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
     }
 
     protected virtual string GetUploadedFileName()

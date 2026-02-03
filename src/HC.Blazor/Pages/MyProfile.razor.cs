@@ -28,6 +28,7 @@ using System.IO;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.Http.Client;
 
+
 namespace HC.Blazor.Pages;
 
 public partial class MyProfile
@@ -325,7 +326,8 @@ public partial class MyProfile
         {
             if (!ValidateCreateUserSignature())
             {
-                await UiMessageService.Warn(L[CreateSignatureValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[CreateSignatureValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -397,7 +399,8 @@ public partial class MyProfile
         {
             if (!ValidateEditUserSignature())
             {
-                await UiMessageService.Warn(L[EditSignatureValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[EditSignatureValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -445,7 +448,8 @@ public partial class MyProfile
 
     protected virtual async Task DeleteUserSignatureAsync(UserSignatureWithNavigationPropertiesDto input)
     {
-        if (await UiMessageService.Confirm(L["DeleteConfirmationMessage"].Value))
+        if (await UiMessageService.Confirm(L["DeleteConfirmationMessage"].Value,
+        options: new Action<UiMessageOptions>(options => options.ConfirmButtonText = L["Confirm"])))
         {
             try
             {
@@ -576,7 +580,8 @@ public partial class MyProfile
             await UserDepartmentsAppService.UpdateAsync(EditingUserDepartmentId, EditingUserDepartment);
             await LoadUserDepartmentsAsync();
             await EditUserDepartmentModal.Hide();
-            await Message.Success(L["SuccessfullySaved"]);
+            await Message.Success(L["SuccessfullySaved"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         catch (Exception ex)
         {

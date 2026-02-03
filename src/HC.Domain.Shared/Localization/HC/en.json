@@ -964,6 +964,12 @@
     "SelectDepartmentToViewDetails": "Select a department to view details",
     "MyTasks": "My Tasks",
     "NoDocumentsAvailable": "No documents available",
-    "TaskDetail": "Task Detail"
+    "TaskDetail": "Task Detail",
+    "DocumentIdIsRequired": "Document ID is required",
+    "AtLeastOneRecipientIsRequired": "At least one recipient is required",
+    "AtLeastOneDepartmentIsRequired": "At least one department is required",
+    "DocumentSentSuccessfully": "Document sent successfully",
+    "FailedToSendDocument": "Failed to send document",
+    "Ok": "Ok"
   }
 }

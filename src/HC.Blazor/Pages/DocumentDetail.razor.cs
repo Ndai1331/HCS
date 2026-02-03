@@ -23,8 +23,9 @@ using Volo.Abp.Application.Dtos;
 using Blazorise.PdfViewer;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using System.Text.Json;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
+
 
 public partial class DocumentDetail : HCComponentBase
 {
@@ -594,7 +595,8 @@ public partial class DocumentDetail : HCComponentBase
                 IsPdfFile = false;
                 PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";;
             }
-            await UiMessageService.Success(L["FileUploadedSuccessfully"]);
+            await UiMessageService.Success(L["FileUploadedSuccessfully"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
 
         }
         catch (Exception ex)
@@ -622,7 +624,8 @@ public partial class DocumentDetail : HCComponentBase
             {
                 if (!ValidateEditDocument())
                 {
-                    await UiMessageService.Warn(L[EditDocumentValidationErrorKey ?? "ValidationError"]);
+                    await UiMessageService.Warn(L[EditDocumentValidationErrorKey ?? "ValidationError"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                     await InvokeAsync(StateHasChanged);
                     return;
                 }
@@ -631,7 +634,8 @@ public partial class DocumentDetail : HCComponentBase
             {
                 if (!ValidateCreateDocument())
                 {
-                    await UiMessageService.Warn(L[CreateDocumentValidationErrorKey ?? "ValidationError"]);
+                    await UiMessageService.Warn(L[CreateDocumentValidationErrorKey ?? "ValidationError"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                     await InvokeAsync(StateHasChanged);
                     return;
                 }
@@ -639,14 +643,16 @@ public partial class DocumentDetail : HCComponentBase
             else
             {
                 // Should not happen, but handle gracefully
-                await UiMessageService.Warn(L["PleaseFillRequiredFields"]);
+                await UiMessageService.Warn(L["PleaseFillRequiredFields"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
             // Validate required file is uploaded for create mode
             if (DocumentId == Guid.Empty && string.IsNullOrEmpty(UploadedFilePath))
             {
-                await UiMessageService.Warn(L["PleaseUploadFileFirst"]);
+                await UiMessageService.Warn(L["PleaseUploadFileFirst"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -679,12 +685,14 @@ public partial class DocumentDetail : HCComponentBase
                 return;
             }
 
-            await UiMessageService.Success(L["SuccessfullySaved"]);
+            await UiMessageService.Success(L["SuccessfullySaved"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             NavigationManager.NavigateTo($"/document-detail/{savedDocument.Id}");
         }
         catch (Exception ex)
         {
-            await HandleErrorAsync(ex);
+            await UiMessageService.Error(ex.Message,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
         finally
         {
@@ -826,7 +834,8 @@ public partial class DocumentDetail : HCComponentBase
     {
         try
         {
-            if (!await UiMessageService.Confirm(L["DeleteConfirmationMessage"]))
+            if (!await UiMessageService.Confirm(L["DeleteConfirmationMessage"],
+            options: new Action<UiMessageOptions>(options => options.ConfirmButtonText = L["Confirm"])))
             {
                 return;
             }
@@ -852,7 +861,8 @@ public partial class DocumentDetail : HCComponentBase
             
             await LoadPdfUrlAsync();
 
-            await UiMessageService.Success(L["SuccessfullyDeleted"]);
+            await UiMessageService.Success(L["SuccessfullyDeleted"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
@@ -873,17 +883,20 @@ public partial class DocumentDetail : HCComponentBase
             
             if (CurrentDocument == null)
             {
-                await UiMessageService.Warn(L["NoDataAvailable"]);
+                await UiMessageService.Warn(L["NoDataAvailable"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
-            if (!await UiMessageService.Confirm(L["DeleteConfirmationMessage"]))
+            if (!await UiMessageService.Confirm(L["DeleteConfirmationMessage"],
+            options: new Action<UiMessageOptions>(options => options.ConfirmButtonText = L["Confirm"])))
             {
                 return;
             }
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await DocumentsAppService.DeleteAsync(CurrentDocument.Document.Id);
-            await UiMessageService.Success(L["SuccessfullyDeleted"]);
+            await UiMessageService.Success(L["SuccessfullyDeleted"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             NavigationManager.NavigateTo("/manage-documents");
         }
         catch (Exception ex)

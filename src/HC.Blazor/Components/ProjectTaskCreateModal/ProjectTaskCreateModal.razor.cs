@@ -15,7 +15,7 @@ using HC.ProjectTaskDocuments;
 using System.Threading;
 using System.IO;
 using HC.DocumentFiles;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Components.ProjectTaskCreateModal;
 
 public partial class ProjectTaskCreateModal
@@ -309,7 +309,8 @@ public partial class ProjectTaskCreateModal
         {
             if (CreateWizardProjectTaskId != Guid.Empty)
             {
-                if (!await UiMessageService.Confirm(L["CreateWizard:CancelAndDeleteTask"].Value))
+                if (!await UiMessageService.Confirm(L["CreateWizard:CancelAndDeleteTask"].Value,
+                options: new Action<UiMessageOptions>(options => options.ConfirmButtonText = L["Confirm"])))
                 {
                     return;
                 }
@@ -340,7 +341,8 @@ public partial class ProjectTaskCreateModal
 
             if (!ValidateCreateGeneralInformation())
             {
-                await UiMessageService.Warn(L[CreateGeneralValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[CreateGeneralValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -468,7 +470,8 @@ public partial class ProjectTaskCreateModal
 
             if (CreateAssignmentsList.Count < 1)
             {
-                await UiMessageService.Error(L["CreateWizard:AtLeastOneAssigneeRequired"]);
+                await UiMessageService.Error(L["CreateWizard:AtLeastOneAssigneeRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 SelectedCreateTab = "assignments";
                 return;
             }
@@ -564,7 +567,8 @@ public partial class ProjectTaskCreateModal
             var userId = CreateAssignmentsUsersToAdd.FirstOrDefault()?.Id ?? Guid.Empty;
             if (userId == Guid.Empty)
             {
-                await UiMessageService.Error(L["CreateWizard:AssigneeRequired"]);
+                await UiMessageService.Error(L["CreateWizard:AssigneeRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 

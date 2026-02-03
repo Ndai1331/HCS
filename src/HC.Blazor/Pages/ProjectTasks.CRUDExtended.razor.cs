@@ -8,7 +8,7 @@ using HC.ProjectTaskDocuments;
 using HC.ProjectTasks;
 using HC.Shared;
 using Microsoft.Extensions.Logging;
-
+using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
 
 public partial class ProjectTasks
@@ -177,7 +177,8 @@ public partial class ProjectTasks
 
             if (!ValidateCreateGeneralInformation())
             {
-                await UiMessageService.Warn(L[CreateGeneralValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[CreateGeneralValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -305,7 +306,8 @@ public partial class ProjectTasks
 
             if (CreateAssignmentsList.Count < 1)
             {
-                await UiMessageService.Error(L["CreateWizard:AtLeastOneAssigneeRequired"]);
+                await UiMessageService.Error(L["CreateWizard:AtLeastOneAssigneeRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 SelectedCreateTab = "assignments";
                 return;
             }
@@ -436,14 +438,16 @@ public partial class ProjectTasks
         {
             if (!IsCreateWizardGeneralSaved)
             {
-                await UiMessageService.Error(L["CreateWizard:SaveGeneralFirst"]);
+                await UiMessageService.Error(L["CreateWizard:SaveGeneralFirst"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
             var userId = CreateAssignmentsUsersToAdd.FirstOrDefault()?.Id ?? Guid.Empty;
             if (userId == Guid.Empty)
             {
-                await UiMessageService.Error(L["CreateWizard:AssigneeRequired"]);
+                await UiMessageService.Error(L["CreateWizard:AssigneeRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -479,7 +483,8 @@ public partial class ProjectTasks
             var userId = EditAssignmentsUsersToAdd.FirstOrDefault()?.Id ?? Guid.Empty;
             if (userId == Guid.Empty)
             {
-                await UiMessageService.Error(L["CreateWizard:AssigneeRequired"]);
+                await UiMessageService.Error(L["CreateWizard:AssigneeRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -863,7 +868,8 @@ public partial class ProjectTasks
 
             if (!ValidateEditGeneralInformation())
             {
-                await UiMessageService.Warn(L[EditGeneralValidationErrorKey ?? "ValidationError"]);
+                await UiMessageService.Warn(L[EditGeneralValidationErrorKey ?? "ValidationError"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
             }
