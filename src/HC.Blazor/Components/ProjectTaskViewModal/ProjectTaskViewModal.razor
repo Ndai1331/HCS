@@ -1,0 +1,228 @@
+@using HC.ProjectTasks
+@using HC.Localization
+@using HC.Shared
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.Components.Web
+@using Blazorise
+@using Blazorise.Components
+@using Blazorise.DataGrid
+@using Volo.Abp.BlazoriseUI
+@using Volo.Abp.BlazoriseUI.Components
+@using HC.Permissions
+@using Volo.Abp.AspNetCore.Components.Web
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Volo.Abp.AspNetCore.Components
+@using Microsoft.AspNetCore.Components
+@using HC.ProjectTaskAssignments
+@using HC.ProjectTaskDocuments
+@using HC.DocumentFiles
+@using HC.Blazor.Shared
+@inherits HCComponentBase
+@inject IProjectTaskAssignmentsAppService ProjectTaskAssignmentsAppService
+@inject IProjectTaskDocumentsAppService ProjectTaskDocumentsAppService
+@inject IDocumentFilesAppService DocumentFilesAppService
+@inject IUiMessageService UiMessageService
+
+<Modal @ref="TaskDetailModal">
+    <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
+        <ModalHeader>
+            <ModalTitle>@L["TaskDetail"]</ModalTitle>
+            <CloseButton Clicked="CloseModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @if (Task != null)
+            {
+                <Tabs SelectedTab="@SelectedTab" SelectedTabChanged="OnSelectedTabChanged">
+                    <Items>
+                        <Tab Name="general">
+                            <Icon Name="IconName.Info" Class="me-1" />
+                            @L["Tab:GeneralInformation"]
+                        </Tab>
+                        <Tab Name="assignments">
+                            <Icon Name="IconName.Users" Class="me-1" />
+                            @L["Tab:Assignments"]
+                        </Tab>
+                        <Tab Name="documents">
+                            <Icon Name="IconName.File" Class="me-1" />
+                            @L["Tab:Documents"]
+                        </Tab>
+                    </Items>
+                    <Content>
+                        @* General Tab *@
+                        <TabPanel Name="general">
+                            <Row class="g-3">
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <div>
+                                        <label class="form-label fw-bold">@L["Project"]</label>
+                                        <div>
+                                            <i class="bi bi-building text-primary"></i> @(Task.Project?.Name ?? "-")
+                                        </div>
+                                    </div>
+                                </Column>
+                                
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <div>
+                                        <label class="form-label fw-bold">@L["Title"]</label>
+                                        <div>
+                                            <i class="bi bi-card-text text-brand"></i> @(Task.ProjectTask.Title ?? "-")
+                                        </div>
+                                        <div>
+                                            <i class="bi bi-code-square text-success"></i> #@(Task.ProjectTask.Code ?? "-")
+                                        </div>
+                                    </div>
+                                </Column>
+
+                                <Column ColumnSize="ColumnSize.Is12">
+                                    <label class="form-label fw-bold">@L["Description"]</label>
+                                    <div>@(Task.ProjectTask.Description ?? "-")</div>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <label class="form-label fw-bold">@L["StartDate"]</label>
+                                    <div>
+                                        <i class="bi bi-calendar text-success"></i> @(Task.ProjectTask.StartDate.ToString("dd/MM/yyyy HH:mm"))
+                                    </div>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <label class="form-label fw-bold">@L["DueDate"]</label>
+                                    <div>
+                                        <i class="bi bi-calendar-check text-brand me-1"></i>@(Task.ProjectTask.DueDate.ToString("dd/MM/yyyy HH:mm"))
+                                    </div>
+                                </Column>
+
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <label class="form-label fw-bold">@L["Status"]</label>
+                                    <div>
+                                        <Badge Color="@GetStatusBadgeColor(Task.ProjectTask.Status ?? "")">
+                                            @L[$"Enum:ProjectTaskStatus.{Task.ProjectTask.Status ?? ""}"]
+                                        </Badge>
+                                    </div>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is6">
+                                    <label class="form-label fw-bold">@L["Priority"]</label>
+                                    <div>
+                                        <Badge Color="@GetPriorityBadgeColor(Task.ProjectTask.Priority ?? "")">
+                                            @L[$"Enum:ProjectTaskPriority.{Task.ProjectTask.Priority ?? ""}"]
+                                        </Badge>
+                                    </div>
+                                </Column>
+                            </Row>
+                            <div class="mt-3">
+                                <label class="form-label fw-bold">@L["ProgressPercent"]</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress" style="flex: 1; height: 8px;">
+                                        <div class="progress-bar" 
+                                             style="width: @(Task.ProjectTask.ProgressPercent)%"
+                                             role="progressbar">
+                                        </div>
+                                    </div>
+                                    <span>@(Task.ProjectTask.ProgressPercent)%</span>
+                                </div>
+                            </div>
+                           
+                        </TabPanel>
+
+                        @* Assignments Tab *@
+                        <TabPanel Name="assignments">
+                            @if (!SelectedTaskAssignments.Any())
+                            {
+                                <div class="text-center text-muted py-4">
+                                    @L["NoAssignments"]
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>@L["Members"]</th>
+                                                <th>@L["MemberRole"]</th>
+                                                <th>@L["AssignedAt"]</th>
+                                                <th>@L["Note"]</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var assignment in SelectedTaskAssignments)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                                                                 style="width: 32px; height: 32px;">
+                                                                <span class="fs-6">@GetUserInitial(assignment.User)</span>
+                                                            </div>
+                                                            <span>@GetUserDisplayName(assignment.User)</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info">
+                                                            @L[$"Enum:ProjectTaskAssignmentRole.{assignment.ProjectTaskAssignment.AssignmentRole}"]
+                                                        </span>
+                                                    </td>
+                                                    <td>@assignment.ProjectTaskAssignment.AssignedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                                    <td>@(assignment.ProjectTaskAssignment.Note ?? "-")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </TabPanel>
+
+                        @* Documents Tab *@
+                        <TabPanel Name="documents">
+                            @if (!SelectedTaskDocuments.Any())
+                            {
+                                <div class="text-center text-muted py-4">
+                                    @L["NoDocumentsAvailable"]
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>@L["Title"]</th>
+                                                <th>@L["Purpose"]</th>
+                                                <th>@L["Actions"]</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var doc in SelectedTaskDocuments)
+                                            {
+                                                <tr>
+                                                    <td>@doc.Document?.Title</td>
+                                                    <td>
+                                                        <span class="badge bg-secondary">
+                                                            @L[$"Enum:ProjectTaskDocumentPurpose.{doc.ProjectTaskDocument.DocumentPurpose}"]
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        @if (doc.Document != null && DocumentHasPdfFile(doc.Document.Id))
+                                                        {
+                                                            <Button Color="Color.Info" Size="Size.Small" 
+                                                                    Clicked="@(() => OpenPdfViewerModalForDocumentAsync(doc))">
+                                                                <Icon Name="IconName.Eye" />
+                                                            </Button>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </TabPanel>
+                    </Content>
+                </Tabs>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseModalAsync">
+                @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>

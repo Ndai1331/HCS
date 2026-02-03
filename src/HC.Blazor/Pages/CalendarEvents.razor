@@ -24,7 +24,12 @@
 @using Volo.Abp.AspNetCore.Components.Web
 @using Volo.Abp.AspNetCore.Components
 @using Microsoft.AspNetCore.Components
+@using HC.ProjectTasks
 @using Volo.Abp.Http.Client
+@using HC.ProjectTaskAssignments
+@using HC.ProjectTaskDocuments
+@using HC.ProjectMembers
+@using HC.Blazor.Components.ProjectTaskViewModal
 @inherits HCComponentBase
 @inject ICalendarEventsAppService CalendarEventsAppService
 @inject IUiMessageService UiMessageService
@@ -33,6 +38,11 @@
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
 @inject NavigationManager NavigationManager
 @inject IProjectsAppService ProjectsAppService
+@inject IProjectMembersAppService ProjectMembersAppService
+@inject IProjectTaskAssignmentsAppService ProjectTaskAssignmentsAppService
+@inject IProjectTasksAppService ProjectTasksAppService
+@inject IProjectTaskDocumentsAppService ProjectTaskDocumentsAppService
+
 @* ************************* PAGE HEADER ************************* *@
 <PageHeader Title="@L["CalendarEvents"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar" @key="IsListView">
 </PageHeader>
@@ -217,14 +227,6 @@
                                          OnValueChanged="@(() => OnFilterRelatedIdChangedAsync())"
                                          Cache="__MemoryCache"
                                          Multiselect="false" />
-                            </div>                     
-                        }
-                        else
-                        {
-                            <div class="hc-select2-full">
-                                <Select TValue="string?" SelectedValue="@Filter.RelatedId" SelectedValueChanged="@(() => OnFilterRelatedIdChangedAsync())">
-                                    <SelectItem></SelectItem>
-                                </Select>
                             </div>                     
                         }
                     </Field>
@@ -480,10 +482,10 @@
 {
 <Card>
     <CardBody>
-     <Scheduler TItem="Appointment" 
+     <Scheduler TItem="Appointment"
                    Date="@SelectedSchedulerDate"
-                   DateChanged="@(async (DateOnly value) => { 
-                        SelectedSchedulerDate = value; 
+                   DateChanged="@(async (DateOnly value) => {
+                        SelectedSchedulerDate = value;
                         RebuildToolbar();
                         await GetCalendarEventsAsync();
                      })"
@@ -492,6 +494,7 @@
                    ShowToolbar="false"
                    Localizers="@SchedulerLocalizers"
                    EditItemClicked="@(async (SchedulerItemClickedEventArgs<Appointment> args) => await OnSchedulerItemClicked(args))"
+                   DayClicked="@(async (DateTime clickedDate) => await OnSchedulerDayClicked(clickedDate))"
                    IdField="Id"
                    StartField="Start"
                    EndField="End"
@@ -507,19 +510,6 @@
             </SchedulerViews>
         </Scheduler> 
 
-@* 
-
-        <Scheduler TItem="Appointment" 
-            @bind-Date="@selectedDate"
-           Data="@Appointments"
-           @bind-SelectedView="@selectedView"
-           Localizers="@SchedulerLocalizers"
-           SlotSelectionMode="SchedulerSlotSelectionMode.Mouse">
-    <SchedulerToolbar />
-    <SchedulerViews>
-        <SchedulerMonthView StartTime="@startTime" EndTime="@endTime" WorkDayStart="@workDayStart" WorkDayEnd="@workDayEnd" />
-    </SchedulerViews>
-</Scheduler>  *@
     </CardBody>
 </Card>
 }
@@ -1196,6 +1186,502 @@
     </ModalContent>
 </Modal>
 
+<!-- Day Events Modal with 3 Tabs (Events, Projects, Tasks) -->
+<Modal @ref="DayEventsModal" Closing="@(async (args) => await CloseDayEventsModalAsync())">
+    <ModalContent>
+        <ModalHeader>
+            <ModalTitle>@SelectedDayDate.ToString("dd/MM/yyyy") - @L["CalendarEvents"]</ModalTitle>
+            <CloseButton Clicked="CloseDayEventsModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            <Tabs SelectedTab="@SelectedDayTab" TabPosition="TabPosition.Top" Clicked="@OnSelectedDayTabChanged">
+                <Items>
+                    <Tab Name="events">
+                        <TabHeader>@L["Events"] (@SelectedDayEvents.Count(e => e.RelatedType == RelatedType.NONE.ToString() || !Enum.TryParse<RelatedType>(e.RelatedType, out var rt) || rt == RelatedType.NONE))</TabHeader>
+                    </Tab>
+                    <Tab Name="projects">
+                        <TabHeader>@L["Projects"] (@SelectedDayProjectEvents.Count)</TabHeader>
+                    </Tab>
+                    <Tab Name="tasks">
+                        <TabHeader>@L["Tasks"] (@SelectedDayTaskEvents.Count)</TabHeader>
+                    </Tab>
+                </Items>
+                <Content>
+                    <!-- Events Tab -->
+                    <TabPanel Name="events">
+                        @if (SelectedDayEvents.Where(e => e.RelatedType == RelatedType.NONE.ToString() || !Enum.TryParse<RelatedType>(e.RelatedType, out var rt) || rt == RelatedType.NONE).Any())
+                        {
+                            <div style="max-height: 400px; overflow-y: auto;">
+                                @foreach (var evt in SelectedDayEvents.Where(e => e.RelatedType == RelatedType.NONE.ToString() || !Enum.TryParse<RelatedType>(e.RelatedType, out var rt) || rt == RelatedType.NONE))
+                                {
+                                    <Card Class="mb-3" style="cursor: pointer;" @onclick="@(() => NavigateToRelatedEntity(evt))">
+                                        <CardHeader>
+                                            <Heading Size="HeadingSize.Is6">@GetEventCardTitle(evt)</Heading>
+                                        </CardHeader>
+                                        <CardBody>
+                                            @if (!string.IsNullOrWhiteSpace(evt.Description))
+                                            {
+                                                <Text>@evt.Description</Text>
+                                            }
+                                            else
+                                            {
+                                                <Text>@L["NoDescription"]</Text>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(evt.Location))
+                                            {
+                                                <div class="mt-2">
+                                                    <Icon Name="IconName.MapMarker" Class="me-1"></Icon>
+                                                    <Text>@evt.Location</Text>
+                                                </div>
+                                            }
+                                            <div class="mt-2">
+                                                <Icon Name="IconName.Clock" Class="me-1"></Icon>
+                                                <Text>@evt.StartTime.ToString("HH:mm") - @evt.EndTime.ToString("HH:mm")</Text>
+                                            </div>
+                                        </CardBody>
+                                    </Card>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                <Column>
+                                    <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["NoEventsFound"]</Heading>
+                                </Column>
+                            </Row>
+                        }
+                    </TabPanel>
+
+                    <!-- Projects Tab -->
+                    <TabPanel Name="projects">
+                        @if (SelectedDayProjectEvents.Any())
+                        {
+                            <div style="max-height: 400px; overflow-y: auto;">
+                                @foreach (var evt in SelectedDayProjectEvents)
+                                {
+                                    <Card Class="mb-3" style="cursor: pointer;" @onclick="@(() => NavigateToRelatedEntity(evt))">
+                                        <CardHeader>
+                                            <Heading Size="HeadingSize.Is6">@GetEventCardTitle(evt)</Heading>
+                                        </CardHeader>
+                                        <CardBody>
+                                            @if (!string.IsNullOrWhiteSpace(evt.Description))
+                                            {
+                                                <Text>@evt.Description</Text>
+                                            }
+                                            else
+                                            {
+                                                <Text>@L["NoDescription"]</Text>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(evt.Location))
+                                            {
+                                                <div class="mt-2">
+                                                    <Icon Name="IconName.MapMarker" Class="me-1"></Icon>
+                                                    <Text>@evt.Location</Text>
+                                                </div>
+                                            }
+                                            <div class="mt-2">
+                                                <Icon Name="IconName.Clock" Class="me-1"></Icon>
+                                                <Text>@evt.StartTime.ToString("HH:mm") - @evt.EndTime.ToString("HH:mm")</Text>
+                                            </div>
+                                        </CardBody>
+                                    </Card>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                <Column>
+                                    <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["NoProjectsFound"]</Heading>
+                                </Column>
+                            </Row>
+                        }
+                    </TabPanel>
+
+                    <!-- Tasks Tab -->
+                    <TabPanel Name="tasks">
+                        @if (SelectedDayTaskEvents.Any())
+                        {
+                            <div style="max-height: 400px; overflow-y: auto;">
+                                @foreach (var evt in SelectedDayTaskEvents)
+                                {
+                                    <Card Class="mb-3" style="cursor: pointer;" @onclick="@(() => NavigateToRelatedEntity(evt))">
+                                        <CardHeader>
+                                            <Heading Size="HeadingSize.Is6">@GetEventCardTitle(evt)</Heading>
+                                        </CardHeader>
+                                        <CardBody>
+                                            @if (!string.IsNullOrWhiteSpace(evt.Description))
+                                            {
+                                                <Text>@evt.Description</Text>
+                                            }
+                                            else
+                                            {
+                                                <Text>@L["NoDescription"]</Text>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(evt.Location))
+                                            {
+                                                <div class="mt-2">
+                                                    <Icon Name="IconName.MapMarker" Class="me-1"></Icon>
+                                                    <Text>@evt.Location</Text>
+                                                </div>
+                                            }
+                                            <div class="mt-2">
+                                                <Icon Name="IconName.Clock" Class="me-1"></Icon>
+                                                <Text>@evt.StartTime.ToString("HH:mm") - @evt.EndTime.ToString("HH:mm")</Text>
+                                            </div>
+                                        </CardBody>
+                                    </Card>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                <Column>
+                                    <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["NoTasksFound"]</Heading>
+                                </Column>
+                            </Row>
+                        }
+                    </TabPanel>
+                </Content>
+            </Tabs>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseDayEventsModalAsync">
+                @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+<!-- Event View Modal (Read-only) -->
+<Modal @ref="EventViewModal" Closed="OnEventViewModalClosed">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>@L["ViewDetails"] - @ViewingCalendarEvent?.Title</ModalTitle>
+            <CloseButton Clicked="@(async () => await EventViewModal.Hide())" />
+        </ModalHeader>
+        <ModalBody>
+            @if (ViewingCalendarEvent != null)
+            {
+                <Tabs SelectedTab="event-view-tab" Clicked="@OnSelectedDayTabChanged">
+                    <Items>
+                        <Tab Name="general">
+                            <Icon Name="IconName.Info" Class="me-1" />
+                            @L["Tab:GeneralInformation"]
+                        </Tab>
+                        <Tab Name="participants">
+                            <Icon Name="IconName.Users" Class="me-1" />
+                            @L["Tab:Participants"] (@ViewingEventParticipants.Count)
+                        </Tab>
+                    </Items>
+                    <Content>
+                        <TabPanel Name="general">
+                            <Row>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Title"]</FieldLabel>
+                                        <Text>@ViewingCalendarEvent.Title</Text>
+                                    </Field>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["EventType"]</FieldLabel>
+                                        @if (Enum.TryParse<EventType>(ViewingCalendarEvent.EventType, out var eventType))
+                                        {
+                                            <Text>@L[$"Enum:EventType.{eventType}"]</Text>
+                                        }
+                                    </Field>
+                                </Column>
+                            </Row>
+                            <Row>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["StartTime"]</FieldLabel>
+                                        <Text>@ViewingCalendarEvent.StartTime.ToString("dd/MM/yyyy HH:mm")</Text>
+                                    </Field>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["EndTime"]</FieldLabel>
+                                        <Text>@ViewingCalendarEvent.EndTime.ToString("dd/MM/yyyy HH:mm")</Text>
+                                    </Field>
+                                </Column>
+                            </Row>
+                            @if (!string.IsNullOrWhiteSpace(ViewingCalendarEvent.Description))
+                            {
+                                <Row>
+                                    <Column ColumnSize="ColumnSize.Is12">
+                                        <Field>
+                                            <FieldLabel>@L["Description"]</FieldLabel>
+                                            <Text>@ViewingCalendarEvent.Description</Text>
+                                        </Field>
+                                    </Column>
+                                </Row>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(ViewingCalendarEvent.Location))
+                            {
+                                <Row>
+                                    <Column ColumnSize="ColumnSize.Is12">
+                                        <Field>
+                                            <FieldLabel>@L["Location"]</FieldLabel>
+                                            <Text>@ViewingCalendarEvent.Location</Text>
+                                        </Field>
+                                    </Column>
+                                </Row>
+                            }
+                            <Row>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Visibility"]</FieldLabel>
+                                        @if (Enum.TryParse<EventVisibility>(ViewingCalendarEvent.Visibility, out var visibility))
+                                        {
+                                            <Text>@L[$"Enum:EventVisibility.{visibility}"]</Text>
+                                        }
+                                    </Field>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["AllDay"]</FieldLabel>
+                                        <Text>@(ViewingCalendarEvent.AllDay ? L["Yes"] : L["No"])</Text>
+                                    </Field>
+                                </Column>
+                            </Row>
+                        </TabPanel>
+                        <TabPanel Name="participants">
+                            @if (ViewingEventParticipants.Any())
+                            {
+                                <DataGrid TItem="CalendarEventParticipantWithNavigationPropertiesDto"
+                                          Data="ViewingEventParticipants"
+                                          Responsive="true"
+                                          ShowPager="false">
+                                    <DataGridColumns>
+                                        <DataGridColumn TItem="CalendarEventParticipantWithNavigationPropertiesDto" Field="IdentityUser.UserName" Caption="@L["UserName"]" />
+                                        <DataGridColumn TItem="CalendarEventParticipantWithNavigationPropertiesDto" Field="CalendarEventParticipant.ResponseStatus" Caption="@L["ResponseStatus"]">
+                                            <DisplayTemplate>
+                                                @if (Enum.TryParse<ParticipantResponse>(context.CalendarEventParticipant.ResponseStatus, ignoreCase: true, out var status))
+                                                {
+                                                    @L[$"Enum:ParticipantResponse.{status}"]
+                                                }
+                                                else
+                                                {
+                                                    @context.CalendarEventParticipant.ResponseStatus
+                                                }
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
+                                        <DataGridColumn TItem="CalendarEventParticipantWithNavigationPropertiesDto" Field="CalendarEventParticipant.Notified" Caption="@L["Notified"]">
+                                            <DisplayTemplate>
+                                                @if (context.CalendarEventParticipant.Notified)
+                                                {
+                                                    <Icon Name="IconName.Check" Color="Color.Success" />
+                                                }
+                                                else
+                                                {
+                                                    <Icon Name="IconName.Times" Color="Color.Danger" />
+                                                }
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
+                                    </DataGridColumns>
+                                </DataGrid>
+                            }
+                            else
+                            {
+                                <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                    <Column>
+                                        <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["CreateWizard:NoParticipants"]</Heading>
+                                    </Column>
+                                </Row>
+                            }
+                        </TabPanel>
+                    </Content>
+                </Tabs>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@(async () => await EventViewModal.Hide())">
+                @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+<!-- Project Detail Modal -->
+<Modal @ref="ProjectDetailModal" Closed="OnProjectDetailModalClosed">
+    <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
+        <ModalHeader>
+            <ModalTitle>@L["Details"] - @ViewingProject?.Name</ModalTitle>
+            <CloseButton Clicked="@(async () => await ProjectDetailModal.Hide())" />
+        </ModalHeader>
+        <ModalBody Style="max-height: 70vh; overflow-y: auto;">
+            @if (ViewingProject != null)
+            {
+                <Tabs SelectedTab="@SelectedProjectDetailTab" SelectedTabChanged="OnSelectedProjectDetailTabChanged">
+                    <Items>
+                        <Tab Name="general">
+                            <Icon Name="IconName.Info" Class="me-1" />
+                            @L["Tab:GeneralInformation"]
+                        </Tab>
+                        <Tab Name="members">
+                            <Icon Name="IconName.Users" Class="me-1" />
+                            @L["Members"] (@ProjectMembersList.Count)
+                        </Tab>
+                        <Tab Name="tasks">
+                            <Icon Name="IconName.List" Class="me-1" />
+                            @L["Tasks"] (@ProjectTasksList.Count)
+                        </Tab>
+                    </Items>
+                    <Content>
+                        <TabPanel Name="general">
+                            <Row>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Code"]</FieldLabel>
+                                        <Text>@ViewingProject.Code</Text>
+                                    </Field>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Name"]</FieldLabel>
+                                        <Text>@ViewingProject.Name</Text>
+                                    </Field>
+                                </Column>
+                            </Row>
+                            @if (!string.IsNullOrWhiteSpace(ViewingProject.Description))
+                            {
+                                <Row>
+                                    <Column ColumnSize="ColumnSize.Is12">
+                                        <Field>
+                                            <FieldLabel>@L["Description"]</FieldLabel>
+                                            <Text>@ViewingProject.Description</Text>
+                                        </Field>
+                                    </Column>
+                                </Row>
+                            }
+                            <Row>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["StartDate"]</FieldLabel>
+                                        <Text>@(ViewingProject.StartDate.ToString("dd/MM/yyyy HH:mm") ?? "-")</Text>
+                                    </Field>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["EndDate"]</FieldLabel>
+                                        <Text>@(ViewingProject.EndDate.ToString("dd/MM/yyyy HH:mm") ?? "-")</Text>
+                                    </Field>
+                                </Column>
+                            </Row>
+                            <Row>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Status"]</FieldLabel>
+                                        <Text> @L[$"Enum:ProjectStatus.{ViewingProject.Status}"]</Text>
+                                    </Field>
+                                </Column>
+                            </Row>
+                        </TabPanel>
+                        <TabPanel Name="members">
+                            @if (ProjectMembersList.Any())
+                            {
+                                <DataGrid TItem="ProjectMemberWithNavigationPropertiesDto"
+                                          Data="ProjectMembersList"
+                                          Responsive="true"
+                                          ShowPager="false">
+                                    <DataGridColumns>
+                                        <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="User.UserName" Caption="@L["UserName"]" />
+                                        <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="User.Email" Caption="@L["Email"]" />
+                                        <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.MemberRole" Caption="@L["Role"]">
+                                            <DisplayTemplate>
+                                                @L[$"Enum:ProjectMemberRole.{context.ProjectMember.MemberRole}"]
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
+                                    </DataGridColumns>
+                                </DataGrid>
+                            }
+                            else
+                            {
+                                <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                    <Column>
+                                        <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["NoMembersFound"]</Heading>
+                                    </Column>
+                                </Row>
+                            }
+                        </TabPanel>
+                        <TabPanel Name="tasks">
+                            @if (ProjectTasksList.Any())
+                            {
+                                <DataGrid TItem="ProjectTaskWithNavigationPropertiesDto"
+                                          Data="ProjectTasksList"
+                                          Responsive="true"
+                                          ShowPager="false">
+                                    <DataGridColumns>
+                                        <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Code" Caption="@L["Code"]" />
+                                        <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Title" Caption="@L["Title"]" />
+                                        <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Status" Caption="@L["Status"]">
+                                            <DisplayTemplate>
+                                                @L[$"Enum:ProjectTaskStatus.{context.ProjectTask.Status}"]
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
+                                        <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Priority" Caption="@L["Priority"]">
+                                            <DisplayTemplate>
+                                                @L[$"Enum:ProjectTaskPriority.{context.ProjectTask.Priority}"]
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
+                                        <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.DueDate" Caption="@L["DueDate"]">
+                                            <DisplayTemplate>
+                                                @(context.ProjectTask.DueDate.ToString("dd/MM/yyyy") ?? "-")
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
+                                    </DataGridColumns>
+                                </DataGrid>
+                            }
+                            else
+                            {
+                                <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                    <Column>
+                                        <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["NoTasksFound"]</Heading>
+                                    </Column>
+                                </Row>
+                            }
+                        </TabPanel>
+                    </Content>
+                </Tabs>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Primary" Clicked="@( () =>  NavigationManager.NavigateTo($"/project-detail/{ViewingProject?.Id}"))">
+                <Icon Name="IconName.Globe" Class="me-1" /> @L["ViewDetail"]
+            </Button>
+            <Button Color="Color.Secondary" Clicked="@(async () => await ProjectDetailModal.Hide())">
+                @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+<!-- Task Detail Modal -->
+<ProjectTaskViewModal @ref="TaskDetailModal" OnViewPdfDocument="OpenPdfViewerModalForDocumentAsync" />
+
+<!-- PDF Viewer Modal -->
+<Modal @ref="PdfViewerModal" Class="pdf-viewer-modal" Size="ModalSize.ExtraLarge" Centered="true" Closed="OnPdfViewerModalClosed">
+    <ModalContent>
+        <ModalHeader>
+            <ModalTitle>@L["DocumentPreview"]</ModalTitle>
+            <CloseButton Clicked="@(async () => await PdfViewerModal.Hide())" />
+        </ModalHeader>
+        <ModalBody Class="pdf-viewer-modal-body">
+            @if (IsPdfFile && !string.IsNullOrEmpty(PdfFileUrl))
+            {
+                <PdfViewerContainer Height="Height.Rem(35)">
+                    <PdfViewerToolbar />
+                    <PdfViewer Source="@PdfFileUrl" />
+                </PdfViewerContainer>
+            }
+        </ModalBody>
+    </ModalContent>
+</Modal>
+
 
 @code {
     private DateOnly selectedDate = DateOnly.FromDateTime( DateTime.Today );
@@ -1212,9 +1698,10 @@
         public Appointment()
         {
         }
-        public Appointment(string id, string title, string description, DateTime start, DateTime end, bool allDay = false )
+        public Appointment(string id, Guid calendarEventId, string title, string description, DateTime start, DateTime end, bool allDay = false )
         {
             Id = id;
+            CalendarEventId = calendarEventId;
             Title = title;
             Description = description;
             Start = start;
@@ -1223,6 +1710,7 @@
         }
 
         public string Id { get; set; }
+        public Guid CalendarEventId { get; set; }
 
         public string Title { get; set; }
 
@@ -1244,7 +1732,11 @@
             requestId, newAppointments?.Count ?? 0, Appointments.Count);
         
         Appointments.Clear();
-        
+        if (newAppointments == null || !newAppointments.Any())
+        {
+            Logger.LogWarning("UpdateTestAppointments - No appointments to update");
+            return;
+        }
         foreach (var appointment in newAppointments)
         {
             // Calculate number of days from original dates before any modification
@@ -1272,6 +1764,7 @@
             
             var newAppt = new Appointment(
                 appointment.Id,
+                appointment.CalendarEventId,
                 appointment.Title,
                 appointment.Description, 
                 appointment.Start, 

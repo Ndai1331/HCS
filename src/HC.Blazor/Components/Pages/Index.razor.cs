@@ -23,6 +23,9 @@ using Volo.Abp.AspNetCore.Components.Messages;
 using Volo.Abp.Application.Dtos;
 using HC.Shared;
 using HC.Blazor.Shared;
+using Microsoft.AspNetCore.SignalR;
+using HC.Blazor.Hubs;
+using Volo.Abp.ObjectMapping;
 
 namespace HC.Blazor.Components.Pages;
 
@@ -43,6 +46,7 @@ public partial class Index
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
     [Inject] private IBlockUiService BlockUiService { get; set; } = default!;
     [Inject] private IMemoryCache __MemoryCache { get; set; } = default!;
+    [Inject] private IHubContext<NotificationHub> HubContext { get; set; } = null!;
 
     // Active Projects data
     private List<ProjectWithNavigationPropertiesDto> ActiveProjectsList { get; set; } = new();
@@ -81,12 +85,15 @@ public partial class Index
     private string? DocumentPdfFileUrl { get; set; }
     private bool IsDocumentPdfFile { get; set; }
 
+    // Notification Detail Modal
+    private Modal NotificationDetailModal { get; set; } = new();
+    private NotificationReceiverWithNavigationPropertiesDto? SelectedNotification { get; set; }
+
     // Task detail modal
-    private Modal TaskDetailModal { get; set; } = default!;
-    private ProjectTaskWithNavigationPropertiesDto? SelectedTask { get; set; }
-    private IReadOnlyList<ProjectTaskAssignmentWithNavigationPropertiesDto> SelectedTaskAssignments { get; set; } = new List<ProjectTaskAssignmentWithNavigationPropertiesDto>();
-    private IReadOnlyList<ProjectTaskDocumentWithNavigationPropertiesDto> SelectedTaskDocuments { get; set; } = new List<ProjectTaskDocumentWithNavigationPropertiesDto>();
-    private string SelectedTab { get; set; } = "general";
+    private ProjectTaskViewModal.ProjectTaskViewModal  TaskDetailModal { get; set; } = default!;
+
+    // Create task modal
+    private ProjectTaskCreateModal.ProjectTaskCreateModal CreateTaskModal { get; set; } = default!;
 
     // PDF viewer for task documents
     private string? PdfFileUrl { get; set; }
@@ -363,31 +370,8 @@ public partial class Index
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            SelectedTask = await ProjectTasksAppService.GetWithNavigationPropertiesAsync(task.ProjectTask.Id);
-            SelectedTab = "general";
-
-            // Load assignments
-            var assignmentsResult = await ProjectTaskAssignmentsAppService.GetListAsync(new GetProjectTaskAssignmentsInput
-            {
-                ProjectTaskId = SelectedTask.ProjectTask.Id,
-                MaxResultCount = 100,
-                SkipCount = 0
-            });
-            SelectedTaskAssignments = assignmentsResult.Items;
-
-            // Load documents
-            var documentsResult = await ProjectTaskDocumentsAppService.GetListAsync(new GetProjectTaskDocumentsInput
-            {
-                ProjectTaskId = SelectedTask.ProjectTask.Id,
-                MaxResultCount = 100,
-                SkipCount = 0
-            });
-            SelectedTaskDocuments = documentsResult.Items;
-
-            // Cache PDF info for documents
-            await CacheDocumentPdfInfoAsync(SelectedTaskDocuments);
-            await TaskDetailModal.Show();
-
+            var fullTask = await ProjectTasksAppService.GetWithNavigationPropertiesAsync(task.ProjectTask.Id);
+            await TaskDetailModal.ShowAsync(fullTask);
         }
         catch (Exception ex)
         {
@@ -397,104 +381,6 @@ public partial class Index
         {
             await BlockUiService.UnBlock();
         }
-    }
-
-    private async Task CloseTaskDetailModalAsync()
-    {
-        if (TaskDetailModal != null)
-        {
-            await TaskDetailModal.Hide();
-        }
-        SelectedTask = null;
-        SelectedTaskAssignments = new List<ProjectTaskAssignmentWithNavigationPropertiesDto>();
-        SelectedTaskDocuments = new List<ProjectTaskDocumentWithNavigationPropertiesDto>();
-    }
-
-    private void OnSelectedTabChanged(string name)
-    {
-        SelectedTab = name;
-    }
-
-    private string GetUserDisplayName(Volo.Abp.Identity.IdentityUserDto user)
-    {
-        var fullName = $"{user.Name} {user.Surname}".Trim();
-        if (!string.IsNullOrWhiteSpace(fullName))
-        {
-            return fullName;
-        }
-
-        return user.UserName ?? string.Empty;
-    }
-
-    private string GetUserInitial(Volo.Abp.Identity.IdentityUserDto user)
-    {
-        var name = (user.Name ?? string.Empty).Trim();
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            return name.Substring(0, 1).ToUpperInvariant();
-        }
-
-        var userName = (user.UserName ?? string.Empty).Trim();
-        if (!string.IsNullOrWhiteSpace(userName))
-        {
-            return userName.Substring(0, 1).ToUpperInvariant();
-        }
-
-        return "?";
-    }
-
-    // PDF viewer methods
-    private async Task CacheDocumentPdfInfoAsync(IEnumerable<ProjectTaskDocumentWithNavigationPropertiesDto> documents)
-    {
-        foreach (var doc in documents)
-        {
-            if (doc.Document != null && !DocumentHasPdfCache.ContainsKey(doc.Document.Id))
-            {
-                var hasPdf = await CheckIfDocumentHasPdfFileAsync(doc.Document.Id);
-                DocumentHasPdfCache[doc.Document.Id] = hasPdf;
-            }
-        }
-    }
-
-    private async Task<bool> CheckIfDocumentHasPdfFileAsync(Guid documentId)
-    {
-        try
-        {
-            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-            {
-                DocumentId = documentId,
-                MaxResultCount = 1,
-                SkipCount = 0
-            });
-
-            if (!documentFilesResult.Items.Any())
-            {
-                return false;
-            }
-
-            var documentFile = documentFilesResult.Items.First();
-            return IsPdfFileExtension(documentFile.DocumentFile.Name) && !string.IsNullOrEmpty(documentFile.DocumentFile.Path);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private bool IsPdfFileExtension(string fileName)
-    {
-        if (string.IsNullOrWhiteSpace(fileName))
-        {
-            return false;
-        }
-
-        var extension = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
-        return extension == ".pdf";
-    }
-
-    private bool DocumentHasPdfFile(Guid documentId)
-    {
-        return DocumentHasPdfCache.TryGetValue(documentId, out var hasPdf) && hasPdf;
     }
 
     private async Task OpenPdfViewerModalForDocumentAsync(ProjectTaskDocumentWithNavigationPropertiesDto projectTaskDocument)
@@ -847,9 +733,9 @@ public partial class Index
             var documentFile = documentFilesResult.Items.First();
             string path = documentFile.DocumentFile?.Path ?? string.Empty;
 
-            if (!IsPdfFileExtension(documentFile.DocumentFile?.Name ?? string.Empty) 
+            if (!HC.Blazor.Shared.FileHelper.IsPdfFileExtension(documentFile.DocumentFile?.Name ?? string.Empty) 
             || string.IsNullOrEmpty(path)
-            || !IsPdfFileExtension(path))
+            || !HC.Blazor.Shared.FileHelper.IsPdfFileExtension(path))
             {
                 await UiMessageService.Warn(L["NoPdfAvailable"], 
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
@@ -882,6 +768,32 @@ public partial class Index
         IsDocumentPdfFile = false;
     }
 
+    // -------------------------------
+    // Create Task Modal Methods
+    // -------------------------------
+
+    private async Task OpenCreateTaskModalAsync()
+    {
+        try
+        {
+            if (CreateTaskModal != null)
+            {
+                await CreateTaskModal.OpenCreateProjectTaskModalAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task OnTaskCreatedAsync()
+    {
+        // Reload tasks data when a new task is created
+        await LoadMyTasksAsync();
+        await LoadTasksStatisticsAsync();
+    }
+
     private async Task<bool> CheckIfDocumentHasPdfAsync(Guid documentId)
     {
         try
@@ -899,11 +811,88 @@ public partial class Index
             }
 
             var documentFile = documentFilesResult.Items.First();
-            return IsPdfFileExtension(documentFile.DocumentFile.Name) && !string.IsNullOrEmpty(documentFile.DocumentFile.Path);
+            return HC.Blazor.Shared.FileHelper.IsPdfFileExtension(documentFile.DocumentFile.Name) && !string.IsNullOrEmpty(documentFile.DocumentFile.Path);
         }
         catch
         {
             return false;
         }
+    }
+
+    // -------------------------------
+    // Notification Detail Modal Methods
+    // -------------------------------
+
+    private async Task ViewNotificationDetailAsync(NotificationReceiverWithNavigationPropertiesDto notification)
+    {
+        try
+        {
+            SelectedNotification = notification;
+            // Mark as read if not already read
+            if (!notification.NotificationReceiver.IsRead)
+            {
+                notification.NotificationReceiver.IsRead = true;
+                await MarkNotificationAsReadAsync(notification);
+            }
+            
+            if (NotificationDetailModal != null)
+            {
+                await NotificationDetailModal.Show();
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task MarkNotificationAsReadAsync(NotificationReceiverWithNavigationPropertiesDto item)
+    {
+        try
+        {
+            var updateDto = ObjectMapper.Map<NotificationReceiverDto, NotificationReceiverUpdateDto>(item.NotificationReceiver);
+            updateDto.IsRead = true;
+            updateDto.ReadAt = DateTime.UtcNow;
+            await NotificationReceiversAppService.UpdateAsync(item.NotificationReceiver.Id, updateDto);
+            
+            // Reload notifications to update UI
+            // await LoadRecentNotificationsAsync();
+            
+            // Send SignalR message to refresh unread count only on success
+            if (CurrentUser.Id.HasValue)
+            {
+                await HubContext.Clients.User(CurrentUser.Id.Value.ToString())
+                    .SendAsync("UnreadCountChanged");
+            }
+        }
+        catch
+        {
+            await HandleErrorAsync(new Exception("Failed to mark notification as read"));
+        }
+    }
+
+    private async Task CloseNotificationDetailModalAsync()
+    {
+        if (NotificationDetailModal != null)
+        {
+            await NotificationDetailModal.Hide();
+        }
+        SelectedNotification = null;
+    }
+
+    private string GetRelatedUrl(NotificationDto notification)
+    {
+        if (string.IsNullOrEmpty(notification.RelatedId) || string.IsNullOrEmpty(notification.RelatedType))
+            return "#";
+
+        var url = notification.RelatedType.ToUpper() switch
+        {
+            "TASK" => $"/project-task-detail/{notification.RelatedId}",
+            "PROJECT" => $"/project-detail/{notification.RelatedId}",
+            "DOCUMENT" => $"/document-detail/{notification.RelatedId}",
+            "CALENDAR_EVENT" => $"/calendar-event-detail/{notification.RelatedId}",
+            _ => "#"
+        };
+        return url ?? "#";
     }
 }

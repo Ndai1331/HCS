@@ -16,6 +16,8 @@ using HC.CalendarEvents;
 using HC.CalendarEventParticipants;
 using HC.ProjectTasks;
 using HC.Projects;
+using HC.ProjectMembers;
+using HC.ProjectTaskAssignments;
 using HC.Permissions;
 using HC.Shared;
 using Volo.Abp.Identity;
@@ -34,7 +36,6 @@ namespace HC.Blazor.Pages;
 
 public partial class CalendarEvents : HCComponentBase
 {
-    [Inject] private IProjectTasksAppService ProjectTasksAppService { get; set; } = default!;
     [Inject] private ICalendarEventParticipantsAppService CalendarEventParticipantsAppService { get; set; } = default!;
     [Inject] private IMemoryCache __MemoryCache { get; set; } = default!;
     [Inject] private ILogger<CalendarEvents> Logger { get; set; } = default!;
@@ -458,7 +459,6 @@ public partial class CalendarEvents : HCComponentBase
 
             if (isMonthView)
             {
-                // For Month view, split multi-day events into single-day appointments
                 var firstDayOfMonth = new DateOnly(SelectedSchedulerDate.Year, SelectedSchedulerDate.Month, 1);
                 var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
                 
@@ -476,7 +476,6 @@ public partial class CalendarEvents : HCComponentBase
                     Logger.LogInformation("UpdateTestAppointmentsFromCalendarEvents - Processing event - Id: {Id}, Title: {Title}, StartDate: {StartDate}, EndDate: {EndDate}, FirstDayOfMonth: {FirstDay}, LastDayOfMonth: {LastDay}",
                         evt.Id, evt.Title, startDate, endDate, firstDayDateTime, lastDayDateTime);
 
-                    // Only process events that overlap with the current month
                     if (endDate < firstDayDateTime || startDate > lastDayDateTime)
                     {
                         Logger.LogWarning("UpdateTestAppointmentsFromCalendarEvents - Event skipped (outside month range) - Id: {Id}, Title: {Title}, StartDate: {StartDate}, EndDate: {EndDate}, Condition: endDate < firstDay ({EndBeforeFirst}) OR startDate > lastDay ({StartAfterLast})",
@@ -484,7 +483,6 @@ public partial class CalendarEvents : HCComponentBase
                         continue;
                     }
 
-                    // Clamp start and end dates to the month range
                     var eventStartDate = startDate < firstDayOfMonth.ToDateTime(TimeOnly.MinValue) 
                         ? firstDayOfMonth.ToDateTime(TimeOnly.MinValue) 
                         : startDate;
@@ -492,20 +490,14 @@ public partial class CalendarEvents : HCComponentBase
                         ? lastDayOfMonth.ToDateTime(TimeOnly.MaxValue) 
                         : endDate;
 
-                    // Calculate number of days for multi-day events using original dates
                     var numberOfDays = (endDate - startDate).Days + 1;
                     
-                    // Use original start and end times from event
                     var appointmentStart = evt.StartTime;
                     var appointmentEnd = evt.EndTime;
                     
-                    // For AllDay events, set to full day range but keep original end date
-                    // This preserves the date range for calculating numOfDays correctly
                     if (evt.AllDay)
                     {
                         appointmentStart = eventStartDate.Date;
-                        // Keep the original end date to preserve date range information
-                        // Set time to end of day for the actual end date
                         appointmentEnd = new DateTime(endDate.Year, endDate.Month, endDate.Day, 23, 0, 0);
                     }
 
@@ -513,6 +505,7 @@ public partial class CalendarEvents : HCComponentBase
                     var appointment = new Appointment
                     {
                         Id = evt.Id.ToString(),
+                        CalendarEventId = evt.Id,
                         Title = evt.Title ?? string.Empty,
                         Description = evt.Description ?? string.Empty,
                         Start = appointmentStart,
@@ -584,8 +577,6 @@ public partial class CalendarEvents : HCComponentBase
         {
             return string.Empty;
         }
-
-        // Both TASK and PROJECT now store Code in RelatedId
         return calendarEvent.RelatedId;
     }
 
@@ -1050,22 +1041,22 @@ public partial class CalendarEvents : HCComponentBase
         SelectedEditProjectTask = new List<ProjectTaskSelectItem>();
         if (!string.IsNullOrWhiteSpace(calendarEvent.RelatedId))
         {
-            if (EditingCalendarEventRelatedType == RelatedType.PROJECT)
+            Guid relatedId = Guid.Empty;
+            relatedId = Guid.TryParse(calendarEvent.RelatedId, out  relatedId) ? relatedId : Guid.Empty;
+            if (EditingCalendarEventRelatedType == RelatedType.PROJECT && relatedId != Guid.Empty)
             {
-                await GetProjectCollectionLookupAsync();
-                var project = ProjectsCollection.FirstOrDefault(p => p.Id == calendarEvent.RelatedId);
+                var project = await ProjectsAppService.GetAsync(relatedId);
                 if (project != null)
                 {
-                    SelectedEditProject = new List<ProjectSelectItem> { project };
+                    SelectedEditProject = new List<ProjectSelectItem> { new ProjectSelectItem { Id = project.Code, DisplayName = $"{project.Code} - {project.Name}" } };
                 }
             }
-            else if (EditingCalendarEventRelatedType == RelatedType.TASK)
+            else if (EditingCalendarEventRelatedType == RelatedType.TASK && relatedId != Guid.Empty)
             {
-                await GetProjectTaskCollectionLookupAsync();
-                var task = ProjectTasksCollection.FirstOrDefault(t => t.Id == calendarEvent.RelatedId);
+                var task = await ProjectTasksAppService.GetAsync(relatedId);
                 if (task != null)
                 {
-                    SelectedEditProjectTask = new List<ProjectTaskSelectItem> { task };
+                    SelectedEditProjectTask = new List<ProjectTaskSelectItem> { new ProjectTaskSelectItem { Id = task.Code, DisplayName = $"{task.Code} - {task.Title}" } };
                 }
             }
         }
@@ -1626,38 +1617,25 @@ public partial class CalendarEvents : HCComponentBase
     {
         try
         {
-            
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             Logger.LogInformation("OnSchedulerItemClicked - Start - Item Id: {Id}", args.Item.Id);
-            var calendarEvent = CalendarEventList.FirstOrDefault(e => e.Id == Guid.Parse(args.Item.Id));
+            var calendarEvent = CalendarEventList.FirstOrDefault(e => e.Id == args.Item.CalendarEventId);
             if (calendarEvent == null)
             {
-                calendarEvent = await CalendarEventsAppService.GetAsync(Guid.Parse(args.Item.Id));
+                calendarEvent = await CalendarEventsAppService.GetAsync(args.Item.CalendarEventId);
             }
             
-            if (Enum.TryParse<RelatedType>(calendarEvent.RelatedType, out var relatedType))
-            {
-                if (relatedType == RelatedType.PROJECT && !string.IsNullOrWhiteSpace(calendarEvent.RelatedId))
-                {
-                    if (Guid.TryParse(calendarEvent.RelatedId, out var projectId))
-                    {
-                        NavigationManager.NavigateTo($"/project-detail/{projectId}");
-                        return;
-                    }
-                }
-                else if (relatedType == RelatedType.TASK)
-                {
-                    return;
-                }
-            }
+            // Navigate to related entity or open detail modal based on RelatedType
+            await NavigateToRelatedEntity(calendarEvent);
             
-            await OpenEditCalendarEventModalAsync(calendarEvent);
-            
+            await BlockUiService.UnBlock();
             RebuildToolbar();
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+            await BlockUiService.UnBlock();
         }
     }
 }

@@ -51,11 +51,62 @@
     
     <AbpScripts BundleName="@BlazorLeptonXThemeBundles.Scripts.Global" />
     <style>
+        /* Base default - Small screens (under 1366px) */
         #lpx-wrapper.full .lpx-content{
-            max-width: 1248px !important;
+            max-width: 100% !important;
+            padding: 0 16px;
         }
         .full .lpx-topbar-container .lpx-topbar .lpx-breadcrumb-wrapper {
-            max-width: 1248px !important;
+            max-width: 100% !important;
+            padding: 0 16px;
+        }
+
+        /* Laptop 14-15 inch (1366px - 1600px) */
+        @@media (min-width: 1366px) {
+            #lpx-wrapper.full .lpx-content{
+                max-width: 1280px !important;
+                padding: 0 24px;
+            }
+            .full .lpx-topbar-container .lpx-topbar .lpx-breadcrumb-wrapper {
+                max-width: 1280px !important;
+                padding: 0 24px;
+            }
+        }
+
+        /* Laptop 16 inch, Monitor 19-22 inch (1601px - 1920px) */
+        @@media (min-width: 1601px) {
+            #lpx-wrapper.full .lpx-content{
+                max-width: 1500px !important;
+                padding: 0 32px;
+            }
+            .full .lpx-topbar-container .lpx-topbar .lpx-breadcrumb-wrapper {
+                max-width: 1500px !important;
+                padding: 0 32px;
+            }
+        }
+
+        /* Monitor 24-27 inch (1921px - 2560px) */
+        @@media (min-width: 1921px) {
+            #lpx-wrapper.full .lpx-content{
+                max-width: 1800px !important;
+                padding: 0 40px;
+            }
+            .full .lpx-topbar-container .lpx-topbar .lpx-breadcrumb-wrapper {
+                max-width: 1800px !important;
+                padding: 0 40px;
+            }
+        }
+
+        /* Monitor 29-34 inch ultrawide (2561px+) */
+        @@media (min-width: 2561px) {
+            #lpx-wrapper.full .lpx-content{
+                max-width: 2200px !important;
+                padding: 0 48px;
+            }
+            .full .lpx-topbar-container .lpx-topbar .lpx-breadcrumb-wrapper {
+                max-width: 2200px !important;
+                padding: 0 48px;
+            }
         }
     </style>
     <script src="_framework/blazor.web.js"></script>

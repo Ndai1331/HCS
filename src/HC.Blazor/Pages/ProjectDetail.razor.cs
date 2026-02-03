@@ -654,7 +654,7 @@ public partial class ProjectDetail : HCComponentBase
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
 
             // Navigate to the created project detail
-            NavigationManager.NavigateTo($"/project-detail/{createdProject.Id}");
+            NavigationManager.NavigateTo($"/project-detail/{createdProject.Id}", true);
         }
         catch (Exception ex)
         {
