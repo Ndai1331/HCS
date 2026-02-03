@@ -8,6 +8,7 @@ using HC.ProjectTaskDocuments;
 using HC.ProjectTasks;
 using HC.Shared;
 using Microsoft.Extensions.Logging;
+using Volo.Abp;
 using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
 
@@ -779,6 +780,8 @@ public partial class ProjectTasks
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            
             await ProjectTasksAppService.DeleteAsync(input.ProjectTask.Id);
             
             // Remove from AllKanbanItems
@@ -797,10 +800,23 @@ public partial class ProjectTasks
             
             UpdateDisplayedKanbanItems();
             await GetProjectTasksAsync();
+            
+            await BlockUiService.UnBlock();
+            
+            // Show success message
+            await UiMessageService.Success(L["SuccessfullyDeleted"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+            
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {
+            await BlockUiService.UnBlock();
+            
+            // Show error message
+            await UiMessageService.Error(L["DeleteFailed"] + ": " + ex.Message,
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                
             await HandleErrorAsync(ex);
         }
     }

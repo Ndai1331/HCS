@@ -79,6 +79,14 @@ public abstract class ProjectTasksAppServiceBase : HCAppService
     [Authorize(HCPermissions.ProjectTasks.Delete)]
     public virtual async Task DeleteAsync(Guid id)
     {
+        var projectTask = await _projectTaskRepository.GetAsync(id);
+        
+        // Check if current user is the creator or admin
+        if (!CurrentUser.Id.Equals(projectTask.CreatorId) && !CurrentUser.IsAdminRole())
+        {
+            throw new UserFriendlyException(L["OnlyTaskCreatorCanDelete"]);
+        }
+        
         await _projectTaskRepository.DeleteAsync(id);
     }
 

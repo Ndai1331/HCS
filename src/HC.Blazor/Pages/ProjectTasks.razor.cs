@@ -26,7 +26,9 @@ using Volo.Abp.Identity;
 using HC.DocumentFiles;
 using Volo.Abp.BlobStoring;
 using Microsoft.Extensions.Logging;
-using Volo.Abp.AspNetCore.Components.Messages;  
+using Volo.Abp.AspNetCore.Components.Messages;
+using Volo.Abp.Users;
+using HC.Chat.Helpers;  
 
 namespace HC.Blazor.Pages;
 
@@ -36,7 +38,6 @@ public partial class ProjectTasks
     [Inject] private IProjectTaskDocumentsAppService ProjectTaskDocumentsAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
-    [Inject] private ILogger<ProjectTasks> Logger { get; set; } = default!;
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
     // Kanban UI
@@ -240,6 +241,13 @@ public partial class ProjectTasks
             await SetPermissionsAsync();
             await SetToolbarItemsAsync();
             await GetProjectCollectionLookupAsync();
+            
+            // Show filters by default in Kanban view
+            if (IsKanbanView)
+            {
+                ShowAdvancedFilters = true;
+            }
+            
             await RefreshKanbanAsync();
             await InvokeAsync(StateHasChanged);
         }
@@ -283,6 +291,8 @@ public partial class ProjectTasks
 
         if (IsKanbanView)
         {
+            // Auto-show filters in Kanban view
+            ShowAdvancedFilters = true;
             await RefreshKanbanAsync();
         }
         else
@@ -379,6 +389,13 @@ public partial class ProjectTasks
         };
     }
 
+    // Check if current user can delete the task (creator or admin)
+    protected bool CanDeleteTask(ProjectTaskDto task)
+    {
+        return CurrentUser.Id != null && 
+               (CurrentUser.Id.Equals(task.CreatorId) || CurrentUser.IsAdminRole());
+    }
+
     protected string GetPriorityText(ProjectTaskPriority priority)
     {
         return L[$"Enum:ProjectTaskPriority.{priority}"];
@@ -434,6 +451,13 @@ public partial class ProjectTasks
             // Store old status to update counts
             var oldStatus = item.Status;
             
+            // Auto-set ProgressPercent to 100 when task is moved to Done
+            var progressPercent = item.ProjectTask.ProgressPercent;
+            if (newStatus == ProjectTaskStatus.DONE)
+            {
+                progressPercent = 100;
+            }
+            
             var input = new ProjectTaskUpdateDto
             {
                 ParentTaskId = item.ProjectTask.ParentTaskId,
@@ -444,7 +468,7 @@ public partial class ProjectTasks
                 DueDate = item.ProjectTask.DueDate,
                 Priority = item.ProjectTask.Priority,
                 Status = newStatus.ToString(),
-                ProgressPercent = item.ProjectTask.ProgressPercent,
+                ProgressPercent = progressPercent,
                 ProjectId = item.ProjectTask.ProjectId,
                 ConcurrencyStamp = item.ProjectTask.ConcurrencyStamp
             };
@@ -453,14 +477,18 @@ public partial class ProjectTasks
 
             // Update local state after the server call succeeds.
             item.ProjectTask.Status = input.Status;
+            item.ProjectTask.ProgressPercent = input.ProgressPercent;
             item.Status = newStatus;
+            item.ProgressPercent = input.ProgressPercent;
             
-            // Update AllKanbanItems to reflect the status change
+            // Update AllKanbanItems to reflect the status and progress change
             var allItem = AllKanbanItems.FirstOrDefault(x => x.Id == item.Id);
             if (allItem != null)
             {
                 allItem.Status = newStatus;
                 allItem.ProjectTask.Status = input.Status;
+                allItem.ProjectTask.ProgressPercent = input.ProgressPercent;
+                allItem.ProgressPercent = input.ProgressPercent;
             }
             
             // Update total counts for old and new status by querying API

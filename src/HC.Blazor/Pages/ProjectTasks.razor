@@ -408,9 +408,12 @@
                                                     @* <DropdownItem Clicked="@EventCallback.Factory.Create(this, async () => await OpenEditProjectTaskModalAsync(context.ProjectTaskWithNavigationProperties))">
                                                         @L["Edit"]
                                                     </DropdownItem> *@
-                                                    <DropdownItem Clicked="@EventCallback.Factory.Create(this, async () => await DeleteProjectTaskAsync(context.ProjectTaskWithNavigationProperties))">
-                                                        @L["Delete"]
-                                                    </DropdownItem>
+                                                    @if (CanDeleteTask(context.ProjectTask))
+                                                    {
+                                                        <DropdownItem Clicked="@EventCallback.Factory.Create(this, async () => await DeleteProjectTaskAsync(context.ProjectTaskWithNavigationProperties))">
+                                                            @L["Delete"]
+                                                        </DropdownItem>
+                                                    }
                                                 </DropdownMenu>
                                             </Dropdown>
                                         </div>
@@ -760,7 +763,8 @@ else
             <DataGridColumn
                 TItem="ProjectTaskWithNavigationPropertiesDto"
                 Field="ProjectTask.ParentTaskId"
-                Caption="@L["Project"]">
+                Caption="@L["Project"]"
+                Width="200px">
                     <DisplayTemplate>   
                         @if (context != null && context.ProjectTask != null && context.Project != null
                         && !string.IsNullOrWhiteSpace(context.Project.Name))
@@ -863,7 +867,7 @@ else
                                     <Icon Name="IconName.Edit" />
                                 </Button>
                             }
-                            @if (CanDeleteProjectTask)
+                            @if (CanDeleteTask(context.ProjectTask))
                             {
                                 <Button Outline Color="Color.Danger" 
                                 Size="Size.Small" 
