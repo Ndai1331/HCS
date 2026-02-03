@@ -1016,6 +1016,8 @@
     "ViewDocumentDetail": "Xem chi tiết văn bản",
     "Recipients" : "Người nhận",
     "SelectDepartmentToViewDetails": "Chọn phòng ban để xem chi tiết",
-    "MyTasks": "Công việc của tôi"
+    "MyTasks": "Công việc của tôi",
+    "NoDocumentsAvailable": "Không có văn bản nào",
+    "TaskDetail": "Chi tiết công việc"
   }
 }

@@ -16,6 +16,7 @@ using HC.DocumentFiles;
 using Humanizer;
 using Volo.Abp.BlobStoring;
 using Blazorise;
+using Volo.Abp.AspNetCore.Components.BlockUi;
 
 namespace HC.Blazor.Components.Pages;
 
@@ -34,6 +35,7 @@ public partial class Index
     [Inject] private IDocumentAssignmentsAppService DocumentAssignmentsAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
+    [Inject] private IBlockUiService BlockUiService { get; set; } = default!;
 
     // Active Projects data
     private List<ProjectWithNavigationPropertiesDto> ActiveProjectsList { get; set; } = new();
@@ -57,7 +59,7 @@ public partial class Index
     private List<ProjectTaskWithNavigationPropertiesDto> MyTasksList { get; set; } = new();
 
     // Task detail modal
-    private Modal? TaskDetailModal { get; set; }
+    private Modal TaskDetailModal { get; set; } = default!;
     private ProjectTaskWithNavigationPropertiesDto? SelectedTask { get; set; }
     private IReadOnlyList<ProjectTaskAssignmentWithNavigationPropertiesDto> SelectedTaskAssignments { get; set; } = new List<ProjectTaskAssignmentWithNavigationPropertiesDto>();
     private IReadOnlyList<ProjectTaskDocumentWithNavigationPropertiesDto> SelectedTaskDocuments { get; set; } = new List<ProjectTaskDocumentWithNavigationPropertiesDto>();
@@ -66,7 +68,7 @@ public partial class Index
     // PDF viewer for task documents
     private string? PdfFileUrl { get; set; }
     private bool IsPdfFile { get; set; }
-    private Modal? PdfViewerModal { get; set; }
+    private Modal PdfViewerModal { get; set; } = default!;
     private Dictionary<Guid, bool> DocumentHasPdfCache { get; set; } = new();
 
     private bool IsLoading { get; set; } = true;
@@ -337,6 +339,7 @@ public partial class Index
     {
         try
         {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             SelectedTask = await ProjectTasksAppService.GetWithNavigationPropertiesAsync(task.ProjectTask.Id);
             SelectedTab = "general";
 
@@ -344,7 +347,7 @@ public partial class Index
             var assignmentsResult = await ProjectTaskAssignmentsAppService.GetListAsync(new GetProjectTaskAssignmentsInput
             {
                 ProjectTaskId = SelectedTask.ProjectTask.Id,
-                MaxResultCount = 1000,
+                MaxResultCount = 100,
                 SkipCount = 0
             });
             SelectedTaskAssignments = assignmentsResult.Items;
@@ -353,22 +356,23 @@ public partial class Index
             var documentsResult = await ProjectTaskDocumentsAppService.GetListAsync(new GetProjectTaskDocumentsInput
             {
                 ProjectTaskId = SelectedTask.ProjectTask.Id,
-                MaxResultCount = 1000,
+                MaxResultCount = 100,
                 SkipCount = 0
             });
             SelectedTaskDocuments = documentsResult.Items;
 
             // Cache PDF info for documents
             await CacheDocumentPdfInfoAsync(SelectedTaskDocuments);
+            await TaskDetailModal.Show();
 
-            if (TaskDetailModal != null)
-            {
-                await TaskDetailModal.Show();
-            }
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 

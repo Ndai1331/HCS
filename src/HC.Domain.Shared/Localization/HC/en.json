@@ -962,6 +962,8 @@
     "ViewDocumentDetail": "View Document Detail",
     "Recipients" : "Recipients",
     "SelectDepartmentToViewDetails": "Select a department to view details",
-    "MyTasks": "My Tasks"
+    "MyTasks": "My Tasks",
+    "NoDocumentsAvailable": "No documents available",
+    "TaskDetail": "Task Detail"
   }
 }
