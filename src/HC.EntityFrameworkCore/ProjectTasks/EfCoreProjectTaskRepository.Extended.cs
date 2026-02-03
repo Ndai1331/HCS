@@ -8,12 +8,15 @@ using Microsoft.EntityFrameworkCore;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using HC.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace HC.ProjectTasks;
 
 public class EfCoreProjectTaskRepository : EfCoreProjectTaskRepositoryBase, IProjectTaskRepository
 {
-    public EfCoreProjectTaskRepository(IDbContextProvider<HCDbContext> dbContextProvider) : base(dbContextProvider)
+    private readonly ILogger<EfCoreProjectTaskRepositoryBase> _logger;
+    public EfCoreProjectTaskRepository(IDbContextProvider<HCDbContext> dbContextProvider, ILogger<EfCoreProjectTaskRepositoryBase> logger) : base(dbContextProvider, logger)
     {
+        _logger = logger;
     }
 }

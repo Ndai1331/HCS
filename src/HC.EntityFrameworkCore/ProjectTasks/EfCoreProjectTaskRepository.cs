@@ -10,13 +10,16 @@ using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using HC.EntityFrameworkCore;
 using HC.ProjectTaskAssignments;
+using Microsoft.Extensions.Logging;
 
 namespace HC.ProjectTasks;
 
 public abstract class EfCoreProjectTaskRepositoryBase : EfCoreRepository<HCDbContext, ProjectTask, Guid>
 {
-    public EfCoreProjectTaskRepositoryBase(IDbContextProvider<HCDbContext> dbContextProvider) : base(dbContextProvider)
+    private readonly ILogger<EfCoreProjectTaskRepositoryBase> _logger;
+    public EfCoreProjectTaskRepositoryBase(IDbContextProvider<HCDbContext> dbContextProvider, ILogger<EfCoreProjectTaskRepositoryBase> logger) : base(dbContextProvider)
     {
+        _logger = logger;
     }
 
     public virtual async Task DeleteAllAsync(string? filterText = null, string? parentTaskId = null, string? code = null, string? title = null, string? description = null, DateTime? startDateMin = null, DateTime? startDateMax = null, DateTime? dueDateMin = null, DateTime? dueDateMax = null, string? priority = null, string? status = null, int? progressPercentMin = null, int? progressPercentMax = null, Guid? projectId = null, CancellationToken cancellationToken = default)
@@ -126,7 +129,8 @@ public abstract class EfCoreProjectTaskRepositoryBase : EfCoreRepository<HCDbCon
     {
         var dbContext = await GetDbContextAsync();
         var projectTasks = (await GetDbSetAsync()).AsNoTracking();
-
+_logger.LogInformation("filterText: " + filterText);
+_logger.LogInformation("filterStatus: " + status);
         projectTasks = projectTasks
             .WhereIf(!string.IsNullOrWhiteSpace(filterText),
                 pt => pt.Code!.Contains(filterText!)

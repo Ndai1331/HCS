@@ -241,13 +241,6 @@ public partial class ProjectTasks
             await SetPermissionsAsync();
             await SetToolbarItemsAsync();
             await GetProjectCollectionLookupAsync();
-            
-            // Show filters by default in Kanban view
-            if (IsKanbanView)
-            {
-                ShowAdvancedFilters = true;
-            }
-            
             await RefreshKanbanAsync();
             await InvokeAsync(StateHasChanged);
         }
@@ -291,8 +284,6 @@ public partial class ProjectTasks
 
         if (IsKanbanView)
         {
-            // Auto-show filters in Kanban view
-            ShowAdvancedFilters = true;
             await RefreshKanbanAsync();
         }
         else
@@ -491,56 +482,28 @@ public partial class ProjectTasks
                 allItem.ProgressPercent = input.ProgressPercent;
             }
             
-            // Update total counts for old and new status by querying API
+            // Update total counts locally instead of querying API
             if (oldStatus != newStatus)
             {
-                // Query total count for old status
-                var oldStatusInput = new GetProjectTasksInput
+                // Decrease count for old status
+                if (KanbanTotalCounts.ContainsKey(oldStatus))
                 {
-                    FilterText = Filter.FilterText,
-                    ParentTaskId = Filter.ParentTaskId,
-                    Code = Filter.Code,
-                    Title = Filter.Title,
-                    Description = Filter.Description,
-                    StartDateMin = Filter.StartDateMin,
-                    StartDateMax = Filter.StartDateMax,
-                    DueDateMin = Filter.DueDateMin,
-                    DueDateMax = Filter.DueDateMax,
-                    Priority = Filter.Priority,
-                    Status = oldStatus.ToString(),
-                    ProgressPercentMin = Filter.ProgressPercentMin,
-                    ProgressPercentMax = Filter.ProgressPercentMax,
-                    ProjectId = Filter.ProjectId,
-                    SkipCount = 0,
-                    MaxResultCount = 1,
-                    Sorting = string.Empty
-                };
-                var oldStatusResult = await ProjectTasksAppService.GetListAsync(oldStatusInput);
-                KanbanTotalCounts[oldStatus] = (int)oldStatusResult.TotalCount;
+                    KanbanTotalCounts[oldStatus] = Math.Max(0, KanbanTotalCounts[oldStatus] - 1);
+                }
+                if (KanbanLoadedCounts.ContainsKey(oldStatus))
+                {
+                    KanbanLoadedCounts[oldStatus] = Math.Max(0, KanbanLoadedCounts[oldStatus] - 1);
+                }
                 
-                // Query total count for new status
-                var newStatusInput = new GetProjectTasksInput
+                // Increase count for new status
+                if (KanbanTotalCounts.ContainsKey(newStatus))
                 {
-                    FilterText = Filter.FilterText,
-                    ParentTaskId = Filter.ParentTaskId,
-                    Code = Filter.Code,
-                    Title = Filter.Title,
-                    Description = Filter.Description,
-                    StartDateMin = Filter.StartDateMin,
-                    StartDateMax = Filter.StartDateMax,
-                    DueDateMin = Filter.DueDateMin,
-                    DueDateMax = Filter.DueDateMax,
-                    Priority = Filter.Priority,
-                    Status = newStatus.ToString(),
-                    ProgressPercentMin = Filter.ProgressPercentMin,
-                    ProgressPercentMax = Filter.ProgressPercentMax,
-                    ProjectId = Filter.ProjectId,
-                    SkipCount = 0,
-                    MaxResultCount = 1,
-                    Sorting = string.Empty
-                };
-                var newStatusResult = await ProjectTasksAppService.GetListAsync(newStatusInput);
-                KanbanTotalCounts[newStatus] = (int)newStatusResult.TotalCount;
+                    KanbanTotalCounts[newStatus] = KanbanTotalCounts[newStatus] + 1;
+                }
+                if (KanbanLoadedCounts.ContainsKey(newStatus))
+                {
+                    KanbanLoadedCounts[newStatus] = KanbanLoadedCounts[newStatus] + 1;
+                }
             }
             
             // Refresh displayed items
@@ -565,10 +528,21 @@ public partial class ProjectTasks
         KanbanTotalCounts.Clear();
         KanbanLoadingStates.Clear();
         AllKanbanItems.Clear();
-        var statuses = Enum.GetValues<ProjectTaskStatus>()
-            .ToArray();
         
-        foreach (var status in statuses)
+        // Determine which statuses to load based on filter
+        var allStatuses = Enum.GetValues<ProjectTaskStatus>().ToArray();
+        var statusesToLoad = allStatuses;
+        
+        // If status filter is specified, only load that status
+        if (!string.IsNullOrWhiteSpace(Filter.Status))
+        {
+            if (Enum.TryParse<ProjectTaskStatus>(Filter.Status, ignoreCase: true, out var filteredStatus))
+            {
+                statusesToLoad = new[] { filteredStatus };
+            }
+        }
+        
+        foreach (var status in allStatuses)
         {
             KanbanPages[status] = 1;
             KanbanPageSizes[status] = KanbanItemsPerColumn;
@@ -578,15 +552,15 @@ public partial class ProjectTasks
         // Notify UI that loading has started
         await InvokeAsync(StateHasChanged);
         
-        // Load first page for each status in parallel
-        var loadTasks = statuses.Select(status => 
+        // Load first page for each status in parallel (only for statuses to load)
+        var loadTasks = statusesToLoad.Select(status => 
             LoadKanbanItemsForStatusAsync(status, isInitialLoad: true)
         ).ToArray();
         
         await Task.WhenAll(loadTasks);
         
         // Set all loading states to false after all loads complete
-        foreach (var status in statuses)
+        foreach (var status in allStatuses)
         {
             KanbanLoadingStates[status] = false;
         }
