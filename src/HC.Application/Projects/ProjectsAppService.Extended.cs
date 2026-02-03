@@ -61,7 +61,7 @@ public partial class ProjectsAppService : ProjectsAppServiceBase, IProjectsAppSe
             EventVisibility.PUBLIC.ToString(),
             $"Project: {result.Name}",
             null,
-            result.Id.ToString() // Store Project Code in RelatedId
+            result.Id.ToString() // Store Project Id in RelatedId
         );
 
         calendarEvent.TenantId = CurrentTenant.Id;
