@@ -1024,6 +1024,21 @@
     "AtLeastOneDepartmentIsRequired": "Ít nhất một phòng ban là bắt buộc",
     "DocumentSentSuccessfully": "Gửi văn bản thành công",
     "FailedToSendDocument": "Gửi văn bản thất bại",
-    "Ok": "Ok"
+    "Ok": "Ok",
+    "FilterByDateRange": "Lọc theo khoảng ngày",
+    "SelectDateRange": "Chọn khoảng ngày",
+    "From": "Từ",
+    "To": "đến",
+    "NotificationDetail": "Chi tiết thông báo",
+    "ViewRelatedItem": "Xem mục liên quan",
+    "DatePicker:ClearConfirmation": "Bạn có chắc chắn muốn xóa tất cả ngày?",
+    "DatePicker:Clear": "Xóa",
+    "DatePicker:Cancel": "Huỷ",
+    "DatePicker:Confirm": "Xác nhận",
+    "DatePicker:Are you sure you want to clear the selected dates?": "Bạn có chắc chắn muốn xóa các ngày đã chọn?",
+    "DatePicker:From": "Từ",
+    "DatePicker:To": "đến",
+    "DatePicker:SelectDateRange": "Chọn khoảng ngày",
+    "DatePicker:FilterByDateRange": "Lọc theo khoảng ngày"  
   }
 }

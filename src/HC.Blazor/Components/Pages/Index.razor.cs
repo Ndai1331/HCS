@@ -69,6 +69,11 @@ public partial class Index
     // My Tasks data - Tasks from last 60 days
     private List<ProjectTaskWithNavigationPropertiesDto> MyTasksList { get; set; } = new();
 
+    // Date Range Filter
+    private IReadOnlyList<DateTime?> SelectedDateRange { get; set; } = new List<DateTime?>();
+    private DateTime? FilterStartDate { get; set; }
+    private DateTime? FilterEndDate { get; set; }
+
     // Create Project Modal
     private Modal? CreateProjectModal { get; set; }
     private ProjectCreateDto NewProject { get; set; } = new();
@@ -108,6 +113,13 @@ public partial class Index
 
     protected override async Task OnInitializedAsync()
     {
+        // Initialize default date range: 60 days ago to today
+        var today = DateTime.Now.Date;
+        var sixtyDaysAgo = today.AddDays(-60);
+        SelectedDateRange = new List<DateTime?> { sixtyDaysAgo, today };
+        FilterStartDate = sixtyDaysAgo;
+        FilterEndDate = today;
+
         await LoadDashboardDataAsync();
     }
 
@@ -155,13 +167,24 @@ public partial class Index
 
             TotalProjectsCount = (int)allProjectsResult.TotalCount;
 
-            // Get all projects (not just IN_PROGRESS)
-            var projectsResult = await ProjectsAppService.GetListAsync(new GetProjectsInput
+            // Get all projects with date filter
+            var input = new GetProjectsInput
             {
                 MaxResultCount = 1000,
-                SkipCount = 0,
-                // Sorting = "Name"
-            });
+                SkipCount = 0
+            };
+
+            // Apply date filter if set
+            if (FilterStartDate.HasValue)
+            {
+                input.StartDateMin = FilterStartDate.Value.Date;
+            }
+            if (FilterEndDate.HasValue)
+            {
+                input.StartDateMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
+            }
+
+            var projectsResult = await ProjectsAppService.GetListAsync(input);
 
             ActiveProjectsList = projectsResult.Items.ToList();
             ActiveProjectsCount = (int)projectsResult.TotalCount;
@@ -176,12 +199,24 @@ public partial class Index
     {
         try
         {
-            // Get all tasks
-            var result = await ProjectTasksAppService.GetListAsync(new GetProjectTasksInput
+            // Get all tasks with date filter
+            var input = new GetProjectTasksInput
             {
                 MaxResultCount = 1000,
                 SkipCount = 0
-            });
+            };
+
+            // Apply date filter if set
+            if (FilterStartDate.HasValue)
+            {
+                input.StartDateMin = FilterStartDate.Value.Date;
+            }
+            if (FilterEndDate.HasValue)
+            {
+                input.StartDateMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
+            }
+
+            var result = await ProjectTasksAppService.GetListAsync(input);
 
             TotalTasksCount = (int)result.TotalCount;
 
@@ -200,15 +235,32 @@ public partial class Index
     {
         try
         {
-            var now = DateTime.Now;
-            var result = await CalendarEventsAppService.GetListAsync(new GetCalendarEventsInput
+            var input = new GetCalendarEventsInput
             {
-                EndTimeMin = now,
-                StartTimeMax = now.AddDays(7),
                 MaxResultCount = 1000,
                 SkipCount = 0,
                 Sorting = "StartTime"
-            });
+            };
+
+            // Apply date filter if set
+            if (FilterStartDate.HasValue)
+            {
+                input.StartTimeMin = FilterStartDate.Value.Date;
+            }
+            else
+            {
+                // Default behavior: show events from now to next 7 days
+                var now = DateTime.Now;
+                input.StartTimeMin = now;
+                input.StartTimeMax = now.AddDays(7);
+            }
+
+            if (FilterEndDate.HasValue)
+            {
+                input.StartTimeMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
+            }
+
+            var result = await CalendarEventsAppService.GetListAsync(input);
 
             CalendarEventsList = result.Items.ToList();
             TotalEvents = (int)result.TotalCount;
@@ -224,13 +276,25 @@ public partial class Index
         try
         {
             // Load documents assigned to current user from DocumentAssignment
-            var result = await DocumentAssignmentsAppService.GetListAsync(new GetDocumentAssignmentsInput
+            var input = new GetDocumentAssignmentsInput
             {
                 ReceiverUserId = CurrentUser.Id,
                 MaxResultCount = 10,
                 SkipCount = 0,
                 Sorting = "DocumentAssignment.CreationTime DESC"
-            });
+            };
+
+            // Apply date filter if set
+            if (FilterStartDate.HasValue)
+            {
+                input.AssignedAtMin = FilterStartDate.Value.Date;
+            }
+            if (FilterEndDate.HasValue)
+            {
+                input.AssignedAtMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
+            }
+
+            var result = await DocumentAssignmentsAppService.GetListAsync(input);
 
             RecentDocumentsList = result.Items.ToList();
             LastDocumentTimeAgo = result.Items.Any() ? result.Items.Last().DocumentAssignment.CreationTime.Humanize() : string.Empty;
@@ -250,8 +314,18 @@ public partial class Index
                 IdentityUserId = CurrentUser.Id,
                 MaxResultCount = 10,
                 SkipCount = 0,
-                Sorting = "Notification.CreationTime DESC"
+                Sorting = "NotificationReceiver.CreationTime DESC"
             };
+
+            // Apply date filter if set
+            if (FilterStartDate.HasValue)
+            {
+                input.CreationTimeMin = FilterStartDate.Value.Date;
+            }
+            if (FilterEndDate.HasValue)
+            {
+                input.CreationTimeMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
+            }
 
             // Get notifications for current user
             var result = await NotificationReceiversAppService.GetListAsync(input);
@@ -269,17 +343,24 @@ public partial class Index
     {
         try
         {
-            // Get tasks from last 60 days based on StartDate
-            var now = DateTime.Now;
-            var startDate = now.AddDays(-60);
-
-            var result = await ProjectTasksAppService.GetListAsync(new GetProjectTasksInput
+            var input = new GetProjectTasksInput
             {
-                StartDateMin = startDate,
                 MaxResultCount = 1000,
                 SkipCount = 0,
                 Sorting = "ProjectTask.StartDate DESC"
-            });
+            };
+
+            // Apply date filter if set, otherwise use default 60 days
+            if (FilterStartDate.HasValue)
+            {
+                input.StartDateMin = FilterStartDate.Value.Date;
+            }
+            if (FilterEndDate.HasValue)
+            {
+                input.StartDateMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
+            }
+
+            var result = await ProjectTasksAppService.GetListAsync(input);
 
             MyTasksList = result.Items.ToList();
         }
@@ -894,5 +975,55 @@ public partial class Index
             _ => "#"
         };
         return url ?? "#";
+    }
+
+    // -------------------------------
+    // Date Range Filter Methods
+    // -------------------------------
+
+    private async Task OnDateRangeFilterChangedAsync()
+    {
+        try
+        {
+            // Update filter dates from selected range
+            if (SelectedDateRange != null && SelectedDateRange.Count >= 2)
+            {
+                FilterStartDate = SelectedDateRange[0];
+                FilterEndDate = SelectedDateRange[1];
+            }
+            else
+            {
+                // Reset to default if no valid range selected
+                var today = DateTime.Now.Date;
+                var sixtyDaysAgo = today.AddDays(-60);
+                FilterStartDate = sixtyDaysAgo;
+                FilterEndDate = today;
+            }
+
+            // Reload all data with new filter
+            await LoadDashboardDataAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+
+
+    private string DatePickerLocalizer(string name, params object[] arguments)
+    {
+        return name switch
+        {
+            "To" => L["DatePicker:To"],
+            "From" => L["DatePicker:From"],
+            "SelectDateRange" => L["DatePicker:SelectDateRange"],
+            "FilterByDateRange" => L["DatePicker:FilterByDateRange"],
+            "Search" => L["DatePicker:Search"],
+            "Clear" => L["DatePicker:Clear"],
+            "Cancel" => L["DatePicker:Cancel"],
+            "Confirm" => L["DatePicker:Confirm"],
+            _ => L[name] ?? name 
+        };
     }
 }

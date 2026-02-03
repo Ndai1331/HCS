@@ -18,6 +18,8 @@ public abstract class GetNotificationReceiversInputBase : PagedAndSortedResultRe
     public Guid? NotificationId { get; set; }
 
     public Guid? IdentityUserId { get; set; }
+    public DateTime? CreationTimeMin { get; set; }
+    public DateTime? CreationTimeMax { get; set; }
 
     public GetNotificationReceiversInputBase()
     {

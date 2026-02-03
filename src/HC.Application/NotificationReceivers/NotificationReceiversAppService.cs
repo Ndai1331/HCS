@@ -44,8 +44,8 @@ public abstract class NotificationReceiversAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<NotificationReceiverWithNavigationPropertiesDto>> GetListAsync(GetNotificationReceiversInput input)
     {
-        var totalCount = await _notificationReceiverRepository.GetCountAsync(input.FilterText, input.IsRead, input.ReadAtMin, input.ReadAtMax, input.NotificationId, input.IdentityUserId, input.SourceType);
-        var items = await _notificationReceiverRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.IsRead, input.ReadAtMin, input.ReadAtMax, input.NotificationId, input.IdentityUserId, input.Sorting, input.MaxResultCount, input.SkipCount, input.SourceType);
+        var totalCount = await _notificationReceiverRepository.GetCountAsync(input.FilterText, input.IsRead, input.ReadAtMin, input.ReadAtMax, input.NotificationId, input.IdentityUserId, input.SourceType, input.CreationTimeMin, input.CreationTimeMax);
+        var items = await _notificationReceiverRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.IsRead, input.ReadAtMin, input.ReadAtMax, input.NotificationId, input.IdentityUserId, input.Sorting, input.MaxResultCount, input.SkipCount, input.SourceType, input.CreationTimeMin, input.CreationTimeMax);
         return new PagedResultDto<NotificationReceiverWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,
@@ -153,7 +153,7 @@ public abstract class NotificationReceiversAppServiceBase : HCAppService
     [Authorize(HCPermissions.NotificationReceivers.Delete)]
     public virtual async Task DeleteAllAsync(GetNotificationReceiversInput input)
     {
-        await _notificationReceiverRepository.DeleteAllAsync(input.FilterText, input.IsRead, input.ReadAtMin, input.ReadAtMax, input.NotificationId, input.IdentityUserId);
+        await _notificationReceiverRepository.DeleteAllAsync(input.FilterText, input.IsRead, input.ReadAtMin, input.ReadAtMax, input.NotificationId, input.IdentityUserId, input.CreationTimeMin, input.CreationTimeMax);
     }
 
     public virtual async Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync()

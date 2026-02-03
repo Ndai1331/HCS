@@ -970,6 +970,21 @@
     "AtLeastOneDepartmentIsRequired": "At least one department is required",
     "DocumentSentSuccessfully": "Document sent successfully",
     "FailedToSendDocument": "Failed to send document",
-    "Ok": "Ok"
+    "Ok": "Ok",
+    "FilterByDateRange": "Filter by date range",
+    "SelectDateRange": "Select date range",
+    "From": "From",
+    "To": "to",
+    "NotificationDetail": "Notification detail",
+    "ViewRelatedItem": "View related item",
+    "DatePicker:ClearConfirmation": "Are you sure you want to clear all dates?",
+    "DatePicker:Clear": "Clear",
+    "DatePicker:Cancel": "Cancel",
+    "DatePicker:Confirm": "Confirm",
+    "DatePicker:Are you sure you want to clear the selected dates?": "Are you sure you want to clear the selected dates?",
+    "DatePicker:From": "From",
+    "DatePicker:To": "To",
+    "DatePicker:SelectDateRange": "Select date range",
+    "DatePicker:FilterByDateRange": "Filter by date range"
   }
 }

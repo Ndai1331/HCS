@@ -8,13 +8,16 @@ using Microsoft.EntityFrameworkCore;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using HC.EntityFrameworkCore;
-
+using Microsoft.Extensions.Logging;
+using Volo.Abp.Logging;
 namespace HC.NotificationReceivers;
 
 public class EfCoreNotificationReceiverRepository : EfCoreNotificationReceiverRepositoryBase, INotificationReceiverRepository
 {
-    public EfCoreNotificationReceiverRepository(IDbContextProvider<HCDbContext> dbContextProvider) : base(dbContextProvider)
+    private readonly ILogger<EfCoreNotificationReceiverRepository> _logger;
+    public EfCoreNotificationReceiverRepository(IDbContextProvider<HCDbContext> dbContextProvider, ILogger<EfCoreNotificationReceiverRepository> logger) : base(dbContextProvider, logger)
     {
+        _logger = logger;
     }
 
     public virtual async Task<List<NotificationReceiverWithNavigationProperties>> GetNotificationsByUserAndReadStatusAsync(

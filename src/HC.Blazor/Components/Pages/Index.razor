@@ -57,6 +57,40 @@
     }
 </style>
 
+@* ===== FILTER CARD ===== *@
+<Row>
+    <Column ColumnSize="ColumnSize.Is12">
+        <Card>
+            <CardBody>
+                <Row Class="align-items-center">
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                        <label class="fw-bold">@L["FilterByDateRange"]</label>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                        <DatePicker TValue="DateTime?"
+                                    @bind-Dates="SelectedDateRange"
+                                    InputMode="DateInputMode.Date"
+                                    SelectionMode="DateInputSelectionMode.Range"
+                                    Placeholder="@L["SelectDateRange"]"
+                                    DisplayFormat="dd/MM/yyyy"
+                                    DatePickerLocalizer="DatePickerLocalizer"
+                                    />
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                        <Button Color="Color.Primary"
+                                Class="w-100"
+                                Clicked="OnDateRangeFilterChangedAsync"
+                                Disabled="IsLoading">
+                            <Icon Name="IconName.Search" Class="me-1" />
+                            @L["Search"]
+                        </Button>
+                    </Column>
+                </Row>
+            </CardBody>
+        </Card>
+    </Column>
+</Row>
+
 <Row>
     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
         <Row>

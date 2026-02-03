@@ -65,7 +65,9 @@ public class NotificationReceiversAppService : NotificationReceiversAppServiceBa
             input.Sorting,
             input.MaxResultCount,
             input.SkipCount,
-            input.SourceType
+            input.SourceType,
+            input.CreationTimeMin,
+            input.CreationTimeMax
         );
 
         var now = DateTime.UtcNow;
@@ -107,7 +109,9 @@ public class NotificationReceiversAppService : NotificationReceiversAppServiceBa
             input.Sorting,
             input.MaxResultCount,
             input.SkipCount,
-            input.SourceType
+            input.SourceType,
+            input.CreationTimeMin,
+            input.CreationTimeMax
         );
 
         var notificationReceiver = result.FirstOrDefault();
