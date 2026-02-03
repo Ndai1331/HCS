@@ -93,6 +93,9 @@ public partial class DocumentAssignments
         {
             await SetBreadcrumbItemsAsync();
             await SetToolbarItemsAsync();
+            await GetDocumentCollectionLookupAsync();
+            await GetWorkflowStepTemplateCollectionLookupAsync();
+            await GetIdentityUserCollectionLookupAsync();
             await InvokeAsync(StateHasChanged);
         }
     }

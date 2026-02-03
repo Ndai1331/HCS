@@ -186,7 +186,7 @@
                     <Field>
                         <FieldLabel>@L["Status"]</FieldLabel>
                         <Select TValue="ProjectStatus?" SelectedValue="@Filter.Status" SelectedValueChanged="@OnStatusChangedAsync">
-                            <SelectItem TValue="ProjectStatus?" Value="@((ProjectStatus?)null)">@L["All"]</SelectItem>
+                            <SelectItem></SelectItem>
                             @foreach (var status in Enum.GetValues<ProjectStatus>())
                             {
                                 <SelectItem TValue="ProjectStatus?" Value="@status">

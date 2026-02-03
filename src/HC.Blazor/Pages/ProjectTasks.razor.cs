@@ -97,6 +97,7 @@ public partial class ProjectTasks
     }
 
     private IReadOnlyList<ParentTaskSelectItem> ParentTasksCollection { get; set; } = new List<ParentTaskSelectItem>();
+    private List<ParentTaskSelectItem> SelectedFilterParentTask { get; set; } = new();
     private List<ParentTaskSelectItem> SelectedNewProjectTaskParentTask { get; set; } = new();
 
     private ProjectTaskPriority NewProjectTaskPriority { get; set; } = ProjectTaskPriority.LOW;
@@ -852,9 +853,9 @@ public partial class ProjectTasks
         SelectedEditTab = name;
     }
 
-    protected virtual async Task OnParentTaskIdChangedAsync(string? parentTaskId)
+    protected virtual async Task OnParentTaskIdChangedAsync()
     {
-        Filter.ParentTaskId = parentTaskId;
+        Filter.ParentTaskId = SelectedFilterParentTask?.FirstOrDefault()?.Id;
         await SearchAsync();
     }
 

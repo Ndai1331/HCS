@@ -87,13 +87,29 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["ActionType"]</FieldLabel>
-                        <TextEdit Text="@Filter.ActionType" TextChanged="@OnActionTypeChangedAsync" />                       
+                        <Select 
+                        TValue="string"
+		SelectedValue="@Filter.ActionType"
+		SelectedValueChanged="@OnActionTypeChangedAsync" >
+                            <SelectItem></SelectItem>
+                            <SelectItem Value="DocumentAssignmentActionType.PROCESS">@L["Process"]</SelectItem>
+                            <SelectItem Value="DocumentAssignmentActionType.SIGN">@L["Sign"]</SelectItem>
+                            <SelectItem Value="DocumentAssignmentActionType.VIEW">@L["View"]</SelectItem>
+                        </Select>                  
                     </Field>
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Status"]</FieldLabel>
-                        <TextEdit Text="@Filter.Status" TextChanged="@OnStatusChangedAsync" />                       
+                        <Select TValue="string"
+		SelectedValue="@Filter.Status"
+		SelectedValueChanged="@OnStatusChangedAsync">
+                            <SelectItem></SelectItem>
+                            <SelectItem Value="DocumentAssignmentStatus.PENDING">@L["Pending"]</SelectItem>
+                            <SelectItem Value="DocumentAssignmentStatus.DONE">@L["Done"]</SelectItem>
+                            <SelectItem Value="DocumentAssignmentStatus.REJECTED">@L["Rejected"]</SelectItem>
+                            <SelectItem Value="DocumentAssignmentStatus.REVOKED">@L["Revoked"]</SelectItem>
+                        </Select>                  
                     </Field>
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
@@ -276,6 +292,7 @@
                 <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                         Field="Document.Title"
                         Caption="@L["Document"]"
+                        CellStyle="@((item) => "min-width: 300px; max-width: 350px")"
                         Width="300px">
                         <DisplayTemplate> 
                             <div class="row">
@@ -318,6 +335,8 @@
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                         Field="DocumentAssignment.Status"
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px"
                         Caption="@L["Status"]">
                         <DisplayTemplate>
                                 @if(context.DocumentAssignment.Status == DocumentAssignmentStatus.PENDING.ToString())
@@ -340,21 +359,24 @@
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                         Field="DocumentAssignment.AssignedAt"
-                        Caption="@L["AssignedAt"]" Width="165px">
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Caption="@L["AssignedAt"]" Width="200px">
                     <DisplayTemplate>
                             @context.DocumentAssignment.AssignedAt.ToString("dd/MM/yyyy HH:mm")
                     </DisplayTemplate>
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                         Field="DocumentAssignment.ProcessedAt"
-                        Caption="@L["ProcessedAt"]" Width="165px">
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Caption="@L["ProcessedAt"]" Width="200px">
                     <DisplayTemplate>
                             @context.DocumentAssignment.ProcessedAt.ToString("dd/MM/yyyy HH:mm")
                     </DisplayTemplate>
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                         Field="DocumentAssignment.IsCurrent"
-                        Caption="@L["IsCurrent"]" Width="100px">
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Caption="@L["IsCurrent"]" Width="200px">
                         <DisplayTemplate>
                             @if (context.DocumentAssignment.IsCurrent)
                             {
@@ -368,9 +390,10 @@
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentAssignmentWithNavigationPropertiesDto"
                         Field="WorkflowStepTemplate.Name"
-                        Caption="@L["WorkflowStepTemplate"]" Width="150px">
+                        CellStyle="@((item) => "min-width: 320px")"
+                        Caption="@L["WorkflowStepTemplate"]" Width="320px">
                 </DataGridColumn>
-                <DataGridEntityActionsColumn TItem="DocumentAssignmentWithNavigationPropertiesDto" @ref="@EntityActionsColumn">
+                <DataGridEntityActionsColumn TItem="DocumentAssignmentWithNavigationPropertiesDto" @ref="@EntityActionsColumn" CellStyle="@((item) => "min-width: 150px")" Width="150px">
                 <DisplayTemplate>
                     <div class="d-flex gap-1">
                             <Button
