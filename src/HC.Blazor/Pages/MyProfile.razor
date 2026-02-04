@@ -25,8 +25,11 @@
 </PageHeader>
 <style>
     .nav-fill > .nav-link, .nav-fill .nav-item {
-        text-align: start;
+        text-align: center;
     }
+
+
+
     .dropdown-item {
         padding: 0.5rem;
     }
@@ -257,14 +260,18 @@
                                             <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto" Caption="@L["Actions"]" Width="120px">
                                                 <DisplayTemplate>
                                                     <div class="d-flex gap-2">
-                                                        <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                                           title="@L["Edit"]"
-                                                           @onclick="@(() => OpenEditUserDepartmentModalAsync(context))"
-                                                           style="cursor: pointer;"></i>
-                                                        <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                                           title="@L["Delete"]"
-                                                           @onclick="@(() => DeleteUserDepartmentAsync(context))"
-                                                           style="cursor: pointer;"></i>
+                                                        <Button Outline Color="Color.Primary"
+                                                         Size="Size.Small" 
+                                                         Title="@L["Edit"]"
+                                                         Clicked="@(() => OpenEditUserDepartmentModalAsync(context))">
+                                                            <Icon Name="IconName.Edit" />
+                                                        </Button>
+                                                        <Button Outline Color="Color.Danger"
+                                                         Size="Size.Small" 
+                                                         Title="@L["Delete"]"
+                                                         Clicked="@(() => DeleteUserDepartmentAsync(context))">
+                                                            <Icon Name="IconName.Delete" />
+                                                        </Button>
                                                     </div>
                                                 </DisplayTemplate>
                                             </DataGridColumn>
@@ -366,14 +373,18 @@
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto" Caption="@L["Actions"]" Width="120px">
                                                 <DisplayTemplate>
                                                     <div class="d-flex gap-2">
-                                                        <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                                           title="@L["Edit"]"
-                                                           @onclick="@(() => OpenEditUserSignatureModalAsync(context))"
-                                                           style="cursor: pointer;"></i>
-                                                        <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                                           title="@L["Delete"]"
-                                                           @onclick="@(() => DeleteUserSignatureAsync(context))"
-                                                           style="cursor: pointer;"></i>
+                                                        <Button Outline Color="Color.Primary"
+                                                         Size="Size.Small" 
+                                                         Title="@L["Edit"]"
+                                                         Clicked="@(() => OpenEditUserSignatureModalAsync(context))">
+                                                            <Icon Name="IconName.Edit" />
+                                                        </Button>
+                                                        <Button Outline Color="Color.Danger"
+                                                         Size="Size.Small" 
+                                                         Title="@L["Delete"]"
+                                                         Clicked="@(() => DeleteUserSignatureAsync(context))">
+                                                            <Icon Name="IconName.Delete" />
+                                                        </Button>
                                                     </div>
                                                 </DisplayTemplate>
                                             </DataGridColumn>

@@ -104,18 +104,29 @@ public class ChatEventHandlerWithRetry :
                 MessageDate = DateTime.UtcNow
             };
 
+            // Simplified logging - only log essential information
             _logger.LogDebug(
-                "Sending message data to SignalR - TargetUser: {TargetUserId}, MessageData: {MessageData}",
+                "Sending chat message via SignalR - TargetUser: {TargetUserId}, MessageId: {MessageId}, ConversationId: {ConversationId}",
                 targetUserIdString,
-                System.Text.Json.JsonSerializer.Serialize(messageData));
+                eventData.MessageId,
+                eventData.ConversationId);
+
+            // Detailed data logging at Trace level (more verbose than Debug)
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                _logger.LogTrace(
+                    "Chat message data details: {MessageData}",
+                    System.Text.Json.JsonSerializer.Serialize(messageData));
+            }
 
             await _hubContext.Clients
                 .User(targetUserIdString)
                 .SendAsync("ReceiveMessage", messageData);
 
             _logger.LogDebug(
-                "Message sent successfully to user: {TargetUserId}",
-                targetUserIdString);
+                "Message sent successfully to user: {TargetUserId}, MessageId: {MessageId}",
+                targetUserIdString,
+                eventData.MessageId);
         }
 
         public async Task HandleEventAsync(ChatDeletedMessageEto eventData)

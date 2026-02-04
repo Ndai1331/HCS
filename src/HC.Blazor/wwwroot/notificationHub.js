@@ -45,7 +45,7 @@ window.notificationHub = {
         window.baseHub.registerEventHandler("notification", "ReceiveNotification", async (helper, notificationId) => {
             await helper.invokeMethodAsync("OnNotificationReceived", notificationId)
                 .catch(err => {
-                    console.error("Notification Hub: Error calling OnNotificationReceived:", err);
+                    window.hcLogger.error("Notification Hub: Error calling OnNotificationReceived:", err);
                     // Disposal handled by baseHub
                 });
         });
@@ -54,7 +54,7 @@ window.notificationHub = {
         window.baseHub.registerEventHandler("notification", "UnreadCountChanged", async (helper) => {
             await helper.invokeMethodAsync("OnUnreadCountChanged")
                 .catch(err => {
-                    console.error("Notification Hub: Error calling OnUnreadCountChanged:", err);
+                    window.hcLogger.error("Notification Hub: Error calling OnUnreadCountChanged:", err);
                     // Disposal handled by baseHub
                 });
         });
@@ -92,4 +92,4 @@ window.notificationHub = {
 };
 
 // Log on load
-console.log("Notification Hub module loaded successfully");
+window.hcLogger.log("Notification Hub module loaded successfully");

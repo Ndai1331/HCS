@@ -59,5 +59,3 @@ Kết luận nhanh (trả lời trực tiếp câu hỏi)
 Cấu hình SignalR: chưa tối ưu hoàn toàn; hiện mới ở mức cơ bản (detailed errors bật, giới hạn message size, mapping transport) nhưng chưa có tuning các timeout/keepalive/scale-out và EnableDetailedErrors nên tắt ở production.
 
 Performance cho chat/notification: đã có một số tối ưu (retry/circuit breaker, parallel notify, reuse connection), nhưng còn nhiều điểm có thể tối ưu như logging quá nhiều, serialize trong log, và xử lý song song không có throttling/batching khi số user lớn.
-
-

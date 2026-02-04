@@ -599,6 +599,23 @@ public class HCBlazorModule : AbpModule
             }else{
                 options.EnableDetailedErrors = false;
             }
+            
+            // Configure keep-alive to detect disconnected clients faster
+            // Default is 15 seconds, reducing to 10 seconds for better responsiveness
+            options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+            
+            // Configure client timeout - if no message received within 60s, close connection
+            // Default is 30 seconds, increase to 60s for unstable networks
+            options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+            
+            // Configure handshake timeout
+            options.HandshakeTimeout = TimeSpan.FromSeconds(15);
+            
+            // Configure maximum parallel invocations (default is 5, increase for high-load scenarios)
+            options.MaximumParallelInvocationsPerClient = 10;
+            
+            // Enable stream buffering for large messages
+            options.StreamBufferCapacity = 10;
         });
         
         context.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
@@ -607,12 +624,12 @@ public class HCBlazorModule : AbpModule
         
         context.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions<Hubs.NotificationHub>>(options =>
         {
-            options.MaximumReceiveMessageSize = 1024 * 1024;
+            options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB
         });
 
         context.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions<Hubs.ChatHub>>(options =>
         {
-            options.MaximumReceiveMessageSize = 1024 * 1024;
+            options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB
         });
     }
 

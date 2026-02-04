@@ -9,6 +9,7 @@ using Volo.Abp.DependencyInjection;
 using Volo.Abp.EventBus.Distributed;
 using HC.Blazor.Hubs;
 using HC.Blazor.Services;
+using System.Threading;
 
 namespace HC.Blazor.EventHandlers;
 
@@ -88,52 +89,148 @@ public class NotificationEventHandlerWithParallel :
     }
 
     /// <summary>
-    /// Send notifications to all users in parallel for better performance
+    /// Send notifications to all users in parallel with throttling and batching
+    /// Optimized to prevent resource spikes when sending to large user counts
     /// </summary>
     private async Task SendNotificationsInParallelAsync(NotificationCreatedEto eventData)
     {
-        // Create tasks for each user
-        var sendTasks = eventData.ReceiverUserIds.Select(async userId =>
+        const int MaxConcurrency = 50; // Limit concurrent sends to prevent resource spikes
+        const int BatchSize = 100; // Process in batches for very large user counts
+        
+        var userIds = eventData.ReceiverUserIds.ToList();
+        var totalUsers = userIds.Count;
+        
+        // If user count is small, use throttled parallel approach
+        if (totalUsers <= BatchSize)
         {
+            _logger.LogDebug(
+                "Processing small batch of {UserCount} users with throttling (max concurrency: {MaxConcurrency})",
+                totalUsers,
+                MaxConcurrency);
+            
+            var (success, failed) = await SendNotificationsWithThrottlingAsync(
+                userIds, 
+                eventData.NotificationId, 
+                MaxConcurrency);
+            
+            LogNotificationResults(success, failed, totalUsers, eventData.NotificationId);
+            
+            // Only throw if ALL sends failed (catastrophic failure)
+            if (failed == totalUsers)
+            {
+                throw new Exception($"Failed to send notification to all {totalUsers} users");
+            }
+            
+            return;
+        }
+        
+        // For large user counts, process in batches
+        _logger.LogInformation(
+            "Processing large notification in batches: TotalUsers={TotalUsers}, BatchSize={BatchSize}",
+            totalUsers,
+            BatchSize);
+        
+        var totalSuccess = 0;
+        var totalFailed = 0;
+        var totalBatches = (totalUsers + BatchSize - 1) / BatchSize;
+        
+        for (int i = 0; i < totalUsers; i += BatchSize)
+        {
+            var batchNumber = (i / BatchSize) + 1;
+            var batch = userIds.Skip(i).Take(BatchSize).ToList();
+            
+            _logger.LogInformation(
+                "Processing batch {BatchNumber}/{TotalBatches} with {UserCount} users",
+                batchNumber,
+                totalBatches,
+                batch.Count);
+            
+            var (success, failed) = await SendNotificationsWithThrottlingAsync(
+                batch, 
+                eventData.NotificationId, 
+                MaxConcurrency);
+            
+            totalSuccess += success;
+            totalFailed += failed;
+            
+            // Small delay between batches to prevent overwhelming the system
+            if (i + BatchSize < totalUsers)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(100));
+            }
+        }
+        
+        LogNotificationResults(totalSuccess, totalFailed, totalUsers, eventData.NotificationId);
+        
+        // Only throw if ALL sends failed (catastrophic failure)
+        if (totalFailed == totalUsers)
+        {
+            throw new Exception($"Failed to send notification to all {totalUsers} users");
+        }
+    }
+    
+    /// <summary>
+    /// Send notifications with throttling using SemaphoreSlim
+    /// </summary>
+    private async Task<(int Success, int Failed)> SendNotificationsWithThrottlingAsync(
+        List<Guid> userIds, 
+        Guid notificationId, 
+        int maxConcurrency)
+    {
+        using var semaphore = new SemaphoreSlim(maxConcurrency);
+        var results = await Task.WhenAll(userIds.Select(async userId =>
+        {
+            await semaphore.WaitAsync();
             try
             {
-                await SendNotificationToUserAsync(userId, eventData.NotificationId);
-                return (Success: true, UserId: userId, Error: (Exception)null);
+                await SendNotificationToUserAsync(userId, notificationId);
+                return true;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send notification to user {UserId}", userId);
-                return (Success: false, UserId: userId, Error: ex);
+                return false;
             }
-        }).ToList();
-
-        // Execute all sends in parallel
-        var results = await Task.WhenAll(sendTasks);
-
-        // Log summary
-        var successCount = results.Count(r => r.Success);
-        var failCount = results.Count(r => !r.Success);
-        var totalDuration = TimeSpan.Zero; // Could track timing if needed
-
-        _logger.LogInformation(
-            "Notification sent to {SuccessCount}/{TotalCount} users successfully. Failed: {FailCount}",
-            successCount,
-            results.Length,
-            failCount);
-
-        // If any failures, log them (but don't fail the entire operation)
-        if (failCount > 0)
+            finally
+            {
+                semaphore.Release();
+            }
+        }));
+        
+        var success = results.Count(r => r);
+        var failed = results.Count(r => !r);
+        
+        return (success, failed);
+    }
+    
+    /// <summary>
+    /// Log notification sending results
+    /// </summary>
+    private void LogNotificationResults(int successCount, int failCount, int totalCount, Guid notificationId)
+    {
+        if (failCount == 0)
         {
-            var failedUsers = results.Where(r => !r.Success).Select(r => r.UserId);
-            _logger.LogWarning(
-                "Failed to send notification to users: {FailedUsers}",
-                string.Join(", ", failedUsers));
+            _logger.LogInformation(
+                "Notification {NotificationId} sent to all {SuccessCount}/{TotalCount} users successfully",
+                notificationId,
+                successCount,
+                totalCount);
         }
-
-        // Only throw if ALL sends failed (catastrophic failure)
-        if (failCount == results.Length)
+        else if (successCount == 0)
         {
-            throw new Exception($"Failed to send notification to all {results.Length} users");
+            _logger.LogError(
+                "Notification {NotificationId} failed to send to all {TotalCount} users",
+                notificationId,
+                totalCount);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Notification {NotificationId} partial success: {SuccessCount}/{TotalCount} sent, {FailCount} failed",
+                notificationId,
+                successCount,
+                totalCount,
+                failCount);
         }
     }
 
@@ -161,12 +258,3 @@ public class NotificationEventHandlerWithParallel :
             notificationId);
     }
 }
-
-/// <summary>
-/// Result type for parallel notification sending
-/// </summary>
-internal record NotificationSendResult(
-    bool Success,
-    Guid UserId,
-    Exception Error
-);
