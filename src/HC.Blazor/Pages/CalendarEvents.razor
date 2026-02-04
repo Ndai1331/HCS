@@ -1359,7 +1359,7 @@
 <Modal @ref="EventViewModal" Closed="OnEventViewModalClosed">
     <ModalContent Centered="true" Size="ModalSize.Large">
         <ModalHeader>
-            <ModalTitle>@L["ViewDetails"] - @ViewingCalendarEvent?.Title</ModalTitle>
+            <ModalTitle>@L["Detail"] - @ViewingCalendarEvent?.Title</ModalTitle>
             <CloseButton Clicked="@(async () => await EventViewModal.Hide())" />
         </ModalHeader>
         <ModalBody>
