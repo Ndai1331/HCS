@@ -875,6 +875,13 @@ public partial class Index
         await LoadTasksStatisticsAsync();
     }
 
+    private async Task OnTaskUpdatedAsync()
+    {
+        // Reload tasks data when a task is updated
+        await LoadMyTasksAsync();
+        await LoadTasksStatisticsAsync();
+    }
+
     private async Task<bool> CheckIfDocumentHasPdfAsync(Guid documentId)
     {
         try

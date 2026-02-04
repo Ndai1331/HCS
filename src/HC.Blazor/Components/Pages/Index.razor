@@ -646,7 +646,7 @@
 <ProjectTaskCreateModal @ref="CreateTaskModal" OnTaskCreated="OnTaskCreatedAsync" />
 
 @* ************************* TASK DETAIL MODAL ************************* *@
-<ProjectTaskViewModal @ref="TaskDetailModal" OnViewPdfDocument="OpenPdfViewerModalForDocumentAsync" />
+<ProjectTaskViewModal @ref="TaskDetailModal" OnViewPdfDocument="OpenPdfViewerModalForDocumentAsync" OnTaskUpdated="OnTaskUpdatedAsync" />
 
 @* ************************* PDF VIEWER MODAL ************************* *@
 <Modal @ref="PdfViewerModal" Class="pdf-viewer-modal" Size="ModalSize.ExtraLarge" Centered="true">

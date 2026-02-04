@@ -727,6 +727,7 @@
     "Project": "Dự án",
     "NewTask": "Tạo công việc mới",
     "UpdateTask": "Cập nhật công việc",
+    "CompleteTask": "Hoàn thành",
     "Task": "Công việc",
     "ParentTask": "Công việc cha",
     "Note": "Ghi chú",

@@ -10,6 +10,7 @@ using HC.ProjectTaskAssignments;
 using HC.ProjectTaskDocuments;
 using HC.DocumentFiles;
 using Volo.Abp.Application.Dtos;
+using Volo.Abp.AspNetCore.Components.Messages;
 
 namespace HC.Blazor.Components.ProjectTaskViewModal;
 
@@ -19,6 +20,10 @@ public partial class ProjectTaskViewModal
     [Parameter] public ProjectTaskWithNavigationPropertiesDto? Task { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<ProjectTaskDocumentWithNavigationPropertiesDto> OnViewPdfDocument { get; set; }
+    [Parameter] public EventCallback OnTaskUpdated { get; set; }
+
+    // Injected services
+    [Inject] protected IProjectTasksAppService ProjectTasksAppService { get; set; } = default!;
 
     // Modal reference
     private Modal TaskDetailModal { get; set; } = default!;
@@ -27,6 +32,10 @@ public partial class ProjectTaskViewModal
     private IReadOnlyList<ProjectTaskAssignmentWithNavigationPropertiesDto> SelectedTaskAssignments { get; set; } = new List<ProjectTaskAssignmentWithNavigationPropertiesDto>();
     private IReadOnlyList<ProjectTaskDocumentWithNavigationPropertiesDto> SelectedTaskDocuments { get; set; } = new List<ProjectTaskDocumentWithNavigationPropertiesDto>();
     private string SelectedTab { get; set; } = "general";
+    
+    // Progress update state
+    private int EditableProgress { get; set; }
+    private bool IsUpdating { get; set; }
 
     // PDF viewer state
     private Dictionary<Guid, bool> DocumentHasPdfCache { get; set; } = new();
@@ -38,6 +47,7 @@ public partial class ProjectTaskViewModal
     {
         Task = task;
         SelectedTab = "general";
+        EditableProgress = task.ProjectTask.ProgressPercent;
         SelectedTaskAssignments = new List<ProjectTaskAssignmentWithNavigationPropertiesDto>();
         SelectedTaskDocuments = new List<ProjectTaskDocumentWithNavigationPropertiesDto>();
         DocumentHasPdfCache = new Dictionary<Guid, bool>();
@@ -81,7 +91,9 @@ public partial class ProjectTaskViewModal
                 SkipCount = 0
             };
             var documentsResult = await ProjectTaskDocumentsAppService.GetListAsync(documentsInput);
-            SelectedTaskDocuments = documentsResult.Items;
+            
+            // Filter out documents where Document is null (e.g., soft deleted)
+            SelectedTaskDocuments = documentsResult.Items.Where(x => x.Document != null).ToList();
 
             // Cache PDF file info for documents
             await CacheDocumentPdfInfoAsync(SelectedTaskDocuments);
@@ -248,5 +260,114 @@ public partial class ProjectTaskViewModal
             "URGENT" => "danger",
             _ => "secondary",
         };
+    }
+
+    /// <summary>
+    /// Update task progress
+    /// </summary>
+    private async Task UpdateTaskProgressAsync()
+    {
+        if (Task == null || IsUpdating) return;
+
+        IsUpdating = true;
+        try
+        {
+            var updateDto = new ProjectTaskUpdateDto
+            {
+                Code = Task.ProjectTask.Code,
+                Title = Task.ProjectTask.Title,
+                Priority = Task.ProjectTask.Priority,
+                ConcurrencyStamp=Task.ProjectTask.ConcurrencyStamp,
+                ParentTaskId = Task.ProjectTask.ParentTaskId,
+                Description = Task.ProjectTask.Description,
+                StartDate = Task.ProjectTask.StartDate,
+                DueDate = Task.ProjectTask.DueDate,
+                ProgressPercent = EditableProgress,
+                Status = Task.ProjectTask.Status,
+                ProjectId = Task.ProjectTask.ProjectId,
+            };
+
+            if(EditableProgress == 100)
+            {
+                updateDto.Status = ProjectTaskStatus.DONE.ToString();
+            }
+
+            
+            await ProjectTasksAppService.UpdateAsync(Task.ProjectTask.Id, updateDto);
+            
+            // Update local task
+            Task.ProjectTask.ProgressPercent = EditableProgress;
+            Task.ProjectTask.Status = updateDto.Status;
+
+            await UiMessageService.Success(L["SuccessfullyUpdated"]);
+            
+            // Notify parent to refresh
+            if (OnTaskUpdated.HasDelegate)
+            {
+                await OnTaskUpdated.InvokeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsUpdating = false;
+        }
+    }
+
+    /// <summary>
+    /// Complete task (set progress to 100% and status to DONE)
+    /// </summary>
+    private async Task CompleteTaskAsync()
+    {
+        if (Task == null || IsUpdating) return;
+
+        IsUpdating = true;
+        try
+        {
+            EditableProgress = 100;
+            
+            var updateDto = new ProjectTaskUpdateDto
+            {
+                ProgressPercent = 100,
+                Code = Task.ProjectTask.Code,
+                Title = Task.ProjectTask.Title,
+                Priority = Task.ProjectTask.Priority,
+                ConcurrencyStamp=Task.ProjectTask.ConcurrencyStamp,
+                ParentTaskId = Task.ProjectTask.ParentTaskId,
+                Description = Task.ProjectTask.Description,
+                StartDate = Task.ProjectTask.StartDate,
+                DueDate = Task.ProjectTask.DueDate,
+                Status = ProjectTaskStatus.DONE.ToString(),
+                ProjectId = Task.ProjectTask.ProjectId,
+            };
+
+            await ProjectTasksAppService.UpdateAsync(Task.ProjectTask.Id, updateDto);
+            
+            // Update local task
+            Task.ProjectTask.ProgressPercent = 100;
+            Task.ProjectTask.Status = ProjectTaskStatus.DONE.ToString();
+            
+            await UiMessageService.Success(L["SuccessfullyCompleted"]);
+            
+            // Notify parent to refresh
+            if (OnTaskUpdated.HasDelegate)
+            {
+                await OnTaskUpdated.InvokeAsync();
+            }
+            
+            // Close modal
+            await CloseModalAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsUpdating = false;
+        }
     }
 }
