@@ -305,13 +305,13 @@ window.chatHub = {
 
         // Create a local event to update notification icons
         const helpers = [...window._chatConnection._dotnetHelpers];
-        console.log(`Chat Hub: Broadcasting unread count changed to ${helpers.length} helpers`);
+        // console.log(`Chat Hub: Broadcasting unread count changed to ${helpers.length} helpers`);
 
         helpers.forEach(async (helper, index) => {
             try {
                 // Only call for Notification.razor helpers
                 if (helper._isNotificationBarHelper === true) {
-                    console.log(`Chat Hub: Calling OnChatUnreadCountChanged for helper ${index}`);
+                    // console.log(`Chat Hub: Calling OnChatUnreadCountChanged for helper ${index}`);
                     await helper.invokeMethodAsync("OnChatUnreadCountChanged")
                         .then(() => window.hcLogger.log("Chat Hub: OnChatUnreadCountChanged call completed"))
                         .catch(err => {

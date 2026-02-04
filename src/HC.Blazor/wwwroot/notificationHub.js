@@ -11,7 +11,7 @@ window.notificationHub = {
      * @param {object} dotnetHelper - DotNetObjectReference for JS interop
      */
     start: function (dotnetHelper) {
-        console.log("Notification Hub: Initializing...");
+        // console.log("Notification Hub: Initializing...");
         
         // Use baseHub to create or reuse connection
         const connection = window.baseHub.createOrReuseConnection(
@@ -30,7 +30,7 @@ window.notificationHub = {
         }
 
         window._notificationConnection = connection;
-        console.log("Notification Hub: Initialization complete");
+        // console.log("Notification Hub: Initialization complete");
     },
 
     /**
@@ -39,7 +39,7 @@ window.notificationHub = {
      * @param {object} connection - The SignalR connection
      */
     _registerEventHandlers: function(connection) {
-        console.log("Notification Hub: Registering event handlers...");
+        // console.log("Notification Hub: Registering event handlers...");
 
         // Register ReceiveNotification handler
         window.baseHub.registerEventHandler("notification", "ReceiveNotification", async (helper, notificationId) => {
@@ -59,18 +59,18 @@ window.notificationHub = {
                 });
         });
 
-        console.log("Notification Hub: All event handlers registered");
+        // console.log("Notification Hub: All event handlers registered");
     },
 
     /**
      * Stop notification hub connection and cleanup resources
      */
     stop: function () {
-        console.log("Notification Hub: Stopping...");
+        // console.log("Notification Hub: Stopping...");
         
         // Clear helper references FIRST (don't dispose from JS, let .NET handle it)
         if (window._notificationConnection && window._notificationConnection._dotnetHelpers) {
-            console.log("Notification Hub: Clearing helper references...");
+            // console.log("Notification Hub: Clearing helper references...");
             window._notificationConnection._dotnetHelpers = [];
         }
         
@@ -80,7 +80,7 @@ window.notificationHub = {
         // Clear global reference
         window._notificationConnection = null;
         
-        console.log("Notification Hub: Stopped successfully");
+        // console.log("Notification Hub: Stopped successfully");
     },
 
     /**
