@@ -49,7 +49,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
         input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax,
          input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax,
           input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, 
-          input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.SourceType, input.CreatorId,
+          input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.SourceType, input.CreatorId, null,
           input.Sorting,  input.MaxResultCount, input.SkipCount);
         var result = new PagedResultDto<DocumentWithNavigationPropertiesDto>
         {
@@ -130,7 +130,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["MasterData"]]);
         }
 
-        var document = await _documentManager.CreateAsync(input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.Title, input.CompletedTime, input.StorageNumber, input.IncommingDate, input.No, input.CurrentStatus);
+        var document = await _documentManager.CreateAsync(input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.Title, input.CompletedTime, input.StorageNumber, input.IncommingDate, input.No, input.CurrentStatus, input.SourceType);
         return ObjectMapper.Map<Document, DocumentDto>(document);
     }
 
@@ -152,7 +152,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["MasterData"]]);
         }
 
-        var document = await _documentManager.UpdateAsync(id, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.Title, input.CompletedTime, input.StorageNumber, input.IncommingDate, input.No, input.CurrentStatus, input.ConcurrencyStamp);
+        var document = await _documentManager.UpdateAsync(id, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.Title, input.CompletedTime, input.StorageNumber, input.IncommingDate, input.SourceType, input.No, input.CurrentStatus, input.ConcurrencyStamp);
         return ObjectMapper.Map<Document, DocumentDto>(document);
     }
 
