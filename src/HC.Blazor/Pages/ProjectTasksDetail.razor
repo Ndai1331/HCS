@@ -56,15 +56,14 @@ else if (CurrentProjectTask is null)
 else
 {
     @* Edit Form *@
-    <Card>
-        <CardBody>
-            <Form id="EditProjectTaskForm">
-                <Row>
-                    <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
-                        <Card>
-                            <CardBody>
-                                <h5 class="text-brand mb-3"> <Icon Name="IconName.Info" Class="me-1" />
-                                    @L["Tab:GeneralInformation"]</h5>
+    <Form id="EditProjectTaskForm">
+        <Row Class="g-3">
+            @* Card 1: General Information *@
+            <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
+                <Card>
+                    <CardBody>
+                        <h5 class="text-brand mb-3"> <Icon Name="IconName.Info" Class="me-1" />
+                            @L["Tab:GeneralInformation"]</h5>
 
                                     @if (!string.IsNullOrWhiteSpace(EditGeneralValidationErrorKey))
                                     {
@@ -264,11 +263,16 @@ else
                                             </Field>
                                         </Column>
                                     </Row>
-                            </CardBody>
-                        </Card>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
-                        <Tabs SelectedTab="@SelectedEditTab" SelectedTabChanged="@OnSelectedEditTabChanged">
+                        </CardBody>
+                    </Card>
+                </Column>
+
+
+                @* Card 2: Assignments and Documents Tabs *@
+                <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
+                    <Card>
+                        <CardBody>
+                            <Tabs SelectedTab="@SelectedEditTab" SelectedTabChanged="@OnSelectedEditTabChanged">
                             <Items>
                                 
                                 <Tab Name="assignments">
@@ -368,7 +372,11 @@ else
                                                 </Row>
                                             </EmptyTemplate>
                                             <DataGridColumns>
-                                                <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="User.UserName" Caption="@L["UserName"]" />
+                                                <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Caption="@L["Member"]">
+                                                    <DisplayTemplate>
+                                                        @(context.User?.Surname + " " + context.User?.Name)
+                                                    </DisplayTemplate>
+                                                </DataGridColumn>
                                                 <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.AssignmentRole" Caption="@L["AssignmentRole"]">
                                                     <DisplayTemplate>
                                                         @if (Enum.TryParse<ProjectTaskAssignmentRole>(context.ProjectTaskAssignment.AssignmentRole, ignoreCase: true, out var role))
@@ -392,7 +400,7 @@ else
                                                     <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Caption="@L["Actions"]">
                                                         <DisplayTemplate>
                                                             <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteEditAssignmentAsync(context))">
-                                                                <Icon Name="IconName.Delete" Class="me-1" /> 
+                                                                <Icon Name="IconName.Delete"/> 
                                                             </Button>
                                                         </DisplayTemplate>
                                                     </DataGridColumn>
@@ -516,11 +524,11 @@ else
                                 </TabPanel>
                             </Content>
                         </Tabs>
-                    </Column>
-                </Row>
-            </Form>
-        </CardBody>
-    </Card>
+                    </CardBody>
+                </Card>
+            </Column>
+        </Row>
+    </Form>
 }
 
 @* PDF Viewer Modal *@
