@@ -85,4 +85,11 @@ public abstract class SignatureSettingControllerBase : AbpController
     {
         return _signatureSettingsAppService.DeleteAllAsync(input);
     }
+
+    [HttpGet]
+    [Route("lookup")]
+    public virtual Task<PagedResultDto<LookupDto<Guid>>> GetSignatureSettingLookupAsync(LookupRequestDto input)
+    {
+        return _signatureSettingsAppService.GetSignatureSettingLookupAsync(input);
+    }
 }

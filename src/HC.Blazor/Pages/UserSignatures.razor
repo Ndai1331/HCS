@@ -19,8 +19,10 @@
 @using Volo.Abp.AspNetCore.Components
 @using Microsoft.AspNetCore.Components
 @using Volo.Abp.Http.Client
+@using HC.SignatureSettings
 @inherits HCComponentBase
 @inject IUserSignaturesAppService UserSignaturesAppService
+@inject ISignatureSettingsAppService SignatureSettingsAppService
 @inject IUiMessageService UiMessageService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
@@ -323,20 +325,24 @@
               </DataGridColumn>
                 <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto" Caption="@L["Actions"]" CellStyle="@((item) => "min-width: 150px")" Width="150px">
                     <DisplayTemplate>
-                        <div class="hc-action-icons">
+                        <div class="d-flex gap-1">
                             @if (CanEditUserSignature)
                             {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditUserSignatureModalAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Outline Color="Color.Primary"
+                                 Size="Size.Small" 
+                                 Title="@L["Edit"]"
+                                 Clicked="@(() => OpenEditUserSignatureModalAsync(context))">
+                                    <Icon Name="IconName.Edit" />
+                                </Button>
                             }
                             @if (CanDeleteUserSignature)
                             {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteUserSignatureWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Outline Color="Color.Danger" 
+                                Size="Size.Small" 
+                                Title="@L["Delete"]"
+                                Clicked="@(() => DeleteUserSignatureWithConfirmationAsync(context))">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
                             }
                         </div>
 @*//<suite-custom-code-block-4>*@
@@ -394,9 +400,18 @@
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                         <Field>
                             <FieldLabel>@L["ProviderCode"] *</FieldLabel>
-                            <TextEdit Text="@NewUserSignature.ProviderCode" 
-                                    TextChanged="@((string value) => { NewUserSignature.ProviderCode = value; CreateFieldErrors.Remove("ProviderCode"); })"
-                                    Style="@(HasCreateFieldError("ProviderCode") ? "border-color: #dc3545;" : "")" />
+                            <Select TValue="Guid?" 
+                                    SelectedValue="@NewSignatureSettingId"
+                                    SelectedValueChanged="@((Guid? value) => { NewSignatureSettingId = value; CreateFieldErrors.Remove("ProviderCode"); })"
+                                    Style="@(HasCreateFieldError("ProviderCode") ? "border-color: #dc3545;" : "")">
+                                <SelectItem TValue="Guid?" Value="@((Guid?)null)">@L[""]</SelectItem>
+                                @foreach(var item in SignatureSettingsCollection)
+                                {
+                                    <SelectItem TValue="Guid" Value="@item.Id">
+                                        @item.DisplayName
+                                    </SelectItem>
+                                }
+                            </Select>
                             @if (HasCreateFieldError("ProviderCode"))
                             {
                                 <div class="invalid-feedback d-block">@GetCreateFieldError("ProviderCode")</div>
@@ -525,9 +540,18 @@
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                         <Field>
                             <FieldLabel>@L["ProviderCode"] *</FieldLabel>
-                            <TextEdit Text="@EditingUserSignature.ProviderCode" 
-                                    TextChanged="@((string value) => { EditingUserSignature.ProviderCode = value; EditFieldErrors.Remove("ProviderCode"); })"
-                                    Style="@(HasEditFieldError("ProviderCode") ? "border-color: #dc3545;" : "")" />
+                            <Select TValue="Guid?" 
+                                    SelectedValue="@EditingProviderSignatureSettingId"
+                                    SelectedValueChanged="@((Guid? value) => { EditingProviderSignatureSettingId = value; EditFieldErrors.Remove("ProviderCode"); })"
+                                    Style="@(HasEditFieldError("ProviderCode") ? "border-color: #dc3545;" : "")">
+                                <SelectItem TValue="Guid?" Value="@((Guid?)null)">@L[""]</SelectItem>
+                                @foreach(var item in SignatureSettingsCollection)
+                                {
+                                    <SelectItem TValue="Guid" Value="@item.Id">
+                                        @item.DisplayName
+                                    </SelectItem>
+                                }
+                            </Select>
                             @if (HasEditFieldError("ProviderCode"))
                             {
                                 <div class="invalid-feedback d-block">@GetEditFieldError("ProviderCode")</div>

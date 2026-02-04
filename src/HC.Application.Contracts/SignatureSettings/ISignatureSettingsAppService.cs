@@ -19,4 +19,5 @@ public partial interface ISignatureSettingsAppService : IApplicationService
     Task DeleteByIdsAsync(List<Guid> signaturesettingIds);
     Task DeleteAllAsync(GetSignatureSettingsInput input);
     Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync();
+    Task<PagedResultDto<LookupDto<Guid>>> GetSignatureSettingLookupAsync(LookupRequestDto input);
 }

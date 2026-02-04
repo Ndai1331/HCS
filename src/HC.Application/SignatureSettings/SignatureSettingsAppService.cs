@@ -108,4 +108,39 @@ public abstract class SignatureSettingsAppServiceBase : HCAppService
             Token = token
         };
     }
+
+    public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetSignatureSettingLookupAsync(LookupRequestDto input)
+    {
+        var query = await _signatureSettingRepository.GetQueryableAsync();
+        
+        // Filter by ProviderCode if filter is provided
+        if (!string.IsNullOrWhiteSpace(input.Filter))
+        {
+            query = query.Where(x => x.ProviderCode != null && x.ProviderCode.Contains(input.Filter));
+        }
+        
+        // Only get active signature settings
+        query = query.Where(x => x.IsActive);
+        
+        var lookupData = await AsyncExecuter.ToListAsync(
+            query
+                .Select(x => new { x.Id, x.ProviderCode })
+                .OrderBy(x => x.ProviderCode)
+                .PageBy(input.SkipCount, input.MaxResultCount)
+        );
+        
+        var totalCount = await AsyncExecuter.CountAsync(query);
+        
+        var items = lookupData.Select(x => new LookupDto<Guid>
+        {
+            Id = x.Id,
+            DisplayName = x.ProviderCode
+        }).ToList();
+        
+        return new PagedResultDto<LookupDto<Guid>>
+        {
+            TotalCount = totalCount,
+            Items = items
+        };
+    }
 }

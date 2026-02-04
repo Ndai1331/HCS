@@ -17,6 +17,7 @@
 @using Blazorise.DataGrid
 @using Volo.Abp.BlazoriseUI
 @using Volo.Abp.BlazoriseUI.Components
+@using HC.SignatureSettings
 @using BreadcrumbItem = Volo.Abp.BlazoriseUI.BreadcrumbItem
 
 @* ************************* PAGE HEADER ************************* *@
@@ -432,9 +433,15 @@
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                         <Field>
                             <FieldLabel>@L["ProviderCode"] *</FieldLabel>
-                            <TextEdit Text="@NewUserSignature.ProviderCode" 
-                                    TextChanged="@((string value) => { NewUserSignature.ProviderCode = value; CreateSignatureFieldErrors.Remove("ProviderCode"); })"
-                                    Style="@(HasCreateSignatureFieldError("ProviderCode") ? "border-color: #dc3545;" : "")" />
+                            <Select2 IdSelector="c => c.Id.ToString()"
+                                     TextSelector="c => c.DisplayName"
+                                     FilterFunction="GetSignatureSettingsCollectionLookupAsync"
+                                     GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
+                                     Datasource="SignatureSettingsCollection"
+                                     Value="@SelectedSignatureSettingForCreate"
+                                     OnValueChanged="OnSignatureSettingChangedForCreate"                
+                                     Cache="MemoryCache"
+                                     Multiselect="false" />
                             @if (HasCreateSignatureFieldError("ProviderCode"))
                             {
                                 <div class="invalid-feedback d-block">@GetCreateSignatureFieldError("ProviderCode")</div>
@@ -570,9 +577,15 @@
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                         <Field>
                             <FieldLabel>@L["ProviderCode"] *</FieldLabel>
-                            <TextEdit Text="@EditingUserSignature.ProviderCode" 
-                                    TextChanged="@((string value) => { EditingUserSignature.ProviderCode = value; EditSignatureFieldErrors.Remove("ProviderCode"); })"
-                                    Style="@(HasEditSignatureFieldError("ProviderCode") ? "border-color: #dc3545;" : "")" />
+                            <Select2 IdSelector="c => c.Id.ToString()"
+                                     TextSelector="c => c.DisplayName"
+                                     FilterFunction="GetSignatureSettingsCollectionLookupAsync"
+                                     GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
+                                     Datasource="SignatureSettingsCollection"
+                                     Value="@SelectedSignatureSettingForEdit"
+                                     OnValueChanged="OnSignatureSettingChangedForEdit"                
+                                     Cache="MemoryCache"
+                                     Multiselect="false" />
                             @if (HasEditSignatureFieldError("ProviderCode"))
                             {
                                 <div class="invalid-feedback d-block">@GetEditSignatureFieldError("ProviderCode")</div>

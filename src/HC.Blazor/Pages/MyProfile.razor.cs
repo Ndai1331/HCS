@@ -27,6 +27,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System.IO;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.Http.Client;
+using HC.SignatureSettings;
 
 
 namespace HC.Blazor.Pages;
@@ -63,6 +64,9 @@ public partial class MyProfile
     [Inject]
     public IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider { get; set; } = default!;
 
+    [Inject]
+    public ISignatureSettingsAppService SignatureSettingsAppService { get; set; } = default!;
+
     protected List<BreadcrumbItem> BreadcrumbItems = new();
 
     protected IdentityUserUpdateDto ProfileModel { get; set; } = new();
@@ -83,6 +87,12 @@ public partial class MyProfile
     protected Guid EditingUserSignatureId { get; set; }
     protected Modal CreateUserSignatureModal { get; set; } = new();
     protected Modal EditUserSignatureModal { get; set; } = new();
+    
+    // Signature Settings Lookup
+    protected IReadOnlyList<LookupDto<Guid>> SignatureSettingsCollection { get; set; } = new List<LookupDto<Guid>>();
+    protected Dictionary<Guid, string> SignatureSettingsIdToCodeMap { get; set; } = new Dictionary<Guid, string>();
+    protected List<LookupDto<Guid>> SelectedSignatureSettingForCreate { get; set; } = new();
+    protected List<LookupDto<Guid>> SelectedSignatureSettingForEdit { get; set; } = new();
     
     protected Dictionary<string, string?> CreateSignatureFieldErrors { get; set; } = new();
     protected Dictionary<string, string?> EditSignatureFieldErrors { get; set; } = new();
@@ -145,6 +155,7 @@ public partial class MyProfile
         await LoadUserProfileAsync();
         await LoadUserDepartmentsAsync();
         await LoadUserSignaturesAsync();
+        await LoadSignatureSettingsLookupAsync();
     }
 
     protected virtual async Task LoadUserProfileAsync()
@@ -312,6 +323,8 @@ public partial class MyProfile
         };
         CreateSignatureValidationErrorKey = null;
         CreateSignatureFieldErrors.Clear();
+        SelectedSignatureSettingForCreate.Clear();
+        await LoadSignatureSettingsLookupAsync();
         await CreateUserSignatureModal.Show();
     }
 
@@ -330,6 +343,16 @@ public partial class MyProfile
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
+            }
+
+            // Map SignatureSettingId to ProviderCode
+            if (SelectedSignatureSettingForCreate != null && SelectedSignatureSettingForCreate.Any())
+            {
+                var selectedId = SelectedSignatureSettingForCreate.First().Id;
+                if (SignatureSettingsIdToCodeMap.ContainsKey(selectedId))
+                {
+                    NewUserSignature.ProviderCode = SignatureSettingsIdToCodeMap[selectedId];
+                }
             }
 
             if (CurrentUser.Id.HasValue)
@@ -361,7 +384,7 @@ public partial class MyProfile
             isValid = false;
         }
 
-        if (string.IsNullOrWhiteSpace(NewUserSignature?.ProviderCode))
+        if (SelectedSignatureSettingForCreate == null || !SelectedSignatureSettingForCreate.Any())
         {
             CreateSignatureFieldErrors["ProviderCode"] = L["ProviderCodeRequired"];
             if (isValid) CreateSignatureValidationErrorKey = "ProviderCodeRequired";
@@ -385,6 +408,29 @@ public partial class MyProfile
         EditingUserSignature = ObjectMapper.Map<UserSignatureDto, UserSignatureUpdateDto>(userSignature.UserSignature);
         EditSignatureValidationErrorKey = null;
         EditSignatureFieldErrors.Clear();
+        
+        await LoadSignatureSettingsLookupAsync();
+        
+        // Set selected signature setting for Select2
+        var signatureSettingId = SignatureSettingsIdToCodeMap
+            .FirstOrDefault(x => x.Value == EditingUserSignature.ProviderCode).Key;
+        
+        if (signatureSettingId != Guid.Empty)
+        {
+            SelectedSignatureSettingForEdit = new List<LookupDto<Guid>>
+            {
+                new LookupDto<Guid>
+                {
+                    Id = signatureSettingId,
+                    DisplayName = EditingUserSignature.ProviderCode
+                }
+            };
+        }
+        else
+        {
+            SelectedSignatureSettingForEdit.Clear();
+        }
+        
         await EditUserSignatureModal.Show();
     }
 
@@ -403,6 +449,16 @@ public partial class MyProfile
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
                 return;
+            }
+
+            // Map SignatureSettingId to ProviderCode
+            if (SelectedSignatureSettingForEdit != null && SelectedSignatureSettingForEdit.Any())
+            {
+                var selectedId = SelectedSignatureSettingForEdit.First().Id;
+                if (SignatureSettingsIdToCodeMap.ContainsKey(selectedId))
+                {
+                    EditingUserSignature.ProviderCode = SignatureSettingsIdToCodeMap[selectedId];
+                }
             }
 
             await UserSignaturesAppService.UpdateAsync(EditingUserSignatureId, EditingUserSignature);
@@ -429,7 +485,7 @@ public partial class MyProfile
             isValid = false;
         }
 
-        if (string.IsNullOrWhiteSpace(EditingUserSignature?.ProviderCode))
+        if (SelectedSignatureSettingForEdit == null || !SelectedSignatureSettingForEdit.Any())
         {
             EditSignatureFieldErrors["ProviderCode"] = L["ProviderCodeRequired"];
             if (isValid) EditSignatureValidationErrorKey = "ProviderCodeRequired";
@@ -788,5 +844,35 @@ public partial class MyProfile
         }
         
         return $"{_apiBaseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+    }
+
+    // Signature Settings Lookup Methods
+    protected virtual async Task LoadSignatureSettingsLookupAsync(string? filterText = null)
+    {
+        var result = await SignatureSettingsAppService.GetSignatureSettingLookupAsync(new LookupRequestDto { Filter = filterText });
+        SignatureSettingsCollection = result.Items;
+        
+        // Build mapper from SignatureSetting Id to ProviderCode
+        SignatureSettingsIdToCodeMap.Clear();
+        foreach (var item in SignatureSettingsCollection)
+        {
+            SignatureSettingsIdToCodeMap[item.Id] = item.DisplayName;
+        }
+    }
+
+    protected virtual async Task<List<LookupDto<Guid>>> GetSignatureSettingsCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    {
+        await LoadSignatureSettingsLookupAsync(filter);
+        return SignatureSettingsCollection.ToList();
+    }
+
+    protected virtual void OnSignatureSettingChangedForCreate()
+    {
+        CreateSignatureFieldErrors.Remove("ProviderCode");
+    }
+
+    protected virtual void OnSignatureSettingChangedForEdit()
+    {
+        EditSignatureFieldErrors.Remove("ProviderCode");
     }
 }

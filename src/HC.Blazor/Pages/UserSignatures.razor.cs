@@ -14,6 +14,7 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.UserSignatures;
 using HC.Permissions;
 using HC.Shared;
+using HC.SignatureSettings;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -76,6 +77,10 @@ public partial class UserSignatures
     private UserSignatureWithNavigationPropertiesDto? SelectedUserSignature;
 
     private IReadOnlyList<LookupDto<Guid>> IdentityUsersCollection { get; set; } = new List<LookupDto<Guid>>();
+    private IReadOnlyList<LookupDto<Guid>> SignatureSettingsCollection { get; set; } = new List<LookupDto<Guid>>();
+    private Dictionary<Guid, string> SignatureSettingsIdToCodeMap { get; set; } = new Dictionary<Guid, string>();
+    private Guid? NewSignatureSettingId { get; set; }
+    private Guid? EditingProviderSignatureSettingId { get; set; }
     private List<UserSignatureWithNavigationPropertiesDto> SelectedUserSignatures { get; set; } = new();
     private bool AllUserSignaturesSelected { get; set; }
 
@@ -96,6 +101,7 @@ public partial class UserSignatures
     {
         await SetPermissionsAsync();
         await GetIdentityUserCollectionLookupAsync();
+        await GetSignatureSettingsCollectionLookupAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -205,6 +211,7 @@ public partial class UserSignatures
                 ? IdentityUsersCollection.Select(i => i.Id).FirstOrDefault()
                 : (CurrentUser.Id ?? Guid.Empty),
         };
+        NewSignatureSettingId = null;
         SelectedCreateTab = "userSignature-create-tab";
         CreateUserSignatureValidationErrorKey = null;
         CreateFieldErrors.Clear();
@@ -228,6 +235,11 @@ public partial class UserSignatures
         var userSignature = await UserSignaturesAppService.GetWithNavigationPropertiesAsync(input.UserSignature.Id);
         EditingUserSignatureId = userSignature.UserSignature.Id;
         EditingUserSignature = ObjectMapper.Map<UserSignatureDto, UserSignatureUpdateDto>(userSignature.UserSignature);
+        
+        // Find SignatureSettingId based on ProviderCode
+        EditingProviderSignatureSettingId = SignatureSettingsIdToCodeMap
+            .FirstOrDefault(x => x.Value == EditingUserSignature.ProviderCode).Key;
+        
         EditUserSignatureValidationErrorKey = null;
         EditFieldErrors.Clear();
         await EditUserSignatureModal.Show();
@@ -266,6 +278,12 @@ public partial class UserSignatures
                 return;
             }
 
+            // Map SignatureSettingId to ProviderCode
+            if (NewSignatureSettingId.HasValue && SignatureSettingsIdToCodeMap.ContainsKey(NewSignatureSettingId.Value))
+            {
+                NewUserSignature.ProviderCode = SignatureSettingsIdToCodeMap[NewSignatureSettingId.Value];
+            }
+
             // If user is not admin, ensure IdentityUserId is set to current user
             if (!IsAdmin && CurrentUser.Id.HasValue)
             {
@@ -298,8 +316,8 @@ public partial class UserSignatures
             isValid = false;
         }
 
-        // Required: ProviderCode
-        if (string.IsNullOrWhiteSpace(NewUserSignature?.ProviderCode))
+        // Required: SignatureSettingId (ProviderCode)
+        if (!NewSignatureSettingId.HasValue || NewSignatureSettingId.Value == Guid.Empty)
         {
             CreateFieldErrors["ProviderCode"] = L["ProviderCodeRequired"];
             if (isValid)
@@ -340,6 +358,12 @@ public partial class UserSignatures
                 return;
             }
 
+            // Map SignatureSettingId to ProviderCode
+            if (EditingProviderSignatureSettingId.HasValue && SignatureSettingsIdToCodeMap.ContainsKey(EditingProviderSignatureSettingId.Value))
+            {
+                EditingUserSignature.ProviderCode = SignatureSettingsIdToCodeMap[EditingProviderSignatureSettingId.Value];
+            }
+
             await UserSignaturesAppService.UpdateAsync(EditingUserSignatureId, EditingUserSignature);
             await GetUserSignaturesAsync();
             await EditUserSignatureModal.Hide();
@@ -366,8 +390,8 @@ public partial class UserSignatures
             isValid = false;
         }
 
-        // Required: ProviderCode
-        if (string.IsNullOrWhiteSpace(EditingUserSignature?.ProviderCode))
+        // Required: SignatureSettingId (ProviderCode)
+        if (!EditingProviderSignatureSettingId.HasValue || EditingProviderSignatureSettingId.Value == Guid.Empty)
         {
             EditFieldErrors["ProviderCode"] = L["ProviderCodeRequired"];
             if (isValid)
@@ -533,5 +557,18 @@ public partial class UserSignatures
         SelectedUserSignatures.Clear();
         AllUserSignaturesSelected = false;
         await GetUserSignaturesAsync();
+    }
+
+    private async Task GetSignatureSettingsCollectionLookupAsync(string? newValue = null)
+    {
+        var result = await SignatureSettingsAppService.GetSignatureSettingLookupAsync(new LookupRequestDto { Filter = newValue });
+        SignatureSettingsCollection = result.Items;
+        
+        // Build mapper from SignatureSetting Id to ProviderCode
+        SignatureSettingsIdToCodeMap.Clear();
+        foreach (var item in SignatureSettingsCollection)
+        {
+            SignatureSettingsIdToCodeMap[item.Id] = item.DisplayName;
+        }
     }
 }

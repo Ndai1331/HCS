@@ -207,23 +207,30 @@
                 {
                     <DataGridMultiSelectColumn TItem="UserDepartmentWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
                 }
-                <DataGridEntityActionsColumn TItem="UserDepartmentWithNavigationPropertiesDto" @ref="@EntityActionsColumn">
+                <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto" Caption="@L["Actions"]" CellStyle="@((item) => "min-width: 150px")" Width="150px">
                     <DisplayTemplate>
-                        <EntityActions TItem="UserDepartmentWithNavigationPropertiesDto" EntityActionsColumn="@EntityActionsColumn">
-                            <EntityAction TItem="UserDepartmentWithNavigationPropertiesDto"
-                                          Visible="@CanEditUserDepartment"
-                                          Clicked="async () => await OpenEditUserDepartmentModalAsync(context)"
-                                          Text="@L["Edit"]"></EntityAction>
-                            <EntityAction TItem="UserDepartmentWithNavigationPropertiesDto"
-                                          Visible="@CanDeleteUserDepartment"
-                                          Clicked="() => DeleteUserDepartmentAsync(context)"
-                                          ConfirmationMessage="@(()=> L["DeleteConfirmationMessage"])"
-                                          Text="@L["Delete"]"></EntityAction>
-@*//<suite-custom-code-block-4>*@
-@*//</suite-custom-code-block-4>*@
-                        </EntityActions>
+                        <div class="d-flex gap-1">
+                            @if (CanEditUserDepartment)
+                            {
+                                <Button Outline Color="Color.Primary"
+                                 Size="Size.Small" 
+                                 Title="@L["Edit"]"
+                                 Clicked="@(() => OpenEditUserDepartmentModalAsync(context))">
+                                    <Icon Name="IconName.Edit" />
+                                </Button>
+                            }
+                            @if (CanDeleteUserDepartment)
+                            {
+                                <Button Outline Color="Color.Danger" 
+                                Size="Size.Small" 
+                                Title="@L["Delete"]"
+                                Clicked="@(() => DeleteUserDepartmentAsync(context))">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
+                            }
+                        </div>
                     </DisplayTemplate>
-                </DataGridEntityActionsColumn>
+                </DataGridColumn>
               <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto"
                       Field="UserDepartment.IsPrimary"
                       Caption="@L["IsPrimary"]">
@@ -381,4 +388,4 @@
 @*//<suite-custom-code-block-10>*@
 @*//</suite-custom-code-block-10>*@
     </ModalContent>
-</Modal>
+</Modal>

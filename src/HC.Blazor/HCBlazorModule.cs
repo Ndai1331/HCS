@@ -593,7 +593,12 @@ public class HCBlazorModule : AbpModule
         context.Services.AddSignalR(options =>
         {
             // options.AddFilter<ForceLogoutHubFilter>();
-            options.EnableDetailedErrors = true;
+            if (context.Services.GetHostingEnvironment().IsDevelopment())    
+            {
+                options.EnableDetailedErrors = true;
+            }else{
+                options.EnableDetailedErrors = false;
+            }
         });
         
         context.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
