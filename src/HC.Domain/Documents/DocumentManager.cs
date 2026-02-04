@@ -35,7 +35,7 @@ public abstract class DocumentManagerBase : DomainService
         return await _documentRepository.InsertAsync(document);
     }
 
-    public virtual async Task<Document> UpdateAsync(Guid id, Guid? fieldId, Guid? unitId, Guid? workflowId, Guid? statusId, Guid typeId, Guid urgencyLevelId, Guid secrecyLevelId, string title, DateTime completedTime, string storageNumber, DateTime incommingDate, string? no = null, string? currentStatus = null, [CanBeNull] string? concurrencyStamp = null)
+    public virtual async Task<Document> UpdateAsync(Guid id, Guid? fieldId, Guid? unitId, Guid? workflowId, Guid? statusId, Guid typeId, Guid urgencyLevelId, Guid secrecyLevelId, string title, DateTime completedTime, string storageNumber, DateTime incommingDate, DocumentSourceType sourceType = DocumentSourceType.Archive, string? no = null, string? currentStatus = null, [CanBeNull] string? concurrencyStamp = null)
     {
         Check.NotNull(typeId, nameof(typeId));
         Check.NotNull(urgencyLevelId, nameof(urgencyLevelId));
@@ -59,6 +59,7 @@ public abstract class DocumentManagerBase : DomainService
         document.CompletedTime = completedTime;
         document.StorageNumber = storageNumber;
         document.IncommingDate = incommingDate;
+        document.SourceType = sourceType;
         document.No = no;
         document.CurrentStatus = currentStatus;
         document.SetConcurrencyStampIfNotNull(concurrencyStamp);
