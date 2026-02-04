@@ -23,7 +23,7 @@ using Microsoft.AspNetCore.Components.Web;
 using HC.MasterDatas;
 using Volo.Abp.AspNetCore.Components.Messages;
 
-namespace HC.Blazor.Pages;
+namespace HC.Blazor.Pages.Documents;
 
 public partial class Documents
 {
@@ -60,6 +60,9 @@ public partial class Documents
     private List<DocumentWithNavigationPropertiesDto> SelectedDocuments { get; set; } = new();
     private bool AllDocumentsSelected { get; set; } = false;
 
+    // Add SourceType filter for distinguishing Archive and Personal documents
+    private DocumentSourceType? SelectedSourceType { get; set; }
+
     private Modal SendDocumentModal { get; set; } = new();
 
 
@@ -77,6 +80,22 @@ public partial class Documents
         if (firstRender)
         {
             Logger.LogInformation("Documents OnAfterRenderAsync firstRender");
+            
+            // Check for sourceType query parameter
+            var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+            var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+            if (query.TryGetValue("sourceType", out var sourceTypeValue) && int.TryParse(sourceTypeValue, out var sourceTypeInt))
+            {
+                SelectedSourceType = (DocumentSourceType)sourceTypeInt;
+                Filter.SourceType = SelectedSourceType;
+                
+                // For Personal documents, also filter by current user
+                if (SelectedSourceType == DocumentSourceType.Personal)
+                {
+                    Filter.CreatorId = CurrentUser.Id;
+                }
+            }
+            
             await SetPermissionsAsync();
             await SetBreadcrumbItemsAsync();
             await SetToolbarItemsAsync();
@@ -108,7 +127,8 @@ public partial class Documents
         if (CanCreateDocument)
         {
             Toolbar.AddButton(L["NewDocument"], () => {
-                NavigationManager.NavigateTo("/document-detail");
+                var sourceTypeParam = SelectedSourceType.HasValue ? $"?sourceType={(int)SelectedSourceType.Value}" : "";
+                NavigationManager.NavigateTo("/document-detail" + sourceTypeParam);
                 return Task.CompletedTask;
             }, IconName.Add, requiredPolicyName: HCPermissions.Documents.Create);
         }
@@ -157,7 +177,7 @@ public partial class Documents
         }
 
         await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-        NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/documents/as-excel-file?DownloadToken={token}&FilterText={HttpUtility.UrlEncode(Filter.FilterText)}{culture}&No={HttpUtility.UrlEncode(Filter.No)}&Title={HttpUtility.UrlEncode(Filter.Title)}&CurrentStatus={HttpUtility.UrlEncode(Filter.CurrentStatus)}&CompletedTimeMin={Filter.CompletedTimeMin?.ToString("O")}&CompletedTimeMax={Filter.CompletedTimeMax?.ToString("O")}&StorageNumber={HttpUtility.UrlEncode(Filter.StorageNumber)}&IncommingDateMin={Filter.IncommingDateMin?.ToString("O")}&IncommingDateMax={Filter.IncommingDateMax?.ToString("O")}&FieldId={Filter.FieldId}&UnitId={Filter.UnitId}&WorkflowId={Filter.WorkflowId}&StatusId={Filter.StatusId}&TypeId={Filter.TypeId}&UrgencyLevelId={Filter.UrgencyLevelId}&SecrecyLevelId={Filter.SecrecyLevelId}", forceLoad: true);
+        NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/documents/as-excel-file?DownloadToken={token}&FilterText={HttpUtility.UrlEncode(Filter.FilterText)}{culture}&No={HttpUtility.UrlEncode(Filter.No)}&Title={HttpUtility.UrlEncode(Filter.Title)}&CurrentStatus={HttpUtility.UrlEncode(Filter.CurrentStatus)}&CompletedTimeMin={Filter.CompletedTimeMin?.ToString("O")}&CompletedTimeMax={Filter.CompletedTimeMax?.ToString("O")}&StorageNumber={HttpUtility.UrlEncode(Filter.StorageNumber)}&IncommingDateMin={Filter.IncommingDateMin?.ToString("O")}&IncommingDateMax={Filter.IncommingDateMax?.ToString("O")}&FieldId={Filter.FieldId}&UnitId={Filter.UnitId}&WorkflowId={Filter.WorkflowId}&StatusId={Filter.StatusId}&TypeId={Filter.TypeId}&UrgencyLevelId={Filter.UrgencyLevelId}&SecrecyLevelId={Filter.SecrecyLevelId}&SourceType={Filter.SourceType}&CreatorId={Filter.CreatorId}", forceLoad: true);
     }
 
     private async Task OnDataGridReadAsync(DataGridReadDataEventArgs<DocumentWithNavigationPropertiesDto> e)
@@ -271,6 +291,13 @@ public partial class Documents
         Filter.SecrecyLevelId = secrecyLevelId;
         await SearchAsync();
     }
+
+    protected virtual async Task OnSourceTypeChangedAsync(DocumentSourceType? sourceType)
+    {
+        Filter.SourceType = sourceType;
+        await SearchAsync();
+    }
+
     private async Task<List<LookupDto<Guid>>> GetTypeMasterDataLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
         var result = await MasterDatasAppService.GetListAsync(new GetMasterDatasInput

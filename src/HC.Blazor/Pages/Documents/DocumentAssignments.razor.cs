@@ -21,7 +21,7 @@ using Volo.Abp;
 using Volo.Abp.Content;
 
 using Volo.Abp.AspNetCore.Components.Messages;
-namespace HC.Blazor.Pages;
+namespace HC.Blazor.Pages.Documents;
 
 public partial class DocumentAssignments
 {

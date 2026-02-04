@@ -19,7 +19,7 @@ public abstract class DocumentManagerBase : DomainService
         _documentRepository = documentRepository;
     }
 
-    public virtual async Task<Document> CreateAsync(Guid? fieldId, Guid? unitId, Guid? workflowId, Guid? statusId, Guid typeId, Guid urgencyLevelId, Guid secrecyLevelId, string title, DateTime completedTime, string storageNumber, DateTime incommingDate, string? no = null, string? currentStatus = null)
+    public virtual async Task<Document> CreateAsync(Guid? fieldId, Guid? unitId, Guid? workflowId, Guid? statusId, Guid typeId, Guid urgencyLevelId, Guid secrecyLevelId, string title, DateTime completedTime, string storageNumber, DateTime incommingDate, string? no = null, string? currentStatus = null, DocumentSourceType sourceType = DocumentSourceType.Archive)
     {
         Check.NotNull(typeId, nameof(typeId));
         Check.NotNull(urgencyLevelId, nameof(urgencyLevelId));
@@ -31,7 +31,7 @@ public abstract class DocumentManagerBase : DomainService
         Check.NotNull(incommingDate, nameof(incommingDate));
         Check.Length(no, nameof(no), DocumentConsts.NoMaxLength);
         Check.Length(currentStatus, nameof(currentStatus), DocumentConsts.CurrentStatusMaxLength);
-        var document = new Document(GuidGenerator.Create(), fieldId, unitId, workflowId, statusId, typeId, urgencyLevelId, secrecyLevelId, title, completedTime, storageNumber, incommingDate, no, currentStatus);
+        var document = new Document(GuidGenerator.Create(), fieldId, unitId, workflowId, statusId, typeId, urgencyLevelId, secrecyLevelId, title, completedTime, storageNumber, incommingDate, no, currentStatus, sourceType);
         return await _documentRepository.InsertAsync(document);
     }
 

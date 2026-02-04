@@ -47,11 +47,13 @@ public abstract class DocumentBase : FullAuditedAggregateRoot<Guid>, IMultiTenan
 
     public Guid SecrecyLevelId { get; set; }
 
+    public DocumentSourceType SourceType { get; set; } = DocumentSourceType.Archive;
+
     protected DocumentBase()
     {
     }
 
-    public DocumentBase(Guid id, Guid? fieldId, Guid? unitId, Guid? workflowId, Guid? statusId, Guid typeId, Guid urgencyLevelId, Guid secrecyLevelId, string title, DateTime completedTime, string storageNumber, DateTime incommingDate, string? no = null, string? currentStatus = null)
+    public DocumentBase(Guid id, Guid? fieldId, Guid? unitId, Guid? workflowId, Guid? statusId, Guid typeId, Guid urgencyLevelId, Guid secrecyLevelId, string title, DateTime completedTime, string storageNumber, DateTime incommingDate, string? no = null, string? currentStatus = null, DocumentSourceType sourceType = DocumentSourceType.Archive)
     {
         Id = id;
         Check.NotNull(title, nameof(title));
@@ -72,5 +74,6 @@ public abstract class DocumentBase : FullAuditedAggregateRoot<Guid>, IMultiTenan
         TypeId = typeId;
         UrgencyLevelId = urgencyLevelId;
         SecrecyLevelId = secrecyLevelId;
+        SourceType = sourceType;
     }
 }

@@ -17,6 +17,8 @@ public class HCMenus
     public const string Units = Prefix + ".Units";
     public const string WorkflowStepAssignments = Prefix + ".WorkflowStepAssignments";
     public const string Documents = Prefix + ".Documents";
+    public const string ArchiveDocuments = Prefix + ".ArchiveDocuments";
+    public const string PersonalDocuments = Prefix + ".PersonalDocuments";
     public const string DocumentFiles = Prefix + ".DocumentFiles";
     public const string DocumentWorkflowInstances = Prefix + ".DocumentWorkflowInstances";
     public const string DocumentAssignments = Prefix + ".DocumentAssignments";

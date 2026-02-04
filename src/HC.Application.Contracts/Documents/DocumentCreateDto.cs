@@ -34,4 +34,6 @@ public abstract class DocumentCreateDtoBase
     public Guid UrgencyLevelId { get; set; }
 
     public Guid SecrecyLevelId { get; set; }
+
+    public DocumentSourceType SourceType { get; set; } = DocumentSourceType.Archive;
 }

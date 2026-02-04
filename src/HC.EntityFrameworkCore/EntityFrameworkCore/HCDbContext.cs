@@ -410,6 +410,8 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.Property(x => x.CompletedTime).HasColumnName(nameof(Document.CompletedTime));
             b.Property(x => x.StorageNumber).HasColumnName(nameof(Document.StorageNumber)).IsRequired().HasMaxLength(DocumentConsts.StorageNumberMaxLength);
             b.Property(x => x.IncommingDate).HasColumnName(nameof(Document.IncommingDate));
+            b.Property(x => x.SourceType).HasColumnName(nameof(Document.SourceType)).IsRequired();
+            b.HasIndex(x => x.SourceType); // Add index for filter performance
             b.HasOne<MasterData>().WithMany().HasForeignKey(x => x.FieldId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<Workflow>().WithMany().HasForeignKey(x => x.WorkflowId).OnDelete(DeleteBehavior.SetNull);

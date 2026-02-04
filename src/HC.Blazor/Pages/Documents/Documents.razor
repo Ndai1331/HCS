@@ -52,7 +52,7 @@
 @*//<suite-custom-code-block-1>*@
 @*//</suite-custom-code-block-1>*@
         <Row>
-            <div class="col col-md-8 col-lg-10">
+            <div class="col col-md-6 col-lg-8">
                 <div class="mb-3">
                     <Form id="DocumentSearchForm">
                         <Addons>
@@ -71,6 +71,20 @@
                     </Form>
                 </div>
             </div>
+            @* <div class="col col-md-3 col-lg-2">
+                <div class="mb-3">
+                    <Field>
+                        <FieldLabel>@L["DocumentSource"]</FieldLabel>
+                        <Select TValue="DocumentSourceType?" 
+                                SelectedValue="@SelectedSourceType"
+                                SelectedValueChanged="@OnSourceTypeChangedAsync">
+                            <SelectItem TValue="DocumentSourceType?" Value="@null">@L["All"]</SelectItem>
+                            <SelectItem TValue="DocumentSourceType?" Value="@DocumentSourceType.Archive">@L["ArchiveDocuments"]</SelectItem>
+                            <SelectItem TValue="DocumentSourceType?" Value="@DocumentSourceType.Personal">@L["PersonalDocuments"]</SelectItem>
+                        </Select>
+                    </Field>
+                </div>
+            </div> *@
                    <div class="col-md-4 col-lg-2">
             <div class="mb-3">
                <Button Color="Color.Primary" Outline Style="width:100%" id="AdvancedFilterSectionToggler"

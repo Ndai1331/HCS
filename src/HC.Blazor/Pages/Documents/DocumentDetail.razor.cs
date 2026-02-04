@@ -24,9 +24,7 @@ using Blazorise.PdfViewer;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using System.Text.Json;
 using Volo.Abp.AspNetCore.Components.Messages;
-namespace HC.Blazor.Pages;
-
-
+namespace HC.Blazor.Pages.Documents;
 public partial class DocumentDetail : HCComponentBase
 {
     [Parameter] public Guid DocumentId { get; set; }
@@ -82,6 +80,9 @@ public partial class DocumentDetail : HCComponentBase
     private List<LookupDto<Guid>> SelectedStatusMasterData { get; set; } = new();
     private List<LookupDto<Guid>> SelectedUnit { get; set; } = new();
 
+    // Document Source Type (Archive/Personal)
+    private DocumentSourceType SelectedSourceType { get; set; } = DocumentSourceType.Archive;
+
     // File upload
     private IFileEntry? SelectedFile { get; set; }
     private string UploadedFilePath { get; set; } = string.Empty;
@@ -123,6 +124,15 @@ public partial class DocumentDetail : HCComponentBase
             {
                 BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["NewDocument"]));
 
+                // Get sourceType from query parameter
+                DocumentSourceType defaultSourceType = DocumentSourceType.Archive;
+                var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+                var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+                if (query.TryGetValue("sourceType", out var sourceTypeValue) && int.TryParse(sourceTypeValue, out var sourceTypeInt))
+                {
+                    defaultSourceType = (DocumentSourceType)sourceTypeInt;
+                }
+
                 DocumentCreateData = new DocumentCreateDto
                 {
                     CompletedTime = DateTime.Now,
@@ -131,7 +141,10 @@ public partial class DocumentDetail : HCComponentBase
                     UrgencyLevelId = UrgencyLevelMasterDataCollection.FirstOrDefault()?.Id ?? Guid.Empty,
                     SecrecyLevelId = SecrecyLevelMasterDataCollection.FirstOrDefault()?.Id ?? Guid.Empty,
                     StatusId = StatusMasterDataCollection.FirstOrDefault()?.Id ?? Guid.Empty,
+                    SourceType = defaultSourceType,
                 };
+                
+                SelectedSourceType = defaultSourceType;
 
                 if (DocumentCreateData.UrgencyLevelId != default)
                 {
@@ -241,6 +254,9 @@ public partial class DocumentDetail : HCComponentBase
                     if (unitData != null)
                         SelectedUnit = new List<LookupDto<Guid>> { unitData };
                 }
+
+                // Load SourceType
+                SelectedSourceType = CurrentDocument.Document.SourceType;
 
                 // Load document files
                 Logger.LogInformation($"LoadDocumentAsync: Calling LoadDocumentFilesAsync");
@@ -539,6 +555,19 @@ public partial class DocumentDetail : HCComponentBase
                 DocumentCreateData.UnitId = null;
                 CreateValidation.RemoveFieldError("Unit");
             }
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSourceTypeChanged()
+    {
+        if (DocumentUpdateData != null)
+        {
+            DocumentUpdateData.SourceType = SelectedSourceType;
+        }
+        else if (DocumentCreateData != null)
+        {
+            DocumentCreateData.SourceType = SelectedSourceType;
         }
         InvokeAsync(StateHasChanged);
     }

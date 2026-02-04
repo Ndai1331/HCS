@@ -37,6 +37,8 @@ public abstract class GetDocumentsInputBase : PagedAndSortedResultRequestDto
 
     public Guid? SecrecyLevelId { get; set; }
 
+    public DocumentSourceType? SourceType { get; set; }
+
     public GetDocumentsInputBase()
     {
     }

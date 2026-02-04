@@ -36,5 +36,7 @@ public abstract class DocumentUpdateDtoBase : IHasConcurrencyStamp
 
     public Guid SecrecyLevelId { get; set; }
 
+    public DocumentSourceType SourceType { get; set; } = DocumentSourceType.Archive;
+
     public string ConcurrencyStamp { get; set; } = null!;
 }

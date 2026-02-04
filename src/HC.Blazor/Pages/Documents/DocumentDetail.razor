@@ -267,7 +267,22 @@
                                 </Column>
                             </Row>
                             
-                            <!-- Row 6: Trạng thái hiện tại (12) -->
+                            <!-- Row 6: Phân hệ (12) -->
+                            <Row>
+                                <Column ColumnSize="ColumnSize.Is12">
+                                    <Field>
+                                        <FieldLabel>@L["DocumentSource"]</FieldLabel>
+                                        <Select TValue="DocumentSourceType" 
+                                                SelectedValue="@SelectedSourceType"
+                                                SelectedValueChanged="@OnSourceTypeChanged">
+                                            <SelectItem TValue="DocumentSourceType" Value="@DocumentSourceType.Archive">@L["ArchiveDocuments"]</SelectItem>
+                                            <SelectItem TValue="DocumentSourceType" Value="@DocumentSourceType.Personal">@L["PersonalDocuments"]</SelectItem>
+                                        </Select>
+                                    </Field>
+                                </Column>
+                            </Row>
+                            
+                            <!-- Row 7: Trạng thái hiện tại | File upload (6-6) -->
                             <Row>
                                 <Column ColumnSize="ColumnSize.Is12">
                                     <Field>
@@ -599,14 +614,23 @@
                             </Column>
                         </Row>
                         
-                        <!-- Row 6: Trạng thái hiện tại (12) -->
+                        <!-- Row 6: Phân hệ (12) -->
                         <Row>
-                            @* <Column ColumnSize="ColumnSize.Is12">
+                            <Column ColumnSize="ColumnSize.Is12">
                                 <Field>
-                                    <FieldLabel>@L["CurrentStatus"]</FieldLabel>
-                                    <TextEdit @bind-Text="@DocumentCreateData.CurrentStatus" MaxLength="DocumentConsts.CurrentStatusMaxLength"  />
+                                    <FieldLabel>@L["DocumentSource"]</FieldLabel>
+                                    <Select TValue="DocumentSourceType" 
+                                            SelectedValue="@SelectedSourceType"
+                                            SelectedValueChanged="@OnSourceTypeChanged">
+                                        <SelectItem TValue="DocumentSourceType" Value="@DocumentSourceType.Archive">@L["ArchiveDocuments"]</SelectItem>
+                                        <SelectItem TValue="DocumentSourceType" Value="@DocumentSourceType.Personal">@L["PersonalDocuments"]</SelectItem>
+                                    </Select>
                                 </Field>
-                            </Column> *@
+                            </Column>
+                        </Row>
+                        
+                        <!-- Row 7: File Upload (12) -->
+                        <Row>
                             <Column ColumnSize="ColumnSize.Is12">
                                 @if (!DocumentFilesList.Any())
                                 {

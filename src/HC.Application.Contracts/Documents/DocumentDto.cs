@@ -31,5 +31,7 @@ public abstract class DocumentDtoBase : FullAuditedEntityDto<Guid>, IHasConcurre
 
     public Guid SecrecyLevelId { get; set; }
 
+    public DocumentSourceType SourceType { get; set; } = DocumentSourceType.Archive;
+
     public string ConcurrencyStamp { get; set; } = null!;
 }

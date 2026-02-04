@@ -44,12 +44,12 @@ public abstract class DocumentsAppServiceBase : HCAppService
     public virtual async Task<PagedResultDto<DocumentWithNavigationPropertiesDto>> GetListAsync(GetDocumentsInput input)
     {
         _logger.LogInformation("GetListAsync start");
-        var totalCount = await _documentRepository.GetCountAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId);
+        var totalCount = await _documentRepository.GetCountAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.SourceType, input.CreatorId);
         var items = await _documentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.No, input.Title, 
         input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax,
          input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax,
           input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, 
-          input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId,
+          input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.SourceType, input.CreatorId,
           input.Sorting,  input.MaxResultCount, input.SkipCount);
         var result = new PagedResultDto<DocumentWithNavigationPropertiesDto>
         {
@@ -165,7 +165,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
             throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
         }
 
-        var documents = await _documentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId);
+        var documents = await _documentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.SourceType, input.CreatorId);
         var items = documents.Select(item => new { No = item.Document.No, Title = item.Document.Title, CurrentStatus = item.Document.CurrentStatus, CompletedTime = item.Document.CompletedTime, StorageNumber = item.Document.StorageNumber, IncommingDate = item.Document.IncommingDate, Field = item.Field?.Name, Unit = item.Unit?.Name, Workflow = item.Workflow?.Name, Status = item.Status?.Name, Type = item.Type?.Name, UrgencyLevel = item.UrgencyLevel?.Name, SecrecyLevel = item.SecrecyLevel?.Name, Creator = item.Document.CreatorId });
         var memoryStream = new MemoryStream();
         await memoryStream.SaveAsAsync(items);
@@ -182,7 +182,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
     [Authorize(HCPermissions.Documents.Delete)]
     public virtual async Task DeleteAllAsync(GetDocumentsInput input)
     {
-        await _documentRepository.DeleteAllAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.CreatorId);
+        await _documentRepository.DeleteAllAsync(input.FilterText, input.No, input.Title, input.CurrentStatus, input.CompletedTimeMin, input.CompletedTimeMax, input.StorageNumber, input.IncommingDateMin, input.IncommingDateMax, input.FieldId, input.UnitId, input.WorkflowId, input.StatusId, input.TypeId, input.UrgencyLevelId, input.SecrecyLevelId, input.SourceType, input.CreatorId);
     }
 
     public virtual async Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync()

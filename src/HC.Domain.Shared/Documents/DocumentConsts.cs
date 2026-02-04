@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace HC.Documents;
 
 public static class DocumentConsts
@@ -12,4 +14,21 @@ public static class DocumentConsts
     public const int NoMaxLength = 50;
     public const int CurrentStatusMaxLength = 30;
     public const int StorageNumberMaxLength = 50;
+}
+
+
+
+public enum DocumentSourceType
+{
+    /// <summary>
+    /// Văn thư lưu trữ - Archival documents
+    /// </summary>
+    [Description("Archive")]
+    Archive = 0,
+
+    /// <summary>
+    /// Văn bản của tôi - Personal documents
+    /// </summary>
+    [Description("Personal")]
+    Personal = 1
 }
