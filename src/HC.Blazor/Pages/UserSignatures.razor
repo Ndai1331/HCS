@@ -77,7 +77,7 @@
                                 SelectedValue="@FilterSignType"
                                 SelectedValueChanged="@OnFilterSignTypeChangedAsync">
                             <ChildContent>
-                                <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L[""]</SelectItem>
+                                <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L["All"]</SelectItem>
                                 @foreach (var item in Enum.GetValues<SignType>())
                                 {
                                     <SelectItem TValue="SignType?" Value="@item">
@@ -152,7 +152,7 @@
                         <Select TValue="bool?"
 		SelectedValue="@Filter.IsActive"
 		SelectedValueChanged="@OnIsActiveChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -166,7 +166,7 @@
                             <Select TValue="Guid?"
                                     SelectedValue="@Filter.IdentityUserId"
                                     SelectedValueChanged="@OnIdentityUserIdChangedAsync">
-                                <SelectItem></SelectItem>
+                                <SelectItem>@L["All"]</SelectItem>
                                 @foreach(var item in IdentityUsersCollection)
                                 {
                                     <SelectItem TValue="Guid" Value="@item.Id">

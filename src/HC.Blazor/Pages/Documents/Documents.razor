@@ -165,7 +165,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.FieldId"
 		SelectedValueChanged="@OnFieldIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in FieldMasterDataCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">
@@ -181,7 +181,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.UnitId"
 		SelectedValueChanged="@OnUnitIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in UnitsCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">
@@ -197,7 +197,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.StatusId"
 		SelectedValueChanged="@OnStatusIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in StatusMasterDataCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">
@@ -213,7 +213,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.TypeId"
 		SelectedValueChanged="@OnTypeIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in TypeMasterDataCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -229,7 +229,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.UrgencyLevelId"
 		SelectedValueChanged="@OnUrgencyLevelIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in UrgencyLevelMasterDataCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -245,7 +245,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.SecrecyLevelId"
 		SelectedValueChanged="@OnSecrecyLevelIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in SecrecyLevelMasterDataCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -261,7 +261,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.WorkflowId"
 		SelectedValueChanged="@OnWorkflowIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in WorkflowsCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">

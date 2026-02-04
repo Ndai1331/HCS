@@ -139,7 +139,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.SurveyLocationId"
 		SelectedValueChanged="@OnSurveyLocationIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in SurveyLocationsCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">

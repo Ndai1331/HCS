@@ -154,7 +154,7 @@
                         <Select TValue="bool?"
 		SelectedValue="@Filter.AllDay"
 		SelectedValueChanged="@OnAllDayChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -166,7 +166,7 @@
                         <Select TValue="EventType?" 
                                 SelectedValue="@FilterEventType"
                                 SelectedValueChanged="@OnFilterEventTypeChangedAsync">
-                            <SelectItem></SelectItem>
+                            <SelectItem>@L["All"]</SelectItem>
                             @foreach (var eventType in Enum.GetValues<EventType>())
                             {
                                 <SelectItem TValue="EventType?" Value="@eventType">
@@ -188,7 +188,7 @@
                         <Select TValue="RelatedType?" 
                                 SelectedValue="@FilterRelatedType"
                                 SelectedValueChanged="@OnFilterRelatedTypeChangedAsync">
-                            <SelectItem></SelectItem>
+                            <SelectItem>@L["All"]</SelectItem>
                             @foreach (var relatedType in Enum.GetValues<RelatedType>())
                             {
                                 <SelectItem TValue="RelatedType?" Value="@relatedType">
@@ -237,7 +237,7 @@
                         <Select TValue="EventVisibility?" 
                                 SelectedValue="@FilterVisibility"
                                 SelectedValueChanged="@OnFilterVisibilityChangedAsync">
-                            <SelectItem></SelectItem>
+                            <SelectItem>@L["All"]</SelectItem>
                             @foreach (var visibility in Enum.GetValues<EventVisibility>())
                             {
                                 <SelectItem TValue="EventVisibility?" Value="@visibility">

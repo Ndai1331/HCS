@@ -121,7 +121,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.DocumentId"
 		SelectedValueChanged="@OnDocumentIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in DocumentsCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -137,7 +137,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.WorkflowId"
 		SelectedValueChanged="@OnWorkflowIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in WorkflowsCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -153,7 +153,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.WorkflowTemplateId"
 		SelectedValueChanged="@OnWorkflowTemplateIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in WorkflowTemplatesCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -169,7 +169,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.CurrentStepId"
 		SelectedValueChanged="@OnCurrentStepIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in WorkflowStepTemplatesCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
