@@ -57,7 +57,8 @@
                     <Form id="DocumentSearchForm">
                         <Addons>
                             <Addon AddonType="AddonType.Body">
-                                <TextEdit @bind-Text="@Filter.FilterText"
+                                <TextEdit Text="@Filter.FilterText"
+                                        TextChanged="@OnFilterTextChangedAsync"
                                         Autofocus="true"
                                         Placeholder="@L["Search"]">
                                 </TextEdit>
@@ -324,6 +325,7 @@
         <DataGrid TItem="DocumentWithNavigationPropertiesDto"
                     @ref="DataGridRef"
                     Data="DocumentList"
+                    Loading="@IsLoading"
                     SelectionMode="DataGridSelectionMode.Multiple"
                     SelectedRows="SelectedDocuments"
                     RowSelectable="RowSelectableHandler"

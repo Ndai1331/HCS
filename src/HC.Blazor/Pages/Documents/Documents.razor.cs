@@ -44,6 +44,9 @@ public partial class Documents : IDisposable
     private string CurrentSorting { get; set; } = string.Empty;
     private int TotalCount { get; set; }
 
+    private bool IsLoading { get; set; }
+    private bool IsExporting { get; set; }
+
     private bool CanCreateDocument { get; set; }
 
     private bool CanEditDocument { get; set; }
@@ -67,6 +70,8 @@ public partial class Documents : IDisposable
     private DocumentSourceType? SelectedSourceType { get; set; }
 
     private Modal SendDocumentModal { get; set; } = new();
+
+    private CancellationTokenSource? SearchDebounceCts { get; set; }
 
     // Track previous URL and sourceType to detect changes
     private string? previousAbsoluteUrl;
@@ -110,14 +115,15 @@ public partial class Documents : IDisposable
 
             await SetPermissionsAsync();
             await SetToolbarItemsAsync();
-            await GetDepartmentsAsync();
-            await GetStatusMasterDataLookupAsync(StatusMasterDataCollection, string.Empty, CancellationToken.None);
-            await GetTypeMasterDataLookupAsync(TypeMasterDataCollection, "", CancellationToken.None);
-            await GetUrgencyLevelMasterDataLookupAsync(UrgencyLevelMasterDataCollection, "", CancellationToken.None);
-            await GetSecrecyLevelMasterDataLookupAsync(SecrecyLevelMasterDataCollection, "", CancellationToken.None);
-            await GetFieldMasterDataLookupAsync(FieldMasterDataCollection, "", CancellationToken.None);
-            await GetStatusMasterDataLookupAsync(StatusMasterDataCollection, "", CancellationToken.None);
-            await GetUnitLookupAsync(UnitsCollection, "", CancellationToken.None);
+            await Task.WhenAll(
+                GetDepartmentsAsync(),
+                GetStatusMasterDataLookupAsync(StatusMasterDataCollection, string.Empty, CancellationToken.None),
+                GetTypeMasterDataLookupAsync(TypeMasterDataCollection, "", CancellationToken.None),
+                GetUrgencyLevelMasterDataLookupAsync(UrgencyLevelMasterDataCollection, "", CancellationToken.None),
+                GetSecrecyLevelMasterDataLookupAsync(SecrecyLevelMasterDataCollection, "", CancellationToken.None),
+                GetFieldMasterDataLookupAsync(FieldMasterDataCollection, "", CancellationToken.None),
+                GetUnitLookupAsync(UnitsCollection, "", CancellationToken.None)
+            );
 
             // Set breadcrumb items AFTER page title is updated (from OnInitializedAsync)
             BreadcrumbItems.Clear();
@@ -156,15 +162,23 @@ public partial class Documents : IDisposable
             {
                 Logger.LogInformation($"LocationChanged: sourceType changed from '{previousSourceTypeValue}' to '{currentSourceTypeValue}', updating UI");
 
-                // Update sourceType and page title
-                UpdateSourceTypeFromQuery();
+                await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+                try
+                {
+                    // Update sourceType and page title
+                    UpdateSourceTypeFromQuery();
 
-                // Update breadcrumb items with new title
-                BreadcrumbItems.Clear();
-                await SetBreadcrumbItemsAsync();
+                    // Update breadcrumb items with new title
+                    BreadcrumbItems.Clear();
+                    await SetBreadcrumbItemsAsync();
 
-                // Reload documents
-                await GetDocumentsAsync();
+                    // Reload documents
+                    await GetDocumentsAsync();
+                }
+                finally
+                {
+                    await BlockUiService.UnBlock();
+                }
 
                 // Update previous values
                 previousAbsoluteUrl = currentUrl;
@@ -209,17 +223,25 @@ public partial class Documents : IDisposable
                 {
                     Logger.LogInformation($"sourceType changed from '{previousSourceTypeValue}' to '{currentSourceTypeValue}', updating UI");
 
-                    // Update sourceType and page title
-                    UpdateSourceTypeFromQuery();
-                    Logger.LogInformation($"After UpdateSourceTypeFromQuery: PageTitle={PageTitle}");
+                    await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+                    try
+                    {
+                        // Update sourceType and page title
+                        UpdateSourceTypeFromQuery();
+                        Logger.LogInformation($"After UpdateSourceTypeFromQuery: PageTitle={PageTitle}");
 
-                    // Update breadcrumb items with new title
-                    BreadcrumbItems.Clear();
-                    await SetBreadcrumbItemsAsync();
-                    Logger.LogInformation($"After SetBreadcrumbItemsAsync: BreadcrumbItems count={BreadcrumbItems.Count}");
+                        // Update breadcrumb items with new title
+                        BreadcrumbItems.Clear();
+                        await SetBreadcrumbItemsAsync();
+                        Logger.LogInformation($"After SetBreadcrumbItemsAsync: BreadcrumbItems count={BreadcrumbItems.Count}");
 
-                    // Reload documents
-                    await GetDocumentsAsync();
+                        // Reload documents
+                        await GetDocumentsAsync();
+                    }
+                    finally
+                    {
+                        await BlockUiService.UnBlock();
+                    }
 
                     // Update previous values
                     previousAbsoluteUrl = currentUrl;
@@ -321,14 +343,22 @@ public partial class Documents : IDisposable
     private async Task GetDocumentsAsync()
     {
         Logger.LogInformation("GetDocumentsAsync start");
-        Filter.MaxResultCount = PageSize;
-        Filter.SkipCount = (CurrentPage - 1) * PageSize;
-        Filter.Sorting = CurrentSorting;
-        var result = await DocumentsAppService.GetListAsync(Filter);
-        DocumentList = result.Items;
-        TotalCount = (int)result.TotalCount;
-        await ClearSelection();
-        Logger.LogInformation("GetDocumentsAsync end");
+        IsLoading = true;
+        try
+        {
+            Filter.MaxResultCount = PageSize;
+            Filter.SkipCount = (CurrentPage - 1) * PageSize;
+            Filter.Sorting = CurrentSorting;
+            var result = await DocumentsAppService.GetListAsync(Filter);
+            DocumentList = result.Items;
+            TotalCount = (int)result.TotalCount;
+            await ClearSelection();
+        }
+        finally
+        {
+            IsLoading = false;
+            Logger.LogInformation("GetDocumentsAsync end");
+        }
     }
 
     protected virtual async Task SearchAsync()
@@ -338,18 +368,66 @@ public partial class Documents : IDisposable
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task DownloadAsExcelAsync()
+    protected virtual async Task OnFilterTextChangedAsync(string? filterText)
     {
-        var token = (await DocumentsAppService.GetDownloadTokenAsync()).Token;
-        var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("HC") ?? await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-        var culture = CultureInfo.CurrentUICulture.Name ?? CultureInfo.CurrentCulture.Name;
-        if (!culture.IsNullOrEmpty())
+        Filter.FilterText = filterText;
+        await DebouncedSearchAsync();
+    }
+
+    private async Task DebouncedSearchAsync()
+    {
+        var previous = SearchDebounceCts;
+        SearchDebounceCts = new CancellationTokenSource();
+        previous?.Cancel();
+        previous?.Dispose();
+        var token = SearchDebounceCts.Token;
+
+        try
         {
-            culture = "&culture=" + culture;
+            await Task.Delay(350, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
         }
 
-        await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-        NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/documents/as-excel-file?DownloadToken={token}&FilterText={HttpUtility.UrlEncode(Filter.FilterText)}{culture}&No={HttpUtility.UrlEncode(Filter.No)}&Title={HttpUtility.UrlEncode(Filter.Title)}&CurrentStatus={HttpUtility.UrlEncode(Filter.CurrentStatus)}&CompletedTimeMin={Filter.CompletedTimeMin?.ToString("O")}&CompletedTimeMax={Filter.CompletedTimeMax?.ToString("O")}&StorageNumber={HttpUtility.UrlEncode(Filter.StorageNumber)}&IncommingDateMin={Filter.IncommingDateMin?.ToString("O")}&IncommingDateMax={Filter.IncommingDateMax?.ToString("O")}&FieldId={Filter.FieldId}&UnitId={Filter.UnitId}&WorkflowId={Filter.WorkflowId}&StatusId={Filter.StatusId}&TypeId={Filter.TypeId}&UrgencyLevelId={Filter.UrgencyLevelId}&SecrecyLevelId={Filter.SecrecyLevelId}&SourceType={Filter.SourceType}&CreatorId={Filter.CreatorId}", forceLoad: true);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        await SearchAsync();
+    }
+
+    private async Task DownloadAsExcelAsync()
+    {
+        if (IsExporting)
+        {
+            await UiMessageService.Info(L["Exporting"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+            return;
+        }
+
+        IsExporting = true;
+        await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+        try
+        {
+            await UiMessageService.Info(L["Exporting"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+            var token = (await DocumentsAppService.GetDownloadTokenAsync()).Token;
+            var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("HC") ?? await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
+            var culture = CultureInfo.CurrentUICulture.Name ?? CultureInfo.CurrentCulture.Name;
+            if (!culture.IsNullOrEmpty())
+            {
+                culture = "&culture=" + culture;
+            }
+
+            await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
+            NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/documents/as-excel-file?DownloadToken={token}&FilterText={HttpUtility.UrlEncode(Filter.FilterText)}{culture}&No={HttpUtility.UrlEncode(Filter.No)}&Title={HttpUtility.UrlEncode(Filter.Title)}&CurrentStatus={HttpUtility.UrlEncode(Filter.CurrentStatus)}&CompletedTimeMin={Filter.CompletedTimeMin?.ToString("O")}&CompletedTimeMax={Filter.CompletedTimeMax?.ToString("O")}&StorageNumber={HttpUtility.UrlEncode(Filter.StorageNumber)}&IncommingDateMin={Filter.IncommingDateMin?.ToString("O")}&IncommingDateMax={Filter.IncommingDateMax?.ToString("O")}&FieldId={Filter.FieldId}&UnitId={Filter.UnitId}&WorkflowId={Filter.WorkflowId}&StatusId={Filter.StatusId}&TypeId={Filter.TypeId}&UrgencyLevelId={Filter.UrgencyLevelId}&SecrecyLevelId={Filter.SecrecyLevelId}&SourceType={Filter.SourceType}&CreatorId={Filter.CreatorId}", forceLoad: true);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            IsExporting = false;
+        }
     }
 
     private async Task OnDataGridReadAsync(DataGridReadDataEventArgs<DocumentWithNavigationPropertiesDto> e)
@@ -377,97 +455,97 @@ public partial class Documents : IDisposable
     protected virtual async Task OnNoChangedAsync(string? no)
     {
         Filter.No = no;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnTitleChangedAsync(string? title)
     {
         Filter.Title = title;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnCurrentStatusChangedAsync(string? currentStatus)
     {
         Filter.CurrentStatus = currentStatus;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnCompletedTimeMinChangedAsync(DateTime? completedTimeMin)
     {
         Filter.CompletedTimeMin = completedTimeMin.HasValue ? completedTimeMin.Value.Date : completedTimeMin;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnCompletedTimeMaxChangedAsync(DateTime? completedTimeMax)
     {
         Filter.CompletedTimeMax = completedTimeMax.HasValue ? completedTimeMax.Value.Date.AddDays(1).AddSeconds(-1) : completedTimeMax;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnStorageNumberChangedAsync(string? storageNumber)
     {
         Filter.StorageNumber = storageNumber;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnIncommingDateMinChangedAsync(DateTime? incommingDateMin)
     {
         Filter.IncommingDateMin = incommingDateMin.HasValue ? incommingDateMin.Value.Date : incommingDateMin;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnIncommingDateMaxChangedAsync(DateTime? incommingDateMax)
     {
         Filter.IncommingDateMax = incommingDateMax.HasValue ? incommingDateMax.Value.Date.AddDays(1).AddSeconds(-1) : incommingDateMax;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnFieldIdChangedAsync(Guid? fieldId)
     {
         Filter.FieldId = fieldId;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnUnitIdChangedAsync(Guid? unitId)
     {
         Filter.UnitId = unitId;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnWorkflowIdChangedAsync(Guid? workflowId)
     {
         Filter.WorkflowId = workflowId;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnStatusIdChangedAsync(Guid? statusId)
     {
         Filter.StatusId = statusId;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnTypeIdChangedAsync(Guid? typeId)
     {
         Filter.TypeId = typeId;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnUrgencyLevelIdChangedAsync(Guid? urgencyLevelId)
     {
         Filter.UrgencyLevelId = urgencyLevelId;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnSecrecyLevelIdChangedAsync(Guid? secrecyLevelId)
     {
         Filter.SecrecyLevelId = secrecyLevelId;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnSourceTypeChangedAsync(DocumentSourceType? sourceType)
     {
         Filter.SourceType = sourceType;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     private async Task<List<LookupDto<Guid>>> GetTypeMasterDataLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
@@ -928,6 +1006,8 @@ public partial class Documents : IDisposable
     /// </summary>
     protected override void Dispose(bool disposing)
     {
+        SearchDebounceCts?.Cancel();
+        SearchDebounceCts?.Dispose();
         NavigationManager.LocationChanged -= OnLocationChanged;
         base.Dispose(disposing);
     }
