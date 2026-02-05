@@ -720,7 +720,7 @@
                                         Caption="@L["From"]" 
                                         Width="200px">
                             <DisplayTemplate>
-                                @context.FromUser?.Name ?? "-"
+                                @context.FromUser?.Name
                             </DisplayTemplate>
                         </DataGridColumn>
                         
@@ -728,14 +728,14 @@
                                         Caption="@L["To"]" 
                                         Width="200px">
                             <DisplayTemplate>
-                                @context.ToUser.Name ?? "-"
+                                @context.ToUser.Name 
                             </DisplayTemplate>
                         </DataGridColumn>
                         
                         <DataGridColumn TItem="DocumentHistoryWithNavigationPropertiesDto" 
                                         Caption="@L["Comment"]">
                             <DisplayTemplate>
-                                @context.DocumentHistory.Comment ?? "-"
+                                @context.DocumentHistory.Comment
                             </DisplayTemplate>
                         </DataGridColumn>
                         
