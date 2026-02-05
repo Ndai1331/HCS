@@ -13,6 +13,7 @@ using HC.MasterDatas;
 using HC.Permissions;
 using HC.Shared;
 using HC.Blazor.Shared;
+using HC.DocumentHistories;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
@@ -24,6 +25,7 @@ using Blazorise.PdfViewer;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using System.Text.Json;
 using Volo.Abp.AspNetCore.Components.Messages;
+using Blazorise.DataGrid;
 namespace HC.Blazor.Pages.Documents;
 public partial class DocumentDetail : HCComponentBase
 {
@@ -92,8 +94,15 @@ public partial class DocumentDetail : HCComponentBase
     private string UploadedFileHash { get; set; } = string.Empty;
     private bool IsUploading { get; set; }
     private int FilePickerProgress { get; set; }
+    private FilePicker? DocumentFilePicker { get; set; }
 
     private IReadOnlyList<DocumentFileWithNavigationPropertiesDto> DocumentFilesList { get; set; } = new List<DocumentFileWithNavigationPropertiesDto>();
+
+    // Document Histories with pagination
+    private IReadOnlyList<DocumentHistoryWithNavigationPropertiesDto> DocumentHistoriesList { get; set; } = new List<DocumentHistoryWithNavigationPropertiesDto>();
+    private int DocumentHistoriesTotalCount { get; set; }
+    private int DocumentHistoriesPageSize { get; } = 10;
+    private int DocumentHistoriesCurrentPage { get; set; } = 1;
 
     // PDF viewer
     private string? PdfFileUrl { get; set; } = "https://pdfobject.com/pdf/sample.pdf";
@@ -265,6 +274,10 @@ public partial class DocumentDetail : HCComponentBase
                 // Load document files
                 Logger.LogInformation($"LoadDocumentAsync: Calling LoadDocumentFilesAsync");
                 await LoadDocumentFilesAsync();
+
+                // Load document histories
+                Logger.LogInformation($"LoadDocumentAsync: Calling LoadDocumentHistoriesAsync");
+                await LoadDocumentHistoriesAsync();
                 
                 // Load PDF URL if file exists and is PDF
                 await LoadPdfUrlAsync();
@@ -631,7 +644,7 @@ public partial class DocumentDetail : HCComponentBase
             else
             {
                 IsPdfFile = false;
-                PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";;
+                PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";
             }
             await UiMessageService.Success(L["FileUploadedSuccessfully"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
@@ -642,12 +655,16 @@ public partial class DocumentDetail : HCComponentBase
             await HandleErrorAsync(ex);
             UploadedFilePath = string.Empty;
             FilePickerProgress = 0;
-            PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";;
+            PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";
             IsPdfFile = false;
         }
         finally
         {
             IsUploading = false;
+            if (DocumentFilePicker != null)
+            {
+                await DocumentFilePicker.Clear();
+            }
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -699,6 +716,20 @@ public partial class DocumentDetail : HCComponentBase
             if (DocumentId != Guid.Empty && DocumentUpdateData != null)
             {
                 savedDocument = await DocumentsAppService.UpdateAsync(DocumentId, DocumentUpdateData);
+
+                // Save new file on edit when user uploaded a replacement
+                if (!string.IsNullOrEmpty(UploadedFilePath) && SelectedFile != null)
+                {
+                    await DocumentFilesAppService.CreateAsync(new DocumentFileCreateDto
+                    {
+                        DocumentId = savedDocument.Id,
+                        Name = SelectedFile.Name,
+                        Path = UploadedFilePath,
+                        Hash = UploadedFileHash,
+                        IsSigned = false,
+                        UploadedAt = DateTime.Now
+                    });
+                }
             }
             else if (DocumentCreateData != null)
             {
@@ -1003,5 +1034,79 @@ public partial class DocumentDetail : HCComponentBase
     private string GenerateStorageNumber()
     {
         return $"{DateTime.Now.ToString("yyyyMMdd")}-{DateTime.Now.ToString("HHmmss")}";
+    }
+
+    private async Task LoadDocumentHistoriesAsync()
+    {
+        try
+        {
+            Logger.LogInformation($"LoadDocumentHistoriesAsync called. DocumentId: {DocumentId}");
+
+            if (DocumentId == Guid.Empty)
+            {
+                Logger.LogWarning("LoadDocumentHistoriesAsync: DocumentId is Empty");
+                return;
+            }
+
+            var result = await DocumentHistoriesAppService.GetHistoryByDocumentIdAsync(
+                new GetDocumentHistoriesInput
+                {
+                    DocumentId = DocumentId,
+                    SkipCount = (DocumentHistoriesCurrentPage - 1) * DocumentHistoriesPageSize,
+                    MaxResultCount = DocumentHistoriesPageSize
+                });
+
+            DocumentHistoriesList = result.Items;
+            DocumentHistoriesTotalCount = (int)result.TotalCount;
+            DocumentHistoriesCurrentPage = 1;
+            Logger.LogInformation($"LoadDocumentHistoriesAsync: Loaded {DocumentHistoriesList.Count} history items, TotalCount: {DocumentHistoriesTotalCount}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading document histories for DocumentId: {DocumentId}");
+            DocumentHistoriesList = new List<DocumentHistoryWithNavigationPropertiesDto>();
+            DocumentHistoriesTotalCount = 0;
+        }
+    }
+
+    /// <summary>
+    /// Handle DataGrid read event for document histories pagination
+    /// </summary>
+    private async Task OnDocumentHistoriesReadAsync(DataGridReadDataEventArgs<DocumentHistoryWithNavigationPropertiesDto> e)
+    {
+        try
+        {
+            Logger.LogInformation($"OnDocumentHistoriesReadAsync called. Page: {e.Page}, PageSize: {DocumentHistoriesPageSize}");
+
+            if (DocumentId == Guid.Empty)
+            {
+                Logger.LogWarning("OnDocumentHistoriesReadAsync: DocumentId is Empty");
+                return;
+            }
+
+            DocumentHistoriesCurrentPage = e.Page;
+            var skipCount = (e.Page - 1) * DocumentHistoriesPageSize;
+
+            var result = await DocumentHistoriesAppService.GetHistoryByDocumentIdAsync(
+                new GetDocumentHistoriesInput
+                {
+                    DocumentId = DocumentId,
+                    SkipCount = skipCount,
+                    MaxResultCount = DocumentHistoriesPageSize
+                });
+
+            DocumentHistoriesList = result.Items;
+            DocumentHistoriesTotalCount = (int)result.TotalCount;
+
+            await InvokeAsync(StateHasChanged);
+            
+            Logger.LogInformation($"OnDocumentHistoriesReadAsync: Loaded {DocumentHistoriesList.Count} history items, TotalCount: {DocumentHistoriesTotalCount}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error in OnDocumentHistoriesReadAsync for DocumentId: {DocumentId}");
+            DocumentHistoriesList = new List<DocumentHistoryWithNavigationPropertiesDto>();
+            DocumentHistoriesTotalCount = 0;
+        }
     }
 }

@@ -60,8 +60,14 @@ public partial class Index
     // Calendar events data
     private List<CalendarEventDto> CalendarEventsList { get; set; } = new();
 
-    // Documents data - Loaded from DocumentAssignment for the current user
-    private List<DocumentAssignmentWithNavigationPropertiesDto> RecentDocumentsList { get; set; } = new();
+    private sealed class RecentDocumentItem
+    {
+        public DocumentDto Document { get; init; } = null!;
+        public DateTime Time { get; init; }
+    }
+
+    // Documents data - combined personal docs + assigned docs for current user
+    private List<RecentDocumentItem> RecentDocumentsList { get; set; } = new();
 
     // Notifications data
     private List<NotificationReceiverWithNavigationPropertiesDto> RecentNotificationsList { get; set; } = new();
@@ -275,8 +281,8 @@ public partial class Index
     {
         try
         {
-            // Load documents assigned to current user from DocumentAssignment
-            var input = new GetDocumentAssignmentsInput
+            // Load documents assigned to current user (sourceType=0)
+            var assignmentInput = new GetDocumentAssignmentsInput
             {
                 ReceiverUserId = CurrentUser.Id,
                 MaxResultCount = 10,
@@ -287,17 +293,47 @@ public partial class Index
             // Apply date filter if set
             if (FilterStartDate.HasValue)
             {
-                input.AssignedAtMin = FilterStartDate.Value.Date;
+                assignmentInput.AssignedAtMin = FilterStartDate.Value.Date;
             }
             if (FilterEndDate.HasValue)
             {
-                input.AssignedAtMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
+                assignmentInput.AssignedAtMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
             }
 
-            var result = await DocumentAssignmentsAppService.GetListAsync(input);
+            var assignmentResult = await DocumentAssignmentsAppService.GetListAsync(assignmentInput);
+            var assignedItems = assignmentResult.Items
+                .Where(x => x.Document.SourceType == DocumentSourceType.Archive)
+                .Select(x => new RecentDocumentItem
+                {
+                    Document = x.Document,
+                    Time = x.DocumentAssignment.CreationTime
+                });
 
-            RecentDocumentsList = result.Items.ToList();
-            LastDocumentTimeAgo = result.Items.Any() ? result.Items.Last().DocumentAssignment.CreationTime.Humanize() : string.Empty;
+            // Load personal documents (sourceType=1)
+            var personalInput = new GetDocumentsInput
+            {
+                SourceType = DocumentSourceType.Personal,
+                MaxResultCount = 10,
+                SkipCount = 0,
+                Sorting = "Document.CreationTime DESC"
+            };
+
+            var personalResult = await DocumentsAppService.GetListAsync(personalInput);
+            var personalItems = personalResult.Items.Select(x => new RecentDocumentItem
+            {
+                Document = x.Document,
+                Time = x.Document.CreationTime
+            });
+
+            RecentDocumentsList = assignedItems
+                .Concat(personalItems)
+                .OrderByDescending(x => x.Time)
+                .Take(10)
+                .ToList();
+
+            LastDocumentTimeAgo = RecentDocumentsList.Any()
+                ? RecentDocumentsList.First().Time.Humanize()
+                : string.Empty;
         }
         catch (Exception ex)
         {
@@ -792,12 +828,12 @@ public partial class Index
     // Document PDF Viewer Methods
     // -------------------------------
 
-    private async Task OpenDocumentPdfViewerModalAsync(DocumentAssignmentWithNavigationPropertiesDto docAssignment)
+    private async Task OpenDocumentPdfViewerModalAsync(RecentDocumentItem docItem)
     {
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            if (docAssignment?.Document == null)
+            if (docItem?.Document == null)
             {
                 return;
             }
@@ -805,7 +841,7 @@ public partial class Index
             // Get document files for this document
             var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
             {
-                DocumentId = docAssignment.Document.Id,
+                DocumentId = docItem.Document.Id,
                 MaxResultCount = 1,
                 SkipCount = 0
             });

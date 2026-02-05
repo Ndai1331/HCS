@@ -19,6 +19,7 @@ using MiniExcelLibs;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Authorization;
 using Volo.Abp.Content;
+using HC.MasterDatas;
 
 namespace HC.Documents;
 
@@ -335,6 +336,9 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             _logger.LogInformation("SendDocumentAsync completed successfully: DocumentId={DocumentId}, SentTo={RecipientCount} users",
                 input.DocumentId, allReceiverUserIds.Count);
 
+            // Update document status to DA_GUI (Đã gửi) after successfully sending
+            await UpdateDocumentStatusToSentAsync(input.DocumentId);
+
             return true;
         }
         catch (Exception ex)
@@ -450,6 +454,41 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         {
             _logger.LogError(ex, "Error in RevokeDocumentAsync: DocumentId={DocumentId}", input.DocumentId);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Update document status to DA_GUI (Đã gửi) when document has been sent to departments/users
+    /// </summary>
+    private async Task UpdateDocumentStatusToSentAsync(Guid documentId)
+    {
+        try
+        {
+            // Get the document
+            var document = await _documentRepository.GetAsync(documentId);
+
+            // Find the MasterData with Code = "DA_GUI" and Type = "TRANG_THAI_VB"
+            var statusList = await _masterDataRepository.GetListAsync
+            (x=>x.Code == "DA_GUI" && x.Type == MasterDataType.Status.GetTypeValue());
+
+            var daGuiStatus = statusList.FirstOrDefault();
+            if (daGuiStatus == null)
+            {
+                _logger.LogWarning("MasterData with Code='DA_GUI' and Type='TRANG_THAI_VB' not found. Document status will not be updated.");
+                return;
+            }
+
+            // Update document status
+            document.StatusId = daGuiStatus.Id;
+            await _documentRepository.UpdateAsync(document);
+
+            _logger.LogInformation("Document status updated to DA_GUI: DocumentId={DocumentId}, StatusId={StatusId}",
+                documentId, daGuiStatus.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating document status to DA_GUI: DocumentId={DocumentId}", documentId);
+            // Don't throw - we don't want to fail the send operation if status update fails
         }
     }
 }

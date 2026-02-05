@@ -9,7 +9,7 @@ using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 using HC.DocumentHistories;
 using Volo.Abp.Content;
-using HC.Shared;
+using Microsoft.Extensions.Logging;
 
 namespace HC.Controllers.DocumentHistories;
 
@@ -20,15 +20,17 @@ namespace HC.Controllers.DocumentHistories;
 public abstract class DocumentHistoryControllerBase : AbpController
 {
     protected IDocumentHistoriesAppService _documentHistoriesAppService;
-
-    public DocumentHistoryControllerBase(IDocumentHistoriesAppService documentHistoriesAppService)
+    protected ILogger<DocumentHistoryControllerBase> Logger;
+    public DocumentHistoryControllerBase(IDocumentHistoriesAppService documentHistoriesAppService, ILogger<DocumentHistoryControllerBase> logger)
     {
         _documentHistoriesAppService = documentHistoriesAppService;
+        Logger = logger;
     }
 
     [HttpGet]
     public virtual Task<PagedResultDto<DocumentHistoryWithNavigationPropertiesDto>> GetListAsync(GetDocumentHistoriesInput input)
     {
+        Logger.LogInformation($"GetListAsync called with input: {input}");
         return _documentHistoriesAppService.GetListAsync(input);
     }
 
@@ -36,6 +38,7 @@ public abstract class DocumentHistoryControllerBase : AbpController
     [Route("with-navigation-properties/{id}")]
     public virtual Task<DocumentHistoryWithNavigationPropertiesDto> GetWithNavigationPropertiesAsync(Guid id)
     {
+        Logger.LogInformation($"GetWithNavigationPropertiesAsync called with id: {id}");
         return _documentHistoriesAppService.GetWithNavigationPropertiesAsync(id);
     }
 
@@ -106,5 +109,32 @@ public abstract class DocumentHistoryControllerBase : AbpController
     public virtual Task DeleteAllAsync(GetDocumentHistoriesInput input)
     {
         return _documentHistoriesAppService.DeleteAllAsync(input);
+    }
+
+    [HttpPost]
+    [Route("by-document-id")]
+    public async Task<PagedResultDto<DocumentHistoryWithNavigationPropertiesDto>> GetHistoryByDocumentIdAsync(GetDocumentHistoriesInput input)
+    {
+        if (input.DocumentId == null)
+        {
+            throw new UserFriendlyException("DocumentId is required");
+        }
+        Logger.LogInformation($"GetHistoryByDocumentIdAsync called with documentId: {input.DocumentId.Value}, skipCount: {input.SkipCount}, maxResultCount: {input.MaxResultCount}");
+        return await _documentHistoriesAppService.GetHistoryByDocumentIdAsync(input);
+    }
+}
+
+
+[RemoteService]
+[Area("app")]
+[ControllerName("DocumentHistory")]
+[Route("api/app/document-histories")]
+public class DocumentHistoryController : DocumentHistoryControllerBase, IDocumentHistoriesAppService
+{
+    public DocumentHistoryController(
+        IDocumentHistoriesAppService documentHistoriesAppService,
+        ILogger<DocumentHistoryControllerBase> logger) 
+        : base(documentHistoriesAppService, logger)
+    {
     }
 }

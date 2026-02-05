@@ -1,6 +1,7 @@
 @page "/document-detail"
 @page "/document-detail/{DocumentId:guid}"
 @attribute [Authorize(HCPermissions.Documents.Default)]
+@using HC.DocumentHistories
 @using HC.Documents
 @using HC.DocumentFiles
 @using HC.Localization
@@ -11,6 +12,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Blazorise
 @using Blazorise.Components
+@using Blazorise.DataGrid
 @using Volo.Abp.AspNetCore.Components.BlockUi
 @using Volo.Abp.BlazoriseUI
 @using Volo.Abp.BlazoriseUI.Components
@@ -37,6 +39,7 @@
 @inject IMemoryCache __MemoryCache
 @inject Volo.Abp.BlobStoring.IBlobContainer BlobContainer
 @inject IJSRuntime JSRuntime
+@inject HC.DocumentHistories.IDocumentHistoriesAppService DocumentHistoriesAppService
 
 <PageHeader Title="@PageTitle" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
 </PageHeader>
@@ -296,11 +299,12 @@
                                         {
                                             <Field>
                                                 <FieldLabel>@L["File"] *</FieldLabel>
-                                                <FilePicker Multiple="false"
+                                                <FilePicker @ref="DocumentFilePicker" Multiple="false"
                                                             Changed="OnFileChanged"
                                                             ShowMode="FilePickerShowMode.List"
                                                             Disabled="@(CurrentDocument != null && DocumentFilesList.Any())"
                                                             MaxFileSize="52428800"
+                                                            DisableProgressReport="true"
                                                             Accept="application/pdf"
                                                             FilePickerLocalizer="FilePickerLocalizer">
                                                     <ButtonsTemplate>
@@ -336,7 +340,7 @@
                                                 <Table Hoverable="true" Bordered="true" Striped="true">
                                                     <thead>
                                                         <tr>
-                                                            <th>@L["Name"]</th>
+                                                            <th style="max-width: 200px;">@L["Name"]</th>
                                                             <th>@L["UploadedAt"]</th>
                                                             <th>@L["IsSigned"]</th>
                                                             <th>@L["Actions"]</th>
@@ -361,12 +365,12 @@
                                                                 <td>
                                                                     <div class="d-flex gap-2">
                                                                         <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => DownloadFileAsync(file.DocumentFile.Path, file.DocumentFile.Name))">
-                                                                            <Icon Name="IconName.Download" Class="me-1" />
+                                                                            <Icon Name="IconName.Download" />
                                                                         </Button>
                                                                         @if (CanDeleteDocumentFile)
                                                                         {
                                                                             <Button Color="Color.Danger" Size="Size.Small" Clicked="@(() => DeleteFileAsync(file))">
-                                                                                <Icon Name="IconName.Delete" Class="me-1" />
+                                                                                <Icon Name="IconName.Delete" />
                                                                             </Button>
                                                                         }
                                                                     </div>
@@ -683,6 +687,77 @@
         </Form>
     </CardBody>
 </Card>
+
+@* Document Histories Section *@
+@if (CurrentDocument != null)
+{
+    <Card Class="mt-3">
+        <CardBody>
+            <Heading Size="HeadingSize.Is5" Class="mb-3">
+                <Icon Name="IconName.History" Class="me-2"></Icon>@L["DocumentHistories"]
+            </Heading>
+            
+            @if (DocumentHistoriesList.Any())
+            {
+                <DataGrid TItem="DocumentHistoryWithNavigationPropertiesDto"
+                            Data="DocumentHistoriesList"
+                            TotalItems="DocumentHistoriesTotalCount"
+                            PageSize="DocumentHistoriesPageSize"
+                            ShowPager="true"
+                            ReadData="OnDocumentHistoriesReadAsync"
+                            Responsive="true"
+                            Class="datagrid-detail">
+                    <DataGridColumns>
+                        <DataGridColumn TItem="DocumentHistoryWithNavigationPropertiesDto" 
+                                        Caption="@L["Action"]" 
+                                        Width="150px">
+                            <DisplayTemplate>
+                                <span class="badge bg-info">@context.DocumentHistory.Action</span>
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                        
+                        <DataGridColumn TItem="DocumentHistoryWithNavigationPropertiesDto" 
+                                        Caption="@L["From"]" 
+                                        Width="200px">
+                            <DisplayTemplate>
+                                @context.FromUser?.Name ?? "-"
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                        
+                        <DataGridColumn TItem="DocumentHistoryWithNavigationPropertiesDto" 
+                                        Caption="@L["To"]" 
+                                        Width="200px">
+                            <DisplayTemplate>
+                                @context.ToUser.Name ?? "-"
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                        
+                        <DataGridColumn TItem="DocumentHistoryWithNavigationPropertiesDto" 
+                                        Caption="@L["Comment"]">
+                            <DisplayTemplate>
+                                @context.DocumentHistory.Comment ?? "-"
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                        
+                        <DataGridColumn TItem="DocumentHistoryWithNavigationPropertiesDto" 
+                                        Caption="@L["CreationTime"]" 
+                                        Width="180px">
+                            <DisplayTemplate>
+                                @context.DocumentHistory.CreationTime.ToString("dd/MM/yyyy HH:mm")
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                    </DataGridColumns>
+                </DataGrid>
+            }
+            else
+            {
+                <Alert Color="Color.Info" Dismissible="false">
+                    <AlertMessage>@L["NoHistoryAvailable"]</AlertMessage>
+                </Alert>
+            }
+        </CardBody>
+    </Card>
+}
 
 
 <style>

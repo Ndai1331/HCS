@@ -2,11 +2,13 @@ namespace HC.DocumentHistories;
 
 public static class DocumentHistoryConsts
 {
-    private const string DefaultSorting = "{0}CreationTime desc";
+    // Default sorting for repository with navigation properties - no prefix needed
+    private const string DefaultSorting = "DocumentHistory.CreationTime desc";
 
     public static string GetDefaultSorting(bool withEntityName)
     {
-        return string.Format(DefaultSorting, withEntityName ? "DocumentHistory." : string.Empty);
+        // For DocumentHistoryWithNavigationProperties, we don't use prefix
+        return DefaultSorting;
     }
 
     public const int ActionMaxLength = 30;

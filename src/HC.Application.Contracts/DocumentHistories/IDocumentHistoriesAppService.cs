@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Content;
-using HC.Shared;
 
 namespace HC.DocumentHistories;
 
@@ -23,4 +22,6 @@ public partial interface IDocumentHistoriesAppService : IApplicationService
     Task DeleteByIdsAsync(List<Guid> documenthistoryIds);
     Task DeleteAllAsync(GetDocumentHistoriesInput input);
     Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync();
+    Task<PagedResultDto<DocumentHistoryWithNavigationPropertiesDto>> GetHistoryByDocumentIdAsync(
+        GetDocumentHistoriesInput input);
 }

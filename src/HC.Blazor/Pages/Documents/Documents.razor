@@ -438,6 +438,15 @@
                     </DisplayTemplate>
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
+                        Field="Status.Name"
+                        Caption="@L["Status"]"
+                        CellStyle="@((item) => "min-width: 150px")"
+                        Width="150px">
+                    <DisplayTemplate>
+                        <small class="badge bg-primary me-1"> @context.Status?.Name</small>
+                    </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="Document.IncommingDate"
                         Caption="@L["IncommingDate"]"
                         CellStyle="@((item) => "min-width: 200px")"
@@ -467,15 +476,6 @@
                         Caption="@L["Unit"]"
                         CellStyle="@((item) => "min-width: 150px")"
                         Width="150px">
-                </DataGridColumn>
-                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
-                        Field="Status.Name"
-                        Caption="@L["Status"]"
-                        CellStyle="@((item) => "min-width: 150px")"
-                        Width="150px">
-                    <DisplayTemplate>
-                        <small class="badge bg-primary me-1"> @context.Status?.Name</small>
-                    </DisplayTemplate>
                 </DataGridColumn>
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="UrgencyLevel.Name"

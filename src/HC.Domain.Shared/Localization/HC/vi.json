@@ -1047,6 +1047,7 @@
     "DatePicker:From": "Từ",
     "DatePicker:To": "đến",
     "DatePicker:SelectDateRange": "Chọn khoảng ngày",
-    "DatePicker:FilterByDateRange": "Lọc theo khoảng ngày"  
+    "DatePicker:FilterByDateRange": "Lọc theo khoảng ngày"  ,
+    "DocumentHistories": "Lịch sử văn bản"
   }
 }

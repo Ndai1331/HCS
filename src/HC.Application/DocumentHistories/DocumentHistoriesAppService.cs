@@ -15,6 +15,7 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 
 namespace HC.DocumentHistories;
 
@@ -22,19 +23,21 @@ namespace HC.DocumentHistories;
 [Authorize(HCPermissions.DocumentHistories.Default)]
 public abstract class DocumentHistoriesAppServiceBase : HCAppService
 {
+    protected ILogger<DocumentHistoriesAppServiceBase> Logger;
     protected IDistributedCache<DocumentHistoryDownloadTokenCacheItem, string> _downloadTokenCache;
     protected IDocumentHistoryRepository _documentHistoryRepository;
     protected DocumentHistoryManager _documentHistoryManager;
     protected IRepository<HC.Documents.Document, Guid> _documentRepository;
     protected IRepository<Volo.Abp.Identity.IdentityUser, Guid> _identityUserRepository;
 
-    public DocumentHistoriesAppServiceBase(IDocumentHistoryRepository documentHistoryRepository, DocumentHistoryManager documentHistoryManager, IDistributedCache<DocumentHistoryDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.Documents.Document, Guid> documentRepository, IRepository<Volo.Abp.Identity.IdentityUser, Guid> identityUserRepository)
+    public DocumentHistoriesAppServiceBase(IDocumentHistoryRepository documentHistoryRepository, DocumentHistoryManager documentHistoryManager, IDistributedCache<DocumentHistoryDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.Documents.Document, Guid> documentRepository, IRepository<Volo.Abp.Identity.IdentityUser, Guid> identityUserRepository, ILogger<DocumentHistoriesAppServiceBase> logger)
     {
         _downloadTokenCache = downloadTokenCache;
         _documentHistoryRepository = documentHistoryRepository;
         _documentHistoryManager = documentHistoryManager;
         _documentRepository = documentRepository;
         _identityUserRepository = identityUserRepository;
+        Logger = logger;
     }
 
     public virtual async Task<PagedResultDto<DocumentHistoryWithNavigationPropertiesDto>> GetListAsync(GetDocumentHistoriesInput input)
@@ -159,5 +162,42 @@ public abstract class DocumentHistoriesAppServiceBase : HCAppService
         {
             Token = token
         };
+    }
+
+    public async Task<PagedResultDto<DocumentHistoryWithNavigationPropertiesDto>> GetHistoryByDocumentIdAsync(
+        GetDocumentHistoriesInput input)
+    {
+        if (input.DocumentId == null)
+        {
+            throw new UserFriendlyException("DocumentId is required");
+        }
+        Logger.LogInformation($"GetHistoryByDocumentIdAsync called with documentId: {input.DocumentId.Value}, skipCount: {input.SkipCount}, maxResultCount: {input.MaxResultCount}");
+        var histories = await _documentHistoryRepository.GetHistoryByDocumentIdAsync(
+            input.DocumentId.Value,
+            input.SkipCount,
+            input.MaxResultCount);
+
+        var totalCount = await _documentHistoryRepository.GetCountByDocumentIdAsync(input.DocumentId.Value);
+        Logger.LogInformation($"GetHistoryByDocumentIdAsync completed with totalCount: {totalCount}");
+
+        return new PagedResultDto<DocumentHistoryWithNavigationPropertiesDto>
+        {
+            Items = ObjectMapper.Map<List<DocumentHistoryWithNavigationProperties>, List<DocumentHistoryWithNavigationPropertiesDto>>(histories),
+            TotalCount = totalCount
+        };
+    }
+}
+
+public class DocumentHistoriesAppService : DocumentHistoriesAppServiceBase, IDocumentHistoriesAppService
+{
+    public DocumentHistoriesAppService(
+        IDocumentHistoryRepository documentHistoryRepository,
+        DocumentHistoryManager documentHistoryManager,
+        IDistributedCache<DocumentHistoryDownloadTokenCacheItem, string> downloadTokenCache,
+        IRepository<HC.Documents.Document, Guid> documentRepository,
+        IRepository<Volo.Abp.Identity.IdentityUser, Guid> identityUserRepository,
+        ILogger<DocumentHistoriesAppServiceBase> logger)
+        : base(documentHistoryRepository, documentHistoryManager, downloadTokenCache, documentRepository, identityUserRepository, logger)
+    {
     }
 }

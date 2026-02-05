@@ -75,7 +75,7 @@ public partial class DocumentHistories
         {
             MaxResultCount = PageSize,
             SkipCount = (CurrentPage - 1) * PageSize,
-            Sorting = CurrentSorting
+            Sorting = "DocumentHistory.CreationTime DESC"
         };
         DocumentHistoryList = new List<DocumentHistoryWithNavigationPropertiesDto>();
     }
