@@ -360,7 +360,7 @@
                     <Field>
                         <FieldLabel>@L["Priority"]</FieldLabel>
                         <Select TValue="string" SelectedValue="@Filter.Priority" SelectedValueChanged="@OnPriorityChangedAsync">
-                            <SelectItem></SelectItem>
+                            <SelectItem>@L["All"]</SelectItem>
                             @foreach (var priority in Enum.GetValues<ProjectTaskPriority>())
                             {
                                 <SelectItem TValue="string" Value="@priority.ToString()">
@@ -374,7 +374,7 @@
                     <Field>
                         <FieldLabel>@L["Status"]</FieldLabel>
                         <Select TValue="string" SelectedValue="@Filter.Status" SelectedValueChanged="@OnStatusChangedAsync">
-                            <SelectItem></SelectItem>
+                            <SelectItem>@L["All"]</SelectItem>
                             @foreach (var status in Enum.GetValues<ProjectTaskStatus>())
                             {
                                 <SelectItem TValue="string" Value="@status.ToString()">
@@ -388,7 +388,7 @@
                     <Field>
                          <FieldLabel>@L["Project"]</FieldLabel>
                          <Select TValue="Guid?" SelectedValue="@Filter.ProjectId" SelectedValueChanged="@OnProjectIdChangedAsync">
-                             <SelectItem></SelectItem>
+                             <SelectItem>@L["All"]</SelectItem>
                              @foreach (var projectItem in ProjectsCollection)
                              {
                                  <SelectItem TValue="Guid?" Value="@projectItem.Id">
@@ -780,7 +780,7 @@ else
                     <Field>
                         <FieldLabel>@L["Priority"]</FieldLabel>
                         <Select TValue="string" SelectedValue="@Filter.Priority" SelectedValueChanged="@OnPriorityChangedAsync">
-                            <SelectItem></SelectItem>
+                            <SelectItem>@L["All"]</SelectItem>
                             @foreach (var priority in Enum.GetValues<ProjectTaskPriority>())
                             {
                                 <SelectItem TValue="string" Value="@priority.ToString()">
@@ -794,7 +794,7 @@ else
                     <Field>
                         <FieldLabel>@L["Status"]</FieldLabel>
                         <Select TValue="string" SelectedValue="@Filter.Status" SelectedValueChanged="@OnStatusChangedAsync">
-                            <SelectItem></SelectItem>
+                            <SelectItem>@L["All"]</SelectItem>
                             @foreach (var status in Enum.GetValues<ProjectTaskStatus>())
                             {
                                 <SelectItem TValue="string" Value="@status.ToString()">
@@ -826,7 +826,7 @@ else
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.ProjectId"
 		SelectedValueChanged="@OnProjectIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in ProjectsCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">

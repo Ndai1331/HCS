@@ -95,7 +95,7 @@
                             <Select TValue="bool?"
                                     SelectedValue="@Filter.IsActive"
                                     SelectedValueChanged="@OnIsActiveChangedAsync">
-                                <SelectItem></SelectItem>
+                                <SelectItem>@L["All"]</SelectItem>
                                 <SelectItem Value="true">@L["Yes"]</SelectItem>
                                 <SelectItem Value="false">@L["No"]</SelectItem>
                             </Select>

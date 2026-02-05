@@ -187,262 +187,144 @@ else if (CurrentProject is null)
 else
 {
     @* EDIT FORM *@
-    <Card Class="mb-3">
-        <CardBody>
-            @* Manual validation is used (see ValidateEditProject). *@
-            @if (!string.IsNullOrWhiteSpace(EditProjectValidationErrorKey))
-            {
-                <Alert Color="Color.Danger">
-                    <AlertMessage>@L["NotificationError"]!</AlertMessage>
-                    <AlertDescription>@L[EditProjectValidationErrorKey]</AlertDescription>
-                </Alert>
-            }
-            <Form id="EditProjectForm">
-                <Row>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["Code"] *</FieldLabel>
-                            <TextEdit Text="@EditingProject.Code"
-                                      TextChanged="@((string value) => { EditingProject.Code = value; EditFieldErrors.Remove("Code"); })"
-                                      ReadOnly="true"
-                                      MaxLength="ProjectConsts.CodeMaxLength"
-                                      Autofocus="true"
-                                      Style="@(HasEditFieldError("Code") ? "border-color: #dc3545;" : "")" />
-                            @if (HasEditFieldError("Code"))
-                            {
-                                <div class="invalid-feedback d-block">@GetEditFieldError("Code")</div>
-                            }
-                        </Field>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["Name"] *</FieldLabel>
-                            <TextEdit Text="@EditingProject.Name"
-                                      TextChanged="@((string value) => { EditingProject.Name = value; EditFieldErrors.Remove("Name"); })"
-                                      MaxLength="ProjectConsts.NameMaxLength"
-                                      Style="@(HasEditFieldError("Name") ? "border-color: #dc3545;" : "")" />
-                            @if (HasEditFieldError("Name"))
-                            {
-                                <div class="invalid-feedback d-block">@GetEditFieldError("Name")</div>
-                            }
-                        </Field>
-                    </Column>
-                </Row>
-                <Row>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["Description"]</FieldLabel>
-                            <MemoEdit @bind-Text="@EditingProject.Description" />
-                        </Field>
-                    </Column>
-                </Row>
-                <Row>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["StartDate"]</FieldLabel>
-                            <Addons>
-                                <Addon AddonType="AddonType.Body">
-                                    <DatePicker TValue="DateTime"
-                                                InputMode="DateInputMode.DateTime"
-                                                Date="@EditingProject.StartDate"
-                                                DateChanged="@(v => EditingProject.StartDate = v)"
-                                                Placeholder="@string.Empty"
-                                                DisplayFormat="dd/MM/yyyy HH:mm"
-                                                InputFormat="dd/MM/yyyy HH:mm"
-                                                @ref="@EditingProjectStartDateDatePicker" />
-                                </Addon>
-                                <Addon AddonType="AddonType.End">
-                                    <Button Color="Color.Light" Clicked="@(() => EditingProjectStartDateDatePicker?.ToggleAsync())">
-                                        <Icon Name="IconName.CalendarDay" />
-                                    </Button>
-                                </Addon>
-                            </Addons>
-                        </Field>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["EndDate"]</FieldLabel>
-                            <Addons>
-                                <Addon AddonType="AddonType.Body">
-                                    <DatePicker TValue="DateTime"
-                                                InputMode="DateInputMode.DateTime"
-                                                Date="@EditingProject.EndDate"
-                                                DateChanged="@(v => EditingProject.EndDate = v)"
-                                                Placeholder="@string.Empty"
-                                                DisplayFormat="dd/MM/yyyy HH:mm"
-                                                InputFormat="dd/MM/yyyy HH:mm"
-                                                @ref="@EditingProjectEndDateDatePicker" />
-                                </Addon>
-                                <Addon AddonType="AddonType.End">
-                                    <Button Color="Color.Light" Clicked="@(() => EditingProjectEndDateDatePicker?.ToggleAsync())">
-                                        <Icon Name="IconName.CalendarDay" />
-                                    </Button>
-                                </Addon>
-                            </Addons>
-                        </Field>
-                    </Column>
-                </Row>
-                <Row>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["Status"] *</FieldLabel>
-                            <Select TValue="ProjectStatus"
-                                    SelectedValue="@EditingProject.Status"
-                                    SelectedValueChanged="@((ProjectStatus value) => { EditingProject.Status = value; })">
-                                <ChildContent>
-                                    @foreach (var status in Enum.GetValues<ProjectStatus>())
-                                    {
-                                        <SelectItem TValue="ProjectStatus" Value="@status">
-                                            @L[$"Enum:ProjectStatus.{status}"]
-                                        </SelectItem>
-                                    }
-                                </ChildContent>
-                            </Select>
-                        </Field>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <Field>
-                            <FieldLabel>@L["Department"]</FieldLabel>
-                            <Select2 IdSelector="c => c.Id.ToString()"
-                                    TextSelector="c => c.DisplayName"
-                                    FilterFunction="GetDepartmentCollectionLookupAsync"
-                                    GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
-                                    Datasource="DepartmentsCollection"
-                                    Value="@SelectedEditDepartment"
-                                    OnValueChanged="OnEditDepartmentIdChanged"
-                                    Cache="__MemoryCache"
-                                    Multiselect="false" />
-                        </Field>
-                    </Column>
-                </Row>
-            </Form>
-        </CardBody>
-    </Card>
-
-
-@* Start: Bottom: Tasks (left) + Members (right) *@
-    <Row Class="g-3">
-        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-            <Card>
+@* Start: Top: Common info (left) + Members (right) *@
+    <Row Class="g-3 mb-3">
+        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
+            <Card Class="w-100">
                 <CardBody>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">@L["Tasks"]</h5>
-                        @if (CanCreateProjectTask)
-                        {
-                            <Button Color="Color.Primary" Size="Size.Small" Clicked="OpenCreateTaskModalAsync">
-                                <Icon Name="IconName.Add" Class="me-1" /> @L["NewTask"]
-                            </Button>
-                        }
-                    </div>
-
-                    <div class="hc-tab-toolbar">
-                        <Row Class="g-2 align-items-center">
+                    @* Manual validation is used (see ValidateEditProject). *@
+                    @if (!string.IsNullOrWhiteSpace(EditProjectValidationErrorKey))
+                    {
+                        <Alert Color="Color.Danger">
+                            <AlertMessage>@L["NotificationError"]!</AlertMessage>
+                            <AlertDescription>@L[EditProjectValidationErrorKey]</AlertDescription>
+                        </Alert>
+                    }
+                    <Form id="EditProjectForm">
+                        <Row>
                             <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <TextEdit @bind-Text="TasksFilterText"
-                                          Placeholder="@L["Search"]"
-                                          Class="w-100" />
+                                <Field>
+                                    <FieldLabel>@L["Code"] *</FieldLabel>
+                                    <TextEdit Text="@EditingProject.Code"
+                                            TextChanged="@((string value) => { EditingProject.Code = value; EditFieldErrors.Remove("Code"); })"
+                                            ReadOnly="true"
+                                            MaxLength="ProjectConsts.CodeMaxLength"
+                                            Autofocus="true"
+                                            Style="@(HasEditFieldError("Code") ? "border-color: #dc3545;" : "")" />
+                                    @if (HasEditFieldError("Code"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetEditFieldError("Code")</div>
+                                    }
+                                </Field>
                             </Column>
                             <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                <div class="d-flex gap-2">
-                                    <Button Color="Color.Primary" Size="Size.Medium" Clicked="SearchTasksAsync" Class="w-100">
-                                        <Icon Name="IconName.Search" Class="me-1" /> @L["Search"]
-                                    </Button>
-                                    <Button Color="Color.Light" Size="Size.Medium" Outline Clicked="RefreshTasksAsync" Title="@L["Search"]">
-                                        <Icon Name="IconName.Sync" />
-                                    </Button>
-                                </div>
+                                <Field>
+                                    <FieldLabel>@L["Name"] *</FieldLabel>
+                                    <TextEdit Text="@EditingProject.Name"
+                                            TextChanged="@((string value) => { EditingProject.Name = value; EditFieldErrors.Remove("Name"); })"
+                                            MaxLength="ProjectConsts.NameMaxLength"
+                                            Style="@(HasEditFieldError("Name") ? "border-color: #dc3545;" : "")" />
+                                    @if (HasEditFieldError("Name"))
+                                    {
+                                        <div class="invalid-feedback d-block">@GetEditFieldError("Name")</div>
+                                    }
+                                </Field>
                             </Column>
                         </Row>
-                    </div>
-                    <DataGrid TItem="ProjectTaskWithNavigationPropertiesDto"
-                              @ref="TasksDataGridRef"
-                              Data="TasksList"
-                              ReadData="OnTasksGridReadAsync"
-                              TotalItems="TasksTotalCount"
-                              ShowPager="true"
-                              Responsive="true"
-                              PageSize="PageSize">
-                        <LoadingTemplate>
-                            <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                <Column>
-                                    <RadarSpinner />
-                                </Column>
-                            </Row>
-                        </LoadingTemplate>
-                        <EmptyTemplate>
-                            <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                <Column>
-                                    <Heading Size="HeadingSize.Is5" TextAlignment="TextAlignment.Center">@L["NoDataAvailable"]</Heading>
-                                </Column>
-                            </Row>
-                        </EmptyTemplate>
-                        <DataGridColumns>
-                            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Code" Caption="@L["Code"]" >
-                                <DisplayTemplate>
-                                    <a target="_blank" href="@($"/project-task-detail/{context.ProjectTask.Id}")">   
-                                        <span>#@context.ProjectTask.Code</span>
-                                    </a>
-                                </DisplayTemplate>
-                            </DataGridColumn>
-                            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Title" Caption="@L["Title"]">
-                                <DisplayTemplate>
-                                    @if (!string.IsNullOrWhiteSpace(context.ProjectTask.ParentTaskId))
-                                    {
-                                        <div class="text-muted">
-                                            @L["ParentTaskTitle"]: #@context.ProjectTask.ParentTaskId - @context.ParentTaskTitle
-                                        </div>
-                                    }
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span>@context.ProjectTask.Title</span>
-                                        @if (context.ChildTaskCount > 0)
-                                        {
-                                            <span class="text-muted">
-                                                <i aria-hidden="true" class="fa fa-list me-1"></i>@context.ChildTaskCount
-                                            </span>
-                                        }
-                                    </div>
-                                </DisplayTemplate>
-                            </DataGridColumn>
-                            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.StartDate" Caption="@L["StartDate"]">
-                                <DisplayTemplate>
-                                    @context.ProjectTask.StartDate.ToString("dd/MM/yyyy HH:mm")
-                                </DisplayTemplate>
-                            </DataGridColumn>
-                            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.DueDate" Caption="@L["DueDate"]">
-                                <DisplayTemplate>
-                                    @context.ProjectTask.DueDate.ToString("dd/MM/yyyy HH:mm")
-                                </DisplayTemplate>
-                            </DataGridColumn>
-                            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Status" Caption="@L["Status"]">
-                                <DisplayTemplate>
-                                    <Badge Color="@EnumStatusColorHelper.GetProjectTaskStatusBadgeColor(ParseStatus(context.ProjectTask.Status))">
-                                        <span class="text-white">@GetStatusText(ParseStatus(context.ProjectTask.Status))</span>
-                                    </Badge>
-                                </DisplayTemplate>
-                            </DataGridColumn>
-                            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Priority" Caption="@L["Priority"]">
-                                <DisplayTemplate>
-                                    <Badge Color="@EnumStatusColorHelper.GetProjectTaskPriorityBadgeColor(ParsePriority(context.ProjectTask.Priority))">
-                                        <span class="text-white">@GetPriorityText(ParsePriority(context.ProjectTask.Priority))</span>
-                                    </Badge>
-                                </DisplayTemplate>
-                            </DataGridColumn>
-                            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.ProgressPercent" Caption="@L["ProgressPercent"]">
-                                <DisplayTemplate>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <Progress Value="@context.ProjectTask.ProgressPercent" Max="100" Class="hc-progress" />
-                                        <span class="text-muted small">@context.ProjectTask.ProgressPercent%</span>
-                                    </div>
-                                </DisplayTemplate>
-                            </DataGridColumn>
-                        </DataGridColumns>
-                    </DataGrid>
+                        <Row>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Description"]</FieldLabel>
+                                    <MemoEdit @bind-Text="@EditingProject.Description" />
+                                </Field>
+                            </Column>
+                        </Row>
+                        <Row>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["StartDate"]</FieldLabel>
+                                    <Addons>
+                                        <Addon AddonType="AddonType.Body">
+                                            <DatePicker TValue="DateTime"
+                                                        InputMode="DateInputMode.DateTime"
+                                                        Date="@EditingProject.StartDate"
+                                                        DateChanged="@(v => EditingProject.StartDate = v)"
+                                                        Placeholder="@string.Empty"
+                                                        DisplayFormat="dd/MM/yyyy HH:mm"
+                                                        InputFormat="dd/MM/yyyy HH:mm"
+                                                        @ref="@EditingProjectStartDateDatePicker" />
+                                        </Addon>
+                                        <Addon AddonType="AddonType.End">
+                                            <Button Color="Color.Light" Clicked="@(() => EditingProjectStartDateDatePicker?.ToggleAsync())">
+                                                <Icon Name="IconName.CalendarDay" />
+                                            </Button>
+                                        </Addon>
+                                    </Addons>
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["EndDate"]</FieldLabel>
+                                    <Addons>
+                                        <Addon AddonType="AddonType.Body">
+                                            <DatePicker TValue="DateTime"
+                                                        InputMode="DateInputMode.DateTime"
+                                                        Date="@EditingProject.EndDate"
+                                                        DateChanged="@(v => EditingProject.EndDate = v)"
+                                                        Placeholder="@string.Empty"
+                                                        DisplayFormat="dd/MM/yyyy HH:mm"
+                                                        InputFormat="dd/MM/yyyy HH:mm"
+                                                        @ref="@EditingProjectEndDateDatePicker" />
+                                        </Addon>
+                                        <Addon AddonType="AddonType.End">
+                                            <Button Color="Color.Light" Clicked="@(() => EditingProjectEndDateDatePicker?.ToggleAsync())">
+                                                <Icon Name="IconName.CalendarDay" />
+                                            </Button>
+                                        </Addon>
+                                    </Addons>
+                                </Field>
+                            </Column>
+                        </Row>
+                        <Row>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Status"] *</FieldLabel>
+                                    <Select TValue="ProjectStatus"
+                                            SelectedValue="@EditingProject.Status"
+                                            SelectedValueChanged="@((ProjectStatus value) => { EditingProject.Status = value; })">
+                                        <ChildContent>
+                                            @foreach (var status in Enum.GetValues<ProjectStatus>())
+                                            {
+                                                <SelectItem TValue="ProjectStatus" Value="@status">
+                                                    @L[$"Enum:ProjectStatus.{status}"]
+                                                </SelectItem>
+                                            }
+                                        </ChildContent>
+                                    </Select>
+                                </Field>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                <Field>
+                                    <FieldLabel>@L["Department"]</FieldLabel>
+                                    <Select2 IdSelector="c => c.Id.ToString()"
+                                            TextSelector="c => c.DisplayName"
+                                            FilterFunction="GetDepartmentCollectionLookupAsync"
+                                            GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                                            Datasource="DepartmentsCollection"
+                                            Value="@SelectedEditDepartment"
+                                            OnValueChanged="OnEditDepartmentIdChanged"
+                                            Cache="__MemoryCache"
+                                            Multiselect="false" />
+                                </Field>
+                            </Column>
+                        </Row>
+                    </Form>
                 </CardBody>
             </Card>
         </Column>
 
-        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-            <Card>
+        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
+            <Card Class="w-100">
                 <CardBody>
                     <h5 class="mb-3">@L["Members"]</h5>
 
@@ -506,80 +388,200 @@ else
                         }
                     </div>
 
-                    <DataGrid TItem="ProjectMemberWithNavigationPropertiesDto"
-                              @ref="MembersDataGridRef"
-                              Data="MembersList"
-                              ReadData="OnMembersGridReadAsync"
-                              TotalItems="MembersTotalCount"
-                              ShowPager="true"
-                              Responsive="true"
-                              PageSize="PageSize">
-                        <LoadingTemplate>
-                            <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                <Column>
-                                    <RadarSpinner />
-                                </Column>
-                            </Row>
-                        </LoadingTemplate>
-                        <EmptyTemplate>
-                            <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                <Column>
-                                    <Heading Size="HeadingSize.Is5" TextAlignment="TextAlignment.Center">@L["NoDataAvailable"]</Heading>
-                                </Column>
-                            </Row>
-                        </EmptyTemplate>
-                        <DataGridColumns>
-                            <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto"
-                                             Field="User.UserName"
-                                             Caption="@L["Name"]">
-                                <DisplayTemplate>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span>@context.User.Surname @context.User.Name</span>
-                                    </div>
-                                </DisplayTemplate>
-                            </DataGridColumn>
-                            <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.MemberRole" Caption="@L["MemberRole"]">
-                                <DisplayTemplate>
-                                    <Badge Color="Color.Primary">@L[$"Enum:ProjectMemberRole.{context.ProjectMember.MemberRole}"]</Badge>
-                                </DisplayTemplate>
-                            </DataGridColumn>
-                            <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.JoinedAt" Caption="@L["JoinedAt"]">
-                                <DisplayTemplate>
-                                    @context.ProjectMember.JoinedAt.ToString("dd/MM/yyyy HH:mm")
-                                </DisplayTemplate>
-                            </DataGridColumn>
-                            @if (CanEditProjectMember || CanDeleteProjectMember)
-                            {
-                                <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Caption="@L["Actions"]">
+                    <div class="member-grid-container">
+                        <DataGrid TItem="ProjectMemberWithNavigationPropertiesDto"
+                                @ref="MembersDataGridRef"
+                                Data="MembersList"
+                                ReadData="OnMembersGridReadAsync"
+                                TotalItems="MembersTotalCount"
+                                ShowPager="true"
+                                Responsive="true"
+                                PageSize="PageSize"
+                                FixedHeader="true">
+                            <LoadingTemplate>
+                                <Row Class="w-100 align-items-center" Style="height: 90px;">
+                                    <Column>
+                                        <RadarSpinner />
+                                    </Column>
+                                </Row>
+                            </LoadingTemplate>
+                            <EmptyTemplate>
+                                <Row Class="w-100 align-items-center" Style="height: 90px;">
+                                    <Column>
+                                        <Heading Size="HeadingSize.Is5" TextAlignment="TextAlignment.Center">@L["NoDataAvailable"]</Heading>
+                                    </Column>
+                                </Row>
+                            </EmptyTemplate>
+                            <DataGridColumns>
+                                <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto"
+                                                Field="User.UserName"
+                                                Caption="@L["Name"]">
                                     <DisplayTemplate>
-                                        <div class="d-flex gap-2 flex-wrap justify-content-end">
-                                            @if (CanEditProjectMember)
-                                            {
-                                                <Button Color="Color.Primary" Outline Size="Size.Small" 
-                                                Clicked="@(() => ToggleEditMemberRoleAsync(context))">
-                                                   <Icon 
-                                                   Name="@(IsMemberRoleEditMode && EditingMemberId == context.ProjectMember.Id ? IconName.Times : IconName.Edit)" 
-                                                   Class="me-1" /> 
-                                                </Button>
-                                            }
-                                            @if (CanDeleteProjectMember)
-                                            {
-                                                <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteMemberAsync(context))">
-                                                    <Icon Name="IconName.Delete" Class="me-1" /> 
-                                                </Button>
-                                            }
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span>@context.User.Surname @context.User.Name</span>
                                         </div>
                                     </DisplayTemplate>
                                 </DataGridColumn>
-                            }
-                        </DataGridColumns>
-                    </DataGrid>
+                                <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.MemberRole" Caption="@L["MemberRole"]">
+                                    <DisplayTemplate>
+                                        <Badge Color="Color.Primary">@L[$"Enum:ProjectMemberRole.{context.ProjectMember.MemberRole}"]</Badge>
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.JoinedAt" Caption="@L["JoinedAt"]">
+                                    <DisplayTemplate>
+                                        @context.ProjectMember.JoinedAt.ToString("dd/MM/yyyy HH:mm")
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                @if (CanEditProjectMember || CanDeleteProjectMember)
+                                {
+                                    <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Caption="@L["Actions"]" CellStyle="@((item) => "min-width: 130px")" Width="130px">
+                                        <DisplayTemplate>
+                                            <div class="d-flex gap-1 flex-wrap justify-content-end">
+                                                @if (CanEditProjectMember)
+                                                {
+                                                    <Button Color="Color.Primary" Outline Size="Size.Small" 
+                                                    Clicked="@(() => ToggleEditMemberRoleAsync(context))">
+                                                    <Icon 
+                                                    Name="@(IsMemberRoleEditMode && EditingMemberId == context.ProjectMember.Id ? IconName.Times : IconName.Edit)" /> 
+                                                    </Button>
+                                                }
+                                                @if (CanDeleteProjectMember)
+                                                {
+                                                    <Button Color="Color.Danger" Outline Size="Size.Small" Clicked="@(() => DeleteMemberAsync(context))">
+                                                        <Icon Name="IconName.Delete" /> 
+                                                    </Button>
+                                                }
+                                            </div>
+                                        </DisplayTemplate>
+                                    </DataGridColumn>
+                                }
+                            </DataGridColumns>
+                        </DataGrid>
+                    </div>
                 </CardBody>
             </Card>
         </Column>
     </Row>
+@* End: Top: Common info (left) + Members (right) *@
 
-@* End: Bottom: Tasks (left) + Members (right) *@
+@* Start: Bottom: Tasks*@
+    <Card>
+        <CardBody>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">@L["Tasks"]</h5>
+                @if (CanCreateProjectTask)
+                {
+                    <Button Color="Color.Primary" Size="Size.Small" Clicked="OpenCreateTaskModalAsync">
+                        <Icon Name="IconName.Add" Class="me-1" /> @L["NewTask"]
+                    </Button>
+                }
+            </div>
+
+            <div class="hc-tab-toolbar">
+                <Row Class="g-2 align-items-center">
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is9.OnDesktop">
+                        <TextEdit @bind-Text="TasksFilterText"
+                                    Placeholder="@L["Search"]"
+                                    Class="w-100" />
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                        <div class="d-flex gap-2">
+                            <Button Color="Color.Primary" Size="Size.Medium" Clicked="SearchTasksAsync" Class="w-100">
+                                <Icon Name="IconName.Search" Class="me-1" /> @L["Search"]
+                            </Button>
+                            <Button Color="Color.Light" Size="Size.Medium" Outline Clicked="RefreshTasksAsync" Title="@L["Search"]">
+                                <Icon Name="IconName.Sync" />
+                            </Button>
+                        </div>
+                    </Column>
+                </Row>
+            </div>
+            <DataGrid TItem="ProjectTaskWithNavigationPropertiesDto"
+                        @ref="TasksDataGridRef"
+                        Data="TasksList"
+                        ReadData="OnTasksGridReadAsync"
+                        TotalItems="TasksTotalCount"
+                        ShowPager="true"
+                        Responsive="true"
+                        PageSize="PageSize">
+                <LoadingTemplate>
+                    <Row Class="w-100 align-items-center" Style="height: 120px;">
+                        <Column>
+                            <RadarSpinner />
+                        </Column>
+                    </Row>
+                </LoadingTemplate>
+                <EmptyTemplate>
+                    <Row Class="w-100 align-items-center" Style="height: 120px;">
+                        <Column>
+                            <Heading Size="HeadingSize.Is5" TextAlignment="TextAlignment.Center">@L["NoDataAvailable"]</Heading>
+                        </Column>
+                    </Row>
+                </EmptyTemplate>
+                <DataGridColumns>
+                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Code" Caption="@L["Code"]" >
+                        <DisplayTemplate>
+                            <a target="_blank" href="@($"/project-task-detail/{context.ProjectTask.Id}")">   
+                                <span>#@context.ProjectTask.Code</span>
+                            </a>
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Title" Caption="@L["Title"]">
+                        <DisplayTemplate>
+                            @if (!string.IsNullOrWhiteSpace(context.ProjectTask.ParentTaskId))
+                            {
+                                <div class="text-muted">
+                                    @L["ParentTaskTitle"]: #@context.ProjectTask.ParentTaskId - @context.ParentTaskTitle
+                                </div>
+                            }
+                            <div class="d-flex align-items-center gap-2">
+                                <span>@context.ProjectTask.Title</span>
+                                @if (context.ChildTaskCount > 0)
+                                {
+                                    <span class="text-muted">
+                                        <i aria-hidden="true" class="fa fa-list me-1"></i>@context.ChildTaskCount
+                                    </span>
+                                }
+                            </div>
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.StartDate" Caption="@L["StartDate"]">
+                        <DisplayTemplate>
+                            @context.ProjectTask.StartDate.ToString("dd/MM/yyyy HH:mm")
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.DueDate" Caption="@L["DueDate"]">
+                        <DisplayTemplate>
+                            @context.ProjectTask.DueDate.ToString("dd/MM/yyyy HH:mm")
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Status" Caption="@L["Status"]">
+                        <DisplayTemplate>
+                            <Badge Color="@EnumStatusColorHelper.GetProjectTaskStatusBadgeColor(ParseStatus(context.ProjectTask.Status))">
+                                <span class="text-white">@GetStatusText(ParseStatus(context.ProjectTask.Status))</span>
+                            </Badge>
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Priority" Caption="@L["Priority"]">
+                        <DisplayTemplate>
+                            <Badge Color="@EnumStatusColorHelper.GetProjectTaskPriorityBadgeColor(ParsePriority(context.ProjectTask.Priority))">
+                                <span class="text-white">@GetPriorityText(ParsePriority(context.ProjectTask.Priority))</span>
+                            </Badge>
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.ProgressPercent" Caption="@L["ProgressPercent"]">
+                        <DisplayTemplate>
+                            <div class="d-flex align-items-center gap-2">
+                                <Progress Value="@context.ProjectTask.ProgressPercent" Max="100" Class="hc-progress" />
+                                <span class="text-muted small">@context.ProjectTask.ProgressPercent%</span>
+                            </div>
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                </DataGridColumns>
+            </DataGrid>
+        </CardBody>
+    </Card>
+@* End: Bottom: Tasks*@
 
 @* ProjectTaskCreateModal Component *@
 <ProjectTaskCreateModal @ref="ProjectTaskCreateModalRef" ProjectId="ProjectId" OnTaskCreated="OnTaskCreatedAsync" />
@@ -625,6 +627,18 @@ else
         .hc-progress {
             width: 100px;
         }
+    }
+
+    .member-grid-container table {
+        margin: 0 !important;
+    }
+
+    .member-grid-container thead th {
+        background-color: white !important;
+    }
+
+    .member-grid-container .table-fixed-header {
+        max-height: 162px !important; /* Ghi đè lại nếu inline style bị lỗi */
     }
 </style>
 

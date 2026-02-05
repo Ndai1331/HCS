@@ -103,7 +103,7 @@
                         <Select TValue="bool?"
 		SelectedValue="@Filter.IsActive"
 		SelectedValueChanged="@OnIsActiveChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -115,7 +115,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.SurveyLocationId"
 		SelectedValueChanged="@OnSurveyLocationIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in SurveyLocationsCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">

@@ -75,7 +75,7 @@
                         <Select TValue="bool?"
 		SelectedValue="@Filter.IsPrimary"
 		SelectedValueChanged="@OnIsPrimaryChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -87,7 +87,7 @@
                         <Select TValue="bool?"
 		SelectedValue="@Filter.IsActive"
 		SelectedValueChanged="@OnIsActiveChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -99,7 +99,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.DepartmentId"
 		SelectedValueChanged="@OnDepartmentIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in DepartmentsCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -115,7 +115,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.UserId"
 		SelectedValueChanged="@OnUserIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem>@L["All"]</SelectItem>
 @foreach(var item in IdentityUsersCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
