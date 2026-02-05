@@ -709,6 +709,7 @@
     "ProjectMembers": "Thành viên dự án",
     "MemberRole": "Vai trò",
     "Information": "Thông tin",
+    "Participants": "Thành viên",
     "JoinedAt": "Ngày tham gia",
     "Enum:ProjectMemberRole.OWNER": "Chủ dự án",
     "Enum:ProjectMemberRole.MEMBER": "Thành viên",
