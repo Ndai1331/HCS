@@ -28,6 +28,7 @@ using HC.Blazor.Shared;
 using Microsoft.AspNetCore.SignalR;
 using HC.Blazor.Hubs;
 using Volo.Abp.ObjectMapping;
+using Microsoft.Extensions.Logging;
 
 namespace HC.Blazor.Components.Pages;
 
@@ -51,6 +52,7 @@ public partial class Index
     [Inject] private IHubContext<NotificationHub> HubContext { get; set; } = null!;
     [Inject] private ICalendarEventParticipantsAppService CalendarEventParticipantsAppService { get; set; } = default!;
     [Inject] private IProjectMembersAppService ProjectMembersAppService { get; set; } = default!;
+    [Inject] private ILogger<Index> Logger { get; set; } = default!;
 
     // Active Projects data
     private List<ProjectWithNavigationPropertiesDto> ActiveProjectsList { get; set; } = new();
@@ -1099,6 +1101,7 @@ public partial class Index
             // Check if event has RelatedType and navigate accordingly
             if (Enum.TryParse<HC.CalendarEvents.RelatedType>(calendarEvent.RelatedType, out var relatedType))
             {
+                Logger.LogInformation($"OpenCalendarEventDetailModalAsync: relatedType: {relatedType}, relatedId: {calendarEvent.RelatedId}");
                 if (relatedType == HC.CalendarEvents.RelatedType.PROJECT && !string.IsNullOrWhiteSpace(calendarEvent.RelatedId))
                 {
                     // Try to find project by Code
@@ -1119,17 +1122,10 @@ public partial class Index
                 else if (relatedType == HC.CalendarEvents.RelatedType.TASK && !string.IsNullOrWhiteSpace(calendarEvent.RelatedId))
                 {
                     // Try to find task by Code
-                    var input = new GetProjectTasksInput
+                    var result = await ProjectTasksAppService.GetWithNavigationPropertiesAsync(Guid.Parse(calendarEvent.RelatedId));
+                    if (result != null)
                     {
-                        FilterText = calendarEvent.RelatedId,
-                        MaxResultCount = 1,
-                        SkipCount = 0
-                    };
-                    var result = await ProjectTasksAppService.GetListAsync(input);
-                    if (result.Items.Any())
-                    {
-                        var taskWithNav = result.Items.First();
-                        await OpenTaskDetailModalAsync(taskWithNav);
+                        await OpenTaskDetailModalAsync(result);
                         return;
                     }
                 }

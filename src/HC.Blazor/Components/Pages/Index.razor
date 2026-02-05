@@ -297,10 +297,25 @@
                                                     <tr>
                                                         <td class="ps-0">
                                                             <div class="d-flex align-items-center">
-                                                                <span class="me-2 rounded-3"
-                                                                    style="width:3px;height:66px;
-                                                                            background-color:var(--bs-primary)">
-                                                                </span>
+                                                                @if(ev.RelatedType == RelatedType.PROJECT.ToString())
+                                                                {
+                                                                    <span class="me-2 rounded-3"
+                                                                        style="width:3px;height:66px;
+                                                                                background-color:var(--bs-pink)">
+                                                                    </span>
+                                                                }
+                                                                else if(ev.RelatedType == RelatedType.TASK.ToString())
+                                                                {
+                                                                    <span class="me-2 rounded-3"
+                                                                        style="width:3px;height:66px;
+                                                                                background-color:var(--bs-green)">
+                                                                    </span>
+                                                                }else {
+                                                                     <span class="me-2 rounded-3"
+                                                                        style="width:3px;height:66px;
+                                                                                background-color:var(--bs-primary)">
+                                                                    </span>
+                                                                }
 
                                                                 <div>
                                                                     <h5 class="mb-1">@ev.Title</h5>
