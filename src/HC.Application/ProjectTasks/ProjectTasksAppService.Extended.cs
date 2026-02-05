@@ -20,6 +20,7 @@ using Volo.Abp.Caching;
 using HC.ProjectTaskAssignments;
 using HC.ProjectTaskDocuments;
 using HC.CalendarEvents;
+using HC.ProjectMembers;
 
 namespace HC.ProjectTasks;
 
@@ -35,10 +36,11 @@ public partial class ProjectTasksAppService : ProjectTasksAppServiceBase, IProje
         ProjectTaskManager projectTaskManager,
         IDistributedCache<ProjectTaskDownloadTokenCacheItem, string> downloadTokenCache,
         IRepository<HC.Projects.Project, Guid> projectRepository,
+        IProjectMemberRepository projectMemberRepository,
         IProjectTaskAssignmentRepository projectTaskAssignmentRepository,
         IProjectTaskDocumentRepository projectTaskDocumentRepository,
         ICalendarEventRepository calendarEventRepository)
-        : base(projectTaskRepository, projectTaskManager, downloadTokenCache, projectRepository)
+        : base(projectTaskRepository, projectTaskManager, downloadTokenCache, projectRepository, projectMemberRepository)
     {
         _projectTaskAssignmentRepository = projectTaskAssignmentRepository;
         _projectTaskDocumentRepository = projectTaskDocumentRepository;
