@@ -188,7 +188,7 @@ else
 {
     @* EDIT FORM *@
 @* Start: Top: Common info (left) + Members (right) *@
-    <Row Class="g-3 mb-3">
+    <Row Class="g-3">
         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
             <Card Class="w-100">
                 <CardBody>
@@ -326,7 +326,7 @@ else
         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
             <Card Class="w-100">
                 <CardBody>
-                    <h5 class="mb-3">@L["Members"]</h5>
+                    <h5 class="fw-bolder mb-3">@L["Members"]</h5>
 
                     <div class="hc-tab-toolbar">
                         <Row Class="g-2 mb-2 align-items-center">
@@ -468,7 +468,7 @@ else
     <Card>
         <CardBody>
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">@L["Tasks"]</h5>
+                <h5 class="fw-bolder mb-0">@L["Tasks"]</h5>
                 @if (CanCreateProjectTask)
                 {
                     <Button Color="Color.Primary" Size="Size.Small" Clicked="OpenCreateTaskModalAsync">

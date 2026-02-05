@@ -32,6 +32,9 @@ public partial class DocumentDetail : HCComponentBase
     [SupplyParameterFromQuery(Name = "id")]
     public Guid? DocumentIdQuery { get; set; }
 
+    [SupplyParameterFromQuery(Name = "sourceType")]
+    public int? SourceType { get; set; }
+
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems { get; } = new();
 
     protected string PageTitle => DocumentId == Guid.Empty ? L["NewDocument"] : L["EditDocument"];
@@ -190,7 +193,8 @@ public partial class DocumentDetail : HCComponentBase
     {   
         Toolbar.AddButton(L["Back"], () =>
         {
-            NavigationManager.NavigateTo("/manage-documents");
+            var sourceTypeParam = SourceType.HasValue ? $"?sourceType={SourceType.Value}" : "";
+            NavigationManager.NavigateTo("/manage-documents" + sourceTypeParam);
             return Task.CompletedTask;
         }, IconName.ArrowLeft);
 
@@ -592,7 +596,12 @@ public partial class DocumentDetail : HCComponentBase
             FilePickerProgress = 0;
 
             using var memoryStream = new MemoryStream();
-            await file.OpenReadStream(long.MaxValue).CopyToAsync(memoryStream);
+
+            // Open the file stream and store it in a variable to avoid premature disposal
+            await using var fileStream = file.OpenReadStream(long.MaxValue);
+
+            // Copy file data to memory stream
+            await fileStream.CopyToAsync(memoryStream);
             memoryStream.Position = 0;
 
             var fileBytes = memoryStream.ToArray();
@@ -716,7 +725,8 @@ public partial class DocumentDetail : HCComponentBase
 
             await UiMessageService.Success(L["SuccessfullySaved"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-            NavigationManager.NavigateTo($"/document-detail/{savedDocument.Id}");
+            var sourceTypeParam = SourceType.HasValue ? $"?sourceType={SourceType.Value}" : "";
+            NavigationManager.NavigateTo($"/document-detail/{savedDocument.Id}{sourceTypeParam}");
         }
         catch (Exception ex)
         {
@@ -926,7 +936,8 @@ public partial class DocumentDetail : HCComponentBase
             await DocumentsAppService.DeleteAsync(CurrentDocument.Document.Id);
             await UiMessageService.Success(L["SuccessfullyDeleted"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-            NavigationManager.NavigateTo("/manage-documents");
+            var sourceTypeParam = SourceType.HasValue ? $"?sourceType={SourceType.Value}" : "";
+            NavigationManager.NavigateTo("/manage-documents" + sourceTypeParam);
         }
         catch (Exception ex)
         {

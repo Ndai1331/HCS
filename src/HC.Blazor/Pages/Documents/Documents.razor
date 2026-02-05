@@ -39,7 +39,7 @@
 @inject IMemoryCache __MemoryCache 
 
 @* ************************* PAGE HEADER ************************* *@
-<PageHeader Title="@L["Documents"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
+<PageHeader Title="@PageTitle" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
 </PageHeader>
 <style>
     tr.table-row-selectable:hover {
@@ -361,7 +361,7 @@
                             {
 
                                 <Button
-                                    @onclick="@(() => NavigationManager.NavigateTo("/document-detail/" + context.Document.Id))"
+                                    @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
                                     Color="Color.Secondary"
                                     Outline
                                     Size="Size.Small"
