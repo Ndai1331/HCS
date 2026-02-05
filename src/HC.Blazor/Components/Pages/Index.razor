@@ -3,11 +3,14 @@
 @using HC.Workflows
 @using HC.Projects
 @using HC.ProjectTasks
+@using HC.ProjectMembers
 @using HC.CalendarEvents
+@using HC.CalendarEventParticipants
 @using HC.Documents
 @using HC.NotificationReceivers
 @using HC.Localization
 @using HC.Shared
+@using HC.Blazor.Shared
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.Localization
 @using Microsoft.AspNetCore.Components.Web
@@ -311,10 +314,10 @@
                                                         </td>
 
                                                         <td class="text-end">
-                                                            <Button 
+                                                            <Button
                                                              Size="Size.Small"
                                                              Class="bg-brand text-white"
-                                                             Clicked="@(() => Navigation.NavigateTo($"/calendar-events"))">
+                                                             Clicked="@(() => OpenCalendarEventDetailModalAsync(ev))">
                                                                 @L["View"]
                                                             </Button>
                                                         </td>
@@ -890,6 +893,219 @@
             }
             
             <Button Color="Color.Secondary" Clicked="CloseNotificationDetailModalAsync">
+                @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@* ************************* CALENDAR EVENT VIEW MODAL ************************* *@
+<Modal @ref="CalendarEventViewModal">
+    <ModalContent Size="ModalSize.Large" Centered="true">
+        <ModalHeader>
+            <ModalTitle>@L["Detail"]</ModalTitle>
+            <CloseButton Clicked="CloseEventViewModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @if (ViewingCalendarEvent != null)
+            {
+                <div>
+                    <h5>@ViewingCalendarEvent.Title</h5>
+                    <p class="text-muted mb-3">
+                        <small>@ViewingCalendarEvent.StartTime.ToString("dd/MM/yyyy HH:mm") - @ViewingCalendarEvent.EndTime.ToString("dd/MM/yyyy HH:mm")</small>
+                    </p>
+                    @if (!string.IsNullOrEmpty(ViewingCalendarEvent.Description))
+                    {
+                        <p>@ViewingCalendarEvent.Description</p>
+                    }
+                    @if (!string.IsNullOrEmpty(ViewingCalendarEvent.Location))
+                    {
+                        <p class="mb-2">
+                            <strong>@L["Location"]:</strong> @ViewingCalendarEvent.Location
+                        </p>
+                    }
+                    <div class="mb-3">
+                        <strong>@L["EventType"]:</strong> @L[$"Enum:EventType.{ViewingCalendarEvent.EventType}"]
+                    </div>
+                    @if (ViewingEventParticipants.Any())
+                    {
+                        <div class="mt-3">
+                            <h6>@L["Member"] (@ViewingEventParticipants.Count)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>@L["Name"]</th>
+                                            <th>@L["Response"]</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var participant in ViewingEventParticipants)
+                                        {
+                                            <tr>
+                                                <td>@participant.IdentityUser?.Surname @participant.IdentityUser?.Name</td>
+                                                <td>
+                                                    <span class="badge @(participant.CalendarEventParticipant.ResponseStatus == "ACCEPTED" ? "bg-success" :
+                                                                    participant.CalendarEventParticipant.ResponseStatus == "DECLINED" ? "bg-danger" :
+                                                                    participant.CalendarEventParticipant.ResponseStatus == "TENTATIVE" ? "bg-warning" : "bg-secondary")">
+                                                        @L[$"Enum:ParticipantResponse.{participant.CalendarEventParticipant.ResponseStatus}"]
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseEventViewModalAsync">
+                @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@* ************************* PROJECT DETAIL MODAL ************************* *@
+<Modal @ref="ProjectDetailModal">
+    <ModalContent Size="ModalSize.Large" Centered="true">
+        <ModalHeader>
+            <ModalTitle>@L["Detail"]</ModalTitle>
+            <CloseButton Clicked="CloseProjectDetailModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @if (ViewingProject != null)
+            {
+                <Tabs SelectedTab="@SelectedProjectDetailTab" SelectedTabChanged="OnSelectedProjectDetailTabChanged">
+                    <Items>
+                        <Tab Name="general">
+                            <Icon Name="IconName.Info" Class="me-1" />
+                            @L["Information"]
+                        </Tab>
+                        <Tab Name="members">
+                            <Icon Name="IconName.Users" Class="me-1" />
+                            @L["Members"] (@ProjectMembersList.Count)
+                        </Tab>
+                        <Tab Name="tasks">
+                            <Icon Name="IconName.List" Class="me-1" />
+                            @L["Tasks"] (@ProjectTasksList.Count)
+                        </Tab>
+                    </Items>
+                    <Content>
+                        <TabPanel Name="general">
+                            <div>
+                                <h5>@ViewingProject.Name</h5>
+                                <p class="text-muted mb-2">
+                                    <strong>@L["Code"]:</strong> @ViewingProject.Code
+                                </p>
+                                @if (!string.IsNullOrEmpty(ViewingProject.Description))
+                                {
+                                    <p class="mb-3">@ViewingProject.Description</p>
+                                }
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-2">
+                                            <strong>@L["StartDate"]:</strong> @ViewingProject.StartDate.ToString("dd/MM/yyyy HH:mm")
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="mb-2">
+                                            <strong>@L["EndDate"]:</strong> @ViewingProject.EndDate.ToString("dd/MM/yyyy HH:mm")
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>@L["Status"]:</strong>
+                                    <span class="badge ms-2 @(ViewingProject.Status == ProjectStatus.PLANNING ? "bg-secondary" :
+                                                          ViewingProject.Status == ProjectStatus.IN_PROGRESS ? "bg-primary" :
+                                                          ViewingProject.Status == ProjectStatus.COMPLETED ? "bg-success" : "bg-danger")">
+                                        @L[$"Enum:ProjectStatus.{ViewingProject.Status}"]
+                                    </span>
+                                </div>
+                            </div>
+                        </TabPanel>
+                        <TabPanel Name="members">
+                            @if (ProjectMembersList.Any())
+                            {
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>@L["Name"]</th>
+                                                <th>@L["MemberRole"]</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var member in ProjectMembersList)
+                                            {
+                                                <tr>
+                                                    <td>@member.User.Surname @member.User.Name</td>
+                                                    <td>@L[$"Enum:ProjectMemberRole.{member.ProjectMember.MemberRole}"]</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted">@L["NoMembersFound"]</p>
+                            }
+                        </TabPanel>
+                        <TabPanel Name="tasks">
+                            @if (ProjectTasksList.Any())
+                            {
+                                <div class="table-responsive" style="max-height: 300px;">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>@L["Title"]</th>
+                                                <th>@L["Status"]</th>
+                                                <th>@L["Priority"]</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var task in ProjectTasksList.Take(20))
+                                            {
+                                                <tr>
+                                                    <td>@task.ProjectTask.Title</td>
+                                                    <td>
+                                                        <span class="badge @(GetStatusBadgeColor(task.ProjectTask.Status.ToString()) == "secondary" ? "bg-secondary" :
+                                                                      GetStatusBadgeColor(task.ProjectTask.Status.ToString()) == "primary" ? "bg-primary" :
+                                                                      GetStatusBadgeColor(task.ProjectTask.Status.ToString()) == "warning" ? "bg-warning" :
+                                                                      GetStatusBadgeColor(task.ProjectTask.Status.ToString()) == "success" ? "bg-success" : "bg-danger")">
+                                                            @L[$"Enum:ProjectTaskStatus.{task.ProjectTask.Status}"]
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-@GetPriorityBadgeColor(task.ProjectTask.Priority.ToString())">
+                                                            @L[$"Enum:ProjectTaskPriority.{task.ProjectTask.Priority}"]
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted">@L["NoTasksFound"]</p>
+                            }
+                        </TabPanel>
+                    </Content>
+                </Tabs>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Primary" Clicked="@(() => Navigation.NavigateTo($"/project-detail/{ViewingProject?.Id}"))">
+                <Icon Name="IconName.Globe" Class="me-1" />
+                @L["ViewDetail"]
+            </Button>
+            <Button Color="Color.Secondary" Clicked="CloseProjectDetailModalAsync">
                 @L["Close"]
             </Button>
         </ModalFooter>

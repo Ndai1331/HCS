@@ -708,6 +708,7 @@
     "SelectProjectMembers": "Chọn thành viên dự án",
     "ProjectMembers": "Thành viên dự án",
     "MemberRole": "Vai trò",
+    "Information": "Thông tin",
     "JoinedAt": "Ngày tham gia",
     "Enum:ProjectMemberRole.OWNER": "Chủ dự án",
     "Enum:ProjectMemberRole.MEMBER": "Thành viên",

@@ -9,6 +9,8 @@ using HC.ProjectTasks;
 using HC.ProjectTaskAssignments;
 using HC.ProjectTaskDocuments;
 using HC.CalendarEvents;
+using HC.CalendarEventParticipants;
+using HC.ProjectMembers;
 using HC.Documents;
 using HC.NotificationReceivers;
 using HC.Notifications;
@@ -47,6 +49,8 @@ public partial class Index
     [Inject] private IBlockUiService BlockUiService { get; set; } = default!;
     [Inject] private IMemoryCache __MemoryCache { get; set; } = default!;
     [Inject] private IHubContext<NotificationHub> HubContext { get; set; } = null!;
+    [Inject] private ICalendarEventParticipantsAppService CalendarEventParticipantsAppService { get; set; } = default!;
+    [Inject] private IProjectMembersAppService ProjectMembersAppService { get; set; } = default!;
 
     // Active Projects data
     private List<ProjectWithNavigationPropertiesDto> ActiveProjectsList { get; set; } = new();
@@ -116,6 +120,18 @@ public partial class Index
     private string LastNotificationTimeAgo { get; set; } = string.Empty;
     private string LastDocumentTimeAgo { get; set; } = string.Empty;
     private int TotalEvents { get; set; } = 0;
+
+    // Calendar Event Detail Modals
+    private Modal CalendarEventViewModal { get; set; } = new();
+    private CalendarEventDto? ViewingCalendarEvent { get; set; }
+    private IReadOnlyList<CalendarEventParticipantWithNavigationPropertiesDto> ViewingEventParticipants { get; set; } = new List<CalendarEventParticipantWithNavigationPropertiesDto>();
+
+    // Project Detail Modal
+    private Modal ProjectDetailModal { get; set; } = new();
+    private ProjectDto? ViewingProject { get; set; }
+    private IReadOnlyList<ProjectMemberWithNavigationPropertiesDto> ProjectMembersList { get; set; } = new List<ProjectMemberWithNavigationPropertiesDto>();
+    private IReadOnlyList<ProjectTaskWithNavigationPropertiesDto> ProjectTasksList { get; set; } = new List<ProjectTaskWithNavigationPropertiesDto>();
+    private string SelectedProjectDetailTab = "general";
 
     protected override async Task OnInitializedAsync()
     {
@@ -1068,5 +1084,147 @@ public partial class Index
             "Confirm" => L["DatePicker:Confirm"],
             _ => L[name] ?? name 
         };
+    }
+
+    // -------------------------------
+    // Calendar Event Detail Modal Methods
+    // -------------------------------
+
+    private async Task OpenCalendarEventDetailModalAsync(CalendarEventDto calendarEvent)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            // Check if event has RelatedType and navigate accordingly
+            if (Enum.TryParse<HC.CalendarEvents.RelatedType>(calendarEvent.RelatedType, out var relatedType))
+            {
+                if (relatedType == HC.CalendarEvents.RelatedType.PROJECT && !string.IsNullOrWhiteSpace(calendarEvent.RelatedId))
+                {
+                    // Try to find project by Code
+                    var input = new GetProjectsInput
+                    {
+                        FilterText = calendarEvent.RelatedId,
+                        MaxResultCount = 1,
+                        SkipCount = 0
+                    };
+                    var result = await ProjectsAppService.GetListAsync(input);
+                    if (result.Items.Any())
+                    {
+                        var project = result.Items.First().Project;
+                        await OpenProjectDetailModalAsync(project.Id);
+                        return;
+                    }
+                }
+                else if (relatedType == HC.CalendarEvents.RelatedType.TASK && !string.IsNullOrWhiteSpace(calendarEvent.RelatedId))
+                {
+                    // Try to find task by Code
+                    var input = new GetProjectTasksInput
+                    {
+                        FilterText = calendarEvent.RelatedId,
+                        MaxResultCount = 1,
+                        SkipCount = 0
+                    };
+                    var result = await ProjectTasksAppService.GetListAsync(input);
+                    if (result.Items.Any())
+                    {
+                        var taskWithNav = result.Items.First();
+                        await OpenTaskDetailModalAsync(taskWithNav);
+                        return;
+                    }
+                }
+            }
+
+            // Default: open event view modal
+            await OpenEventViewModalAsync(calendarEvent);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    private async Task OpenEventViewModalAsync(CalendarEventDto calendarEvent)
+    {
+        try
+        {
+            ViewingCalendarEvent = await CalendarEventsAppService.GetAsync(calendarEvent.Id);
+
+            // Load participants
+            var participantsResult = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
+            {
+                CalendarEventId = calendarEvent.Id,
+                MaxResultCount = 1000,
+                SkipCount = 0
+            });
+            ViewingEventParticipants = participantsResult.Items;
+
+            await CalendarEventViewModal.Show();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task CloseEventViewModalAsync()
+    {
+        await CalendarEventViewModal.Hide();
+        ViewingCalendarEvent = null;
+        ViewingEventParticipants = new List<CalendarEventParticipantWithNavigationPropertiesDto>();
+    }
+
+    // -------------------------------
+    // Project Detail Modal Methods
+    // -------------------------------
+
+    private async Task OpenProjectDetailModalAsync(Guid projectId)
+    {
+        try
+        {
+            ViewingProject = await ProjectsAppService.GetAsync(projectId);
+
+            // Load project members
+            var membersResult = await ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
+            {
+                ProjectId = projectId,
+                MaxResultCount = 1000,
+                SkipCount = 0
+            });
+            ProjectMembersList = membersResult.Items;
+
+            // Load project tasks
+            var tasksResult = await ProjectTasksAppService.GetListAsync(new GetProjectTasksInput
+            {
+                ProjectId = projectId,
+                MaxResultCount = 1000,
+                SkipCount = 0
+            });
+            ProjectTasksList = tasksResult.Items;
+
+            SelectedProjectDetailTab = "general";
+            await ProjectDetailModal.Show();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task CloseProjectDetailModalAsync()
+    {
+        await ProjectDetailModal.Hide();
+        ViewingProject = null;
+        ProjectMembersList = new List<ProjectMemberWithNavigationPropertiesDto>();
+        ProjectTasksList = new List<ProjectTaskWithNavigationPropertiesDto>();
+    }
+
+    private void OnSelectedProjectDetailTabChanged(string name)
+    {
+        SelectedProjectDetailTab = name;
     }
 }
