@@ -317,6 +317,13 @@ public partial class ProjectTaskViewModal
         }
     }
 
+    private void OnProgressChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var value))
+        {
+            EditableProgress = value;
+        }
+    }
     /// <summary>
     /// Complete task (set progress to 100% and status to DONE)
     /// </summary>

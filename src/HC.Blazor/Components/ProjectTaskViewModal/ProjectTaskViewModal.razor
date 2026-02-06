@@ -83,7 +83,8 @@
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                         <label class="form-label fw-bold">@L["Status"]</label>
                                         <div>
-                                            <Badge Color="@GetStatusBadgeColor(Task.ProjectTask.Status ?? "")">
+                                            <Badge Class="text-white"
+                                             Color="@GetStatusBadgeColor(Task.ProjectTask.Status ?? "")">
                                                 @L[$"Enum:ProjectTaskStatus.{Task.ProjectTask.Status ?? ""}"]
                                             </Badge>
                                         </div>
@@ -91,7 +92,9 @@
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                         <label class="form-label fw-bold">@L["Priority"]</label>
                                         <div>
-                                            <Badge Color="@GetPriorityBadgeColor(Task.ProjectTask.Priority ?? "")">
+                                            <Badge 
+                                            Class="text-white"
+                                            Color="@GetPriorityBadgeColor(Task.ProjectTask.Priority ?? "")">
                                                 @L[$"Enum:ProjectTaskPriority.{Task.ProjectTask.Priority ?? ""}"]
                                             </Badge>
                                         </div>
@@ -100,7 +103,12 @@
                                 <div class="mt-3">
                                     <label class="form-label fw-bold">@L["ProgressPercent"]</label>
                                     <Field>
-                                        <Slider @bind-Value="@EditableProgress" Step="5" Max="100" Min="0" TValue="int" />
+                                        @* <Slider @bind-Value="@EditableProgress" Step="5" Max="100" Min="0" TValue="int" /> *@
+                                        <input type="range" class="w-100" min="0" max="100"
+                                            step="5"
+                                            value="@EditableProgress"
+                                            @onchange="OnProgressChanged"
+                                            @oninput="OnProgressChanged" />
                                         <div class="text-end mt-1">
                                             <span class="fw-bold">@EditableProgress%</span>
                                         </div>
