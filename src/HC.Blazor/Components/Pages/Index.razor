@@ -100,163 +100,19 @@
     </Column>
 </Row>
 
+@* ===== ROW 1: CALENDAR + NOTIFICATIONS ===== *@
 <Row>
-    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-        <Row>
-
-            @* ===== ACTIVE PROJECTS ===== *@
-            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
-                <Card Class="overflow-hidden text-black w-100">
-                    <CardHeader>
-                        <Row>
-                            <Column>
-                                <Heading Size="HeadingSize.Is4">
-                                    @L["Projects"]
-                                </Heading>
-                                <small class="text-muted">
-                                    @ActiveProjectsCount @L["Of"] @TotalProjectsCount @L["Projects"]
-                                </small>
-                            </Column>
-                        </Row>
-                    </CardHeader>
-
-                    <CardBody Style="max-height: 370px;" Class="overflow-auto py-2">
-                        @if (IsLoading)
-                        {
-                            <div class="text-center py-4">
-                                <div class="spinner-border text-black" role="status">
-                                    <span class="visually-hidden">@L["Loading"]...</span>
-                                </div>
-                            </div>
-                        }
-                        else if (!ActiveProjectsList.Any())
-                        {
-                            <div class="text-center py-4">
-                                <p class="text-black-50">@L["NoProjectsFound"]</p>
-                            </div>
-                        }
-                        else
-                        {
-                            @foreach (var project in ActiveProjectsList.OrderByDescending(x => x.Project.Status).ThenByDescending(x => x.Project.CreationTime))
-                            {
-                                var progress = CalculateProjectProgress(project.Project.Status);
-                                var progressColor = EnumStatusColorHelper.GetProjectStatusProgressBarColor(project.Project.Status);
-
-                                <div class="mt-3" @onclick="@(() => Navigation.NavigateTo($"/project-detail/{project.Project.Id}"))" style="cursor: pointer;">
-                                    <h5 class="mb-1 text-black">@project.Project.Name.TruncateWithPostfix(26)</h5>
-                                    <Row class="align-items-center">
-                                        <Column>
-                                            <div class="progress">
-                                                <div class="progress-bar bg-@progressColor"
-                                                     style="width:@(progress)%"></div>
-                                            </div>
-                                        </Column>
-                                        <Column ColumnSize="ColumnSize.IsAuto">
-                                            <span class="text-muted">%@progress</span>
-                                        </Column>
-                                    </Row>
-                                </div>
-                            }
-                        }
-                    </CardBody>
-
-                    <CardFooter Class="bg-transparent border-0 pt-3">
-                        <Button Class="w-100 bg-brand text-white" 
-                        Color="Color.Light"
-                        Clicked="OpenCreateProjectModalAsync">
-                            <Icon Name="IconName.Add" Class="me-1" /> @L["NewProject"]
-                        </Button>
-                    </CardFooter>
-                </Card>
-            </Column>
-
-            @* ===== TASKS ===== *@
-            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
-                <Card Class="overflow-hidden w-100">
-                    <CardHeader>
-                        <Heading Size="HeadingSize.Is4">
-                            @L["Tasks"]
-                        </Heading>
-                    </CardHeader>
-
-                    <CardBody>
-
-                        @* Dynamic Donut Chart with Real Data *@
-                        @* Task Distribution Donut Chart *@
-                        @if (IsLoading)
-                        {
-                            <div class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
-                                <div class="spinner-border" role="status">
-                                    <span class="visually-hidden">@L["Loading"]...</span>
-                                </div>
-                            </div>
-                        }
-                        else if (TotalTasksCount == 0)
-                        {
-                            <div class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
-                                <p class="text-muted">@L["NoTasksFound"]</p>
-                            </div>
-                        }
-                        else
-                        {
-                            <PieChart ChartId="taskDistributionChart"
-                                      Labels="@TaskChartLabels"
-                                      Data="@TaskChartData"
-                                      BackgroundColors="@TaskChartColors"
-                                      IsDoughnut="true"
-                                      ShowLegend="false" />
-                        }
-
-                        <div class="mt-3">
-                            @if (IsLoading)
-                            {
-                                <div class="text-center py-2">
-                                    <div class="spinner-border spinner-border-sm" role="status">
-                                        <span class="visually-hidden">@L["Loading"]...</span>
-                                    </div>
-                                </div>
-                            }
-                            else if (TotalTasksCount == 0)
-                            {
-                                <p class="text-muted text-center">@L["NoTasksFound"]</p>
-                            }
-                            else
-                            {
-                                @foreach (var statusKvp in TasksByStatus.OrderBy(x => Enum.Parse<ProjectTaskStatus>(x.Key)))
-                                {
-                                    var percentage = GetTaskPercentage(statusKvp.Key);
-                                    var status = Enum.Parse<ProjectTaskStatus>(statusKvp.Key);
-                                    var colorClass = EnumStatusColorHelper.GetProjectTaskStatusProgressChartColor(status);
-
-                                    <div class="d-flex align-items-baseline mb-1">
-                                        <span class="bg-@colorClass me-2 p-1 rounded-circle"></span>
-                                        <span><span class="text-@colorClass me-2">%@percentage</span> @L[$"Enum:ProjectTaskStatus.{statusKvp.Key}"] (@statusKvp.Value)</span>
-                                    </div>
-                                }
-                            }
-                        </div>
-
-                    </CardBody>
-                </Card>
-            </Column>
-
-        </Row>
-    </Column>
-
     <!-- Calendar -->
-    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Class="d-flex">
         <Card Class="w-100 overflow-hidden">
             <CardHeader>
                 <Heading Size="HeadingSize.Is4">@L["Calendar"]</Heading>
                 <small class="text-muted d-block">@L["Total"] @TotalEvents @L["CalenderEvents"]</small>
             </CardHeader>
-
             <CardBody>
-                <!-- Tabs -->
                 <Tabs SelectedTab="@SelectedDayTab"
                     SelectedTabChanged="@(tab => SelectedDayTab = tab)"
                     Class="mb-2.5 d-flex justify-content-between">
-
                     <Items>
                         @foreach (var tab in DayTabs)
                         {
@@ -268,7 +124,6 @@
                             </Tab>
                         }
                     </Items>
-
                     <Content>
                         @foreach (var tab in DayTabs)
                         {
@@ -300,23 +155,18 @@
                                                                 @if(ev.RelatedType == RelatedType.PROJECT.ToString())
                                                                 {
                                                                     <span class="me-2 rounded-3"
-                                                                        style="width:3px;height:66px;
-                                                                                background-color:var(--bs-pink)">
-                                                                    </span>
+                                                                        style="width:3px;height:66px;background-color:var(--bs-pink)"></span>
                                                                 }
                                                                 else if(ev.RelatedType == RelatedType.TASK.ToString())
                                                                 {
                                                                     <span class="me-2 rounded-3"
-                                                                        style="width:3px;height:66px;
-                                                                                background-color:var(--bs-green)">
-                                                                    </span>
-                                                                }else {
-                                                                     <span class="me-2 rounded-3"
-                                                                        style="width:3px;height:66px;
-                                                                                background-color:var(--bs-primary)">
-                                                                    </span>
+                                                                        style="width:3px;height:66px;background-color:var(--bs-green)"></span>
                                                                 }
-
+                                                                else
+                                                                {
+                                                                    <span class="me-2 rounded-3"
+                                                                        style="width:3px;height:66px;background-color:var(--bs-primary)"></span>
+                                                                }
                                                                 <div>
                                                                     <h5 class="mb-1">@ev.Title</h5>
                                                                     <h6 class="text-muted fw-normal mb-0">@ev.StartTime.ToString("HH:mm") - @ev.EndTime.ToString("HH:mm")</h6>
@@ -327,12 +177,9 @@
                                                                 </div>
                                                             </div>
                                                         </td>
-
                                                         <td class="text-end">
-                                                            <Button
-                                                             Size="Size.Small"
-                                                             Class="bg-brand text-white"
-                                                             Clicked="@(() => OpenCalendarEventDetailModalAsync(ev))">
+                                                            <Button Size="Size.Small" Class="bg-brand text-white"
+                                                                Clicked="@(() => OpenCalendarEventDetailModalAsync(ev))">
                                                                 @L["View"]
                                                             </Button>
                                                         </td>
@@ -350,12 +197,9 @@
         </Card>
     </Column>
 
-    
-
     <!-- Notifications -->
     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="d-flex">
         <Card Class="w-100">
-
             <CardHeader>
                 <Heading Size="HeadingSize.Is4">@L["Notifications"]</Heading>
                 <small class="text-muted d-block text-truncate">
@@ -369,7 +213,6 @@
                     }
                 </small>
             </CardHeader>
-
             <CardBody>
                 @if (IsLoading)
                 {
@@ -387,7 +230,7 @@
                 }
                 else
                 {
-                    <div class="table-responsive overflow-auto" style="max-height: 280px;">
+                    <div class="table-responsive overflow-auto" style="max-height: 370px;">
                         <table class="table mb-0">
                             <thead>
                                 <tr>
@@ -395,7 +238,6 @@
                                     <th>@L["View"]</th>
                                 </tr>
                             </thead>
-
                             <tbody>
                                 @foreach (var notification in RecentNotificationsList)
                                 {
@@ -412,9 +254,7 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <Button Title="@L["View"]"
-                                                Class="bg-brand text-white"
-                                                Size="Size.Small" 
+                                            <Button Title="@L["View"]" Class="bg-brand text-white" Size="Size.Small"
                                                 Clicked="@(() => ViewNotificationDetailAsync(notification))">
                                                 <Icon Name="IconName.Eye" />
                                             </Button>
@@ -426,7 +266,39 @@
                     </div>
                 }
             </CardBody>
+        </Card>
+    </Column>
+</Row>
 
+@* ===== ROW 2: WORKFLOW PIE CHART + DOCUMENTS ===== *@
+<Row>
+    <!-- Workflow PieChart -->
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="d-flex">
+        <Card Class="overflow-hidden w-100">
+            <CardHeader>
+                <Heading Size="HeadingSize.Is4">@L["Workflows"]</Heading>
+            </CardHeader>
+            <CardBody>
+                <PieChart ChartId="workflowDistributionChart"
+                          Labels="@WorkflowChartLabels"
+                          Data="@WorkflowChartData"
+                          BackgroundColors="@WorkflowChartColors"
+                          IsDoughnut="true"
+                          ShowLegend="false" />
+
+                <div class="mt-3">
+                    @foreach (var item in WorkflowChartItems)
+                    {
+                        <div class="d-flex align-items-baseline mb-1">
+                            <span class="me-2 p-1 rounded-circle" style="background-color: @item.Color;"></span>
+                            <span>
+                                <span class="me-2" style="color: @item.Color;">%@item.Percentage</span>
+                                @item.Label
+                            </span>
+                        </div>
+                    }
+                </div>
+            </CardBody>
         </Card>
     </Column>
 
@@ -439,14 +311,13 @@
                     @if (!string.IsNullOrEmpty(LastDocumentTimeAgo))
                     {
                         @L["Update"]@(" ")@LastDocumentTimeAgo
-                    } 
+                    }
                     else
                     {
                         @L["NoRecentUpdates"]
                     }
                 </small>
             </CardHeader>
-
             <CardBody>
                 @if (IsLoading)
                 {
@@ -471,7 +342,6 @@
                                 {
                                     var shortName = doc.Document.Title?.Substring(0, Math.Min(1, doc.Document.Title.Length)).ToUpper() ?? "D";
                                     var bgClass = "bg-primary";
-
                                     <tr>
                                         <td class="ps-0">
                                             <div class="d-flex align-items-center">
@@ -479,18 +349,14 @@
                                                     style="width:36px;height:36px">
                                                     <h4 class="mb-0">@shortName</h4>
                                                 </div>
-
                                                 <div>
                                                     <h6 class="mb-0 text-dark">@doc.Document.Title</h6>
                                                     <small class="text-muted">@doc.Time.ToString("dd/MM/yyyy")</small>
                                                 </div>
                                             </div>
                                         </td>
-
                                         <td class="text-end">
-                                            <Button 
-                                                Class="bg-brand text-white"
-                                                Size="Size.Small" 
+                                            <Button Class="bg-brand text-white" Size="Size.Small"
                                                 Clicked="@(() => OpenDocumentPdfViewerModalAsync(doc))">
                                                 <Icon Name="IconName.Eye" />
                                             </Button>
@@ -502,14 +368,147 @@
                     </div>
                 }
             </CardBody>
+        </Card>
+    </Column>
+</Row>
 
+@* ===== ROW 3: PROJECTS (full width table) ===== *@
+<Row>
+    <Column ColumnSize="ColumnSize.Is12" Class="d-flex">
+        <Card Class="w-100">
+            <CardHeader Class="d-flex justify-content-between align-items-center">
+                <div>
+                    <Heading Size="HeadingSize.Is4" Class="mb-0">@L["Projects"]</Heading>
+                    <small class="text-muted">@ActiveProjectsCount @L["Of"] @TotalProjectsCount @L["Projects"]</small>
+                </div>
+                <Button Class="bg-brand text-white" Size="Size.Small" Clicked="OpenCreateProjectModalAsync">
+                    <Icon Name="IconName.Add" Class="me-1" /> @L["NewProject"]
+                </Button>
+            </CardHeader>
+            <CardBody>
+                @if (IsLoading)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-black" role="status">
+                            <span class="visually-hidden">@L["Loading"]...</span>
+                        </div>
+                    </div>
+                }
+                else if (!ActiveProjectsList.Any())
+                {
+                    <div class="text-center py-4">
+                        <p class="text-black-50">@L["NoProjectsFound"]</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive" style="max-height: 300px;">
+                        <table class="table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>@L["Projects"]</th>
+                                    <th style="width: 130px;">@L["Status"]</th>
+                                    <th>@L["Department"]</th>
+                                    <th style="width: 100px;">@L["Members"]</th>
+                                    <th class="text-end" style="width: 120px;">@L["Actions"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var project in ActiveProjectsList.OrderByDescending(x => x.Project.Status).ThenByDescending(x => x.Project.CreationTime))
+                                {
+                                    <tr>
+                                        <td>
+                                            <h6 class="mb-0 text-dark">@project.Project.Name</h6>
+                                            <small class="text-muted">#@project.Project.Code</small>
+                                        </td>
+                                        <td>
+                                            <Badge Color="@EnumStatusColorHelper.GetProjectStatusBadgeColor(project.Project.Status)" TextColor="TextColor.White">
+                                                @L[$"Enum:ProjectStatus.{project.Project.Status}"]
+                                            </Badge>
+                                        </td>
+                                        <td>
+                                            <small>@(project.OwnerDepartment?.Name ?? "-")</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">@project.ProjectMemberCount</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="d-flex gap-1 justify-content-end">
+                                                <Button Color="Color.Info" Outline Size="Size.Small" Title="@L["Chat"]"
+                                                    Clicked="@(() => NavigateToProjectChatAsync(project))">
+                                                    <Icon Name="IconName.Comments" />
+                                                </Button>
+                                                <Button Color="Color.Primary" Outline Size="Size.Small" Title="@L["View"]"
+                                                    Clicked="@(() => OpenProjectDetailModalAsync(project.Project.Id))">
+                                                    <Icon Name="IconName.Eye" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </CardBody>
+        </Card>
+    </Column>
+</Row>
+
+@* ===== ROW 4: TASK PIE CHART + TASKS ===== *@
+<Row>
+    <!-- Task PieChart -->
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop" Class="d-flex">
+        <Card Class="overflow-hidden w-100">
+            <CardHeader>
+                <Heading Size="HeadingSize.Is4">@L["Tasks"]</Heading>
+            </CardHeader>
+            <CardBody>
+                @if (IsLoading)
+                {
+                    <div class="d-flex justify-content-center align-items-center" style="min-height: 200px;">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">@L["Loading"]...</span>
+                        </div>
+                    </div>
+                }
+                else if (TotalTasksCount == 0)
+                {
+                    <div class="d-flex justify-content-center align-items-center" style="min-height: 200px;">
+                        <p class="text-muted">@L["NoTasksFound"]</p>
+                    </div>
+                }
+                else
+                {
+                    <PieChart ChartId="taskDistributionChart"
+                              Labels="@TaskChartLabels"
+                              Data="@TaskChartData"
+                              BackgroundColors="@TaskChartColors"
+                              IsDoughnut="true"
+                              ShowLegend="false" />
+                }
+
+                <div class="mt-3">
+                    @if (!IsLoading && TotalTasksCount > 0)
+                    {
+                        @foreach (var statusKvp in TasksByStatus.OrderBy(x => Enum.Parse<ProjectTaskStatus>(x.Key)))
+                        {
+                            var percentage = GetTaskPercentage(statusKvp.Key);
+                            var status = Enum.Parse<ProjectTaskStatus>(statusKvp.Key);
+                            var colorClass = EnumStatusColorHelper.GetProjectTaskStatusProgressChartColor(status);
+                            <div class="d-flex align-items-baseline mb-1">
+                                <span class="bg-@colorClass me-2 p-1 rounded-circle"></span>
+                                <span><span class="text-@colorClass me-2">%@percentage</span> @L[$"Enum:ProjectTaskStatus.{statusKvp.Key}"] (@statusKvp.Value)</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </CardBody>
         </Card>
     </Column>
 
-
-    
     <!-- My Tasks -->
-    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop" Class="d-flex">
+    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Class="d-flex">
         <Card Class="w-100">
             <CardHeader Class="d-flex justify-content-between align-items-center">
                 <Heading Size="HeadingSize.Is4" Class="mb-0">@L["MyTasks"]</Heading>
@@ -517,7 +516,6 @@
                     <Icon Name="IconName.Add" Class="me-1" /> @L["NewTask"]
                 </Button>
             </CardHeader>
-
             <CardBody>
                 @if (IsLoading)
                 {
@@ -530,18 +528,17 @@
                 else if (!MyTasksList.Any())
                 {
                     <div class="text-center py-4">
-                        <p class="text-muted">@L["NoRecentDocuments"]</p>
+                        <p class="text-muted">@L["NoTasksFound"]</p>
                     </div>
                 }
                 else
                 {
-                    <div class="table-responsive" style="max-height: 350px;">
+                    <div class="table-responsive" style="max-height: 450px;">
                         <table class="table mb-0">
                             <thead>
                                 <tr>
                                     <th>@L["Title"]</th>
-                                    <th>@L["Description"]</th>
-                                    <th style="width: 30%;">@L["StartDateAndEndDate"]</th>
+                                    <th style="width: 20%;">@L["StartDateAndEndDate"]</th>
                                     <th style="width: 100px;">@L["Status"]</th>
                                     <th>@L["Priority"]</th>
                                     <th>@L["ProgressPercent"]</th>
@@ -557,44 +554,34 @@
                                                 <h6 class="mb-0 text-dark">@task.ProjectTask.Title</h6>
                                             </div>
                                             <small class="text-muted">@task.ProjectTask.Code</small>
-                                        </td>
-                                        <td>
-                                            <small>@(task.ProjectTask.Description?.TruncateWithPostfix(130, "...") ?? "-")</small>
+                                            <small class="text-muted">@task.ProjectTask.Description?.TruncateWithPostfix(85, "...")</small>
                                         </td>
                                         <td>
                                             <span>
-                                                <i class="bi bi-calendar text-success"></i> @task.ProjectTask.StartDate.ToString("dd/MM/yyyy HH:mm") - 
+                                                <i class="bi bi-calendar text-success"></i> @task.ProjectTask.StartDate.ToString("dd/MM/yyyy HH:mm") <br/>
                                                 <i class="bi bi-calendar-check text-brand me-1"></i>@task.ProjectTask.DueDate.ToString("dd/MM/yyyy HH:mm")
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="hc-badge-subtle
-                                                hc-badge-@(GetStatusBadgeColor(task.ProjectTask.Status))-subtle">
+                                            <span class="hc-badge-subtle hc-badge-@(GetStatusBadgeColor(task.ProjectTask.Status))-subtle">
                                                 @L[$"Enum:ProjectTaskStatus.{task.ProjectTask.Status}"]
                                             </span>
                                         </td>
-
                                         <td>
-                                             <Badge Color="@GetPriorityBadgeColor(task.ProjectTask.Priority)"
-                                             Class="text-white">
+                                            <Badge Color="@GetPriorityBadgeColor(task.ProjectTask.Priority)" Class="text-white">
                                                 @L[$"Enum:ProjectTaskPriority.{task.ProjectTask.Priority}"]
                                             </Badge>
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="progress" style="width: 80px; height: 8px;">
-                                                    <div class="progress-bar" 
-                                                         style="width: @task.ProjectTask.ProgressPercent%"
-                                                         role="progressbar">
-                                                    </div>
+                                                    <div class="progress-bar" style="width: @task.ProjectTask.ProgressPercent%" role="progressbar"></div>
                                                 </div>
                                                 <small class="text-muted">@task.ProjectTask.ProgressPercent%</small>
                                             </div>
                                         </td>
                                         <td class="text-end">
-                                            <Button 
-                                                Size="Size.Small" 
-                                                Class="bg-brand text-white"
+                                            <Button Size="Size.Small" Class="bg-brand text-white"
                                                 Clicked="@(() => OpenTaskDetailModalAsync(task))">
                                                 <Icon Name="IconName.Eye" />
                                             </Button>
@@ -606,7 +593,6 @@
                     </div>
                 }
             </CardBody>
-
         </Card>
     </Column>
 </Row>
@@ -664,6 +650,19 @@
         _ => "#355dff"                 // primary
     }).ToList();
 
+    // Workflow Chart Demo Data
+    private record WorkflowChartItem(string Label, double Percentage, string Color);
+
+    private List<WorkflowChartItem> WorkflowChartItems => new()
+    {
+        new WorkflowChartItem(L["Workflow:Signed"], 20, "#4fbf67"),
+        new WorkflowChartItem(L["Workflow:Submitted"], 30, "#ff9f38"),
+        new WorkflowChartItem(L["Workflow:Sent"], 50, "#355dff")
+    };
+
+    private List<string> WorkflowChartLabels => WorkflowChartItems.Select(x => x.Label).ToList();
+    private List<double> WorkflowChartData => WorkflowChartItems.Select(x => x.Percentage).ToList();
+    private List<string> WorkflowChartColors => WorkflowChartItems.Select(x => x.Color).ToList();
 }
 
 @* ************************* PROJECT TASK CREATE MODAL ************************* *@
@@ -915,65 +914,126 @@
 </Modal>
 
 @* ************************* CALENDAR EVENT VIEW MODAL ************************* *@
-<Modal @ref="CalendarEventViewModal">
-    <ModalContent Size="ModalSize.Large" Centered="true">
+<Modal @ref="CalendarEventViewModal" Class="calendar-event-detail-modal">
+    <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
         <ModalHeader>
-            <ModalTitle>@L["Detail"]</ModalTitle>
+            <ModalTitle>@L["CalendarEvent:Detail"]</ModalTitle>
             <CloseButton Clicked="CloseEventViewModalAsync" />
         </ModalHeader>
-        <ModalBody>
+        <ModalBody Style="padding: 5px !important;">
             @if (ViewingCalendarEvent != null)
             {
-                <div>
-                    <h5>@ViewingCalendarEvent.Title</h5>
-                    <p class="text-muted mb-3">
-                        <small>@ViewingCalendarEvent.StartTime.ToString("dd/MM/yyyy HH:mm") - @ViewingCalendarEvent.EndTime.ToString("dd/MM/yyyy HH:mm")</small>
-                    </p>
-                    @if (!string.IsNullOrEmpty(ViewingCalendarEvent.Description))
-                    {
-                        <p>@ViewingCalendarEvent.Description</p>
-                    }
-                    @if (!string.IsNullOrEmpty(ViewingCalendarEvent.Location))
-                    {
-                        <p class="mb-2">
-                            <strong>@L["Location"]:</strong> @ViewingCalendarEvent.Location
-                        </p>
-                    }
-                    <div class="mb-3">
-                        <strong>@L["EventType"]:</strong> @L[$"Enum:EventType.{ViewingCalendarEvent.EventType}"]
-                    </div>
-                    @if (ViewingEventParticipants.Any())
-                    {
-                        <div class="mt-3">
-                            <h6>@L["Member"] (@ViewingEventParticipants.Count)</h6>
-                            <div class="table-responsive">
-                                <table class="table table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>@L["Name"]</th>
-                                            <th>@L["ResponseStatus"]</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var participant in ViewingEventParticipants)
-                                        {
-                                            <tr>
-                                                <td>@participant.IdentityUser?.Surname @participant.IdentityUser?.Name</td>
-                                                <td>
-                                                    <span class="badge @(participant.CalendarEventParticipant.ResponseStatus == "ACCEPTED" ? "bg-success" :
-                                                                    participant.CalendarEventParticipant.ResponseStatus == "DECLINED" ? "bg-danger" :
-                                                                    participant.CalendarEventParticipant.ResponseStatus == "TENTATIVE" ? "bg-warning" : "bg-secondary")">
+                <Row>
+                    @* Column 8: General Information *@
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Style="padding-right: 0px !important;">
+                        <Card>
+                            <CardHeader>
+                                <Heading Size="HeadingSize.Is5" Class="fw-bolder">
+                                    <Icon Name="IconName.Info" Class="me-1" /> @L["Tab:GeneralInformation"]
+                                </Heading>
+                            </CardHeader>
+                            <CardBody Style="padding: 1rem !important;">
+                                <Row class="g-2">
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <div>
+                                            <label class="form-label fw-bold">@L["Title"]</label>
+                                            <div>
+                                                <i class="bi bi-calendar-event text-primary"></i> @(ViewingCalendarEvent.Title ?? "-")
+                                            </div>
+                                        </div>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <div>
+                                            <label class="form-label fw-bold">@L["EventType"]</label>
+                                            <div>
+                                                <i class="bi bi-tag text-info"></i> @L[$"Enum:EventType.{ViewingCalendarEvent.EventType}"]
+                                            </div>
+                                        </div>
+                                    </Column>
+
+                                    <Column ColumnSize="ColumnSize.Is12">
+                                        <label class="form-label fw-bold">@L["Description"]</label>
+                                        <div>@(ViewingCalendarEvent.Description ?? "-")</div>
+                                    </Column>
+
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <label class="form-label fw-bold">@L["StartDate"]</label>
+                                        <div>
+                                            <i class="bi bi-calendar text-success"></i> @ViewingCalendarEvent.StartTime.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <label class="form-label fw-bold">@L["DueDate"]</label>
+                                        <div>
+                                            <i class="bi bi-calendar-check text-brand me-1"></i>@ViewingCalendarEvent.EndTime.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
+                                    </Column>
+
+                                    @if (!string.IsNullOrEmpty(ViewingCalendarEvent.Location))
+                                    {
+                                        <Column ColumnSize="ColumnSize.Is12">
+                                            <label class="form-label fw-bold">@L["Location"]</label>
+                                            <div>
+                                                <i class="bi bi-geo-alt text-danger"></i> @ViewingCalendarEvent.Location
+                                            </div>
+                                        </Column>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(ViewingCalendarEvent.RelatedType))
+                                    {
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                            <label class="form-label fw-bold">@L["RelatedType"]</label>
+                                            <div>
+                                                <Badge Color="Color.Info" TextColor="TextColor.White">
+                                                    @L[$"Enum:RelatedType.{ViewingCalendarEvent.RelatedType}"]
+                                                </Badge>
+                                            </div>
+                                        </Column>
+                                    }
+                                </Row>
+                            </CardBody>
+                        </Card>
+                    </Column>
+
+                    @* Column 4: Participants *@
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                        <Card Class="h-100">
+                            <CardHeader>
+                                <Heading Size="HeadingSize.Is6" Class="fw-bolder">
+                                    <Icon Name="IconName.Users" Class="me-1" /> @L["Member"] (@ViewingEventParticipants.Count)
+                                </Heading>
+                            </CardHeader>
+                            <CardBody Style="padding: 1rem !important; max-height: 350px; overflow-y: auto;">
+                                @if (!ViewingEventParticipants.Any())
+                                {
+                                    <div class="text-center text-muted py-3">
+                                        <small>@L["NoMembersFound"]</small>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @foreach (var participant in ViewingEventParticipants)
+                                    {
+                                        <div class="d-flex align-items-center gap-2 mb-2 p-2 border rounded">
+                                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                                                 style="width: 32px; height: 32px; flex-shrink: 0;">
+                                                <span style="font-size: 0.75rem;">@GetParticipantInitial(participant)</span>
+                                            </div>
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <div class="fw-bold text-truncate d-flex align-items-center justify-content-between" style="font-size: 0.875rem;">
+                                                    <span>@participant.IdentityUser?.Surname @participant.IdentityUser?.Name</span>
+                                                    <Badge Color="@GetParticipantResponseColor(participant.CalendarEventParticipant.ResponseStatus)" TextColor="TextColor.White" style="font-size: 0.7rem;">
                                                         @L[$"Enum:ParticipantResponse.{participant.CalendarEventParticipant.ResponseStatus}"]
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    }
-                </div>
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </CardBody>
+                        </Card>
+                    </Column>
+                </Row>
             }
         </ModalBody>
         <ModalFooter>
@@ -985,134 +1045,167 @@
 </Modal>
 
 @* ************************* PROJECT DETAIL MODAL ************************* *@
-<Modal @ref="ProjectDetailModal">
-    <ModalContent Size="ModalSize.Large" Centered="true">
+<Modal @ref="ProjectDetailModal" Class="project-detail-modal">
+    <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
         <ModalHeader>
             <ModalTitle>@L["Detail"]</ModalTitle>
             <CloseButton Clicked="CloseProjectDetailModalAsync" />
         </ModalHeader>
-        <ModalBody>
+        <ModalBody Style="padding: 5px !important;">
             @if (ViewingProject != null)
             {
-                <Tabs SelectedTab="@SelectedProjectDetailTab" SelectedTabChanged="OnSelectedProjectDetailTabChanged">
-                    <Items>
-                        <Tab Name="general">
-                            <Icon Name="IconName.Info" Class="me-1" />
-                            @L["Information"]
-                        </Tab>
-                        <Tab Name="members">
-                            <Icon Name="IconName.Users" Class="me-1" />
-                            @L["Members"] (@ProjectMembersList.Count)
-                        </Tab>
-                        <Tab Name="tasks">
-                            <Icon Name="IconName.List" Class="me-1" />
-                            @L["Tasks"] (@ProjectTasksList.Count)
-                        </Tab>
-                    </Items>
-                    <Content>
-                        <TabPanel Name="general">
-                            <div>
-                                <h5>@ViewingProject.Name</h5>
-                                <p class="text-muted mb-2">
-                                    <strong>@L["Code"]:</strong> @ViewingProject.Code
-                                </p>
-                                @if (!string.IsNullOrEmpty(ViewingProject.Description))
-                                {
-                                    <p class="mb-3">@ViewingProject.Description</p>
-                                }
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <p class="mb-2">
-                                            <strong>@L["StartDate"]:</strong> @ViewingProject.StartDate.ToString("dd/MM/yyyy HH:mm")
-                                        </p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <p class="mb-2">
-                                            <strong>@L["EndDate"]:</strong> @ViewingProject.EndDate.ToString("dd/MM/yyyy HH:mm")
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="mb-2">
-                                    <strong>@L["Status"]:</strong>
-                                    <span class="badge ms-2 @(ViewingProject.Status == ProjectStatus.PLANNING ? "bg-secondary" :
-                                                          ViewingProject.Status == ProjectStatus.IN_PROGRESS ? "bg-primary" :
-                                                          ViewingProject.Status == ProjectStatus.COMPLETED ? "bg-success" : "bg-danger")">
-                                        @L[$"Enum:ProjectStatus.{ViewingProject.Status}"]
-                                    </span>
-                                </div>
-                            </div>
-                        </TabPanel>
-                        <TabPanel Name="members">
-                            @if (ProjectMembersList.Any())
-                            {
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>@L["Name"]</th>
-                                                <th>@L["MemberRole"]</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var member in ProjectMembersList)
-                                            {
-                                                <tr>
-                                                    <td>@member.User.Surname @member.User.Name</td>
-                                                    <td>@L[$"Enum:ProjectMemberRole.{member.ProjectMember.MemberRole}"]</td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
-                            else
-                            {
-                                <p class="text-muted">@L["NoMembersFound"]</p>
-                            }
-                        </TabPanel>
-                        <TabPanel Name="tasks">
-                            @if (ProjectTasksList.Any())
-                            {
-                                <div class="table-responsive" style="max-height: 300px;">
-                                    <table class="table table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>@L["Title"]</th>
-                                                <th>@L["Status"]</th>
-                                                <th>@L["Priority"]</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
+                <Row>
+                    @* Column 8: General Information *@
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Style="padding-right: 0px !important;">
+                        <Card Class="h-100">
+                            <CardHeader>
+                                <Heading Size="HeadingSize.Is5" Class="fw-bolder">
+                                    <Icon Name="IconName.Info" Class="me-1" /> @L["Tab:GeneralInformation"]
+                                </Heading>
+                            </CardHeader>
+                            <CardBody Style="padding: 1rem !important;">
+                                <Row class="g-2">
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <div>
+                                            <label class="form-label fw-bold">@L["Name"]</label>
+                                            <div>
+                                                <i class="bi bi-building text-primary"></i> @(ViewingProject.Name ?? "-")
+                                            </div>
+                                            <div>
+                                                <i class="bi bi-code-square text-success"></i> #@(ViewingProject.Code ?? "-")
+                                            </div>
+                                        </div>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <div>
+                                            <label class="form-label fw-bold">@L["Department"]</label>
+                                            <div>
+                                                <i class="bi bi-diagram-3 text-info"></i> @(ViewingProjectDepartmentName ?? "-")
+                                            </div>
+                                        </div>
+                                    </Column>
+
+                                    <Column ColumnSize="ColumnSize.Is12">
+                                        <label class="form-label fw-bold">@L["Description"]</label>
+                                        <div>@(ViewingProject.Description ?? "-")</div>
+                                    </Column>
+
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <label class="form-label fw-bold">@L["StartDate"]</label>
+                                        <div>
+                                            <i class="bi bi-calendar text-success"></i> @ViewingProject.StartDate.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <label class="form-label fw-bold">@L["EndDate"]</label>
+                                        <div>
+                                            <i class="bi bi-calendar-check text-brand me-1"></i>@ViewingProject.EndDate.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
+                                    </Column>
+
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <label class="form-label fw-bold">@L["Status"]</label>
+                                        <div>
+                                            <Badge Color="@EnumStatusColorHelper.GetProjectStatusBadgeColor(ViewingProject.Status)" TextColor="TextColor.White">
+                                                @L[$"Enum:ProjectStatus.{ViewingProject.Status}"]
+                                            </Badge>
+                                        </div>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <label class="form-label fw-bold">@L["Members"]</label>
+                                        <div>
+                                            <span class="badge bg-info">@ProjectMembersList.Count @L["Members"]</span>
+                                        </div>
+                                    </Column>
+                                </Row>
+                            </CardBody>
+                        </Card>
+                    </Column>
+
+                    @* Column 4: Tasks + Members *@
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                        <Row Style="height: 100%;">
+                            @* Card 1: Tasks *@
+                            @* <Column ColumnSize="ColumnSize.Is12" Class="mb-2">
+                                <Card Class="h-100">
+                                    <CardHeader>
+                                        <Heading Size="HeadingSize.Is6" Class="fw-bolder">
+                                            <Icon Name="IconName.List" Class="me-1" /> @L["Tasks"] (@ProjectTasksList.Count)
+                                        </Heading>
+                                    </CardHeader>
+                                    <CardBody Style="padding: 1rem !important; max-height: 200px; overflow-y: auto;">
+                                        @if (!ProjectTasksList.Any())
+                                        {
+                                            <div class="text-center text-muted py-3">
+                                                <small>@L["NoTasksFound"]</small>
+                                            </div>
+                                        }
+                                        else
+                                        {
                                             @foreach (var task in ProjectTasksList.Take(20))
                                             {
-                                                <tr>
-                                                    <td>@task.ProjectTask.Title</td>
-                                                    <td>
-                                                        <span class="badge @(GetStatusBadgeColor(task.ProjectTask.Status.ToString()) == "secondary" ? "bg-secondary" :
-                                                                      GetStatusBadgeColor(task.ProjectTask.Status.ToString()) == "primary" ? "bg-primary" :
-                                                                      GetStatusBadgeColor(task.ProjectTask.Status.ToString()) == "warning" ? "bg-warning" :
-                                                                      GetStatusBadgeColor(task.ProjectTask.Status.ToString()) == "success" ? "bg-success" : "bg-danger")">
-                                                            @L[$"Enum:ProjectTaskStatus.{task.ProjectTask.Status}"]
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge bg-@GetPriorityBadgeColor(task.ProjectTask.Priority.ToString())">
-                                                            @L[$"Enum:ProjectTaskPriority.{task.ProjectTask.Priority}"]
-                                                        </span>
-                                                    </td>
-                                                </tr>
+                                                <div class="d-flex align-items-center justify-content-between mb-2 p-2 border rounded">
+                                                    <div class="flex-grow-1" style="min-width: 0;">
+                                                        <div class="fw-bold text-truncate" style="font-size: 0.875rem;">@task.ProjectTask.Title</div>
+                                                        <div class="d-flex align-items-center gap-1 mt-1">
+                                                            <Badge Color="@GetStatusBadgeColorEnum(task.ProjectTask.Status)">
+                                                                @L[$"Enum:ProjectTaskStatus.{task.ProjectTask.Status}"]
+                                                            </Badge>
+                                                            <span class="text-muted" style="font-size: 0.7rem;">@task.ProjectTask.ProgressPercent%</span>
+                                                        </div>
+                                                    </div>
+                                                    <Button Color="Color.Primary" Size="Size.Small"
+                                                        Clicked="@(() => OpenTaskDetailFromProjectModalAsync(task))">
+                                                        <Icon Name="IconName.Eye" />
+                                                    </Button>
+                                                </div>
                                             }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
-                            else
-                            {
-                                <p class="text-muted">@L["NoTasksFound"]</p>
-                            }
-                        </TabPanel>
-                    </Content>
-                </Tabs>
+                                        }
+                                    </CardBody>
+                                </Card>
+                            </Column> *@
+
+                            @* Card 2: Members *@
+                            <Column ColumnSize="ColumnSize.Is12">
+                                <Card Class="h-100">
+                                    <CardHeader>
+                                        <Heading Size="HeadingSize.Is6" Class="fw-bolder">
+                                            <Icon Name="IconName.Users" Class="me-1" /> @L["Members"] (@ProjectMembersList.Count)
+                                        </Heading>
+                                    </CardHeader>
+                                    <CardBody Style="padding: 1rem !important; max-height: 200px; overflow-y: auto;">
+                                        @if (!ProjectMembersList.Any())
+                                        {
+                                            <div class="text-center text-muted py-3">
+                                                <small>@L["NoMembersFound"]</small>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var member in ProjectMembersList)
+                                            {
+                                                <div class="d-flex align-items-center gap-2 mb-2 p-2 border rounded">
+                                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                                                         style="width: 32px; height: 32px; flex-shrink: 0;">
+                                                        <span style="font-size: 0.75rem;">@GetMemberInitial(member)</span>
+                                                    </div>
+                                                    <div class="flex-grow-1" style="min-width: 0;">
+                                                        <div class="fw-bold text-truncate d-flex align-items-center justify-content-between" style="font-size: 0.875rem;">
+                                                            <span>@member.User?.Surname @member.User?.Name</span>
+                                                            <span class="badge bg-info" style="font-size: 0.7rem;">
+                                                                @L[$"Enum:ProjectMemberRole.{member.ProjectMember.MemberRole}"]
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                    </CardBody>
+                                </Card>
+                            </Column>
+                        </Row>
+                    </Column>
+                </Row>
             }
         </ModalBody>
         <ModalFooter>
@@ -1128,6 +1221,44 @@
 </Modal>
 
 <style>
+    /* Calendar Event Detail Modal */
+    .calendar-event-detail-modal .modal-body {
+        background-color: var(--lpx-content-bg);
+    }
+    
+    .calendar-event-detail-modal .card {
+        background-color: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.125);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .calendar-event-detail-modal .card-body {
+        padding: 1rem !important;
+    }
+
+    .calendar-event-detail-modal .h-100 {
+        height: 100%;
+    }
+
+    /* Project Detail Modal */
+    .project-detail-modal .modal-body {
+        background-color: var(--lpx-content-bg);
+    }
+    
+    .project-detail-modal .card {
+        background-color: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.125);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .project-detail-modal .card-body {
+        padding: 1rem !important;
+    }
+
+    .project-detail-modal .h-100 {
+        height: 100%;
+    }
+
     /* PDF Viewer Modal */
     .pdf-viewer-modal .modal-content {
         position: relative;

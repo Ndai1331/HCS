@@ -1050,6 +1050,10 @@
     "DatePicker:To": "đến",
     "DatePicker:SelectDateRange": "Chọn khoảng ngày",
     "DatePicker:FilterByDateRange": "Lọc theo khoảng ngày"  ,
-    "DocumentHistories": "Lịch sử văn bản"
+    "DocumentHistories": "Lịch sử văn bản",
+    "Workflow:Signed": "Đã ký",
+    "Workflow:Submitted": "Đang xử lý",
+    "Workflow:Sent": "Đã gửi",
+    "Workflow:Cancelled": "Đã hủy"
   }
 }

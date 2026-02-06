@@ -24,6 +24,25 @@
 
 
 
+#lpx-wrapper {
+    margin: 0 auto;
+    max-width: 100% !important;
+    position: relative;
+    min-height: 100vh;
+    background-image: url(https://qldh.benhvien199.vn/Images/bg-axis.png);
+    background-repeat: no-repeat;
+    background-position: right bottom;
+    background-size: cover;
+    background-attachment: fixed;
+}
+
+.lpx-topbar-container, .lpx-topbar-container .lpx-topbar{
+    background-color: transparent !important;
+}
+.lpx-content-container {
+    background-color: transparent !important;
+}
+
 
 
 .select2-dropdown {
@@ -345,3 +364,6 @@
     padding: .75rem !important;
 }
  /* End of Project task styles */
+
+
+

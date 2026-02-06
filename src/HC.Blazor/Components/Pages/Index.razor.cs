@@ -28,6 +28,7 @@ using HC.Blazor.Shared;
 using Microsoft.AspNetCore.SignalR;
 using HC.Blazor.Hubs;
 using Volo.Abp.ObjectMapping;
+using HC.Chat.Conversations;
 using Microsoft.Extensions.Logging;
 
 namespace HC.Blazor.Components.Pages;
@@ -52,6 +53,7 @@ public partial class Index
     [Inject] private IHubContext<NotificationHub> HubContext { get; set; } = null!;
     [Inject] private ICalendarEventParticipantsAppService CalendarEventParticipantsAppService { get; set; } = default!;
     [Inject] private IProjectMembersAppService ProjectMembersAppService { get; set; } = default!;
+    [Inject] private IConversationAppService ConversationAppService { get; set; } = default!;
     [Inject] private ILogger<Index> Logger { get; set; } = default!;
 
     // Active Projects data
@@ -131,6 +133,7 @@ public partial class Index
     // Project Detail Modal
     private Modal ProjectDetailModal { get; set; } = new();
     private ProjectDto? ViewingProject { get; set; }
+    private string? ViewingProjectDepartmentName { get; set; }
     private IReadOnlyList<ProjectMemberWithNavigationPropertiesDto> ProjectMembersList { get; set; } = new List<ProjectMemberWithNavigationPropertiesDto>();
     private IReadOnlyList<ProjectTaskWithNavigationPropertiesDto> ProjectTasksList { get; set; } = new List<ProjectTaskWithNavigationPropertiesDto>();
     private string SelectedProjectDetailTab = "general";
@@ -1184,25 +1187,28 @@ public partial class Index
         {
             ViewingProject = await ProjectsAppService.GetAsync(projectId);
 
-            // Load project members
-            var membersResult = await ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
+            // Try to get department name from ActiveProjectsList
+            var projectNav = ActiveProjectsList.FirstOrDefault(p => p.Project.Id == projectId);
+            ViewingProjectDepartmentName = projectNav?.OwnerDepartment?.Name;
+
+            // Load project members and tasks in parallel
+            var membersTask = ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
             {
                 ProjectId = projectId,
                 MaxResultCount = 1000,
                 SkipCount = 0
             });
-            ProjectMembersList = membersResult.Items;
-
-            // Load project tasks
-            var tasksResult = await ProjectTasksAppService.GetListAsync(new GetProjectTasksInput
+            var tasksTask = ProjectTasksAppService.GetListAsync(new GetProjectTasksInput
             {
                 ProjectId = projectId,
                 MaxResultCount = 1000,
                 SkipCount = 0
             });
-            ProjectTasksList = tasksResult.Items;
 
-            SelectedProjectDetailTab = "general";
+            await Task.WhenAll(membersTask, tasksTask);
+            ProjectMembersList = membersTask.Result.Items;
+            ProjectTasksList = tasksTask.Result.Items;
+
             await ProjectDetailModal.Show();
         }
         catch (Exception ex)
@@ -1222,5 +1228,147 @@ public partial class Index
     private void OnSelectedProjectDetailTabChanged(string name)
     {
         SelectedProjectDetailTab = name;
+    }
+
+    /// <summary>
+    /// Get badge Color enum for task status string (used in project detail modal)
+    /// </summary>
+    private Color GetStatusBadgeColorEnum(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status)) return Color.Secondary;
+        if (Enum.TryParse<ProjectTaskStatus>(status, out var parsed))
+        {
+            return EnumStatusColorHelper.GetProjectTaskStatusBadgeColor(parsed);
+        }
+        return Color.Secondary;
+    }
+
+    /// <summary>
+    /// Get member initial letter for avatar circle
+    /// </summary>
+    private string GetMemberInitial(ProjectMemberWithNavigationPropertiesDto member)
+    {
+        var name = (member.User?.Name ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            return name.Substring(0, 1).ToUpperInvariant();
+        }
+
+        var userName = (member.User?.UserName ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(userName))
+        {
+            return userName.Substring(0, 1).ToUpperInvariant();
+        }
+
+        return "?";
+    }
+
+    /// <summary>
+    /// Open task detail modal from within the project detail modal
+    /// </summary>
+    private async Task OpenTaskDetailFromProjectModalAsync(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        // Close the project detail modal first
+        await ProjectDetailModal.Hide();
+        // Open task detail modal
+        await OpenTaskDetailModalAsync(task);
+    }
+
+    /// <summary>
+    /// Get participant initial letter for avatar circle
+    /// </summary>
+    private string GetParticipantInitial(CalendarEventParticipantWithNavigationPropertiesDto participant)
+    {
+        var name = (participant.IdentityUser?.Name ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            return name.Substring(0, 1).ToUpperInvariant();
+        }
+
+        var userName = (participant.IdentityUser?.UserName ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(userName))
+        {
+            return userName.Substring(0, 1).ToUpperInvariant();
+        }
+
+        return "?";
+    }
+
+    /// <summary>
+    /// Get badge color for participant response status
+    /// </summary>
+    private Color GetParticipantResponseColor(string? responseStatus)
+    {
+        return responseStatus switch
+        {
+            "ACCEPTED" => Color.Success,
+            "DECLINED" => Color.Danger,
+            "TENTATIVE" => Color.Warning,
+            "INVITED" => Color.Primary,
+            _ => Color.Secondary,
+        };
+    }
+
+    // -------------------------------
+    // Project Chat Navigation
+    // -------------------------------
+
+    private async Task NavigateToProjectChatAsync(ProjectWithNavigationPropertiesDto project)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            var conversation = await ConversationAppService.FindConversationByProjectIdAsync(project.Project.Id);
+            if (conversation == null)
+            {
+                // Create conversation if it doesn't exist
+                var members = await ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
+                {
+                    ProjectId = project.Project.Id,
+                    MaxResultCount = 100,
+                    SkipCount = 0
+                });
+
+                var createInput = new CreateProjectConversationInput
+                {
+                    ProjectId = project.Project.Id,
+                    Name = project.Project.Name,
+                    MemberUserIds = members.Items.Select(m => m.User.Id).ToList()
+                };
+                conversation = await ConversationAppService.CreateProjectConversationAsync(createInput);
+
+                if (conversation != null)
+                {
+                    await UiMessageService.Success(L["ProjectChatCreatedSuccessfully"],
+                        options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                }
+                else
+                {
+                    await UiMessageService.Error(L["ProjectChatCreationFailed"],
+                        options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                }
+            }
+            else
+            {
+                if (conversation.Members.Any(m => m.UserId == CurrentUser.Id))
+                {
+                    Navigation.NavigateTo($"/chat/{conversation.Id}");
+                }
+                else
+                {
+                    await UiMessageService.Error(L["YouAreNotAMemberOfThisProjectChat"],
+                        options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 }
