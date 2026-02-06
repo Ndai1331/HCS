@@ -92,7 +92,7 @@
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                         <Field>
                                             <FieldLabel>@L["ParentTaskId"]</FieldLabel>
-                                            <div class="hc-select2-full">
+                                            <div class="hc-select2-full" @key="ParentTaskSelectKey">
                                                 <Select2 IdSelector="c => c.Id"
                                                          TextSelector="c => c.DisplayName"
                                                          FilterFunction="GetParentTaskCollectionLookupAsync"
@@ -100,7 +100,6 @@
                                                          Datasource="ParentTasksCollection"
                                                          Value="@SelectedNewProjectTaskParentTask"
                                                          OnValueChanged="OnNewProjectTaskParentChanged"
-                                                         Cache="__MemoryCache"
                                                          Multiselect="false" />
                                             </div>
                                         </Field>
@@ -113,7 +112,7 @@
                                     <Column ColumnSize="ColumnSize.Is12">
                                         <Field>
                                             <FieldLabel>@L["ParentTaskId"]</FieldLabel>
-                                            <div class="hc-select2-full">
+                                            <div class="hc-select2-full" @key="ParentTaskSelectKey">
                                                 <Select2 IdSelector="c => c.Id"
                                                          TextSelector="c => c.DisplayName"
                                                          FilterFunction="GetParentTaskCollectionLookupAsync"
@@ -121,7 +120,6 @@
                                                          Datasource="ParentTasksCollection"
                                                          Value="@SelectedNewProjectTaskParentTask"
                                                          OnValueChanged="OnNewProjectTaskParentChanged"
-                                                         Cache="__MemoryCache"
                                                          Multiselect="false" />
                                             </div>
                                         </Field>

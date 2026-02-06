@@ -16,36 +16,22 @@ public partial class ProjectTasks
 {
     private async Task OpenCreateProjectTaskModalAsync()
     {
-        NewProjectTask = new ProjectTaskDto
+        // Use the ProjectTaskCreateModal component instead of inline modal
+        if (ProjectTaskCreateModalRef != null)
         {
-            StartDate = DateTime.Now,
-            DueDate = DateTime.Now,
-            Priority = ProjectTaskPriority.LOW.ToString(),
-            Status = ProjectTaskStatus.TODO.ToString(),
-            Code = await GenerateNextProjectTaskCodeAsync(), // Auto-generate code
-        };
-
-        // Defaults for enum-backed selects.
-        NewProjectTaskPriority = ProjectTaskPriority.LOW;
-        NewProjectTaskStatus = ProjectTaskStatus.TODO;
-
-        SelectedNewProjectTaskProject = new List<LookupDto<Guid>>();
-        SelectedNewProjectTaskParentTask = new List<ParentTaskSelectItem>();
-
-        CreateWizardProjectTaskId = Guid.Empty;
-        CreateGeneralValidationErrorKey = null;
-        CreateFieldErrors.Clear();
-        CreateAssignmentsUsersToAdd = new List<LookupDto<Guid>>();
-        CreateAssignmentsList = new List<ProjectTaskAssignmentWithNavigationPropertiesDto>();
-        CreateAssignmentRole = ProjectTaskAssignmentRole.MAIN;
-        CreateAssignmentNote = null;
-        CreateDocumentsToAdd = new List<LookupDto<Guid>>();
-        CreateDocumentsList = new List<ProjectTaskDocumentWithNavigationPropertiesDto>();
-        CreateDocumentPurpose = ProjectTaskDocumentPurpose.REPORT;
-        SelectedCreateTab = "general";
-
-        await GetProjectCollectionLookupAsync();
-        await CreateProjectTaskModal.Show();
+            await ProjectTaskCreateModalRef.OpenCreateProjectTaskModalAsync();
+        }
+    }
+    
+    /// <summary>
+    /// Callback handler when a new task is created via the ProjectTaskCreateModal component
+    /// </summary>
+    private async Task OnProjectTaskCreatedAsync()
+    {
+        // Reload kanban to reflect new task
+        await RefreshKanbanAsync();
+        await GetProjectTasksAsync();
+        await InvokeAsync(StateHasChanged);
     }
     
     // Generate next available ProjectTask code (Txxxxxx format)
@@ -138,7 +124,9 @@ public partial class ProjectTasks
         CreateDocumentsToAdd = new List<LookupDto<Guid>>();
         CreateDocumentsList = new List<ProjectTaskDocumentWithNavigationPropertiesDto>();
         SelectedCreateTab = "general";
-        await CreateProjectTaskModal.Hide();
+        // Note: CreateProjectTaskModal has been moved to ProjectTaskCreateModal component
+        // The component manages its own modal state
+        await Task.CompletedTask;
     }
 
     private async Task CancelCreateWizardAsync()

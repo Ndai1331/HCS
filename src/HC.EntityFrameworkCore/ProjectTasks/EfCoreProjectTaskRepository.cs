@@ -129,8 +129,6 @@ public abstract class EfCoreProjectTaskRepositoryBase : EfCoreRepository<HCDbCon
     {
         var dbContext = await GetDbContextAsync();
         var projectTasks = (await GetDbSetAsync()).AsNoTracking();
-_logger.LogInformation("filterText: " + filterText);
-_logger.LogInformation("filterStatus: " + status);
         projectTasks = projectTasks
             .WhereIf(!string.IsNullOrWhiteSpace(filterText),
                 pt => pt.Code!.Contains(filterText!)

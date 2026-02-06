@@ -43,6 +43,7 @@ public partial class ProjectTaskCreateModal
     private ProjectTaskPriority NewProjectTaskPriority { get; set; } = ProjectTaskPriority.LOW;
     private ProjectTaskStatus NewProjectTaskStatus { get; set; } = ProjectTaskStatus.TODO;
     private IReadOnlyList<ParentTaskSelectItem> ParentTasksCollection { get; set; } = new List<ParentTaskSelectItem>();
+    private Guid ParentTaskSelectKey { get; set; } = Guid.NewGuid(); // Key to force re-render when project changes
     private DatePicker<DateTime>? NewProjectTaskStartDateDatePicker { get; set; }
     private DatePicker<DateTime>? NewProjectTaskDueDateDatePicker { get; set; }
 
@@ -80,11 +81,38 @@ public partial class ProjectTaskCreateModal
 
     private async Task<List<ParentTaskSelectItem>> GetParentTaskCollectionLookupAsync(IReadOnlyList<ParentTaskSelectItem> dbset, string filter, CancellationToken token)
     {
+        // Get the current project ID - from parameter, DTO, or user selection (in order of priority)
+        var currentProjectId = Guid.Empty;
+        
+        // Priority 1: From component parameter (when opened from ProjectDetail page)
+        if (ProjectId.HasValue && ProjectId.Value != Guid.Empty)
+        {
+            currentProjectId = ProjectId.Value;
+        }
+        // Priority 2: From NewProjectTask DTO (already set)
+        else if (NewProjectTask.ProjectId != Guid.Empty)
+        {
+            currentProjectId = NewProjectTask.ProjectId;
+        }
+        // Priority 3: From selected project in dropdown (in case DTO not yet updated)
+        else if (SelectedNewProjectTaskProject.Any())
+        {
+            currentProjectId = SelectedNewProjectTaskProject.First().Id;
+        }
+
+        // If no project is selected, return empty list (parent task should only be from the same project)
+        if (currentProjectId == Guid.Empty)
+        {
+            ParentTasksCollection = new List<ParentTaskSelectItem>();
+            return new List<ParentTaskSelectItem>();
+        }
+
         var input = new GetProjectTasksInput
         {
             FilterText = filter,
             MaxResultCount = 20,
             SkipCount = 0,
+            ProjectId = currentProjectId, // Filter by current project
         };
 
         // UI-first: use Code as parent id (string) because DTO uses ParentTaskId as string.
@@ -107,6 +135,14 @@ public partial class ProjectTaskCreateModal
     protected void OnNewProjectTaskProjectChanged()
     {
         NewProjectTask.ProjectId = SelectedNewProjectTaskProject.FirstOrDefault()?.Id ?? Guid.Empty;
+        
+        // Reset ParentTask selection when project changes (parent task must be from the same project)
+        SelectedNewProjectTaskParentTask = new List<ParentTaskSelectItem>();
+        NewProjectTask.ParentTaskId = null;
+        ParentTasksCollection = new List<ParentTaskSelectItem>();
+        
+        // Force ParentTask Select2 to re-initialize with new project context
+        ParentTaskSelectKey = Guid.NewGuid();
     }
 
     protected void OnNewProjectTaskParentChanged()

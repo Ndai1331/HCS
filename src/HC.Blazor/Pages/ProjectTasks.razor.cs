@@ -190,8 +190,10 @@ public partial class ProjectTasks
     private ProjectTaskPriority EditingProjectTaskPriority { get; set; } = ProjectTaskPriority.LOW;
     private ProjectTaskStatus EditingProjectTaskStatus { get; set; } = ProjectTaskStatus.TODO;
 
-    private Modal CreateProjectTaskModal { get; set; } = new();
     private Modal EditProjectTaskModal { get; set; } = new();
+    
+    // Reference to the ProjectTaskCreateModal component
+    private HC.Blazor.Components.ProjectTaskCreateModal.ProjectTaskCreateModal? ProjectTaskCreateModalRef { get; set; }
     private GetProjectTasksInput Filter { get; set; }
 
     private DataGridEntityActionsColumn<ProjectTaskWithNavigationPropertiesDto> EntityActionsColumn { get; set; } = new();
@@ -1161,24 +1163,8 @@ public partial class ProjectTasks
             WasCreateModalOpen = false;
             WasEditModalOpen = false;
             
-            // Check and hide Create modal if it exists and is visible
-            if (CreateProjectTaskModal != null)
-            {
-                try
-                {
-                    // Check if modal is visible before hiding
-                    var wasVisible = CreateProjectTaskModal.Visible;
-                    if (wasVisible)
-                    {
-                        await CreateProjectTaskModal.Hide();
-                        WasCreateModalOpen = true;
-                    }
-                }
-                catch
-                {
-                    WasCreateModalOpen = false;
-                }
-            }
+            // Note: Create modal is now in ProjectTaskCreateModal component
+            // We don't need to hide it from here as the component manages its own modal
             
             // Check and hide Edit modal if it exists and is visible
             if (EditProjectTaskModal != null)
@@ -1227,11 +1213,9 @@ public partial class ProjectTasks
         }
         
         // Restore task modals if they were open
-        if (WasCreateModalOpen && CreateProjectTaskModal != null)
-        {
-            await CreateProjectTaskModal.Show();
-            WasCreateModalOpen = false;
-        }
+        // Note: Create modal is now in ProjectTaskCreateModal component, we don't restore it from here
+        WasCreateModalOpen = false;
+        
         if (WasEditModalOpen && EditProjectTaskModal != null)
         {
             await EditProjectTaskModal.Show();
