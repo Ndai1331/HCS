@@ -7,6 +7,10 @@ public abstract class GetProjectTasksInputBase : PagedAndSortedResultRequestDto
 {
     public string? FilterText { get; set; }
 
+    public bool OnlyParentTasks { get; set; }
+
+    public bool OnlyChildTasks { get; set; }
+
     public string? ParentTaskId { get; set; }
 
     public string? Code { get; set; }
