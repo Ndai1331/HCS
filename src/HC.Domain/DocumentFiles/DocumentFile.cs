@@ -28,13 +28,13 @@ public abstract class DocumentFileBase : FullAuditedAggregateRoot<Guid>, IMultiT
 
     public virtual DateTime UploadedAt { get; set; }
 
-    public Guid DocumentId { get; set; }
+    public Guid? DocumentId { get; set; }
 
     protected DocumentFileBase()
     {
     }
 
-    public DocumentFileBase(Guid id, Guid documentId, string name, bool isSigned, DateTime uploadedAt, string? path = null, string? hash = null)
+    public DocumentFileBase(Guid id, Guid? documentId, string name, bool isSigned, DateTime uploadedAt, string? path = null, string? hash = null)
     {
         Id = id;
         Check.NotNull(name, nameof(name));

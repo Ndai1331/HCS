@@ -81,11 +81,6 @@ public abstract class DocumentFilesAppServiceBase : HCAppService
     [Authorize(HCPermissions.DocumentFiles.Create)]
     public virtual async Task<DocumentFileDto> CreateAsync(DocumentFileCreateDto input)
     {
-        if (input.DocumentId == default)
-        {
-            throw new UserFriendlyException(L["The {0} field is required.", L["Document"]]);
-        }
-
         var documentFile = await _documentFileManager.CreateAsync(input.DocumentId, input.Name, input.IsSigned, input.UploadedAt, input.Path, input.Hash);
         return ObjectMapper.Map<DocumentFile, DocumentFileDto>(documentFile);
     }
@@ -93,11 +88,6 @@ public abstract class DocumentFilesAppServiceBase : HCAppService
     [Authorize(HCPermissions.DocumentFiles.Edit)]
     public virtual async Task<DocumentFileDto> UpdateAsync(Guid id, DocumentFileUpdateDto input)
     {
-        if (input.DocumentId == default)
-        {
-            throw new UserFriendlyException(L["The {0} field is required.", L["Document"]]);
-        }
-
         var documentFile = await _documentFileManager.UpdateAsync(id, input.DocumentId, input.Name, input.IsSigned, input.UploadedAt, input.Path, input.Hash, input.ConcurrencyStamp);
         return ObjectMapper.Map<DocumentFile, DocumentFileDto>(documentFile);
     }

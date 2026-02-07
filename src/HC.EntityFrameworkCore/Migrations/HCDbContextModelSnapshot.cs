@@ -830,7 +830,7 @@ namespace HC.Migrations
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("DeletionTime");
 
-                    b.Property<Guid>("DocumentId")
+                    b.Property<Guid?>("DocumentId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("ExtraProperties")
@@ -963,6 +963,60 @@ namespace HC.Migrations
                     b.HasIndex("ToUser");
 
                     b.ToTable("AppDocumentHistories", (string)null);
+                });
+
+            modelBuilder.Entity("HC.DocumentWorkflowInstanceFiles.DocumentWorkflowInstanceFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<Guid>("DocumentFileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DocumentWorkflowInstanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentFileId");
+
+                    b.HasIndex("DocumentWorkflowInstanceId");
+
+                    b.ToTable("AppDocumentWorkflowInstanceFiles", (string)null);
                 });
 
             modelBuilder.Entity("HC.DocumentWorkflowInstances.DocumentWorkflowInstance", b =>
@@ -5617,8 +5671,7 @@ namespace HC.Migrations
                     b.HasOne("HC.Documents.Document", null)
                         .WithMany()
                         .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("HC.DocumentHistories.DocumentHistory", b =>
@@ -5638,6 +5691,21 @@ namespace HC.Migrations
                         .WithMany()
                         .HasForeignKey("ToUser")
                         .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HC.DocumentWorkflowInstanceFiles.DocumentWorkflowInstanceFile", b =>
+                {
+                    b.HasOne("HC.DocumentFiles.DocumentFile", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentFileId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("HC.DocumentWorkflowInstances.DocumentWorkflowInstance", null)
+                        .WithMany("DocumentWorkflowInstanceFiles")
+                        .HasForeignKey("DocumentWorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -6074,6 +6142,11 @@ namespace HC.Migrations
             modelBuilder.Entity("HC.Chat.Messages.Message", b =>
                 {
                     b.Navigation("Replies");
+                });
+
+            modelBuilder.Entity("HC.DocumentWorkflowInstances.DocumentWorkflowInstance", b =>
+                {
+                    b.Navigation("DocumentWorkflowInstanceFiles");
                 });
 
             modelBuilder.Entity("Volo.Abp.AuditLogging.AuditLog", b =>

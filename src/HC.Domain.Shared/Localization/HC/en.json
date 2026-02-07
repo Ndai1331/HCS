@@ -964,9 +964,9 @@
     "DocumentRevokedSuccessfully": "Document revoked successfully",
     "FailedToRevokeDocument": "Failed to revoke document",
     "DocumentNotFound": "Document not found",
-    "Revoked": "Revoked", 
+    "Revoked": "Revoked",
     "ViewDocumentDetail": "View Document Detail",
-    "Recipients" : "Recipients",
+    "Recipients": "Recipients",
     "SelectDepartmentToViewDetails": "Select a department to view details",
     "MyTasks": "My Tasks",
     "NoDocumentsAvailable": "No documents available",
@@ -991,6 +991,11 @@
     "DatePicker:From": "From",
     "DatePicker:To": "To",
     "DatePicker:SelectDateRange": "Select date range",
-    "DatePicker:FilterByDateRange": "Filter by date range"
+    "DatePicker:FilterByDateRange": "Filter by date range",
+    "DocumentFileResult": "Document file result",
+    "DocumentWorkflowInstanceFiles": "Document Workflow Instance Files",
+    "NewDocumentWorkflowInstanceFile": "New Document Workflow Instance File",
+    "DocumentFile": "Document file",
+    "Permission:DocumentWorkflowInstanceFiles": "Document Workflow Instance Files"
   }
 }

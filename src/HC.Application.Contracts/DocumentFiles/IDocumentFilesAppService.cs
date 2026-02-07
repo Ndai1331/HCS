@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Content;
+using HC.Shared;
+
 namespace HC.DocumentFiles;
 
 public partial interface IDocumentFilesAppService : IApplicationService

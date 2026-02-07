@@ -21,7 +21,7 @@
   "ShouldExportExcel": true,
   "ShouldAddMigration": true,
   "ShouldUpdateDatabase": true,
-  "CreateTests": true,
+  "CreateTests": false,
   "Properties": [
     {
       "Id": "3b94bb22-be1f-4f39-aee4-ba1ca7c4b800",
@@ -175,7 +175,7 @@
       "EntitySetNameWithDuplicationNumber": "Documents",
       "ReferencePropertyName": "Document",
       "UiPickType": "Typeahead",
-      "IsRequired": true,
+      "IsRequired": false,
       "IncludeEntitiesFromModules": false,
       "FromAbpModule": false,
       "Name": "DocumentId",

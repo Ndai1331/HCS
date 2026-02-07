@@ -1,3 +1,4 @@
+using HC.DocumentWorkflowInstanceFiles;
 using HC.UserDepartments;
 using HC.SurveyResults;
 using HC.SurveyFiles;
@@ -99,7 +100,6 @@ public class HCEntityFrameworkCoreModule : AbpModule
             options.AddRepository<SurveyFile, SurveyFiles.EfCoreSurveyFileRepository>();
             options.AddRepository<SurveyResult, SurveyResults.EfCoreSurveyResultRepository>();
             options.AddRepository<UserDepartment, UserDepartments.EfCoreUserDepartmentRepository>();
-            
             // Chat repositories
             options.AddRepository<HC.Chat.Messages.Message, HC.Chat.EntityFrameworkCore.Messages.EfCoreMessageRepository>();
             options.AddRepository<HC.Chat.Messages.UserMessage, HC.Chat.EntityFrameworkCore.Messages.EfCoreUserMessageRepository>();
@@ -107,13 +107,11 @@ public class HCEntityFrameworkCoreModule : AbpModule
             options.AddRepository<HC.Chat.Conversations.Conversation, HC.Chat.EntityFrameworkCore.Conversations.EfCoreConversationRepository>();
             options.AddRepository<HC.Chat.Conversations.ConversationMember, HC.Chat.EntityFrameworkCore.Conversations.EfCoreConversationMemberRepository>();
             options.AddRepository<HC.Chat.Messages.MessageFile, HC.Chat.EntityFrameworkCore.Messages.EfCoreMessageFileRepository>();
+            options.AddRepository<DocumentWorkflowInstanceFile, DocumentWorkflowInstanceFiles.EfCoreDocumentWorkflowInstanceFileRepository>();
         });
-        
         // Register IChatDbContext mapping to HCDbContext
         // This allows repositories that depend on IChatDbContext to resolve HCDbContext
-        context.Services.AddScoped<HC.Chat.EntityFrameworkCore.IChatDbContext>(sp => 
-            sp.GetRequiredService<HCDbContext>());
-        
+        context.Services.AddScoped<HC.Chat.EntityFrameworkCore.IChatDbContext>(sp => sp.GetRequiredService<HCDbContext>());
         context.Services.AddAbpDbContext<HCTenantDbContext>(options => {
             /* Remove "includeAllEntities: true" to create
                  * default repositories only for aggregate roots */

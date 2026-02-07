@@ -15,5 +15,5 @@ public abstract class DocumentFileCreateDtoBase
     public bool IsSigned { get; set; } = false;
     public DateTime UploadedAt { get; set; }
 
-    public Guid DocumentId { get; set; }
+    public Guid? DocumentId { get; set; }
 }

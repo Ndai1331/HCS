@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using HC.DocumentWorkflowInstanceFiles;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Entities;
 
@@ -22,4 +23,5 @@ public abstract class DocumentWorkflowInstanceDtoBase : FullAuditedEntityDto<Gui
     public Guid CurrentStepId { get; set; }
 
     public string ConcurrencyStamp { get; set; } = null!;
+    public List<DocumentWorkflowInstanceFileWithNavigationPropertiesDto> DocumentWorkflowInstanceFiles { get; set; } = new();
 }

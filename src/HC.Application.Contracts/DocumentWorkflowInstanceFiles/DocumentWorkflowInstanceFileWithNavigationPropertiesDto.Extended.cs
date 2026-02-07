@@ -1,0 +1,5 @@
+namespace HC.DocumentWorkflowInstanceFiles;
+
+public class DocumentWorkflowInstanceFileWithNavigationPropertiesDto : DocumentWorkflowInstanceFileWithNavigationPropertiesDtoBase
+{
+}

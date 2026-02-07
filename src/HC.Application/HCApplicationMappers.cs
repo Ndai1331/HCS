@@ -1,3 +1,4 @@
+using HC.DocumentWorkflowInstanceFiles;
 using HC.UserDepartments;
 using HC.SurveyResults;
 using HC.SurveyFiles;
@@ -264,7 +265,7 @@ public partial class WorkflowTemplateToLookupDtoGuidMapper : MapperBase<Workflow
 
     public override void AfterMap(WorkflowTemplate source, LookupDto<Guid> destination)
     {
-        destination.DisplayName = $"{source.Code} - {source.Name}";
+        destination.DisplayName = source.Name;
     }
 }
 
@@ -349,7 +350,9 @@ public partial class DocumentToLookupDtoGuidMapper : MapperBase<Document, Lookup
 [Mapper]
 public partial class DocumentWorkflowInstanceToDocumentWorkflowInstanceDtoMappers : MapperBase<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>
 {
+    [MapperIgnoreTarget(nameof(DocumentWorkflowInstanceDto.DocumentWorkflowInstanceFiles))]
     public override partial DocumentWorkflowInstanceDto Map(DocumentWorkflowInstance source);
+    [MapperIgnoreTarget(nameof(DocumentWorkflowInstanceDto.DocumentWorkflowInstanceFiles))]
     public override partial void Map(DocumentWorkflowInstance source, DocumentWorkflowInstanceDto destination);
 }
 
@@ -913,4 +916,30 @@ public partial class UserDepartmentWithNavigationPropertiesToUserDepartmentWithN
 {
     public override partial UserDepartmentWithNavigationPropertiesDto Map(UserDepartmentWithNavigationProperties source);
     public override partial void Map(UserDepartmentWithNavigationProperties source, UserDepartmentWithNavigationPropertiesDto destination);
+}
+
+[Mapper]
+public partial class DocumentFileToLookupDtoGuidMapper : MapperBase<DocumentFile, LookupDto<Guid>>
+{
+    public override partial LookupDto<Guid> Map(DocumentFile source);
+    public override partial void Map(DocumentFile source, LookupDto<Guid> destination);
+
+    public override void AfterMap(DocumentFile source, LookupDto<Guid> destination)
+    {
+        destination.DisplayName = source.Name;
+    }
+}
+
+[Mapper]
+public partial class DocumentWorkflowInstanceFileToDocumentWorkflowInstanceFileDtoMappers : MapperBase<DocumentWorkflowInstanceFile, DocumentWorkflowInstanceFileDto>
+{
+    public override partial DocumentWorkflowInstanceFileDto Map(DocumentWorkflowInstanceFile source);
+    public override partial void Map(DocumentWorkflowInstanceFile source, DocumentWorkflowInstanceFileDto destination);
+}
+
+[Mapper]
+public partial class DocumentWorkflowInstanceFileWithNavigationPropertiesToDocumentWorkflowInstanceFileWithNavigationPropertiesDtoMapper : MapperBase<DocumentWorkflowInstanceFileWithNavigationProperties, DocumentWorkflowInstanceFileWithNavigationPropertiesDto>
+{
+    public override partial DocumentWorkflowInstanceFileWithNavigationPropertiesDto Map(DocumentWorkflowInstanceFileWithNavigationProperties source);
+    public override partial void Map(DocumentWorkflowInstanceFileWithNavigationProperties source, DocumentWorkflowInstanceFileWithNavigationPropertiesDto destination);
 }

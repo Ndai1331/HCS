@@ -16,7 +16,7 @@ public abstract class DocumentFileDtoBase : FullAuditedEntityDto<Guid>, IHasConc
 
     public DateTime UploadedAt { get; set; }
 
-    public Guid DocumentId { get; set; }
+    public Guid? DocumentId { get; set; }
 
     public string ConcurrencyStamp { get; set; } = null!;
 }

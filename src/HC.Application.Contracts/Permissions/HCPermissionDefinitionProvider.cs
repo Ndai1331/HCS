@@ -31,7 +31,6 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         documentTypePermission.AddChild(HCPermissions.MasterDatas.DocumentTypeCreate, L("Permission:Create"));
         documentTypePermission.AddChild(HCPermissions.MasterDatas.DocumentTypeEdit, L("Permission:Edit"));
         documentTypePermission.AddChild(HCPermissions.MasterDatas.DocumentTypeDelete, L("Permission:Delete"));
-        
         var sectorPermission = myGroup.AddPermission(HCPermissions.MasterDatas.SectorDefault, L("Sector"));
         sectorPermission.AddChild(HCPermissions.MasterDatas.SectorCreate, L("Permission:Create"));
         sectorPermission.AddChild(HCPermissions.MasterDatas.SectorEdit, L("Permission:Edit"));
@@ -106,8 +105,6 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         documentPermission.AddChild(HCPermissions.Documents.SubmitForSigning, L("Action.SubmitForSigning"));
         documentPermission.AddChild(HCPermissions.Documents.Send, L("Action.Send"));
         documentPermission.AddChild(HCPermissions.Documents.MyDocuments, L("Menu:MyDocuments"));
-
-
         var documentFilePermission = myGroup.AddPermission(HCPermissions.DocumentFiles.Default, L("Permission:DocumentFiles"));
         documentFilePermission.AddChild(HCPermissions.DocumentFiles.Create, L("Permission:Create"));
         documentFilePermission.AddChild(HCPermissions.DocumentFiles.Edit, L("Permission:Edit"));
@@ -230,6 +227,10 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         userDepartmentPermission.AddChild(HCPermissions.UserDepartments.Create, L("Permission:Create"));
         userDepartmentPermission.AddChild(HCPermissions.UserDepartments.Edit, L("Permission:Edit"));
         userDepartmentPermission.AddChild(HCPermissions.UserDepartments.Delete, L("Permission:Delete"));
+        var documentWorkflowInstanceFilePermission = myGroup.AddPermission(HCPermissions.DocumentWorkflowInstanceFiles.Default, L("Permission:DocumentWorkflowInstanceFiles"));
+        documentWorkflowInstanceFilePermission.AddChild(HCPermissions.DocumentWorkflowInstanceFiles.Create, L("Permission:Create"));
+        documentWorkflowInstanceFilePermission.AddChild(HCPermissions.DocumentWorkflowInstanceFiles.Edit, L("Permission:Edit"));
+        documentWorkflowInstanceFilePermission.AddChild(HCPermissions.DocumentWorkflowInstanceFiles.Delete, L("Permission:Delete"));
     }
 
     private static LocalizableString L(string name)
