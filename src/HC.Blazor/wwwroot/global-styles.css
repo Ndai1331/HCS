@@ -43,6 +43,9 @@
     background-color: transparent !important;
 }
 
+.lpx-content-container .lpx-content{
+    padding: 1.5rem !important;
+}
 
 
 .select2-dropdown {
