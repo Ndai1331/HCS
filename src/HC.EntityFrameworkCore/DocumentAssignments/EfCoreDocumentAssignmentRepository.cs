@@ -1,5 +1,6 @@
 using Volo.Abp.Identity;
 using HC.WorkflowStepTemplates;
+using HC.DocumentFiles;
 using HC.Documents;
 using System;
 using System.Collections.Generic;
@@ -31,7 +32,7 @@ public abstract class EfCoreDocumentAssignmentRepositoryBase : EfCoreRepository<
     public virtual async Task<DocumentAssignmentWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(documentAssignment => new DocumentAssignmentWithNavigationProperties { DocumentAssignment = documentAssignment, Document = dbContext.Set<Document>().FirstOrDefault(c => c.Id == documentAssignment.DocumentId), WorkflowStepTemplate = dbContext.Set<WorkflowStepTemplate>().FirstOrDefault(c => c.Id == documentAssignment.WorkflowStepTemplateId), ReceiverUser = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == documentAssignment.ReceiverUserId) }).FirstOrDefault();
+        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(documentAssignment => new DocumentAssignmentWithNavigationProperties { DocumentAssignment = documentAssignment, Document = dbContext.Set<Document>().FirstOrDefault(c => c.Id == documentAssignment.DocumentId), WorkflowStepTemplate = dbContext.Set<WorkflowStepTemplate>().FirstOrDefault(c => c.Id == documentAssignment.WorkflowStepTemplateId), ReceiverUser = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == documentAssignment.ReceiverUserId), DocumentFileResult = dbContext.Set<DocumentFile>().FirstOrDefault(c => c.Id == documentAssignment.DocumentFileResultId) }).FirstOrDefault();
     }
 
     public virtual async Task<List<DocumentAssignmentWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, int? stepOrderMin = null, int? stepOrderMax = null, string? actionType = null, string? status = null, DateTime? assignedAtMin = null, DateTime? assignedAtMax = null, DateTime? processedAtMin = null, DateTime? processedAtMax = null, bool? isCurrent = null, Guid? documentId = null, Guid? workflowStepTemplateId = null, Guid? receiverUserId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)
@@ -51,13 +52,16 @@ public abstract class EfCoreDocumentAssignmentRepositoryBase : EfCoreRepository<
                from workflowStepTemplate in workflowStepTemplates.DefaultIfEmpty()
                join receiverUser in (await GetDbContextAsync()).Set<IdentityUser>() on documentAssignment.ReceiverUserId equals receiverUser.Id into identityUsers
                from receiverUser in identityUsers.DefaultIfEmpty()
+               join documentFileResult in (await GetDbContextAsync()).Set<DocumentFile>() on documentAssignment.DocumentFileResultId equals documentFileResult.Id into documentFileResults
+               from documentFileResult in documentFileResults.DefaultIfEmpty()
                where document != null && document.IsDeleted == false
                select new DocumentAssignmentWithNavigationProperties
                {
                    DocumentAssignment = documentAssignment,
                    Document = document,
                    WorkflowStepTemplate = workflowStepTemplate,
-                   ReceiverUser = receiverUser
+                   ReceiverUser = receiverUser,
+                   DocumentFileResult = documentFileResult
                };
     }
 

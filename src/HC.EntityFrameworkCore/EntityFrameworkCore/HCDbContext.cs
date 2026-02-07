@@ -400,17 +400,6 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.UrgencyLevelId).OnDelete(DeleteBehavior.NoAction);
             b.HasOne<MasterData>().WithMany().IsRequired().HasForeignKey(x => x.SecrecyLevelId).OnDelete(DeleteBehavior.NoAction);
         });
-        builder.Entity<DocumentFile>(b => {
-            b.ToTable(HCConsts.DbTablePrefix + "DocumentFiles", HCConsts.DbSchema);
-            b.ConfigureByConvention();
-            b.Property(x => x.TenantId).HasColumnName(nameof(DocumentFile.TenantId));
-            b.Property(x => x.Name).HasColumnName(nameof(DocumentFile.Name)).IsRequired();
-            b.Property(x => x.Path).HasColumnName(nameof(DocumentFile.Path));
-            b.Property(x => x.Hash).HasColumnName(nameof(DocumentFile.Hash));
-            b.Property(x => x.IsSigned).HasColumnName(nameof(DocumentFile.IsSigned));
-            b.Property(x => x.UploadedAt).HasColumnName(nameof(DocumentFile.UploadedAt));
-            b.HasOne<Document>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.SetNull);
-        });
         builder.Entity<DocumentAssignment>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "DocumentAssignments", HCConsts.DbSchema);
             b.ConfigureByConvention();
@@ -424,6 +413,7 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.HasOne<Document>().WithMany().IsRequired().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.NoAction);
             b.HasOne<WorkflowStepTemplate>().WithMany().HasForeignKey(x => x.WorkflowStepTemplateId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<IdentityUser>().WithMany().IsRequired().HasForeignKey(x => x.ReceiverUserId).OnDelete(DeleteBehavior.NoAction);
+            b.HasOne<DocumentFile>().WithMany().HasForeignKey(x => x.DocumentFileResultId).OnDelete(DeleteBehavior.SetNull);
         });
         builder.Entity<DocumentWorkflowInstance>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "DocumentWorkflowInstances", HCConsts.DbSchema);
@@ -444,6 +434,17 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.Property(x => x.TenantId).HasColumnName(nameof(DocumentWorkflowInstanceFile.TenantId));
             b.HasOne<DocumentFile>().WithMany().IsRequired().HasForeignKey(x => x.DocumentFileId).OnDelete(DeleteBehavior.NoAction);
             b.HasOne<DocumentWorkflowInstance>().WithMany(x => x.DocumentWorkflowInstanceFiles).HasForeignKey(x => x.DocumentWorkflowInstanceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<DocumentFile>(b => {
+            b.ToTable(HCConsts.DbTablePrefix + "DocumentFiles", HCConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.TenantId).HasColumnName(nameof(DocumentFile.TenantId));
+            b.Property(x => x.Name).HasColumnName(nameof(DocumentFile.Name)).IsRequired();
+            b.Property(x => x.Path).HasColumnName(nameof(DocumentFile.Path));
+            b.Property(x => x.Hash).HasColumnName(nameof(DocumentFile.Hash));
+            b.Property(x => x.IsSigned).HasColumnName(nameof(DocumentFile.IsSigned));
+            b.Property(x => x.UploadedAt).HasColumnName(nameof(DocumentFile.UploadedAt));
+            b.HasOne<Document>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

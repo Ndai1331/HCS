@@ -19,7 +19,7 @@ public abstract class DocumentAssignmentManagerBase : DomainService
         _documentAssignmentRepository = documentAssignmentRepository;
     }
 
-    public virtual async Task<DocumentAssignment> CreateAsync(Guid documentId, Guid? workflowStepTemplateId, Guid receiverUserId, int stepOrder, string actionType, string status, DateTime assignedAt, DateTime processedAt, bool isCurrent)
+    public virtual async Task<DocumentAssignment> CreateAsync(Guid documentId, Guid? workflowStepTemplateId, Guid receiverUserId, int stepOrder, string actionType, string status, DateTime assignedAt, DateTime processedAt, bool isCurrent, Guid? documentFileResultId = null)
     {
         Check.NotNull(documentId, nameof(documentId));
         Check.NotNull(receiverUserId, nameof(receiverUserId));
@@ -31,10 +31,11 @@ public abstract class DocumentAssignmentManagerBase : DomainService
         Check.NotNull(assignedAt, nameof(assignedAt));
         Check.NotNull(processedAt, nameof(processedAt));
         var documentAssignment = new DocumentAssignment(GuidGenerator.Create(), documentId, workflowStepTemplateId, receiverUserId, stepOrder, actionType, status, assignedAt, processedAt, isCurrent);
+        documentAssignment.DocumentFileResultId = documentFileResultId;
         return await _documentAssignmentRepository.InsertAsync(documentAssignment);
     }
 
-    public virtual async Task<DocumentAssignment> UpdateAsync(Guid id, Guid documentId, Guid? workflowStepTemplateId, Guid receiverUserId, int stepOrder, string actionType, string status, DateTime assignedAt, DateTime processedAt, bool isCurrent, [CanBeNull] string? concurrencyStamp = null)
+    public virtual async Task<DocumentAssignment> UpdateAsync(Guid id, Guid documentId, Guid? workflowStepTemplateId, Guid receiverUserId, int stepOrder, string actionType, string status, DateTime assignedAt, DateTime processedAt, bool isCurrent, Guid? documentFileResultId = null, [CanBeNull] string? concurrencyStamp = null)
     {
         Check.NotNull(documentId, nameof(documentId));
         Check.NotNull(receiverUserId, nameof(receiverUserId));
@@ -55,6 +56,7 @@ public abstract class DocumentAssignmentManagerBase : DomainService
         documentAssignment.AssignedAt = assignedAt;
         documentAssignment.ProcessedAt = processedAt;
         documentAssignment.IsCurrent = isCurrent;
+        documentAssignment.DocumentFileResultId = documentFileResultId;
         documentAssignment.SetConcurrencyStampIfNotNull(concurrencyStamp);
         return await _documentAssignmentRepository.UpdateAsync(documentAssignment);
     }
