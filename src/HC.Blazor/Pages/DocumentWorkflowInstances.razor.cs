@@ -20,6 +20,7 @@ using Microsoft.JSInterop;
 using Volo.Abp;
 using Volo.Abp.Content;
 using HC.DocumentWorkflowInstanceFiles;
+using HC.DocumentWorkflowInstanceLogss;
 
 namespace HC.Blazor.Pages;
 
@@ -92,6 +93,31 @@ public partial class DocumentWorkflowInstances
     private Modal EditDocumentWorkflowInstanceFileModal { get; set; } = new();
     private IReadOnlyList<LookupDto<Guid>> DocumentFilesCollection { get; set; } = new List<LookupDto<Guid>>();
     #endregion
+    #region DocumentWorkflowInstanceLogss
+    private bool CanListDocumentWorkflowInstanceLogs { get; set; }
+
+    private bool CanCreateDocumentWorkflowInstanceLogs { get; set; }
+
+    private bool CanEditDocumentWorkflowInstanceLogs { get; set; }
+
+    private bool CanDeleteDocumentWorkflowInstanceLogs { get; set; }
+
+    private DocumentWorkflowInstanceLogsCreateDto NewDocumentWorkflowInstanceLogs { get; set; }
+
+    private Dictionary<Guid, DataGrid<DocumentWorkflowInstanceLogsWithNavigationPropertiesDto>> DocumentWorkflowInstanceLogsDataGrids { get; set; } = new();
+    private int DocumentWorkflowInstanceLogsPageSize { get; } = 5;
+    private DataGridEntityActionsColumn<DocumentWorkflowInstanceLogsWithNavigationPropertiesDto> DocumentWorkflowInstanceLogsEntityActionsColumns { get; set; } = new();
+    private Validations NewDocumentWorkflowInstanceLogsValidations { get; set; } = new();
+    private Modal CreateDocumentWorkflowInstanceLogsModal { get; set; } = new();
+    private Guid EditingDocumentWorkflowInstanceLogsId { get; set; }
+
+    private DocumentWorkflowInstanceLogsUpdateDto EditingDocumentWorkflowInstanceLogs { get; set; }
+
+    private Validations EditingDocumentWorkflowInstanceLogsValidations { get; set; } = new();
+    private Modal EditDocumentWorkflowInstanceLogsModal { get; set; } = new();
+    private IReadOnlyList<LookupDto<Guid>> DocumentAssignmentsCollection { get; set; } = new List<LookupDto<Guid>>();
+    private IReadOnlyList<LookupDto<Guid>> IdentityUsersCollection { get; set; } = new List<LookupDto<Guid>>();
+    #endregion
     #endregion
     private List<DocumentWorkflowInstanceWithNavigationPropertiesDto> SelectedDocumentWorkflowInstances { get; set; } = new();
     private bool AllDocumentWorkflowInstancesSelected { get; set; }
@@ -109,6 +135,8 @@ public partial class DocumentWorkflowInstances
         DocumentWorkflowInstanceList = new List<DocumentWorkflowInstanceWithNavigationPropertiesDto>();
         NewDocumentWorkflowInstanceFile = new DocumentWorkflowInstanceFileCreateDto();
         EditingDocumentWorkflowInstanceFile = new DocumentWorkflowInstanceFileUpdateDto();
+        NewDocumentWorkflowInstanceLogs = new DocumentWorkflowInstanceLogsCreateDto();
+        EditingDocumentWorkflowInstanceLogs = new DocumentWorkflowInstanceLogsUpdateDto();
     }
 
     protected override async Task OnInitializedAsync()
@@ -116,6 +144,8 @@ public partial class DocumentWorkflowInstances
         await SetPermissionsAsync();
         await GetWorkflowTemplateCollectionLookupAsync();
         await GetDocumentFileLookupAsync();
+        await GetDocumentAssignmentLookupAsync();
+        await GetIdentityUserLookupAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -169,6 +199,12 @@ public partial class DocumentWorkflowInstances
         CanCreateDocumentWorkflowInstanceFile = await AuthorizationService.IsGrantedAsync(HCPermissions.DocumentWorkflowInstanceFiles.Create);
         CanEditDocumentWorkflowInstanceFile = await AuthorizationService.IsGrantedAsync(HCPermissions.DocumentWorkflowInstanceFiles.Edit);
         CanDeleteDocumentWorkflowInstanceFile = await AuthorizationService.IsGrantedAsync(HCPermissions.DocumentWorkflowInstanceFiles.Delete);
+        #endregion
+        #region DocumentWorkflowInstanceLogss
+        CanListDocumentWorkflowInstanceLogs = await AuthorizationService.IsGrantedAsync(HCPermissions.DocumentWorkflowInstanceLogss.Default);
+        CanCreateDocumentWorkflowInstanceLogs = await AuthorizationService.IsGrantedAsync(HCPermissions.DocumentWorkflowInstanceLogss.Create);
+        CanEditDocumentWorkflowInstanceLogs = await AuthorizationService.IsGrantedAsync(HCPermissions.DocumentWorkflowInstanceLogss.Edit);
+        CanDeleteDocumentWorkflowInstanceLogs = await AuthorizationService.IsGrantedAsync(HCPermissions.DocumentWorkflowInstanceLogss.Delete);
         #endregion
     }
 
@@ -388,7 +424,7 @@ public partial class DocumentWorkflowInstances
 
     private bool ShouldShowDetailRow()
     {
-        return CanListDocumentWorkflowInstanceFile;
+        return CanListDocumentWorkflowInstanceFile || CanListDocumentWorkflowInstanceLogs;
     }
 
     public string SelectedChildTab { get; set; } = "documentworkflowinstancefile-tab";
@@ -551,6 +587,121 @@ public partial class DocumentWorkflowInstances
     private async Task GetDocumentFileLookupAsync(string? filter = null)
     {
         DocumentFilesCollection = (await DocumentWorkflowInstanceFilesAppService.GetDocumentFileLookupAsync(new LookupRequestDto { Filter = filter })).Items;
+    }
+    #endregion
+    #region DocumentWorkflowInstanceLogss
+    private async Task OnDocumentWorkflowInstanceLogsDataGridReadAsync(DataGridReadDataEventArgs<DocumentWorkflowInstanceLogsWithNavigationPropertiesDto> e, Guid documentWorkflowInstanceId)
+    {
+        var sorting = e.Columns.Where(c => c.SortDirection != SortDirection.Default).Select(c => c.Field + (c.SortDirection == SortDirection.Descending ? " DESC" : "")).JoinAsString(",");
+        var currentPage = e.Page;
+        await SetDocumentWorkflowInstanceLogssAsync(documentWorkflowInstanceId, currentPage, sorting: sorting);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SetDocumentWorkflowInstanceLogssAsync(Guid documentWorkflowInstanceId, int currentPage = 1, string? sorting = null)
+    {
+        var documentWorkflowInstance = DocumentWorkflowInstanceList.FirstOrDefault(x => x.DocumentWorkflowInstance.Id == documentWorkflowInstanceId);
+        if (documentWorkflowInstance == null)
+        {
+            return;
+        }
+
+        var documentWorkflowInstanceLogss = await DocumentWorkflowInstanceLogssAppService.GetListWithNavigationPropertiesByDocumentWorkflowInstanceIdAsync(new GetDocumentWorkflowInstanceLogsListInput { DocumentWorkflowInstanceId = documentWorkflowInstanceId, MaxResultCount = DocumentWorkflowInstanceLogsPageSize, SkipCount = (currentPage - 1) * DocumentWorkflowInstanceLogsPageSize, Sorting = sorting });
+        documentWorkflowInstance.DocumentWorkflowInstance.DocumentWorkflowInstanceLogss = documentWorkflowInstanceLogss.Items.ToList();
+        var documentWorkflowInstanceLogsDataGrid = DocumentWorkflowInstanceLogsDataGrids[documentWorkflowInstanceId];
+        documentWorkflowInstanceLogsDataGrid.CurrentPage = currentPage;
+        documentWorkflowInstanceLogsDataGrid.TotalItems = (int)documentWorkflowInstanceLogss.TotalCount;
+    }
+
+    private async Task OpenEditDocumentWorkflowInstanceLogsModalAsync(DocumentWorkflowInstanceLogsWithNavigationPropertiesDto input)
+    {
+        var documentWorkflowInstanceLogs = await DocumentWorkflowInstanceLogssAppService.GetAsync(input.DocumentWorkflowInstanceLogs.Id);
+        EditingDocumentWorkflowInstanceLogsId = documentWorkflowInstanceLogs.Id;
+        EditingDocumentWorkflowInstanceLogs = ObjectMapper.Map<DocumentWorkflowInstanceLogsDto, DocumentWorkflowInstanceLogsUpdateDto>(documentWorkflowInstanceLogs);
+        await EditingDocumentWorkflowInstanceLogsValidations.ClearAll();
+        await EditDocumentWorkflowInstanceLogsModal.Show();
+    }
+
+    private async Task CloseEditDocumentWorkflowInstanceLogsModalAsync()
+    {
+        await EditDocumentWorkflowInstanceLogsModal.Hide();
+    }
+
+    private async Task UpdateDocumentWorkflowInstanceLogsAsync()
+    {
+        try
+        {
+            if (await EditingDocumentWorkflowInstanceLogsValidations.ValidateAll() == false)
+            {
+                return;
+            }
+
+            await DocumentWorkflowInstanceLogssAppService.UpdateAsync(EditingDocumentWorkflowInstanceLogsId, EditingDocumentWorkflowInstanceLogs);
+            await SetDocumentWorkflowInstanceLogssAsync(EditingDocumentWorkflowInstanceLogs.DocumentWorkflowInstanceId);
+            await EditDocumentWorkflowInstanceLogsModal.Hide();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task DeleteDocumentWorkflowInstanceLogsAsync(DocumentWorkflowInstanceLogsWithNavigationPropertiesDto input)
+    {
+        try
+        {
+            await DocumentWorkflowInstanceLogssAppService.DeleteAsync(input.DocumentWorkflowInstanceLogs.Id);
+            await SetDocumentWorkflowInstanceLogssAsync(input.DocumentWorkflowInstanceLogs.DocumentWorkflowInstanceId);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task OpenCreateDocumentWorkflowInstanceLogsModalAsync(Guid documentWorkflowInstanceId)
+    {
+        NewDocumentWorkflowInstanceLogs = new DocumentWorkflowInstanceLogsCreateDto
+        {
+            DocumentWorkflowInstanceId = documentWorkflowInstanceId
+        };
+        await NewDocumentWorkflowInstanceLogsValidations.ClearAll();
+        await CreateDocumentWorkflowInstanceLogsModal.Show();
+    }
+
+    private async Task CloseCreateDocumentWorkflowInstanceLogsModalAsync()
+    {
+        NewDocumentWorkflowInstanceLogs = new DocumentWorkflowInstanceLogsCreateDto();
+        await CreateDocumentWorkflowInstanceLogsModal.Hide();
+    }
+
+    private async Task CreateDocumentWorkflowInstanceLogsAsync()
+    {
+        try
+        {
+            if (await NewDocumentWorkflowInstanceLogsValidations.ValidateAll() == false)
+            {
+                return;
+            }
+
+            await DocumentWorkflowInstanceLogssAppService.CreateAsync(NewDocumentWorkflowInstanceLogs);
+            await SetDocumentWorkflowInstanceLogssAsync(NewDocumentWorkflowInstanceLogs.DocumentWorkflowInstanceId);
+            await CloseCreateDocumentWorkflowInstanceLogsModalAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private async Task GetDocumentAssignmentLookupAsync(string? filter = null)
+    {
+        DocumentAssignmentsCollection = (await DocumentWorkflowInstanceLogssAppService.GetDocumentAssignmentLookupAsync(new LookupRequestDto { Filter = filter })).Items;
+    }
+
+    private async Task GetIdentityUserLookupAsync(string? filter = null)
+    {
+        IdentityUsersCollection = (await DocumentWorkflowInstanceLogssAppService.GetIdentityUserLookupAsync(new LookupRequestDto { Filter = filter })).Items;
     }
     #endregion
 }

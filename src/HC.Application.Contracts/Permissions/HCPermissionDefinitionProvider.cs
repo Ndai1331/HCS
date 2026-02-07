@@ -231,6 +231,10 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         documentWorkflowInstanceFilePermission.AddChild(HCPermissions.DocumentWorkflowInstanceFiles.Create, L("Permission:Create"));
         documentWorkflowInstanceFilePermission.AddChild(HCPermissions.DocumentWorkflowInstanceFiles.Edit, L("Permission:Edit"));
         documentWorkflowInstanceFilePermission.AddChild(HCPermissions.DocumentWorkflowInstanceFiles.Delete, L("Permission:Delete"));
+        var documentWorkflowInstanceLogsPermission = myGroup.AddPermission(HCPermissions.DocumentWorkflowInstanceLogss.Default, L("Permission:DocumentWorkflowInstanceLogss"));
+        documentWorkflowInstanceLogsPermission.AddChild(HCPermissions.DocumentWorkflowInstanceLogss.Create, L("Permission:Create"));
+        documentWorkflowInstanceLogsPermission.AddChild(HCPermissions.DocumentWorkflowInstanceLogss.Edit, L("Permission:Edit"));
+        documentWorkflowInstanceLogsPermission.AddChild(HCPermissions.DocumentWorkflowInstanceLogss.Delete, L("Permission:Delete"));
     }
 
     private static LocalizableString L(string name)

@@ -1024,6 +1024,90 @@ namespace HC.Migrations
                     b.ToTable("AppDocumentWorkflowInstanceFiles", (string)null);
                 });
 
+            modelBuilder.Entity("HC.DocumentWorkflowInstanceLogss.DocumentWorkflowInstanceLogs", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("Action");
+
+                    b.Property<string>("ActorRole")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("ActorRole");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<Guid?>("DocumentAssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DocumentWorkflowInstanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FromStatus")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("FromStatus");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text")
+                        .HasColumnName("Note");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<string>("ToStatus")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("ToStatus");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("DocumentAssignmentId");
+
+                    b.HasIndex("DocumentWorkflowInstanceId");
+
+                    b.ToTable("AppDocumentWorkflowInstanceLogss", (string)null);
+                });
+
             modelBuilder.Entity("HC.DocumentWorkflowInstances.DocumentWorkflowInstance", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5719,6 +5803,25 @@ namespace HC.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("HC.DocumentWorkflowInstanceLogss.DocumentWorkflowInstanceLogs", b =>
+                {
+                    b.HasOne("Volo.Abp.Identity.IdentityUser", null)
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("HC.DocumentAssignments.DocumentAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentAssignmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("HC.DocumentWorkflowInstances.DocumentWorkflowInstance", null)
+                        .WithMany("DocumentWorkflowInstanceLogss")
+                        .HasForeignKey("DocumentWorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("HC.DocumentWorkflowInstances.DocumentWorkflowInstance", b =>
                 {
                     b.HasOne("HC.WorkflowStepTemplates.WorkflowStepTemplate", null)
@@ -6157,6 +6260,8 @@ namespace HC.Migrations
             modelBuilder.Entity("HC.DocumentWorkflowInstances.DocumentWorkflowInstance", b =>
                 {
                     b.Navigation("DocumentWorkflowInstanceFiles");
+
+                    b.Navigation("DocumentWorkflowInstanceLogss");
                 });
 
             modelBuilder.Entity("Volo.Abp.AuditLogging.AuditLog", b =>

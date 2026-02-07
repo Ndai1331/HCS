@@ -1,3 +1,4 @@
+using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.UserDepartments;
 using HC.SurveyResults;
@@ -108,6 +109,7 @@ public class HCEntityFrameworkCoreModule : AbpModule
             options.AddRepository<HC.Chat.Conversations.ConversationMember, HC.Chat.EntityFrameworkCore.Conversations.EfCoreConversationMemberRepository>();
             options.AddRepository<HC.Chat.Messages.MessageFile, HC.Chat.EntityFrameworkCore.Messages.EfCoreMessageFileRepository>();
             options.AddRepository<DocumentWorkflowInstanceFile, DocumentWorkflowInstanceFiles.EfCoreDocumentWorkflowInstanceFileRepository>();
+            options.AddRepository<DocumentWorkflowInstanceLogs, DocumentWorkflowInstanceLogss.EfCoreDocumentWorkflowInstanceLogsRepository>();
         });
         // Register IChatDbContext mapping to HCDbContext
         // This allows repositories that depend on IChatDbContext to resolve HCDbContext

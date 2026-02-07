@@ -996,6 +996,14 @@
     "DocumentWorkflowInstanceFiles": "Document Workflow Instance Files",
     "NewDocumentWorkflowInstanceFile": "New Document Workflow Instance File",
     "DocumentFile": "Document file",
-    "Permission:DocumentWorkflowInstanceFiles": "Document Workflow Instance Files"
+    "Permission:DocumentWorkflowInstanceFiles": "Document Workflow Instance Files",
+    "ActorRole": "Actor Role",
+    "FromStatus": "From Status",
+    "ToStatus": "To Status",
+    "DocumentWorkflowInstanceLogss": "Document Workflow Instance Logss",
+    "NewDocumentWorkflowInstanceLogs": "New Document Workflow Instance Logs",
+    "DocumentAssignment": "Document assignment",
+    "ActorUser": "Actor user",
+    "Permission:DocumentWorkflowInstanceLogss": "Document Workflow Instance Logss"
   }
 }

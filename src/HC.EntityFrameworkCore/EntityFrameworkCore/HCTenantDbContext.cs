@@ -1,3 +1,4 @@
+using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.UserDepartments;
 using HC.SurveyResults;
@@ -41,6 +42,7 @@ namespace HC.EntityFrameworkCore;
 [ConnectionStringName("Default")]
 public class HCTenantDbContext : HCDbContextBase<HCTenantDbContext>
 {
+    public DbSet<DocumentWorkflowInstanceLogs> DocumentWorkflowInstanceLogss { get; set; } = null!;
     public DbSet<DocumentWorkflowInstanceFile> DocumentWorkflowInstanceFiles { get; set; } = null!;
     public DbSet<UserDepartment> UserDepartments { get; set; } = null!;
     public DbSet<SurveyResult> SurveyResults { get; set; } = null!;
@@ -412,19 +414,6 @@ public class HCTenantDbContext : HCDbContextBase<HCTenantDbContext>
             b.HasOne<IdentityUser>().WithMany().IsRequired().HasForeignKey(x => x.ReceiverUserId).OnDelete(DeleteBehavior.NoAction);
             b.HasOne<DocumentFile>().WithMany().HasForeignKey(x => x.DocumentFileResultId).OnDelete(DeleteBehavior.SetNull);
         });
-        builder.Entity<DocumentWorkflowInstance>(b => {
-            b.ToTable(HCConsts.DbTablePrefix + "DocumentWorkflowInstances", HCConsts.DbSchema);
-            b.ConfigureByConvention();
-            b.Property(x => x.TenantId).HasColumnName(nameof(DocumentWorkflowInstance.TenantId));
-            b.Property(x => x.Status).HasColumnName(nameof(DocumentWorkflowInstance.Status)).IsRequired().HasMaxLength(DocumentWorkflowInstanceConsts.StatusMaxLength);
-            b.Property(x => x.StartedAt).HasColumnName(nameof(DocumentWorkflowInstance.StartedAt));
-            b.Property(x => x.FinishedAt).HasColumnName(nameof(DocumentWorkflowInstance.FinishedAt));
-            b.HasOne<Document>().WithMany().IsRequired().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.NoAction);
-            b.HasOne<Workflow>().WithMany().IsRequired().HasForeignKey(x => x.WorkflowId).OnDelete(DeleteBehavior.NoAction);
-            b.HasOne<WorkflowTemplate>().WithMany().IsRequired().HasForeignKey(x => x.WorkflowTemplateId).OnDelete(DeleteBehavior.NoAction);
-            b.HasOne<WorkflowStepTemplate>().WithMany().IsRequired().HasForeignKey(x => x.CurrentStepId).OnDelete(DeleteBehavior.NoAction);
-            b.HasMany(x => x.DocumentWorkflowInstanceFiles).WithOne().HasForeignKey(x => x.DocumentWorkflowInstanceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
-        });
         builder.Entity<DocumentWorkflowInstanceFile>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "DocumentWorkflowInstanceFiles", HCConsts.DbSchema);
             b.ConfigureByConvention();
@@ -442,6 +431,33 @@ public class HCTenantDbContext : HCDbContextBase<HCTenantDbContext>
             b.Property(x => x.IsSigned).HasColumnName(nameof(DocumentFile.IsSigned));
             b.Property(x => x.UploadedAt).HasColumnName(nameof(DocumentFile.UploadedAt));
             b.HasOne<Document>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.SetNull);
+        });
+        builder.Entity<DocumentWorkflowInstance>(b => {
+            b.ToTable(HCConsts.DbTablePrefix + "DocumentWorkflowInstances", HCConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.TenantId).HasColumnName(nameof(DocumentWorkflowInstance.TenantId));
+            b.Property(x => x.Status).HasColumnName(nameof(DocumentWorkflowInstance.Status)).IsRequired().HasMaxLength(DocumentWorkflowInstanceConsts.StatusMaxLength);
+            b.Property(x => x.StartedAt).HasColumnName(nameof(DocumentWorkflowInstance.StartedAt));
+            b.Property(x => x.FinishedAt).HasColumnName(nameof(DocumentWorkflowInstance.FinishedAt));
+            b.HasOne<Document>().WithMany().IsRequired().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.NoAction);
+            b.HasOne<Workflow>().WithMany().IsRequired().HasForeignKey(x => x.WorkflowId).OnDelete(DeleteBehavior.NoAction);
+            b.HasOne<WorkflowTemplate>().WithMany().IsRequired().HasForeignKey(x => x.WorkflowTemplateId).OnDelete(DeleteBehavior.NoAction);
+            b.HasOne<WorkflowStepTemplate>().WithMany().IsRequired().HasForeignKey(x => x.CurrentStepId).OnDelete(DeleteBehavior.NoAction);
+            b.HasMany(x => x.DocumentWorkflowInstanceFiles).WithOne().HasForeignKey(x => x.DocumentWorkflowInstanceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
+            b.HasMany(x => x.DocumentWorkflowInstanceLogss).WithOne().HasForeignKey(x => x.DocumentWorkflowInstanceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<DocumentWorkflowInstanceLogs>(b => {
+            b.ToTable(HCConsts.DbTablePrefix + "DocumentWorkflowInstanceLogss", HCConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.TenantId).HasColumnName(nameof(DocumentWorkflowInstanceLogs.TenantId));
+            b.Property(x => x.Action).HasColumnName(nameof(DocumentWorkflowInstanceLogs.Action)).IsRequired().HasMaxLength(DocumentWorkflowInstanceLogsConsts.ActionMaxLength);
+            b.Property(x => x.ActorRole).HasColumnName(nameof(DocumentWorkflowInstanceLogs.ActorRole)).HasMaxLength(DocumentWorkflowInstanceLogsConsts.ActorRoleMaxLength);
+            b.Property(x => x.FromStatus).HasColumnName(nameof(DocumentWorkflowInstanceLogs.FromStatus)).HasMaxLength(DocumentWorkflowInstanceLogsConsts.FromStatusMaxLength);
+            b.Property(x => x.ToStatus).HasColumnName(nameof(DocumentWorkflowInstanceLogs.ToStatus)).HasMaxLength(DocumentWorkflowInstanceLogsConsts.ToStatusMaxLength);
+            b.Property(x => x.Note).HasColumnName(nameof(DocumentWorkflowInstanceLogs.Note));
+            b.HasOne<DocumentAssignment>().WithMany().HasForeignKey(x => x.DocumentAssignmentId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<DocumentWorkflowInstance>().WithMany(x => x.DocumentWorkflowInstanceLogss).HasForeignKey(x => x.DocumentWorkflowInstanceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

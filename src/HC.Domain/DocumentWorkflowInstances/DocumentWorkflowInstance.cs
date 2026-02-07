@@ -11,6 +11,7 @@ using Volo.Abp.Domain.Entities.Auditing;
 using Volo.Abp.MultiTenancy;
 using JetBrains.Annotations;
 using HC.DocumentWorkflowInstanceFiles;
+using HC.DocumentWorkflowInstanceLogss;
 using Volo.Abp;
 
 namespace HC.DocumentWorkflowInstances;
@@ -36,6 +37,8 @@ public abstract class DocumentWorkflowInstanceBase : FullAuditedAggregateRoot<Gu
 
     public ICollection<DocumentWorkflowInstanceFile> DocumentWorkflowInstanceFiles { get; private set; }
 
+    public ICollection<DocumentWorkflowInstanceLogs> DocumentWorkflowInstanceLogss { get; private set; }
+
     protected DocumentWorkflowInstanceBase()
     {
     }
@@ -53,5 +56,6 @@ public abstract class DocumentWorkflowInstanceBase : FullAuditedAggregateRoot<Gu
         WorkflowTemplateId = workflowTemplateId;
         CurrentStepId = currentStepId;
         DocumentWorkflowInstanceFiles = new Collection<DocumentWorkflowInstanceFile>();
+        DocumentWorkflowInstanceLogss = new Collection<DocumentWorkflowInstanceLogs>();
     }
 }

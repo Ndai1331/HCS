@@ -1,3 +1,4 @@
+using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.UserDepartments;
 using HC.SurveyResults;
@@ -351,8 +352,10 @@ public partial class DocumentToLookupDtoGuidMapper : MapperBase<Document, Lookup
 public partial class DocumentWorkflowInstanceToDocumentWorkflowInstanceDtoMappers : MapperBase<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>
 {
     [MapperIgnoreTarget(nameof(DocumentWorkflowInstanceDto.DocumentWorkflowInstanceFiles))]
+    [MapperIgnoreTarget(nameof(DocumentWorkflowInstanceDto.DocumentWorkflowInstanceLogss))]
     public override partial DocumentWorkflowInstanceDto Map(DocumentWorkflowInstance source);
     [MapperIgnoreTarget(nameof(DocumentWorkflowInstanceDto.DocumentWorkflowInstanceFiles))]
+    [MapperIgnoreTarget(nameof(DocumentWorkflowInstanceDto.DocumentWorkflowInstanceLogss))]
     public override partial void Map(DocumentWorkflowInstance source, DocumentWorkflowInstanceDto destination);
 }
 
@@ -942,4 +945,30 @@ public partial class DocumentWorkflowInstanceFileWithNavigationPropertiesToDocum
 {
     public override partial DocumentWorkflowInstanceFileWithNavigationPropertiesDto Map(DocumentWorkflowInstanceFileWithNavigationProperties source);
     public override partial void Map(DocumentWorkflowInstanceFileWithNavigationProperties source, DocumentWorkflowInstanceFileWithNavigationPropertiesDto destination);
+}
+
+[Mapper]
+public partial class DocumentWorkflowInstanceLogsToDocumentWorkflowInstanceLogsDtoMappers : MapperBase<DocumentWorkflowInstanceLogs, DocumentWorkflowInstanceLogsDto>
+{
+    public override partial DocumentWorkflowInstanceLogsDto Map(DocumentWorkflowInstanceLogs source);
+    public override partial void Map(DocumentWorkflowInstanceLogs source, DocumentWorkflowInstanceLogsDto destination);
+}
+
+[Mapper]
+public partial class DocumentWorkflowInstanceLogsWithNavigationPropertiesToDocumentWorkflowInstanceLogsWithNavigationPropertiesDtoMapper : MapperBase<DocumentWorkflowInstanceLogsWithNavigationProperties, DocumentWorkflowInstanceLogsWithNavigationPropertiesDto>
+{
+    public override partial DocumentWorkflowInstanceLogsWithNavigationPropertiesDto Map(DocumentWorkflowInstanceLogsWithNavigationProperties source);
+    public override partial void Map(DocumentWorkflowInstanceLogsWithNavigationProperties source, DocumentWorkflowInstanceLogsWithNavigationPropertiesDto destination);
+}
+
+[Mapper]
+public partial class DocumentAssignmentToLookupDtoGuidMapper : MapperBase<DocumentAssignment, LookupDto<Guid>>
+{
+    public override partial LookupDto<Guid> Map(DocumentAssignment source);
+    public override partial void Map(DocumentAssignment source, LookupDto<Guid> destination);
+
+    public override void AfterMap(DocumentAssignment source, LookupDto<Guid> destination)
+    {
+        destination.DisplayName = source.ActionType;
+    }
 }
