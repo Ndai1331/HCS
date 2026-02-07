@@ -1,0 +1,546 @@
+@page "/document-signing"
+@attribute [Authorize(HCPermissions.Documents.SubmitForSigning)]
+@using HC.Documents
+@using HC.DocumentFiles
+@using HC.DocumentWorkflowInstances
+@using HC.Workflows
+@using HC.Localization
+@using HC.Shared
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Localization
+@using Blazorise
+@using Blazorise.Components
+@using Blazorise.DataGrid
+@using Volo.Abp.AspNetCore.Components.BlockUi
+@using Volo.Abp.BlazoriseUI
+@using Volo.Abp.BlazoriseUI.Components
+@using Volo.Abp.ObjectMapping
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
+@using HC.Permissions
+@using Volo.Abp.AspNetCore.Components.Web
+@using Volo.Abp.AspNetCore.Components
+@using Microsoft.AspNetCore.Components
+@using Volo.Abp.Application.Dtos
+
+@inherits HCComponentBase
+@inject IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService
+@inject IDocumentsAppService DocumentsAppService
+@inject IDocumentFilesAppService DocumentFilesAppService
+@inject IWorkflowsAppService WorkflowsAppService
+@inject IUiMessageService UiMessageService
+@inject IBlockUiService BlockUiService
+@inject NavigationManager NavigationManager
+@inject Volo.Abp.BlobStoring.IBlobContainer BlobContainer
+
+@* ************************* PAGE HEADER ************************* *@
+<PageHeader Title="@L["DocumentSigning"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
+</PageHeader>
+
+@* ************************* FILTER ************************* *@
+<Card>
+    <CardBody>
+        <Row>
+            <Column ColumnSize="ColumnSize.Is3">
+                <Field>
+                    <FieldLabel>@L["FromDate"]</FieldLabel>
+                    <DatePicker TValue="DateTime?"
+                        InputMode="DateInputMode.Date"
+                        Date="@FromDate"
+                        DisplayFormat="dd/MM/yyyy"
+                        InputFormat="dd/MM/yyyy"
+                        DateChanged="@OnFromDateChanged"
+                        Placeholder="@string.Empty" />
+                </Field>
+            </Column>
+            <Column ColumnSize="ColumnSize.Is3">
+                <Field>
+                    <FieldLabel>@L["ToDate"]</FieldLabel>
+                    <DatePicker TValue="DateTime?"
+                        InputMode="DateInputMode.Date"
+                        Date="@ToDate"
+                        DisplayFormat="dd/MM/yyyy"
+                        InputFormat="dd/MM/yyyy"
+                        DateChanged="@OnToDateChanged"
+                        Placeholder="@string.Empty" />
+                </Field>
+            </Column>
+            <Column ColumnSize="ColumnSize.Is4">
+                <Field>
+                    <FieldLabel>@L["Search"]</FieldLabel>
+                    <TextEdit Text="@FilterText"
+                        TextChanged="@OnFilterTextChanged"
+                        Placeholder="@L["SearchByTitleOrNumber"]" />
+                </Field>
+            </Column>
+            <Column ColumnSize="ColumnSize.Is2" Class="d-flex align-items-center">
+                <Button Color="Color.Primary" Clicked="@SearchAsync" Class="w-100">
+                    <Icon Name="IconName.Search" Class="me-1" />@L["Search"]
+                </Button>
+            </Column>
+        </Row>
+    </CardBody>
+</Card>
+
+@* ************************* BODY: 4-8 LAYOUT ************************* *@
+<Row>
+    @* LEFT PANEL: Navigation (4 columns) *@
+    <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is12.OnMobile">
+        <Card>
+            <CardBody Class="p-0">
+                <ListGroup Flush>
+                    <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.All)"
+                        Clicked="@(() => OnFilterModeChanged(DocumentSigningFilterMode.All))">
+                        <Div Class="d-flex justify-content-between align-items-center">
+                            <span><Icon Name="IconName.List" Class="me-2" />@L["AllDocuments"]</span>
+                            <Badge Color="Color.Primary" Pill>@AllCount</Badge>
+                        </Div>
+                    </ListGroupItem>
+                    <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.SentToMe)"
+                        Clicked="@(() => OnFilterModeChanged(DocumentSigningFilterMode.SentToMe))">
+                        <Div Class="d-flex justify-content-between align-items-center">
+                            <span><Icon Name="IconName.Mail" Class="me-2" />@L["SentToMe"]</span>
+                            <Badge Color="Color.Warning" Pill>@SentToMeCount</Badge>
+                        </Div>
+                    </ListGroupItem>
+                    <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.SentByMe)"
+                        Clicked="@(() => OnFilterModeChanged(DocumentSigningFilterMode.SentByMe))">
+                        <Div Class="d-flex justify-content-between align-items-center">
+                            <span><Icon Name="IconName.Send" Class="me-2" />@L["SentByMe"]</span>
+                            <Badge Color="Color.Info" Pill>@SentByMeCount</Badge>
+                        </Div>
+                    </ListGroupItem>
+                    <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.Following)"
+                        Clicked="@(() => OnFilterModeChanged(DocumentSigningFilterMode.Following))">
+                        <Div Class="d-flex justify-content-between align-items-center">
+                            <span><Icon Name="IconName.Star" Class="me-2" />@L["Following"]</span>
+                            <Badge Color="Color.Secondary" Pill>@FollowingCount</Badge>
+                        </Div>
+                    </ListGroupItem>
+                </ListGroup>
+            </CardBody>
+        </Card>
+    </Column>
+
+    @* RIGHT PANEL: Document List (8 columns) *@
+    <Column ColumnSize="ColumnSize.Is9.OnDesktop.Is12.OnMobile">
+        <Card>
+            <CardBody>
+                <DataGrid TItem="DocumentSigningItemDto"
+                    Data="DocumentSigningList"
+                    Loading="@IsLoading"
+                    ReadData="OnDataGridReadAsync"
+                    TotalItems="TotalCount"
+                    ShowPager="true"
+                    Responsive="true"
+                    PageSize="PageSize"
+                    Class="datagrid-detail">
+                    <LoadingTemplate>
+                        <Row Class="w-100 align-items-center" Style="height: 150px;">
+                            <Column>
+                                <RadarSpinner />
+                            </Column>
+                        </Row>
+                    </LoadingTemplate>
+                    <EmptyTemplate>
+                        <Row Class="w-100 align-items-center" Style="height: 150px;">
+                            <Column>
+                                <Heading Size="HeadingSize.Is4" TextAlignment="TextAlignment.Center">@L["NoDataAvailable"]</Heading>
+                            </Column>
+                        </Row>
+                    </EmptyTemplate>
+                    <DataGridColumns>
+                        @* Actions Column *@
+                        <DataGridColumn TItem="DocumentSigningItemDto" Caption="@L["Actions"]" Width="120px">
+                            <DisplayTemplate>
+                                <Div Class="d-flex gap-1">
+                                    @if (context.CanAct && context.MyAssignmentId.HasValue && context.WorkflowInstanceId.HasValue)
+                                    {
+                                        @* User has pending assignment - can act *@
+                                        <Button @onclick="@(() => ShowActionModalAsync(context))"
+                                            Color="Color.Warning"
+                                            Outline
+                                            Size="Size.Small"
+                                            Class="mb-1"
+                                            title="@L["ProcessSigning"]">
+                                            <Icon Name="IconName.CheckSquare" />
+                                        </Button>
+                                    }
+                                    @* View detail *@
+                                    <Button @onclick="@(() => NavigateToDocumentDetail(context.DocumentId))"
+                                        Color="Color.Secondary"
+                                        Outline
+                                        Size="Size.Small"
+                                        Class="mb-1"
+                                        title="@L["ViewDetail"]">
+                                        <Icon Name="IconName.Eye" />
+                                    </Button>
+                                </Div>
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        @* Document Info *@
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="DocumentTitle"
+                            Caption="@L["Title"]"
+                            CellStyle="@((item) => "min-width: 280px; max-width: 350px")"
+                            Width="280px">
+                            <DisplayTemplate>
+                                <div>
+                                    <h6 class="mb-1">@context.DocumentTitle</h6>
+                                    <small class="text-muted">
+                                        <span>#@context.DocumentNo</span> | @context.StorageNumber
+                                    </small>
+                                </div>
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        @* Workflow Status *@
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="WorkflowStatus"
+                            Caption="@L["WorkflowStatus"]"
+                            Width="160px">
+                            <DisplayTemplate>
+                                @if (context.WorkflowStatus != null)
+                                {
+                                    <small class="badge @GetWorkflowStatusBadgeClass(context.WorkflowStatus)">
+                                        @L[context.WorkflowStatus]
+                                    </small>
+                                }
+                                else
+                                {
+                                    <small class="badge bg-light text-dark">@L["NotStarted"]</small>
+                                }
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        @* Current Step *@
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="CurrentStepName"
+                            Caption="@L["CurrentStep"]"
+                            Width="200px">
+                            <DisplayTemplate>
+                                @if (context.CurrentStepName != null)
+                                {
+                                    <div>
+                                        <span>@context.CurrentStepName</span>
+                                        <br />
+                                        <small class="text-muted">
+                                            @L["Step"] @context.CurrentStepOrder / @context.TotalSteps
+                                        </small>
+                                    </div>
+                                }
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        @* My Status *@
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="MyAssignmentStatus"
+                            Caption="@L["MyStatus"]"
+                            Width="140px">
+                            <DisplayTemplate>
+                                @if (context.MyAssignmentStatus != null)
+                                {
+                                    <small class="badge @GetAssignmentStatusBadgeClass(context.MyAssignmentStatus)">
+                                        @L[context.MyAssignmentStatus]
+                                    </small>
+                                }
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        @* Status *@
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="StatusName"
+                            Caption="@L["Status"]"
+                            Width="140px">
+                            <DisplayTemplate>
+                                @if (context.StatusName != null)
+                                {
+                                    <small class="badge bg-primary">@context.StatusName</small>
+                                }
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        @* Incoming Date *@
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="IncommingDate"
+                            Caption="@L["IncommingDate"]"
+                            Width="150px">
+                            <DisplayTemplate>
+                                @context.IncommingDate.ToShortDateString()
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        @* Workflow Name *@
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="WorkflowName"
+                            Caption="@L["Workflow"]"
+                            Width="150px">
+                        </DataGridColumn>
+                    </DataGridColumns>
+                </DataGrid>
+            </CardBody>
+        </Card>
+    </Column>
+</Row>
+
+@* ************************* MODAL: CREATE SIGNING (Submit to Workflow) ************************* *@
+<Modal @ref="SubmitWorkflowModal" Closing="@SubmitWorkflowModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>@L["CreateSigning"]</ModalTitle>
+            <CloseButton Clicked="CloseSubmitWorkflowModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @* Step 1: Select Workflow *@
+            <Field>
+                <FieldLabel>@L["SelectWorkflow"] <span class="text-danger">*</span></FieldLabel>
+                <Select TValue="Guid?"
+                    SelectedValue="@SelectedWorkflowId"
+                    SelectedValueChanged="@OnWorkflowSelectedAsync">
+                    <SelectItem TValue="Guid?" Value="@null">-- @L["SelectWorkflow"] --</SelectItem>
+                    @foreach (var wf in AvailableWorkflows)
+                    {
+                        <SelectItem TValue="Guid?" Value="@wf.Id">@wf.DisplayName</SelectItem>
+                    }
+                </Select>
+            </Field>
+
+            @* Step 2: Template file option (shown when workflow has a template file) *@
+            @if (WorkflowSubmitInfo != null && WorkflowSubmitInfo.HasTemplateFile && !string.IsNullOrWhiteSpace(WorkflowSubmitInfo.WordTemplatePath))
+            {
+                <Card Class="mt-2 mb-2 border-info">
+                    <CardBody>
+                        <div class="d-flex align-items-center">
+                            <Check TValue="bool"
+                                Checked="@UseWorkflowTemplateFile"
+                                CheckedChanged="@OnUseWorkflowTemplateFileChanged"
+                                Class="me-2">
+                                <ChildContent>@L["UseWorkflowTemplateFile"]</ChildContent>
+                            </Check>
+                        </div>
+                        <div class="mt-2 p-2 bg-light rounded">
+                            <small class="text-muted">@L["WorkflowTemplateFile"]:</small>
+                            <div class="d-flex align-items-center mt-1">
+                                <Icon Name="IconName.File" Class="me-2 text-primary" />
+                                <span class="fw-bold">@System.IO.Path.GetFileName(WorkflowSubmitInfo.WordTemplatePath)</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">@WorkflowSubmitInfo.WordTemplatePath</small>
+                        </div>
+                    </CardBody>
+                </Card>
+            }
+
+            @* Step 3: Select Document from my documents (only when NOT using template file) *@
+            @if (!UseWorkflowTemplateFile)
+            {
+                <Field Class="mt-2">
+                    <FieldLabel>
+                        @if (WorkflowSubmitInfo != null && WorkflowSubmitInfo.HasTemplateFile)
+                        {
+                            @L["OrSelectFromMyDocuments"]
+                        }
+                        else
+                        {
+                            @L["SelectDocument"]
+                        }
+                        <span class="text-danger">*</span>
+                    </FieldLabel>
+                    <Autocomplete @key="ModalResetKey"
+                        TItem="DocumentWithNavigationPropertiesDto"
+                        TValue="Guid?"
+                        Data="@MyDocumentsList"
+                        TextField="@(item => $"{item.Document.StorageNumber} - {item.Document.Title}")"
+                        ValueField="@(item => (Guid?)item.Document.Id)"
+                        SelectedValue="@SelectedDocumentId"
+                        SelectedValueChanged="@OnDocumentSelected"
+                        Placeholder="@L["SearchByTitleOrNumber"]"
+                        FreeTyping
+                        MinLength="0"
+                        Filter="AutocompleteFilter.Contains">
+                    </Autocomplete>
+                </Field>
+
+                @if (SelectedDocumentId.HasValue && SelectedDocumentDto != null)
+                {
+                    <Alert Color="Color.Info" Visible="true" Class="mb-3">
+                        <AlertMessage>
+                            <i class="bi bi-file-earmark-text me-1"></i>@L["Document"]:
+                        </AlertMessage>
+                        <AlertDescription>
+                            @SelectedDocumentDto.Document.Title - #@SelectedDocumentDto.Document.No (@SelectedDocumentDto.Document.StorageNumber)
+                        </AlertDescription>
+                    </Alert>
+                }
+            }
+
+            @* Step 4: Show workflow info and steps *@
+            @if (WorkflowSubmitInfo != null)
+            {
+                <Card Class="mt-2">
+                    <CardHeader>
+                        <strong>@L["WorkflowSteps"]</strong> - @WorkflowSubmitInfo.WorkflowName
+                    </CardHeader>
+                    <CardBody>
+                        @foreach (var step in WorkflowSubmitInfo.Steps)
+                        {
+                            <div class="d-flex align-items-start mb-3 p-2 border rounded">
+                                <div class="me-3">
+                                    <Badge Color="Color.Primary" Pill>@step.Order</Badge>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <strong>@step.Name</strong>
+                                    <small class="text-muted ms-2">(@L[step.Type])</small>
+                                    @if (step.SLADays.HasValue)
+                                    {
+                                        <small class="text-warning ms-2">
+                                            <i class="bi bi-clock"></i> @step.SLADays @L["Days"]
+                                        </small>
+                                    }
+                                    <div class="mt-1">
+                                        @foreach (var user in step.AssignedUsers)
+                                        {
+                                            <small class="badge bg-light text-dark me-1">
+                                                <i class="bi bi-person"></i>
+                                                @(user.FullName ?? user.UserName)
+                                                @if (user.IsPrimary)
+                                                {
+                                                    <i class="bi bi-star-fill text-warning ms-1"></i>
+                                                }
+                                            </small>
+                                        }
+                                        @if (!step.AssignedUsers.Any())
+                                        {
+                                            <small class="text-danger">@L["NoUsersAssigned"]</small>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </CardBody>
+                </Card>
+            }
+
+            @* Step 3: Attach Files - uses Blazorise Upload event (official pattern for Blazor Server) *@
+            <Field Class="mt-2">
+                <FieldLabel>@L["AttachFiles"]</FieldLabel>
+                <FilePicker @ref="WorkflowFilePicker"
+                    Multiple
+                    Upload="OnFileUpload"
+                    ShowMode="FilePickerShowMode.List"
+                    MaxFileSize="52428800"
+                    FilePickerLocalizer="FilePickerLocalizer">
+                    <ButtonsTemplate>
+                        <Progress Value="@WorkflowFilePicker?.GetProgressPercentage()" />
+                        <Buttons>
+                            <Button Clicked="@context.Upload" Color="Color.Primary" Size="Size.Small">
+                                <Icon Name="IconName.FileUpload" /> @L["Upload"]
+                            </Button>
+                            <Button Clicked="@context.Clear" Color="Color.Warning" Size="Size.Small">
+                                <Icon Name="IconName.Clear" /> @L["Clear"]
+                            </Button>
+                        </Buttons>
+                    </ButtonsTemplate>
+                </FilePicker>
+                @if (UploadedFiles.Any())
+                {
+                    <div class="mt-2">
+                        @foreach (var file in UploadedFiles)
+                        {
+                            <Alert Color="Color.Success" Dismissible="false" Class="mb-1 py-1 px-2">
+                                <small><Icon Name="IconName.CheckCircle" Class="me-1" />@file.Name</small>
+                            </Alert>
+                        }
+                    </div>
+                }
+            </Field>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseSubmitWorkflowModalAsync">@L["Cancel"]</Button>
+            <Button Color="Color.Primary" Clicked="ConfirmSubmitWorkflowAsync" 
+                    Disabled="@((!UseWorkflowTemplateFile && !SelectedDocumentId.HasValue) || !SelectedWorkflowId.HasValue || WorkflowSubmitInfo == null)">
+                <Icon Name="IconName.Check" Class="me-1" />@L["Submit"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@* ************************* MODAL: WORKFLOW ACTION (Approve/Return/Reject) ************************* *@
+<Modal @ref="WorkflowActionModal" Closing="@WorkflowActionModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true" Size="ModalSize.Default">
+        <ModalHeader>
+            <ModalTitle>@L["ProcessSigning"]</ModalTitle>
+            <CloseButton Clicked="CloseActionModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @if (SelectedDocumentForAction != null)
+            {
+                <Alert Color="Color.Info" Visible="true" Class="mb-3">
+                    <AlertMessage>
+                        <i class="bi bi-file-earmark-text me-1"></i>@L["Document"]:
+                    </AlertMessage>
+                    <AlertDescription>
+                        @SelectedDocumentForAction.DocumentTitle - #@SelectedDocumentForAction.DocumentNo
+                    </AlertDescription>
+                </Alert>
+
+                <Alert Color="Color.Light" Visible="true" Class="mb-3">
+                    <AlertDescription>
+                        <strong>@L["CurrentStep"]:</strong> @SelectedDocumentForAction.CurrentStepName
+                        (@L["Step"] @SelectedDocumentForAction.CurrentStepOrder / @SelectedDocumentForAction.TotalSteps)
+                    </AlertDescription>
+                </Alert>
+            }
+
+            @* Action selection *@
+            <Field>
+                <FieldLabel>@L["SelectAction"] <span class="text-danger">*</span></FieldLabel>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="workflowAction" id="approveAction"
+                        @onchange="@(() => SelectedAction = "APPROVED")"
+                        checked="@(SelectedAction == "APPROVED")">
+                    <label class="form-check-label" for="approveAction">
+                        <strong class="text-success">
+                            <i class="bi bi-check-circle me-1"></i>@L["Approve"]
+                        </strong>
+                        <small class="d-block text-muted">@L["ApproveDescription"]</small>
+                    </label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="workflowAction" id="returnAction"
+                        @onchange="@(() => SelectedAction = "RETURNED")"
+                        checked="@(SelectedAction == "RETURNED")">
+                    <label class="form-check-label" for="returnAction">
+                        <strong class="text-warning">
+                            <i class="bi bi-arrow-return-left me-1"></i>@L["Return"]
+                        </strong>
+                        <small class="d-block text-muted">@L["ReturnDescription"]</small>
+                    </label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="workflowAction" id="rejectAction"
+                        @onchange="@(() => SelectedAction = "REJECTED")"
+                        checked="@(SelectedAction == "REJECTED")">
+                    <label class="form-check-label" for="rejectAction">
+                        <strong class="text-danger">
+                            <i class="bi bi-x-circle me-1"></i>@L["Reject"]
+                        </strong>
+                        <small class="d-block text-muted">@L["RejectDescription"]</small>
+                    </label>
+                </div>
+            </Field>
+
+            @* Note *@
+            <Field>
+                <FieldLabel>@L["Note"]</FieldLabel>
+                <MemoEdit Rows="3" @bind-Text="@ActionNote" Placeholder="@L["EnterNoteOptional"]" />
+            </Field>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseActionModalAsync">@L["Cancel"]</Button>
+            <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(string.IsNullOrEmpty(SelectedAction))">
+                <Icon Name="IconName.Check" Class="me-1" />@L["Confirm"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>

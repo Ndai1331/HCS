@@ -1188,7 +1188,18 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             SelectedWordTemplateFile = file;
             WordTemplateFilePickerProgress = 0;
 
-            // Delete old file if exists
+            // Read file stream FIRST before any other async operations
+            // to prevent SignalR pipe reader from being completed/timeout
+            using var memoryStream = new MemoryStream();
+            await using (var fileStream = file.OpenReadStream(long.MaxValue))
+            {
+                await fileStream.CopyToAsync(memoryStream);
+            }
+            memoryStream.Position = 0;
+
+            var fileBytes = memoryStream.ToArray();
+
+            // Delete old file if exists (safe to do after reading the new file)
             var oldFilePath = UploadedWordTemplatePath ?? CurrentWorkflowTemplate?.WordTemplatePath;
             if (!string.IsNullOrWhiteSpace(oldFilePath))
             {
@@ -1201,12 +1212,6 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                     // Ignore if file doesn't exist
                 }
             }
-
-            using var memoryStream = new MemoryStream();
-            await file.OpenReadStream(long.MaxValue).CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
-
-            var fileBytes = memoryStream.ToArray();
 
             // Generate unique file name
             var fileName = $"{Guid.NewGuid()}_{file.Name}";

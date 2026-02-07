@@ -12,7 +12,7 @@ body chia thành 2 card 4 - 8
 Danh sách các văn bản giống (Document.razor , sourceType=1) dựa trên filter từ ngày , đến ngày
 
 
-FEATURE 2:
+FEATURE 2: Chức năng trình ký sau khi đã tạo menu và page FEATURE 1
 
 # 📄 ĐẶC TẢ CHỨC NĂNG: GỬI VÀ TRÌNH KÝ THEO WORKFLOW
 
@@ -240,11 +240,7 @@ PENDING / DONE / REJECTED/ REVOKE
     -   Delegate / reassign
 
 
-
-
-
 => YÊU CẦU CHUNG
-
-Code dễ maintain, chia ra các component nếu dùng chung được 
-Sử dụng các thuộc tính modal giống các page khác
-
+1. Code dễ maintain, chia ra các component nếu dùng chung được 
+2. Sử dụng các thuộc tính modal giống các page khác
+3. Required ràng buộc các mục chặt chẽ, cần thiết ở các step ví dụ: step 1 bắt buộc phải có file trình ký ....

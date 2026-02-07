@@ -30,5 +30,11 @@ public enum DocumentSourceType
     /// Văn bản của tôi - Personal documents
     /// </summary>
     [Description("Personal")]
-    Personal = 1
+    Personal = 1,
+
+    /// <summary>
+    /// Văn bản tạo từ quy trình trình ký - Workflow generated documents
+    /// </summary>
+    [Description("Workflow")]
+    Workflow = 3
 }

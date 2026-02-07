@@ -6,6 +6,7 @@ using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 using HC.DocumentWorkflowInstances;
+using HC.Shared;
 
 namespace HC.Controllers.DocumentWorkflowInstances;
 
@@ -17,5 +18,40 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
 {
     public DocumentWorkflowInstanceController(IDocumentWorkflowInstancesAppService documentWorkflowInstancesAppService) : base(documentWorkflowInstancesAppService)
     {
+    }
+
+    [HttpGet]
+    [Route("workflow-submit-info/{workflowId}")]
+    public Task<WorkflowSubmitInfoDto> GetWorkflowSubmitInfoAsync(Guid workflowId)
+    {
+        return _documentWorkflowInstancesAppService.GetWorkflowSubmitInfoAsync(workflowId);
+    }
+
+    [HttpPost]
+    [Route("submit-to-workflow")]
+    public Task<DocumentWorkflowInstanceDto> SubmitToWorkflowAsync(SubmitToWorkflowInput input)
+    {
+        return _documentWorkflowInstancesAppService.SubmitToWorkflowAsync(input);
+    }
+
+    [HttpPost]
+    [Route("process-workflow-action")]
+    public Task<DocumentWorkflowInstanceDto> ProcessWorkflowActionAsync(WorkflowActionInput input)
+    {
+        return _documentWorkflowInstancesAppService.ProcessWorkflowActionAsync(input);
+    }
+
+    [HttpGet]
+    [Route("active-workflow-status/{documentId}")]
+    public Task<DocumentWorkflowStatusDto?> GetActiveWorkflowStatusAsync(Guid documentId)
+    {
+        return _documentWorkflowInstancesAppService.GetActiveWorkflowStatusAsync(documentId);
+    }
+
+    [HttpGet]
+    [Route("document-signing-list")]
+    public Task<DocumentSigningPageResultDto> GetDocumentSigningListAsync([FromQuery] GetDocumentSigningListInput input)
+    {
+        return _documentWorkflowInstancesAppService.GetDocumentSigningListAsync(input);
     }
 }
