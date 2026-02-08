@@ -466,6 +466,7 @@
     "TaskAssignedMessage": "You have been assigned to task '{0}: {1}' by {2}",
     "System": "System",
     "ViewDetail": "View Detail",
+    "ViewPdf": "View PDF",
     "Enum:EventType.CHAT_NEW_MESSAGE": "Chat new message",
     "Enum:EventType.CALENDAR_INVITED": "Calendar invited",
     "Enum:EventType.CALENDAR_REMINDER": "Calendar reminder",
@@ -1102,6 +1103,9 @@
     "CHI_DAO": "Direct",
     "KY": "Sign",
     "Initiator": "Initiator",
-    "Processor": "Processor"
+    "Processor": "Processor",
+    "WorkflowOverdue": "Processing Overdue",
+    "WorkflowOverdueDescription": "This document has exceeded the processing deadline. No actions can be performed. The workflow has been cancelled.",
+    "WorkflowOverdueComment": "Document processing deadline expired"
   }
 }

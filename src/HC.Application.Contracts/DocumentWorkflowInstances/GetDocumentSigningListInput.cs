@@ -94,3 +94,22 @@ public class DocumentSigningItemDto
     public bool CanAct { get; set; }
     public Guid? MyAssignmentId { get; set; }
 }
+
+/// <summary>
+/// Result DTO for the overdue check when opening the action modal.
+/// Returns whether the workflow instance is overdue and whether the current step allows return action.
+/// </summary>
+public class WorkflowOverdueCheckResultDto
+{
+    /// <summary>
+    /// True if FinishedAt <= DateTime.Now and status is not COMPLETED/REJECTED/CANCELLED.
+    /// When true, all actions are disabled and the overdue updates have already been applied.
+    /// </summary>
+    public bool IsOverdue { get; set; }
+
+    /// <summary>
+    /// True if the current step's WorkflowStepTemplate.AllowReturn = true.
+    /// Used to show/hide the Return action in the modal.
+    /// </summary>
+    public bool AllowReturn { get; set; }
+}

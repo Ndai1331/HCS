@@ -273,6 +273,11 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var nowTime = DateTime.Now;
 
         // 1. Create DocumentWorkflowInstance
+        // StartedAt = now, FinishedAt = now + SLADays (deadline for the first step)
+        var firstStepFinishedAt = firstStep.SLADays.HasValue
+            ? nowTime.AddDays(firstStep.SLADays.Value)
+            : DateTime.MinValue; // No SLA = no deadline
+
         var instance = await _documentWorkflowInstanceManager.CreateAsync(
             documentId,
             workflowInfo.WorkflowId,
@@ -280,7 +285,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             firstStep.StepId,
             nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
             nowTime,
-            DateTime.MinValue
+            firstStepFinishedAt
         );
 
         // 2. Create DocumentAssignments for step 1 users
@@ -475,12 +480,22 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 "WorkflowCompleted",
                 $"WorkflowCompletedMessage|{document.StorageNumber}|{document.Title}"
             );
+
+            // Update document status to HT (Hoàn thành) - last step approved
+            await UpdateDocumentStatusAsync(instance.DocumentId, DocumentStatusCode.HT);
         }
         else
         {
             // Move to next step
             var nextStep = allSteps[currentIndex + 1];
             instance.CurrentStepId = nextStep.Id;
+
+            // Update SLA: StartedAt = now, FinishedAt = now + next step's SLADays
+            instance.StartedAt = now;
+            instance.FinishedAt = nextStep.SLADays.HasValue
+                ? now.AddDays(nextStep.SLADays.Value)
+                : DateTime.MinValue; // No SLA = no deadline
+
             await _documentWorkflowInstanceRepository.UpdateAsync(instance);
 
             // Log
@@ -526,6 +541,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                     $"WorkflowAssignedMessage|{document.StorageNumber}|{document.Title}|{workflow.Name}|{nextStep.Name}"
                 );
             }
+
+            // Update document status to DANG_XU_LY (Đang xử lý) - approved but not last step
+            await UpdateDocumentStatusAsync(instance.DocumentId, DocumentStatusCode.DANG_XU_LY);
         }
     }
 
@@ -559,6 +577,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             "WorkflowReturned",
             $"WorkflowReturnedMessage|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? "System"}"
         );
+
+        // 5. Update document status to HT (Hoàn thành) - workflow returned
+        await UpdateDocumentStatusAsync(instance.DocumentId, DocumentStatusCode.HT);
     }
 
     private async Task HandleRejectAsync(DocumentWorkflowInstance instance, DocumentAssignment assignment, DateTime now, string? note)
@@ -591,6 +612,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             "WorkflowRejected",
             $"WorkflowRejectedMessage|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? "System"}"
         );
+
+        // 5. Update document status to HT (Hoàn thành) - workflow rejected
+        await UpdateDocumentStatusAsync(instance.DocumentId, DocumentStatusCode.HT);
     }
 
     #endregion
@@ -930,6 +954,164 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         {
             Logger.LogError(ex, "Error sending workflow notification for document {DocumentId}", document.Id);
             // Don't throw - notification failure shouldn't block workflow action
+        }
+    }
+
+    #endregion
+
+    #region CheckAndHandleOverdueAsync
+
+    /// <summary>
+    /// Check if a workflow instance is overdue and handle it.
+    /// Returns overdue status and whether the current step allows return action.
+    /// If overdue: updates Document status to DA_HUY, creates DocumentHistory,
+    /// sets instance status to CANCELLED, creates a log entry.
+    /// </summary>
+    [Authorize(HCPermissions.DocumentAssignments.Default)]
+    public async Task<WorkflowOverdueCheckResultDto> CheckAndHandleOverdueAsync(Guid workflowInstanceId)
+    {
+        var instance = await _documentWorkflowInstanceRepository.GetAsync(workflowInstanceId);
+        var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
+
+        var result = new WorkflowOverdueCheckResultDto
+        {
+            IsOverdue = false,
+            AllowReturn = currentStep.AllowReturn
+        };
+
+        // Check overdue: FinishedAt must be set (> MinValue), FinishedAt <= now,
+        // and status must not be terminal (COMPLETED, REJECTED, CANCELLED)
+        var terminalStatuses = new[]
+        {
+            nameof(DocumentWorkflowInstanceStatus.COMPLETED),
+            nameof(DocumentWorkflowInstanceStatus.REJECTED),
+            nameof(DocumentWorkflowInstanceStatus.CANCELLED)
+        };
+
+        if (instance.FinishedAt > DateTime.MinValue
+            && instance.FinishedAt <= DateTime.Now
+            && !terminalStatuses.Contains(instance.Status))
+        {
+            result.IsOverdue = true;
+
+            // Perform overdue updates using the common helper
+            await UpdateWorkflowStatusCommonAsync(
+                workflowInstanceId: instance.Id,
+                documentStatusCode: DocumentStatusCode.DA_HUY,
+                historyComment: "Hết hạn xử lý tài liệu",
+                workflowInstanceStatus: nameof(DocumentWorkflowInstanceStatus.CANCELLED),
+                logNote: "Hết hạn xử lý tài liệu",
+                logAction: nameof(WorkflowInstanceLogAction.WORKFLOW_COMPLETED)
+            );
+        }
+
+        return result;
+    }
+
+    #endregion
+
+    #region UpdateWorkflowStatusCommonAsync
+
+    /// <summary>
+    /// Common helper to update workflow-related entities in batch.
+    /// Each parameter is optional: null/empty means skip that update.
+    /// </summary>
+    /// <param name="workflowInstanceId">The workflow instance to update</param>
+    /// <param name="documentStatusCode">Document status code (null = skip)</param>
+    /// <param name="historyComment">DocumentHistory comment (empty = skip)</param>
+    /// <param name="workflowInstanceStatus">New workflow instance status (null = skip)</param>
+    /// <param name="logNote">Log note (empty = skip)</param>
+    /// <param name="logAction">Log action string (defaults to WORKFLOW_COMPLETED)</param>
+    private async Task UpdateWorkflowStatusCommonAsync(
+        Guid workflowInstanceId,
+        DocumentStatusCode? documentStatusCode,
+        string historyComment,
+        string? workflowInstanceStatus,
+        string logNote,
+        string? logAction = null)
+    {
+        var instance = await _documentWorkflowInstanceRepository.GetAsync(workflowInstanceId);
+        var previousStatus = instance.Status;
+        var effectiveLogAction = logAction ?? nameof(WorkflowInstanceLogAction.WORKFLOW_COMPLETED);
+
+        // 1. Update Document status (null = skip)
+        if (documentStatusCode.HasValue)
+        {
+            await UpdateDocumentStatusAsync(instance.DocumentId, documentStatusCode.Value);
+        }
+
+        // 2. Create DocumentHistory (empty = skip)
+        if (!string.IsNullOrEmpty(historyComment))
+        {
+            await _documentHistoryManager.CreateAsync(
+                instance.DocumentId,
+                CurrentUser.Id,              // FromUser
+                CurrentUser.Id ?? Guid.Empty, // ToUser (self for system actions)
+                effectiveLogAction,           // Action
+                historyComment                // Comment
+            );
+        }
+
+        // 3. Update DocumentWorkflowInstances status (null = skip)
+        if (!string.IsNullOrEmpty(workflowInstanceStatus))
+        {
+            instance.Status = workflowInstanceStatus;
+            instance.FinishedAt = DateTime.Now;
+            await _documentWorkflowInstanceRepository.UpdateAsync(instance);
+        }
+
+        // 4. Create DocumentWorkflowInstanceLogs (empty = skip)
+        if (!string.IsNullOrEmpty(logNote))
+        {
+            await _documentWorkflowInstanceLogsManager.CreateAsync(
+                instance.Id,
+                null,                          // no specific assignment
+                CurrentUser.Id,
+                effectiveLogAction,
+                "System",
+                previousStatus,
+                workflowInstanceStatus ?? instance.Status,
+                logNote
+            );
+        }
+    }
+
+    #endregion
+
+    #region UpdateDocumentStatusAsync
+
+    /// <summary>
+    /// Update document status by DocumentStatusCode enum.
+    /// Looks up MasterData by Code and Type = "TRANG_THAI_VB".
+    /// </summary>
+    private async Task UpdateDocumentStatusAsync(Guid documentId, DocumentStatusCode statusCode)
+    {
+        try
+        {
+            var document = await _documentRepository.GetAsync(documentId);
+            var code = statusCode.GetCode();
+
+            var statusList = await _masterDataRepository.GetListAsync(
+                x => x.Code == code && x.Type == MasterDataType.Status.GetTypeValue());
+
+            var status = statusList.FirstOrDefault();
+            if (status == null)
+            {
+                Logger.LogWarning("MasterData with Code='{Code}' and Type='TRANG_THAI_VB' not found. Document status will not be updated.", code);
+                return;
+            }
+
+            document.StatusId = status.Id;
+            await _documentRepository.UpdateAsync(document);
+
+            Logger.LogInformation("Document status updated to {Code}: DocumentId={DocumentId}, StatusId={StatusId}",
+                code, documentId, status.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating document status to {Code}: DocumentId={DocumentId}",
+                statusCode.GetCode(), documentId);
+            // Don't throw - we don't want to fail the workflow action if status update fails
         }
     }
 

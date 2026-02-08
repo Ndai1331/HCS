@@ -29,6 +29,8 @@ namespace HC.Blazor.Pages.Documents;
 
 public partial class DocumentSigning
 {
+    [Inject] private IDocumentAssignmentsAppService DocumentAssignmentsAppService { get; set; } = default!;
+
     #region Properties
 
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems = new();
@@ -95,8 +97,17 @@ public partial class DocumentSigning
     private bool IsLoadingFiles { get; set; }
     private bool IsLoadingHistories { get; set; }
 
+    // Overdue & AllowReturn state for Action Modal
+    private bool IsOverdue { get; set; }
+    private bool AllowReturnAction { get; set; }
+
     // Debounce
     private CancellationTokenSource? SearchDebounceCts { get; set; }
+
+    // PDF Viewer Modal
+    private Modal DocumentPdfViewerModal { get; set; } = new();
+    private string? DocumentPdfFileUrl { get; set; }
+    private bool IsDocumentPdfFile { get; set; }
 
     #endregion
 
@@ -562,6 +573,8 @@ public partial class DocumentSigning
             WorkflowLogs = new();
             WorkflowFiles = new();
             DocumentHistories = new();
+            IsOverdue = false;
+            AllowReturnAction = false;
 
             // Load all data in parallel
             var tasks = new List<Task>();
@@ -575,6 +588,22 @@ public partial class DocumentSigning
             tasks.Add(LoadDocumentHistoriesAsync(document.DocumentId));
 
             await Task.WhenAll(tasks);
+
+            // Check overdue and get AllowReturn for current step
+            if (document.WorkflowInstanceId.HasValue)
+            {
+                try
+                {
+                    var overdueResult = await DocumentWorkflowInstancesAppService
+                        .CheckAndHandleOverdueAsync(document.WorkflowInstanceId.Value);
+                    IsOverdue = overdueResult.IsOverdue;
+                    AllowReturnAction = overdueResult.AllowReturn;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error checking overdue for workflow instance {InstanceId}", document.WorkflowInstanceId.Value);
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -732,6 +761,101 @@ public partial class DocumentSigning
             "Are you sure you want to clear the selected files?" => L["FilePicker:ClearConfirmation"],
             _ => L[name] ?? name
         };
+    }
+
+    #endregion
+
+    #region PDF Viewer Modal
+
+    /// <summary>
+    /// Open PDF viewer modal for a document signing item.
+    /// Logic: Get DocumentFiles by DocumentId (same approach as DocumentDetail),
+    /// find the first PDF file and display it. If no original file found,
+    /// fallback to checking DocumentAssignment's DocumentFileResultId.
+    /// </summary>
+    private async Task OpenDocumentPdfViewerModalAsync(DocumentSigningItemDto item)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            string? pdfFilePath = null;
+
+            // Step 1: Try to get the original document files (same as DocumentDetail.LoadPdfUrlAsync)
+            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
+            {
+                DocumentId = item.DocumentId,
+                MaxResultCount = 100,
+                SkipCount = 0
+            });
+
+            // Find the first PDF file from the document's files
+            var pdfFile = documentFilesResult.Items
+                .FirstOrDefault(f => f.DocumentFile != null
+                    && !string.IsNullOrEmpty(f.DocumentFile.Path)
+                    && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(f.DocumentFile.Name));
+
+            if (pdfFile != null)
+            {
+                pdfFilePath = pdfFile.DocumentFile.Path;
+            }
+            else
+            {
+                // Step 2: Fallback - check DocumentAssignment's DocumentFileResultId (signed result file)
+                var assignmentsResult = await DocumentAssignmentsAppService.GetListAsync(new GetDocumentAssignmentsInput
+                {
+                    DocumentId = item.DocumentId,
+                    MaxResultCount = 100,
+                    SkipCount = 0
+                });
+
+                var assignmentWithFile = assignmentsResult.Items
+                    .FirstOrDefault(a => a.DocumentAssignment.DocumentFileResultId.HasValue
+                        && a.DocumentFileResult != null
+                        && !string.IsNullOrEmpty(a.DocumentFileResult.Path)
+                        && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(a.DocumentFileResult.Name));
+
+                if (assignmentWithFile != null)
+                {
+                    pdfFilePath = assignmentWithFile.DocumentFileResult!.Path;
+                }
+            }
+
+            if (string.IsNullOrEmpty(pdfFilePath))
+            {
+                await UiMessageService.Warn(L["NoPdfAvailable"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                return;
+            }
+
+            // Get file bytes from blob storage and create data URL
+            var fileBytes = await BlobContainer.GetAllBytesAsync(pdfFilePath);
+            var base64 = Convert.ToBase64String(fileBytes);
+            DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
+            IsDocumentPdfFile = true;
+
+            await DocumentPdfViewerModal.Show();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error opening PDF viewer for document {DocumentId}", item.DocumentId);
+            await UiMessageService.Warn(L["NoPdfAvailable"] + ": " + ex.Message,
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    private async Task CloseDocumentPdfViewerModalAsync()
+    {
+        if (DocumentPdfViewerModal != null)
+        {
+            await DocumentPdfViewerModal.Hide();
+        }
+        DocumentPdfFileUrl = null;
+        IsDocumentPdfFile = false;
     }
 
     #endregion

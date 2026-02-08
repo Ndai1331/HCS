@@ -79,4 +79,11 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     {
         return _documentWorkflowInstancesAppService.GetDocumentHistoriesByDocumentIdAsync(documentId);
     }
+
+    [HttpPost]
+    [Route("check-and-handle-overdue/{workflowInstanceId}")]
+    public Task<WorkflowOverdueCheckResultDto> CheckAndHandleOverdueAsync(Guid workflowInstanceId)
+    {
+        return _documentWorkflowInstancesAppService.CheckAndHandleOverdueAsync(workflowInstanceId);
+    }
 }

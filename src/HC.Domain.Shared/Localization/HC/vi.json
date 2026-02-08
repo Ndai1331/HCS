@@ -766,6 +766,7 @@
     "FileIsNotPdf": "File không phải là PDF",
     "ViewDocuments": "Xem tài liệu",
     "ViewDetail": "Xem chi tiết",
+    "ViewPdf": "Xem PDF",
     "DepartmentId": "Phòng ban",
     "PositionId": "Chức vụ",
     "Order": "Thứ tự",
@@ -1156,6 +1157,9 @@
     "CHI_DAO": "Chỉ đạo",
     "KY": "Ký",
     "Initiator": "Người trình",
-    "Processor": "Người xử lý"
+    "Processor": "Người xử lý",
+    "WorkflowOverdue": "Đã quá hạn xử lý",
+    "WorkflowOverdueDescription": "Tài liệu này đã quá hạn xử lý. Không thể thực hiện bất kỳ hành động nào. Quy trình đã bị hủy.",
+    "WorkflowOverdueComment": "Hết hạn xử lý tài liệu"
   }
 }

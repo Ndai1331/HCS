@@ -619,3 +619,48 @@ EnterSigningContent = "Nhập nội dung trình ký..."
 5. **Default MasterData**: Khi tạo Document từ template, lấy record đầu tiên (theo CreationTime) của mỗi MasterDataType làm giá trị mặc định cho TypeId, UrgencyLevelId, SecrecyLevelId.
 
 6. **Modal reset**: Mỗi lần mở modal, tất cả fields được reset. Autocomplete dùng `@key={ModalResetKey}` (increment mỗi lần mở) để force re-render và clear text.
+
+
+
+
+
+=====WORKFLOW 08/02/2026 update
+
+Khi người dùng từ chối hoặc là người cuối cùng xử lý file đồng ý/ ký => Update status của Document.cs là "var statusList = await _masterDataRepository.GetListAsync(x=>x.Code == "HT" && x.Type == MasterDataType.Status.GetTypeValue());""
+
+
+Khi người dùng xử lý file đồng ý/ ký => Update status của Document.cs là "var statusList = await _masterDataRepository.GetListAsync(x=>x.Code == "DANG_XU_LY" && x.Type == MasterDataType.Status.GetTypeValue());"
+
+
+
+
+=====WORKFLOW 08/02/2026 update Continue
+
+1. Khi gửi trình tới step nào thì update :  DocumentWorkflowInstances.cs StartedAt = ngày giờ hiện tại.  FinishedAt = Ngày giờ hiện tại .AddDay số ngày WorkflowStepTemplates.SLADAys
+
+2. Hiển thị hành động trả về: Mở modal hiên tại ở bước WorkflowStepTemplates AllowReturn = True thì mới hiển thị nút trả về ở Modal (Logic xử lý sau)
+
+3. Quá hạn xử lý tài liệu: => Lúc Mở modal kiểm tra kiểm tra xem task đã quá hạn chưa
+DocumentWorkflowInstances.FinishedAt <= ngày giờ hiện tại (phải tính cả giờ nha)
+và trạng thái  DocumentWorkflowInstances.Status khác 3 trạng thái sau COMPLETED / REJECTED / CANCELLED
+thì báo warning đỏ đã quá hạn ko được phép xử lý gì nữa disabled hết  
+
+- Update Document.cs Status = "var statusList = await _masterDataRepository.GetListAsync(x=>x.Code == "DA_HUY" && x.Type == MasterDataType.Status.GetTypeValue());"
+- Update DocumentHistory.cs  => Comment "Hết hạn xử lý tài liệu"
+- Update DocumentWorkflowInstances.cs  => Status CANCELLED
+- Update DocumentWorkflowInstanceLogs.cs  => Note  "Hết hạn xử lý tài liệu",Action=WORKFLOW_COMPLETED 
+
+
+=> Viết thêm 1 hàm chung để update các mục sau:
+Document.cs status => Null thì ko update
+DocumentHistory.cs Comment =>string empty thì ko upadte (khác thì update Comment  = param truyền vào)
+DocumentWorkflowInstances.cs Status  => Null thì ko update 
+Update DocumentWorkflowInstanceLogs.cs  =>  string empty thì ko upadte (khác thì update Note  = param truyền vào)
+
+
+<!-- 
+Khi người dùng chọn option trả về: 
+- Update Document.cs Status = 
+- Delete DocumentAssigment (gửi đến tôi)
+- Update DocumentHistory.cs (Đã trả về)
+- Update DocumentWorkflowInstances.cs:  Status = RETURNED, CurrentStepId = Step trước  -->

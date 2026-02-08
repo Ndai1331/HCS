@@ -50,4 +50,12 @@ public partial interface IDocumentWorkflowInstancesAppService
     /// Get document histories (with navigation properties) for the action modal
     /// </summary>
     Task<List<DocumentHistoryWithNavigationPropertiesDto>> GetDocumentHistoriesByDocumentIdAsync(Guid documentId);
+
+    /// <summary>
+    /// Check if a workflow instance is overdue and handle it.
+    /// If overdue: updates Document status to DA_HUY, creates DocumentHistory,
+    /// sets instance status to CANCELLED, and creates a log entry.
+    /// Also returns whether the current step allows the Return action.
+    /// </summary>
+    Task<WorkflowOverdueCheckResultDto> CheckAndHandleOverdueAsync(Guid workflowInstanceId);
 }
