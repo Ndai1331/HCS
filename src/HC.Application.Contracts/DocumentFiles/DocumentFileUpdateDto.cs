@@ -17,7 +17,7 @@ public abstract class DocumentFileUpdateDtoBase : IHasConcurrencyStamp
 
     public DateTime UploadedAt { get; set; }
 
-    public Guid DocumentId { get; set; }
+    public Guid? DocumentId { get; set; }
 
     public string ConcurrencyStamp { get; set; } = null!;
 }

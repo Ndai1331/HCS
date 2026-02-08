@@ -24,4 +24,6 @@ public abstract class DocumentAssignmentCreateDtoBase
     public Guid? WorkflowStepTemplateId { get; set; }
 
     public Guid ReceiverUserId { get; set; }
+
+    public Guid? DocumentFileResultId { get; set; }
 }

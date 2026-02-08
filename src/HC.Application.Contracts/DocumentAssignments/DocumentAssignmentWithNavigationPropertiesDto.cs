@@ -1,4 +1,5 @@
 using HC.Documents;
+using HC.DocumentFiles;
 using HC.WorkflowStepTemplates;
 using Volo.Abp.Identity;
 using System;
@@ -14,4 +15,6 @@ public abstract class DocumentAssignmentWithNavigationPropertiesDtoBase
     public WorkflowStepTemplateDto? WorkflowStepTemplate { get; set; }
 
     public IdentityUserDto ReceiverUser { get; set; } = null!;
+
+    public DocumentFileDto? DocumentFileResult { get; set; }
 }

@@ -108,7 +108,7 @@
                             <SelectItem Value="DocumentAssignmentStatus.PENDING">@L["Pending"]</SelectItem>
                             <SelectItem Value="DocumentAssignmentStatus.DONE">@L["Done"]</SelectItem>
                             <SelectItem Value="DocumentAssignmentStatus.REJECTED">@L["Rejected"]</SelectItem>
-                            <SelectItem Value="DocumentAssignmentStatus.REVOKED">@L["Revoked"]</SelectItem>
+                            <SelectItem Value="DocumentAssignmentStatus.REVOKE">@L["Revoked"]</SelectItem>
                         </Select>                  
                     </Field>
                 </Column>
@@ -351,7 +351,7 @@
                                 {
                                     <small class="badge bg-danger me-1"> @L["Rejected"]</small>
                                 }
-                                else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.REVOKED.ToString())
+                                else if(context.DocumentAssignment.Status == DocumentAssignmentStatus.REVOKE.ToString())
                                 {
                                     <small class="badge bg-danger me-1"> @L["Revoked"]</small>
                                 }

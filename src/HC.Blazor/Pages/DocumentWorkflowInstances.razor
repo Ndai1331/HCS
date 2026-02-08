@@ -15,6 +15,8 @@
 @using Volo.Abp.ObjectMapping
 @using Volo.Abp.AspNetCore.Components.Messages
 @using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
+@using HC.DocumentWorkflowInstanceFiles 
+@using HC.DocumentWorkflowInstanceLogss 
 @using HC.Permissions
 @using Volo.Abp.AspNetCore.Components.Web
 @using Volo.Abp.AspNetCore.Components
@@ -22,6 +24,8 @@
 @using Volo.Abp.Http.Client
 @inherits HCComponentBase
 @inject IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService
+@inject IDocumentWorkflowInstanceFilesAppService DocumentWorkflowInstanceFilesAppService
+@inject IDocumentWorkflowInstanceLogssAppService DocumentWorkflowInstanceLogssAppService
 @inject IUiMessageService UiMessageService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
@@ -121,7 +125,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.DocumentId"
 		SelectedValueChanged="@OnDocumentIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem></SelectItem>
 @foreach(var item in DocumentsCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -137,7 +141,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.WorkflowId"
 		SelectedValueChanged="@OnWorkflowIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem></SelectItem>
 @foreach(var item in WorkflowsCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -153,7 +157,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.WorkflowTemplateId"
 		SelectedValueChanged="@OnWorkflowTemplateIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem></SelectItem>
 @foreach(var item in WorkflowTemplatesCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -169,7 +173,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.CurrentStepId"
 		SelectedValueChanged="@OnCurrentStepIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem></SelectItem>
 @foreach(var item in WorkflowStepTemplatesCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -236,6 +240,8 @@
                   SelectedRows="SelectedDocumentWorkflowInstances"
                   RowSelectable="RowSelectableHandler"
                   SelectedRowsChanged="SelectedDocumentWorkflowInstanceRowsChanged"
+                  DetailRowTrigger="DetailRowTriggerHandler"
+                  DetailRowStartsVisible="false"
                   ReadData="OnDataGridReadAsync"
                   TotalItems="TotalCount"
                   ShowPager="true"
@@ -261,6 +267,40 @@
                 {
                     <DataGridMultiSelectColumn TItem="DocumentWorkflowInstanceWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
                 }
+                @if (ShouldShowDetailRow())
+                {
+                    <DataGridColumn TItem="DocumentWorkflowInstanceWithNavigationPropertiesDto"
+                                    Field="DocumentWorkflowInstance.Id"
+                                    Width="0.5rem">
+                        <DisplayTemplate>
+                            @if (context.DocumentWorkflowInstance.Id == SelectedDocumentWorkflowInstance?.DocumentWorkflowInstance.Id)
+                            {
+                                <i class="fas fa-chevron-up" @onclick="() => ToggleDetails(context)" style="cursor: pointer;"/>
+                            }
+                            else
+                            {
+                                <i class="fas fa-chevron-down" @onclick="() => ToggleDetails(context)" style="cursor: pointer;"/>
+                            }
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                }
+                <DataGridEntityActionsColumn TItem="DocumentWorkflowInstanceWithNavigationPropertiesDto" @ref="@EntityActionsColumn">
+                    <DisplayTemplate>
+                        <EntityActions TItem="DocumentWorkflowInstanceWithNavigationPropertiesDto" EntityActionsColumn="@EntityActionsColumn">
+                            <EntityAction TItem="DocumentWorkflowInstanceWithNavigationPropertiesDto"
+                                          Visible="@CanEditDocumentWorkflowInstance"
+                                          Clicked="async () => await OpenEditDocumentWorkflowInstanceModalAsync(context)"
+                                          Text="@L["Edit"]"></EntityAction>
+                            <EntityAction TItem="DocumentWorkflowInstanceWithNavigationPropertiesDto"
+                                          Visible="@CanDeleteDocumentWorkflowInstance"
+                                          Clicked="() => DeleteDocumentWorkflowInstanceAsync(context)"
+                                          ConfirmationMessage="@(()=> L["DeleteConfirmationMessage"])"
+                                          Text="@L["Delete"]"></EntityAction>
+@*//<suite-custom-code-block-4>*@
+@*//</suite-custom-code-block-4>*@
+                        </EntityActions>
+                    </DisplayTemplate>
+                </DataGridEntityActionsColumn>
               <DataGridColumn TItem="DocumentWorkflowInstanceWithNavigationPropertiesDto"
                       Field="DocumentWorkflowInstance.Status"
                       Caption="@L["Status"]">
@@ -295,29 +335,141 @@
                       Field="CurrentStep.Name"
                       Caption="@L["CurrentStep"]">
               </DataGridColumn>
-                <DataGridColumn TItem="DocumentWorkflowInstanceWithNavigationPropertiesDto" Caption="@L["Actions"]">
-                    <DisplayTemplate>
-                        <div class="hc-action-icons">
-                            @if (CanEditDocumentWorkflowInstance)
-                            {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditDocumentWorkflowInstanceModalAsync(context))"
-                                   style="cursor: pointer;"></i>
-                            }
-                            @if (CanDeleteDocumentWorkflowInstance)
-                            {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteDocumentWorkflowInstanceWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
-                            }
-                        </div>
-@*//<suite-custom-code-block-4>*@
-@*//</suite-custom-code-block-4>*@
-                    </DisplayTemplate>
-                </DataGridColumn>
             </DataGridColumns>
+            <DetailRowTemplate>
+    <div class="bg-light rounded p-3 pb-0 pt-1">
+        <Tabs SelectedTab="@SelectedChildTab" SelectedTabChanged="@OnSelectedChildTabChanged">
+            <Items>
+                <Tab Name="documentworkflowinstancefile-tab">@L["DocumentWorkflowInstanceFiles"]</Tab>
+<Tab Name="documentworkflowinstancelogs-tab">@L["DocumentWorkflowInstanceLogss"]</Tab>
+            </Items>
+            <Content>
+                                        <TabPanel Name="documentworkflowinstancefile-tab" Class="mt-0">
+                            @if (CanCreateDocumentWorkflowInstanceFile)
+                            {
+                                <Row Class="mb-2">
+                                    <Column Class="d-flex justify-content-end">
+                                        <Button Color="Color.Primary" Clicked="async () => await OpenCreateDocumentWorkflowInstanceFileModalAsync(context.DocumentWorkflowInstance.Id)">
+                                            <i class="fas fa-plus me-1"></i>@L["NewDocumentWorkflowInstanceFile"]
+                                        </Button>
+                                    </Column>
+                                </Row>
+                            }
+                            @{
+                                var documentWorkflowInstanceFiles = (context as DocumentWorkflowInstanceWithNavigationPropertiesDto).DocumentWorkflowInstance.DocumentWorkflowInstanceFiles;
+                                <DataGrid @ref="@DocumentWorkflowInstanceFileDataGrids[context.DocumentWorkflowInstance.Id]"
+                                          TItem="DocumentWorkflowInstanceFileWithNavigationPropertiesDto"
+                                          Data="documentWorkflowInstanceFiles"
+                                          ReadData="@((args) => OnDocumentWorkflowInstanceFileDataGridReadAsync(args, context.DocumentWorkflowInstance.Id))"
+                                          Sortable="true"
+                                          ShowCaptions="true"
+                                          ShowPager="true"
+                                          Responsive="true"
+                                          PageSize="DocumentWorkflowInstanceFilePageSize">
+                                    <DataGridColumns>
+                                        <DataGridEntityActionsColumn TItem="DocumentWorkflowInstanceFileWithNavigationPropertiesDto" @ref="@DocumentWorkflowInstanceFileEntityActionsColumns">
+                                            <DisplayTemplate Context="document_workflow_instance_file_context">
+                                                <EntityActions TItem="DocumentWorkflowInstanceFileWithNavigationPropertiesDto" EntityActionsColumn="@DocumentWorkflowInstanceFileEntityActionsColumns">
+                                                    <EntityAction TItem="DocumentWorkflowInstanceFileWithNavigationPropertiesDto"
+                                                                  Visible="@CanEditDocumentWorkflowInstanceFile"
+                                                                  Clicked="async () => await OpenEditDocumentWorkflowInstanceFileModalAsync(document_workflow_instance_file_context)"
+                                                                  Text="@L["Edit"]">
+                                                    </EntityAction>
+                                                    <EntityAction TItem="DocumentWorkflowInstanceFileWithNavigationPropertiesDto"
+                                                                  Visible="@CanDeleteDocumentWorkflowInstanceFile"
+                                                                  Clicked="async () => await DeleteDocumentWorkflowInstanceFileAsync(document_workflow_instance_file_context)"
+                                                                  ConfirmationMessage="@(() => L["DeleteConfirmationMessage"])"
+                                                                  Text="@L["Delete"]">
+                                                    </EntityAction>
+                                                </EntityActions>
+                                            </DisplayTemplate>
+                                        </DataGridEntityActionsColumn>
+                                        <DataGridCommandColumn/>
+              <DataGridColumn TItem="DocumentWorkflowInstanceFileWithNavigationPropertiesDto"
+                      Field="DocumentFile.Name"
+                      Caption="@L["DocumentFile"]">
+              </DataGridColumn>
+                                    </DataGridColumns>
+                                </DataGrid>
+                            }
+                        </TabPanel>
+                        <TabPanel Name="documentworkflowinstancelogs-tab" Class="mt-0">
+                            @if (CanCreateDocumentWorkflowInstanceLogs)
+                            {
+                                <Row Class="mb-2">
+                                    <Column Class="d-flex justify-content-end">
+                                        <Button Color="Color.Primary" Clicked="async () => await OpenCreateDocumentWorkflowInstanceLogsModalAsync(context.DocumentWorkflowInstance.Id)">
+                                            <i class="fas fa-plus me-1"></i>@L["NewDocumentWorkflowInstanceLogs"]
+                                        </Button>
+                                    </Column>
+                                </Row>
+                            }
+                            @{
+                                var documentWorkflowInstanceLogss = (context as DocumentWorkflowInstanceWithNavigationPropertiesDto).DocumentWorkflowInstance.DocumentWorkflowInstanceLogss;
+                                <DataGrid @ref="@DocumentWorkflowInstanceLogsDataGrids[context.DocumentWorkflowInstance.Id]"
+                                          TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto"
+                                          Data="documentWorkflowInstanceLogss"
+                                          ReadData="@((args) => OnDocumentWorkflowInstanceLogsDataGridReadAsync(args, context.DocumentWorkflowInstance.Id))"
+                                          Sortable="true"
+                                          ShowCaptions="true"
+                                          ShowPager="true"
+                                          Responsive="true"
+                                          PageSize="DocumentWorkflowInstanceLogsPageSize">
+                                    <DataGridColumns>
+                                        <DataGridEntityActionsColumn TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto" @ref="@DocumentWorkflowInstanceLogsEntityActionsColumns">
+                                            <DisplayTemplate Context="document_workflow_instance_logs_context">
+                                                <EntityActions TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto" EntityActionsColumn="@DocumentWorkflowInstanceLogsEntityActionsColumns">
+                                                    <EntityAction TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto"
+                                                                  Visible="@CanEditDocumentWorkflowInstanceLogs"
+                                                                  Clicked="async () => await OpenEditDocumentWorkflowInstanceLogsModalAsync(document_workflow_instance_logs_context)"
+                                                                  Text="@L["Edit"]">
+                                                    </EntityAction>
+                                                    <EntityAction TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto"
+                                                                  Visible="@CanDeleteDocumentWorkflowInstanceLogs"
+                                                                  Clicked="async () => await DeleteDocumentWorkflowInstanceLogsAsync(document_workflow_instance_logs_context)"
+                                                                  ConfirmationMessage="@(() => L["DeleteConfirmationMessage"])"
+                                                                  Text="@L["Delete"]">
+                                                    </EntityAction>
+                                                </EntityActions>
+                                            </DisplayTemplate>
+                                        </DataGridEntityActionsColumn>
+                                        <DataGridCommandColumn/>
+              <DataGridColumn TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto"
+                      Field="DocumentWorkflowInstanceLogs.Action"
+                      Caption="@L["Action"]">
+              </DataGridColumn>
+              <DataGridColumn TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto"
+                      Field="DocumentWorkflowInstanceLogs.ActorRole"
+                      Caption="@L["ActorRole"]">
+              </DataGridColumn>
+              <DataGridColumn TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto"
+                      Field="DocumentWorkflowInstanceLogs.FromStatus"
+                      Caption="@L["FromStatus"]">
+              </DataGridColumn>
+              <DataGridColumn TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto"
+                      Field="DocumentWorkflowInstanceLogs.ToStatus"
+                      Caption="@L["ToStatus"]">
+              </DataGridColumn>
+              <DataGridColumn TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto"
+                      Field="DocumentWorkflowInstanceLogs.Note"
+                      Caption="@L["Note"]">
+              </DataGridColumn>
+              <DataGridColumn TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto"
+                      Field="DocumentAssignment.ActionType"
+                      Caption="@L["DocumentAssignment"]">
+              </DataGridColumn>
+              <DataGridColumn TItem="DocumentWorkflowInstanceLogsWithNavigationPropertiesDto"
+                      Field="ActorUser.Name"
+                      Caption="@L["ActorUser"]">
+              </DataGridColumn>
+                                    </DataGridColumns>
+                                </DataGrid>
+                            }
+                        </TabPanel>
+            </Content>
+        </Tabs>
+    </div>
+</DetailRowTemplate>
         </DataGrid>
     </CardBody>
 </Card>
@@ -529,5 +681,275 @@
         </Form>
 @*//<suite-custom-code-block-10>*@
 @*//</suite-custom-code-block-10>*@
+    </ModalContent>
+</Modal>
+@* ************************* DocumentWorkflowInstanceFile: CREATE MODAL ************************* *@
+<Modal @ref="CreateDocumentWorkflowInstanceFileModal" Closing="@CreateDocumentWorkflowInstanceFileModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true">
+        <Form id="CreateDocumentWorkflowInstanceFileForm">
+            <ModalHeader>
+                <ModalTitle>@L["NewDocumentWorkflowInstanceFile"]</ModalTitle>
+                <CloseButton Clicked="CloseCreateDocumentWorkflowInstanceFileModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                <Validations @ref="@NewDocumentWorkflowInstanceFileValidations"
+                             Mode="ValidationMode.Auto"
+                             Model="@NewDocumentWorkflowInstanceFile"
+                             ValidateOnLoad="false">
+                    <Field>
+                        <FieldLabel>@L["DocumentFile"]</FieldLabel>
+                        <Select TValue="Guid" @bind-SelectedValue="@NewDocumentWorkflowInstanceFile.DocumentFileId">
+                            @foreach (var documentFile in DocumentFilesCollection)
+                            {
+                                <SelectItem TValue="Guid" Value="@(documentFile.Id)">
+                                    @(documentFile.DisplayName)
+                                </SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                </Validations>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary"
+                        Clicked="CloseCreateDocumentWorkflowInstanceFileModalAsync">
+                    @L["Cancel"]
+                </Button>
+                <SubmitButton Form="CreateDocumentWorkflowInstanceFileForm" Clicked="CreateDocumentWorkflowInstanceFileAsync" />
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+@* ************************* DocumentWorkflowInstanceFile: EDIT MODAL ************************* *@
+<Modal @ref="EditDocumentWorkflowInstanceFileModal" Closing="@EditDocumentWorkflowInstanceFileModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true">
+        <Form id="EditDocumentWorkflowInstanceFileForm">
+            <ModalHeader>
+                <ModalTitle>@L["Update"]</ModalTitle>
+                <CloseButton Clicked="CloseEditDocumentWorkflowInstanceFileModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                <Validations @ref="@EditingDocumentWorkflowInstanceFileValidations"
+                             Mode="ValidationMode.Auto"
+                             Model="@EditingDocumentWorkflowInstanceFile"
+                             ValidateOnLoad="false">
+                    <Field>
+                        <FieldLabel>@L["DocumentFile"]</FieldLabel>
+                        <Select TValue="Guid" @bind-SelectedValue="@EditingDocumentWorkflowInstanceFile.DocumentFileId">
+                            @foreach (var documentFile in DocumentFilesCollection)
+                            {
+                                <SelectItem TValue="Guid" Value="@(documentFile.Id)">
+                                    @(documentFile.DisplayName)
+                                </SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                </Validations>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary"
+                        Clicked="CloseEditDocumentWorkflowInstanceFileModalAsync">
+                    @L["Cancel"]
+                </Button>
+                <SubmitButton Form="EditDocumentWorkflowInstanceFileForm" Clicked="UpdateDocumentWorkflowInstanceFileAsync" />
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+@* ************************* DocumentWorkflowInstanceLogs: CREATE MODAL ************************* *@
+<Modal @ref="CreateDocumentWorkflowInstanceLogsModal" Closing="@CreateDocumentWorkflowInstanceLogsModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true">
+        <Form id="CreateDocumentWorkflowInstanceLogsForm">
+            <ModalHeader>
+                <ModalTitle>@L["NewDocumentWorkflowInstanceLogs"]</ModalTitle>
+                <CloseButton Clicked="CloseCreateDocumentWorkflowInstanceLogsModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                <Validations @ref="@NewDocumentWorkflowInstanceLogsValidations"
+                             Mode="ValidationMode.Auto"
+                             Model="@NewDocumentWorkflowInstanceLogs"
+                             ValidateOnLoad="false">
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["Action"] *</FieldLabel>
+                            <TextEdit @bind-Text="@NewDocumentWorkflowInstanceLogs.Action" MaxLength="DocumentWorkflowInstanceLogsConsts.ActionMaxLength"  Autofocus="true">
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["ActorRole"]</FieldLabel>
+                            <TextEdit @bind-Text="@NewDocumentWorkflowInstanceLogs.ActorRole" MaxLength="DocumentWorkflowInstanceLogsConsts.ActorRoleMaxLength"  >
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["FromStatus"]</FieldLabel>
+                            <TextEdit @bind-Text="@NewDocumentWorkflowInstanceLogs.FromStatus" MaxLength="DocumentWorkflowInstanceLogsConsts.FromStatusMaxLength"  >
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["ToStatus"]</FieldLabel>
+                            <TextEdit @bind-Text="@NewDocumentWorkflowInstanceLogs.ToStatus" MaxLength="DocumentWorkflowInstanceLogsConsts.ToStatusMaxLength"  >
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["Note"]</FieldLabel>
+                            <TextEdit @bind-Text="@NewDocumentWorkflowInstanceLogs.Note"   >
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    <Field>
+                        <FieldLabel>@L["DocumentAssignment"]</FieldLabel>
+                        <Select TValue="Guid?" @bind-SelectedValue="@NewDocumentWorkflowInstanceLogs.DocumentAssignmentId">
+                            <SelectItem TValue="Guid?" Value="null"></SelectItem>
+                            @foreach (var documentAssignment in DocumentAssignmentsCollection)
+                            {
+                                <SelectItem TValue="Guid?" Value="@(documentAssignment.Id)">
+                                    @(documentAssignment.DisplayName)
+                                </SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["IdentityUser"]</FieldLabel>
+                        <Select TValue="Guid?" @bind-SelectedValue="@NewDocumentWorkflowInstanceLogs.ActorUserId">
+                            <SelectItem TValue="Guid?" Value="null"></SelectItem>
+                            @foreach (var identityUser in IdentityUsersCollection)
+                            {
+                                <SelectItem TValue="Guid?" Value="@(identityUser.Id)">
+                                    @(identityUser.DisplayName)
+                                </SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                </Validations>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary"
+                        Clicked="CloseCreateDocumentWorkflowInstanceLogsModalAsync">
+                    @L["Cancel"]
+                </Button>
+                <SubmitButton Form="CreateDocumentWorkflowInstanceLogsForm" Clicked="CreateDocumentWorkflowInstanceLogsAsync" />
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+@* ************************* DocumentWorkflowInstanceLogs: EDIT MODAL ************************* *@
+<Modal @ref="EditDocumentWorkflowInstanceLogsModal" Closing="@EditDocumentWorkflowInstanceLogsModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true">
+        <Form id="EditDocumentWorkflowInstanceLogsForm">
+            <ModalHeader>
+                <ModalTitle>@L["Update"]</ModalTitle>
+                <CloseButton Clicked="CloseEditDocumentWorkflowInstanceLogsModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                <Validations @ref="@EditingDocumentWorkflowInstanceLogsValidations"
+                             Mode="ValidationMode.Auto"
+                             Model="@EditingDocumentWorkflowInstanceLogs"
+                             ValidateOnLoad="false">
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["Action"] *</FieldLabel>
+                            <TextEdit @bind-Text="@EditingDocumentWorkflowInstanceLogs.Action" MaxLength="DocumentWorkflowInstanceLogsConsts.ActionMaxLength"  Autofocus="true">
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["ActorRole"]</FieldLabel>
+                            <TextEdit @bind-Text="@EditingDocumentWorkflowInstanceLogs.ActorRole" MaxLength="DocumentWorkflowInstanceLogsConsts.ActorRoleMaxLength"  >
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["FromStatus"]</FieldLabel>
+                            <TextEdit @bind-Text="@EditingDocumentWorkflowInstanceLogs.FromStatus" MaxLength="DocumentWorkflowInstanceLogsConsts.FromStatusMaxLength"  >
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["ToStatus"]</FieldLabel>
+                            <TextEdit @bind-Text="@EditingDocumentWorkflowInstanceLogs.ToStatus" MaxLength="DocumentWorkflowInstanceLogsConsts.ToStatusMaxLength"  >
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    <Validation MessageLocalizer="@LH.Localize">
+                        <Field>
+                            <FieldLabel>@L["Note"]</FieldLabel>
+                            <TextEdit @bind-Text="@EditingDocumentWorkflowInstanceLogs.Note"   >
+                                <Feedback>
+                                    <ValidationError />
+                                </Feedback>
+                            </TextEdit>
+                        </Field>
+                    </Validation>
+                    <Field>
+                        <FieldLabel>@L["DocumentAssignment"]</FieldLabel>
+                        <Select TValue="Guid?" @bind-SelectedValue="@EditingDocumentWorkflowInstanceLogs.DocumentAssignmentId">
+                            <SelectItem TValue="Guid?" Value="null"></SelectItem>
+                            @foreach (var documentAssignment in DocumentAssignmentsCollection)
+                            {
+                                <SelectItem TValue="Guid?" Value="@(documentAssignment.Id)">
+                                    @(documentAssignment.DisplayName)
+                                </SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["IdentityUser"]</FieldLabel>
+                        <Select TValue="Guid?" @bind-SelectedValue="@EditingDocumentWorkflowInstanceLogs.ActorUserId">
+                            <SelectItem TValue="Guid?" Value="null"></SelectItem>
+                            @foreach (var identityUser in IdentityUsersCollection)
+                            {
+                                <SelectItem TValue="Guid?" Value="@(identityUser.Id)">
+                                    @(identityUser.DisplayName)
+                                </SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                </Validations>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary"
+                        Clicked="CloseEditDocumentWorkflowInstanceLogsModalAsync">
+                    @L["Cancel"]
+                </Button>
+                <SubmitButton Form="EditDocumentWorkflowInstanceLogsForm" Clicked="UpdateDocumentWorkflowInstanceLogsAsync" />
+            </ModalFooter>
+        </Form>
     </ModalContent>
 </Modal>

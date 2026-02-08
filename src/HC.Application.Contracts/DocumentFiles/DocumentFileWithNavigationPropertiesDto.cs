@@ -8,5 +8,5 @@ namespace HC.DocumentFiles;
 public abstract class DocumentFileWithNavigationPropertiesDtoBase
 {
     public DocumentFileDto DocumentFile { get; set; } = null!;
-    public DocumentDto Document { get; set; } = null!;
+    public DocumentDto? Document { get; set; }
 }

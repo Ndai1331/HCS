@@ -1,3 +1,5 @@
+using HC.DocumentWorkflowInstanceLogss;
+using HC.DocumentWorkflowInstanceFiles;
 using HC.UserDepartments;
 using HC.SurveyResults;
 using HC.SurveyFiles;
@@ -360,4 +362,18 @@ public partial class UserDepartmentDtoToUserDepartmentUpdateDtoBlazorMapper : Ma
 {
     public override partial UserDepartmentUpdateDto Map(UserDepartmentDto source);
     public override partial void Map(UserDepartmentDto source, UserDepartmentUpdateDto destination);
+}
+
+[Mapper]
+public partial class DocumentWorkflowInstanceFileDtoToDocumentWorkflowInstanceFileUpdateDtoBlazorMapper : MapperBase<DocumentWorkflowInstanceFileDto, DocumentWorkflowInstanceFileUpdateDto>
+{
+    public override partial DocumentWorkflowInstanceFileUpdateDto Map(DocumentWorkflowInstanceFileDto source);
+    public override partial void Map(DocumentWorkflowInstanceFileDto source, DocumentWorkflowInstanceFileUpdateDto destination);
+}
+
+[Mapper]
+public partial class DocumentWorkflowInstanceLogsDtoToDocumentWorkflowInstanceLogsUpdateDtoBlazorMapper : MapperBase<DocumentWorkflowInstanceLogsDto, DocumentWorkflowInstanceLogsUpdateDto>
+{
+    public override partial DocumentWorkflowInstanceLogsUpdateDto Map(DocumentWorkflowInstanceLogsDto source);
+    public override partial void Map(DocumentWorkflowInstanceLogsDto source, DocumentWorkflowInstanceLogsUpdateDto destination);
 }

@@ -9,6 +9,7 @@ using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 using HC.DocumentFiles;
 using Volo.Abp.Content;
+using HC.Shared;
 
 namespace HC.Controllers.DocumentFiles;
 

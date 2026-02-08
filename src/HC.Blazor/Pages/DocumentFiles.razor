@@ -1,6 +1,7 @@
 @page "/document-files"
 @attribute [Authorize(HCPermissions.DocumentFiles.Default)]
 @using HC.DocumentFiles
+@using HC.DocumentFiles
 @using HC.Localization
 @using HC.Shared
 @using Microsoft.AspNetCore.Authorization
@@ -92,7 +93,7 @@
                         <Select TValue="bool?"
 		SelectedValue="@Filter.IsSigned"
 		SelectedValueChanged="@OnIsSignedChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem></SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -124,10 +125,10 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.DocumentId"
 		SelectedValueChanged="@OnDocumentIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem></SelectItem>
 @foreach(var item in DocumentsCollection)
 {
-	<SelectItem TValue="Guid" Value="@item.Id">
+	<SelectItem TValue="Guid?" Value="@item.Id">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -216,6 +217,23 @@
                 {
                     <DataGridMultiSelectColumn TItem="DocumentFileWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
                 }
+                <DataGridEntityActionsColumn TItem="DocumentFileWithNavigationPropertiesDto" @ref="@EntityActionsColumn">
+                    <DisplayTemplate>
+                        <EntityActions TItem="DocumentFileWithNavigationPropertiesDto" EntityActionsColumn="@EntityActionsColumn">
+                            <EntityAction TItem="DocumentFileWithNavigationPropertiesDto"
+                                          Visible="@CanEditDocumentFile"
+                                          Clicked="async () => await OpenEditDocumentFileModalAsync(context)"
+                                          Text="@L["Edit"]"></EntityAction>
+                            <EntityAction TItem="DocumentFileWithNavigationPropertiesDto"
+                                          Visible="@CanDeleteDocumentFile"
+                                          Clicked="() => DeleteDocumentFileAsync(context)"
+                                          ConfirmationMessage="@(()=> L["DeleteConfirmationMessage"])"
+                                          Text="@L["Delete"]"></EntityAction>
+@*//<suite-custom-code-block-4>*@
+@*//</suite-custom-code-block-4>*@
+                        </EntityActions>
+                    </DisplayTemplate>
+                </DataGridEntityActionsColumn>
               <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto"
                       Field="DocumentFile.Name"
                       Caption="@L["Name"]">
@@ -253,28 +271,6 @@
                       Field="Document.Title"
                       Caption="@L["Document"]">
               </DataGridColumn>
-                <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto" Caption="@L["Actions"]">
-                    <DisplayTemplate>
-                        <div class="hc-action-icons">
-                            @if (CanEditDocumentFile)
-                            {
-                                <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                   title="@L["Edit"]"
-                                   @onclick="@(() => OpenEditDocumentFileModalAsync(context))"
-                                   style="cursor: pointer;"></i>
-                            }
-                            @if (CanDeleteDocumentFile)
-                            {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteDocumentFileWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
-                            }
-                        </div>
-@*//<suite-custom-code-block-4>*@
-@*//</suite-custom-code-block-4>*@
-                    </DisplayTemplate>
-                </DataGridColumn>
             </DataGridColumns>
         </DataGrid>
     </CardBody>
@@ -338,12 +334,12 @@
                         </Field>
                     </Validation>
                     <Field>
-                        <FieldLabel>@L["Document"] *</FieldLabel>
+                        <FieldLabel>@L["Document"] </FieldLabel>
                         <Autocomplete Data="@DocumentsCollection"
                                       TItem="LookupDto<Guid>"
-                                      TValue="Guid"
+                                      TValue="Guid?"
                                       TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id ?? default)"
+                                      ValueField="@((item) => item?.Id )"
                                       SearchChanged="@GetDocumentCollectionLookupAsync"
                                       @bind-SelectedValue="@NewDocumentFile.DocumentId"
                                       Placeholder="&#8212;" />
@@ -423,12 +419,12 @@
                         </Field>
                     </Validation>
                     <Field>
-                        <FieldLabel>@L["Document"] *</FieldLabel>
+                        <FieldLabel>@L["Document"] </FieldLabel>
                         <Autocomplete Data="@DocumentsCollection"
                                       TItem="LookupDto<Guid>"
-                                      TValue="Guid"
+                                      TValue="Guid?"
                                       TextField="@((item) => item?.DisplayName)"
-                                      ValueField="@((item) => item?.Id ?? default)"
+                                      ValueField="@((item) => item?.Id )"
                                       SearchChanged="@GetDocumentCollectionLookupAsync"
                                       @bind-SelectedValue="@EditingDocumentFile.DocumentId"
                                       Placeholder="&#8212;" />
@@ -448,4 +444,4 @@
 @*//<suite-custom-code-block-10>*@
 @*//</suite-custom-code-block-10>*@
     </ModalContent>
-</Modal>
+</Modal>

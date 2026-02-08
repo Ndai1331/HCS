@@ -1,0 +1,5 @@
+namespace HC.DocumentWorkflowInstanceLogss;
+
+public class DocumentWorkflowInstanceLogsWithNavigationPropertiesDto : DocumentWorkflowInstanceLogsWithNavigationPropertiesDtoBase
+{
+}

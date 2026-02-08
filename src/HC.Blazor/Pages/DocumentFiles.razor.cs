@@ -215,14 +215,6 @@ public partial class DocumentFiles
         }
     }
 
-    private async Task DeleteDocumentFileWithConfirmationAsync(DocumentFileWithNavigationPropertiesDto input)
-    {
-        if (await UiMessageService.Confirm(L["DeleteConfirmationMessage"].Value))
-        {
-            await DeleteDocumentFileAsync(input);
-        }
-    }
-
     private async Task CreateDocumentFileAsync()
     {
         try

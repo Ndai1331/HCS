@@ -121,7 +121,7 @@ public abstract class DocumentAssignmentsAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["IdentityUser"]]);
         }
 
-        var documentAssignment = await _documentAssignmentManager.CreateAsync(input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId, input.StepOrder, input.ActionType.ToString(), input.Status.ToString(), input.AssignedAt, input.ProcessedAt, input.IsCurrent);
+        var documentAssignment = await _documentAssignmentManager.CreateAsync(input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId, input.StepOrder, input.ActionType.ToString(), input.Status.ToString(), input.AssignedAt, input.ProcessedAt, input.IsCurrent, input.DocumentFileResultId);
         return ObjectMapper.Map<DocumentAssignment, DocumentAssignmentDto>(documentAssignment);
     }
 
@@ -138,7 +138,7 @@ public abstract class DocumentAssignmentsAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["IdentityUser"]]);
         }
 
-        var documentAssignment = await _documentAssignmentManager.UpdateAsync(id, input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId, input.StepOrder, input.ActionType, input.Status, input.AssignedAt, input.ProcessedAt, input.IsCurrent, input.ConcurrencyStamp);
+        var documentAssignment = await _documentAssignmentManager.UpdateAsync(id, input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId, input.StepOrder, input.ActionType, input.Status, input.AssignedAt, input.ProcessedAt, input.IsCurrent, input.DocumentFileResultId, input.ConcurrencyStamp);
         return ObjectMapper.Map<DocumentAssignment, DocumentAssignmentDto>(documentAssignment);
     }
 

@@ -337,7 +337,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                 input.DocumentId, allReceiverUserIds.Count);
 
             // Update document status to DA_GUI (Đã gửi) after successfully sending
-            await UpdateDocumentStatusToSentAsync(input.DocumentId);
+            await UpdateDocumentStatusAsync(input.DocumentId, DocumentStatusCode.DA_GUI);
 
             return true;
         }
@@ -392,7 +392,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             // Update all document assignments status to REVOKE
             foreach (var documentAssignment in documentAssignments)
             {
-                documentAssignment.Status = DocumentAssignmentStatus.REVOKED.ToString();
+                documentAssignment.Status = DocumentAssignmentStatus.REVOKE.ToString();
                 await _documentAssignmentRepository.UpdateAsync(documentAssignment);
             }
 
@@ -458,37 +458,37 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
     }
 
     /// <summary>
-    /// Update document status to DA_GUI (Đã gửi) when document has been sent to departments/users
+    /// Update document status by DocumentStatusCode enum.
+    /// Looks up MasterData by Code and Type = "TRANG_THAI_VB".
     /// </summary>
-    private async Task UpdateDocumentStatusToSentAsync(Guid documentId)
+    private async Task UpdateDocumentStatusAsync(Guid documentId, DocumentStatusCode statusCode)
     {
         try
         {
-            // Get the document
             var document = await _documentRepository.GetAsync(documentId);
+            var code = statusCode.GetCode();
 
-            // Find the MasterData with Code = "DA_GUI" and Type = "TRANG_THAI_VB"
-            var statusList = await _masterDataRepository.GetListAsync
-            (x=>x.Code == "DA_GUI" && x.Type == MasterDataType.Status.GetTypeValue());
+            var statusList = await _masterDataRepository.GetListAsync(
+                x => x.Code == code && x.Type == MasterDataType.Status.GetTypeValue());
 
-            var daGuiStatus = statusList.FirstOrDefault();
-            if (daGuiStatus == null)
+            var status = statusList.FirstOrDefault();
+            if (status == null)
             {
-                _logger.LogWarning("MasterData with Code='DA_GUI' and Type='TRANG_THAI_VB' not found. Document status will not be updated.");
+                _logger.LogWarning("MasterData with Code='{Code}' and Type='TRANG_THAI_VB' not found. Document status will not be updated.", code);
                 return;
             }
 
-            // Update document status
-            document.StatusId = daGuiStatus.Id;
+            document.StatusId = status.Id;
             await _documentRepository.UpdateAsync(document);
 
-            _logger.LogInformation("Document status updated to DA_GUI: DocumentId={DocumentId}, StatusId={StatusId}",
-                documentId, daGuiStatus.Id);
+            _logger.LogInformation("Document status updated to {Code}: DocumentId={DocumentId}, StatusId={StatusId}",
+                code, documentId, status.Id);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating document status to DA_GUI: DocumentId={DocumentId}", documentId);
-            // Don't throw - we don't want to fail the send operation if status update fails
+            _logger.LogError(ex, "Error updating document status to {Code}: DocumentId={DocumentId}",
+                statusCode.GetCode(), documentId);
+            // Don't throw - we don't want to fail the parent operation if status update fails
         }
     }
 }

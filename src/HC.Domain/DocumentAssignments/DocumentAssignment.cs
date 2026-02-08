@@ -1,4 +1,5 @@
 using HC.Documents;
+using HC.DocumentFiles;
 using HC.WorkflowStepTemplates;
 using Volo.Abp.Identity;
 using System;
@@ -36,6 +37,8 @@ public abstract class DocumentAssignmentBase : FullAuditedAggregateRoot<Guid>, I
     public Guid? WorkflowStepTemplateId { get; set; }
 
     public Guid ReceiverUserId { get; set; }
+
+    public Guid? DocumentFileResultId { get; set; }
 
     protected DocumentAssignmentBase()
     {

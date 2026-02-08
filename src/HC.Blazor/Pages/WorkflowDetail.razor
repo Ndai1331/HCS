@@ -477,15 +477,13 @@
                                         </DataGridColumn>
                                         <DataGridColumn TItem="WorkflowStepTemplateDto" Caption="@L["Actions"]">
                                             <DisplayTemplate>
-                                                <div class="hc-action-icons">
-                                                    <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                                       title="@L["Edit"]"
-                                                       @onclick="@(() => OpenEditStepTemplateModalAsync(context))"
-                                                       style="cursor: pointer;"></i>
-                                                    <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                                       title="@L["Delete"]"
-                                                       @onclick="@(() => DeleteStepTemplateWithConfirmationAsync(context))"
-                                                       style="cursor: pointer;"></i>
+                                                <div class="d-flex gap-1">
+                                                    <Button Outline Color="Color.Primary" Size="Size.Small" Title="@L["Edit"]" Clicked="@(() => OpenEditStepTemplateModalAsync(context))">
+                                                        <Icon Name="IconName.Edit" />
+                                                    </Button>
+                                                    <Button Outline Color="Color.Danger" Size="Size.Small" Title="@L["Delete"]" Clicked="@(() => DeleteStepTemplateWithConfirmationAsync(context))">
+                                                        <Icon Name="IconName.Delete" />
+                                                    </Button>
                                                 </div>
                                             </DisplayTemplate>
                                         </DataGridColumn>
@@ -559,15 +557,13 @@
                                         </DataGridColumn>
                                         <DataGridColumn TItem="WorkflowStepAssignmentWithNavigationPropertiesDto" Caption="@L["Actions"]">
                                             <DisplayTemplate>
-                                                <div class="hc-action-icons">
-                                                    <i class="bi bi-pencil-fill hc-action-icon hc-action-edit" 
-                                                       title="@L["Edit"]"
-                                                       @onclick="@(() => OpenEditStepAssignmentModalAsync(context))"
-                                                       style="cursor: pointer;"></i>
-                                                    <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                                       title="@L["Delete"]"
-                                                       @onclick="@(() => DeleteStepAssignmentWithConfirmationAsync(context))"
-                                                       style="cursor: pointer;"></i>
+                                                <div class="d-flex gap-1">
+                                                    <Button Outline Color="Color.Primary" Size="Size.Small" Title="@L["Edit"]" Clicked="@(() => OpenEditStepAssignmentModalAsync(context))">
+                                                        <Icon Name="IconName.Edit" />
+                                                    </Button>
+                                                    <Button Outline Color="Color.Danger" Size="Size.Small" Title="@L["Delete"]" Clicked="@(() => DeleteStepAssignmentWithConfirmationAsync(context))">
+                                                        <Icon Name="IconName.Delete" />
+                                                    </Button>
                                                 </div>
                                             </DisplayTemplate>
                                         </DataGridColumn>

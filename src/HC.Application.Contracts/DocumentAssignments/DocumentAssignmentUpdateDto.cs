@@ -30,5 +30,7 @@ public abstract class DocumentAssignmentUpdateDtoBase : IHasConcurrencyStamp
 
     public Guid ReceiverUserId { get; set; }
 
+    public Guid? DocumentFileResultId { get; set; }
+
     public string ConcurrencyStamp { get; set; } = null!;
 }

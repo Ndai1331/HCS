@@ -19,18 +19,16 @@ public abstract class DocumentFileManagerBase : DomainService
         _documentFileRepository = documentFileRepository;
     }
 
-    public virtual async Task<DocumentFile> CreateAsync(Guid documentId, string name, bool isSigned, DateTime uploadedAt, string? path = null, string? hash = null)
+    public virtual async Task<DocumentFile> CreateAsync(Guid? documentId, string name, bool isSigned, DateTime uploadedAt, string? path = null, string? hash = null)
     {
-        Check.NotNull(documentId, nameof(documentId));
         Check.NotNullOrWhiteSpace(name, nameof(name));
         Check.NotNull(uploadedAt, nameof(uploadedAt));
         var documentFile = new DocumentFile(GuidGenerator.Create(), documentId, name, isSigned, uploadedAt, path, hash);
         return await _documentFileRepository.InsertAsync(documentFile);
     }
 
-    public virtual async Task<DocumentFile> UpdateAsync(Guid id, Guid documentId, string name, bool isSigned, DateTime uploadedAt, string? path = null, string? hash = null, [CanBeNull] string? concurrencyStamp = null)
+    public virtual async Task<DocumentFile> UpdateAsync(Guid id, Guid? documentId, string name, bool isSigned, DateTime uploadedAt, string? path = null, string? hash = null, [CanBeNull] string? concurrencyStamp = null)
     {
-        Check.NotNull(documentId, nameof(documentId));
         Check.NotNullOrWhiteSpace(name, nameof(name));
         Check.NotNull(uploadedAt, nameof(uploadedAt));
         var documentFile = await _documentFileRepository.GetAsync(id);
