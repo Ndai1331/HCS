@@ -392,7 +392,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             // Update all document assignments status to REVOKE
             foreach (var documentAssignment in documentAssignments)
             {
-                documentAssignment.Status = DocumentAssignmentStatus.REVOKED.ToString();
+                documentAssignment.Status = DocumentAssignmentStatus.REVOKE.ToString();
                 await _documentAssignmentRepository.UpdateAsync(documentAssignment);
             }
 

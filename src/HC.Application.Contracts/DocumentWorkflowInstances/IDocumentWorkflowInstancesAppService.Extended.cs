@@ -1,5 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using HC.DocumentWorkflowInstanceLogss;
+using HC.DocumentWorkflowInstanceFiles;
+using HC.DocumentHistories;
+using Volo.Abp.Application.Dtos;
 
 namespace HC.DocumentWorkflowInstances;
 
@@ -30,4 +35,19 @@ public partial interface IDocumentWorkflowInstancesAppService
     /// Filter modes: All, SentToMe, SentByMe, Following
     /// </summary>
     Task<DocumentSigningPageResultDto> GetDocumentSigningListAsync(GetDocumentSigningListInput input);
+
+    /// <summary>
+    /// Get workflow instance logs (with navigation properties) for the action modal
+    /// </summary>
+    Task<List<DocumentWorkflowInstanceLogsWithNavigationPropertiesDto>> GetWorkflowInstanceLogsAsync(Guid workflowInstanceId);
+
+    /// <summary>
+    /// Get workflow instance files (with navigation properties) for the action modal
+    /// </summary>
+    Task<List<DocumentWorkflowInstanceFileWithNavigationPropertiesDto>> GetWorkflowInstanceFilesAsync(Guid workflowInstanceId);
+
+    /// <summary>
+    /// Get document histories (with navigation properties) for the action modal
+    /// </summary>
+    Task<List<DocumentHistoryWithNavigationPropertiesDto>> GetDocumentHistoriesByDocumentIdAsync(Guid documentId);
 }

@@ -23,6 +23,12 @@
 @using Microsoft.AspNetCore.Components
 @using Volo.Abp.Application.Dtos
 
+@using HC.DocumentWorkflowInstanceLogss
+@using HC.DocumentWorkflowInstanceFiles
+@using HC.DocumentHistories
+@using HC.DocumentAssignments
+@using Volo.Abp.Identity
+
 @inherits HCComponentBase
 @inject IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService
 @inject IDocumentsAppService DocumentsAppService
@@ -32,6 +38,7 @@
 @inject IBlockUiService BlockUiService
 @inject NavigationManager NavigationManager
 @inject Volo.Abp.BlobStoring.IBlobContainer BlobContainer
+@inject IJSRuntime JSRuntime
 
 @* ************************* PAGE HEADER ************************* *@
 <PageHeader Title="@L["DocumentSigning"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
@@ -187,9 +194,12 @@
                             Width="280px">
                             <DisplayTemplate>
                                 <div>
-                                    <h6 class="mb-1">@context.DocumentTitle</h6>
+                                    <h6>
+                                        <span class="fw-bolder mb-1">@L["Workflow"]: @context.WorkflowName</span>
+                                    </h6>
+                                    <span class="fw-bold mb-1">@L["Title"]: @context.DocumentTitle</span>
                                     <small class="text-muted">
-                                        <span>#@context.DocumentNo</span> | @context.StorageNumber
+                                        <span>@L["DocumentNumber"]: #@context.DocumentNo</span> | @L["StorageNumber"]:@context.StorageNumber
                                     </small>
                                 </div>
                             </DisplayTemplate>
@@ -234,7 +244,7 @@
                         </DataGridColumn>
 
                         @* My Status *@
-                        <DataGridColumn TItem="DocumentSigningItemDto"
+                        @* <DataGridColumn TItem="DocumentSigningItemDto"
                             Field="MyAssignmentStatus"
                             Caption="@L["MyStatus"]"
                             Width="140px">
@@ -246,7 +256,7 @@
                                     </small>
                                 }
                             </DisplayTemplate>
-                        </DataGridColumn>
+                        </DataGridColumn> *@
 
                         @* Status *@
                         <DataGridColumn TItem="DocumentSigningItemDto"
@@ -269,13 +279,6 @@
                             <DisplayTemplate>
                                 @context.IncommingDate.ToShortDateString()
                             </DisplayTemplate>
-                        </DataGridColumn>
-
-                        @* Workflow Name *@
-                        <DataGridColumn TItem="DocumentSigningItemDto"
-                            Field="WorkflowName"
-                            Caption="@L["Workflow"]"
-                            Width="150px">
                         </DataGridColumn>
                     </DataGridColumns>
                 </DataGrid>
@@ -421,7 +424,13 @@
                 </Card>
             }
 
-            @* Step 3: Attach Files - uses Blazorise Upload event (official pattern for Blazor Server) *@
+            @* Step 3: Signing Content *@
+            <Field Class="mt-3">
+                <FieldLabel>@L["SigningContent"]</FieldLabel>
+                <MemoEdit Rows="3" @bind-Text="@SigningContent" Placeholder="@L["EnterSigningContent"]" />
+            </Field>
+
+            @* Step 4: Attach Files - uses Blazorise Upload event (official pattern for Blazor Server) *@
             <Field Class="mt-2">
                 <FieldLabel>@L["AttachFiles"]</FieldLabel>
                 <FilePicker @ref="WorkflowFilePicker"
@@ -466,75 +475,270 @@
 </Modal>
 
 @* ************************* MODAL: WORKFLOW ACTION (Approve/Return/Reject) ************************* *@
-<Modal @ref="WorkflowActionModal" Closing="@WorkflowActionModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true" Size="ModalSize.Default">
+<Modal @ref="WorkflowActionModal" Closing="@WorkflowActionModal.CancelClosingModalWhenFocusLost" Class="signing-action-modal">
+    <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
         <ModalHeader>
             <ModalTitle>@L["ProcessSigning"]</ModalTitle>
             <CloseButton Clicked="CloseActionModalAsync" />
         </ModalHeader>
-        <ModalBody>
-            @if (SelectedDocumentForAction != null)
-            {
-                <Alert Color="Color.Info" Visible="true" Class="mb-3">
-                    <AlertMessage>
-                        <i class="bi bi-file-earmark-text me-1"></i>@L["Document"]:
-                    </AlertMessage>
-                    <AlertDescription>
-                        @SelectedDocumentForAction.DocumentTitle - #@SelectedDocumentForAction.DocumentNo
-                    </AlertDescription>
-                </Alert>
+        <ModalBody Style="padding: 5px !important;">
+            <Row>
+                @* ===== LEFT COLUMN: Action Form ===== *@
+                <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile" Style="padding-right: 0px !important;">
+                    <Card Class="h-100">
+                        <CardHeader Class="p-2">
+                            <Heading Size="HeadingSize.Is6" Class="fw-bolder mb-0">
+                                <i class="bi bi-pencil-square me-2 text-primary"></i>@L["ProcessSigning"]
+                            </Heading>
+                        </CardHeader>
+                        <CardBody Style="padding: 1rem !important;">
+                            @if (SelectedDocumentForAction != null)
+                            {
+                                <div class="mb-3 p-3 rounded" style="background-color: var(--lpx-content-bg);">
+                                    <div class="d-flex align-items-start mb-2">
+                                        <i class="bi bi-file-earmark-text text-primary me-2" style="font-size: 1.1rem; margin-top: 2px;"></i>
+                                        <div>
+                                            <label class="form-label fw-bold mb-0">@L["Document"]</label>
+                                            <div class="small">@SelectedDocumentForAction.DocumentTitle - #@SelectedDocumentForAction.DocumentNo</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-start">
+                                        <i class="bi bi-signpost-split text-success me-2" style="font-size: 1.1rem; margin-top: 2px;"></i>
+                                        <div>
+                                            <label class="form-label fw-bold mb-0">@L["CurrentStep"]</label>
+                                            <div class="small">
+                                                @SelectedDocumentForAction.CurrentStepName
+                                                <span class="badge bg-primary ms-1">@L["Step"] @SelectedDocumentForAction.CurrentStepOrder / @SelectedDocumentForAction.TotalSteps</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
 
-                <Alert Color="Color.Light" Visible="true" Class="mb-3">
-                    <AlertDescription>
-                        <strong>@L["CurrentStep"]:</strong> @SelectedDocumentForAction.CurrentStepName
-                        (@L["Step"] @SelectedDocumentForAction.CurrentStepOrder / @SelectedDocumentForAction.TotalSteps)
-                    </AlertDescription>
-                </Alert>
-            }
+                            @* Action selection *@
+                            <Field>
+                                <FieldLabel class="fw-bold">@L["SelectAction"] <span class="text-danger">*</span></FieldLabel>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="workflowAction" id="approveAction"
+                                        @onchange="@(() => SelectedAction = "APPROVE")"
+                                        checked="@(SelectedAction == "APPROVE")">
+                                    <label class="form-check-label" for="approveAction">
+                                        <strong class="text-success">
+                                            <i class="bi bi-check-circle me-1"></i>@L["Approve"]
+                                        </strong>
+                                        <small class="d-block text-muted">@L["ApproveDescription"]</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="workflowAction" id="returnAction"
+                                        @onchange="@(() => SelectedAction = "RETURN")"
+                                        checked="@(SelectedAction == "RETURN")">
+                                    <label class="form-check-label" for="returnAction">
+                                        <strong class="text-warning">
+                                            <i class="bi bi-arrow-return-left me-1"></i>@L["Return"]
+                                        </strong>
+                                        <small class="d-block text-muted">@L["ReturnDescription"]</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="workflowAction" id="rejectAction"
+                                        @onchange="@(() => SelectedAction = "REJECT")"
+                                        checked="@(SelectedAction == "REJECT")">
+                                    <label class="form-check-label" for="rejectAction">
+                                        <strong class="text-danger">
+                                            <i class="bi bi-x-circle me-1"></i>@L["Reject"]
+                                        </strong>
+                                        <small class="d-block text-muted">@L["RejectDescription"]</small>
+                                    </label>
+                                </div>
+                            </Field>
 
-            @* Action selection *@
-            <Field>
-                <FieldLabel>@L["SelectAction"] <span class="text-danger">*</span></FieldLabel>
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="workflowAction" id="approveAction"
-                        @onchange="@(() => SelectedAction = "APPROVED")"
-                        checked="@(SelectedAction == "APPROVED")">
-                    <label class="form-check-label" for="approveAction">
-                        <strong class="text-success">
-                            <i class="bi bi-check-circle me-1"></i>@L["Approve"]
-                        </strong>
-                        <small class="d-block text-muted">@L["ApproveDescription"]</small>
-                    </label>
-                </div>
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="workflowAction" id="returnAction"
-                        @onchange="@(() => SelectedAction = "RETURNED")"
-                        checked="@(SelectedAction == "RETURNED")">
-                    <label class="form-check-label" for="returnAction">
-                        <strong class="text-warning">
-                            <i class="bi bi-arrow-return-left me-1"></i>@L["Return"]
-                        </strong>
-                        <small class="d-block text-muted">@L["ReturnDescription"]</small>
-                    </label>
-                </div>
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="workflowAction" id="rejectAction"
-                        @onchange="@(() => SelectedAction = "REJECTED")"
-                        checked="@(SelectedAction == "REJECTED")">
-                    <label class="form-check-label" for="rejectAction">
-                        <strong class="text-danger">
-                            <i class="bi bi-x-circle me-1"></i>@L["Reject"]
-                        </strong>
-                        <small class="d-block text-muted">@L["RejectDescription"]</small>
-                    </label>
-                </div>
-            </Field>
+                            @* Note *@
+                            <Field>
+                                <FieldLabel class="fw-bold">@L["Note"]</FieldLabel>
+                                <MemoEdit Rows="3" @bind-Text="@ActionNote" Placeholder="@L["EnterNoteOptional"]" />
+                            </Field>
+                        </CardBody>
+                    </Card>
+                </Column>
 
-            @* Note *@
-            <Field>
-                <FieldLabel>@L["Note"]</FieldLabel>
-                <MemoEdit Rows="3" @bind-Text="@ActionNote" Placeholder="@L["EnterNoteOptional"]" />
-            </Field>
+                @* ===== RIGHT COLUMN: Tabs ===== *@
+                <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile" Class="d-flex flex-column">
+                    <Tabs SelectedTab="@ActionModalActiveTab" SelectedTabChanged="@(name => ActionModalActiveTab = name)" Pills Class="w-100 bg-white p-1">
+                        <Items>
+                            <Tab Name="general" Class="w-auto me-1">
+                                <i class="bi bi-info-circle me-1"></i>@L["GeneralInfo"]
+                            </Tab>
+                            <Tab Name="workflowHistory" Class="w-auto">
+                                <i class="bi bi-clock-history me-1"></i>@L["WorkflowHistory"]
+                            </Tab>
+                        </Items>
+                        <Content>
+                            @* ===== TAB 1: General Info (DocumentHistory + Files) ===== *@
+                            <TabPanel Name="general">
+                                @* Document History *@
+                                <Card Class="mt-2 mb-2">
+                                    <CardHeader Class="p-2">
+                                        <Heading Size="HeadingSize.Is6" Class="fw-bolder mb-0">
+                                            <i class="bi bi-chat-left-text me-2 text-info"></i>@L["DocumentHistory"]
+                                            @if (DocumentHistories.Any())
+                                            {
+                                                <Badge Color="Color.Info" Pill Class="ms-2 text-white">@DocumentHistories.Count</Badge>
+                                            }
+                                        </Heading>
+                                    </CardHeader>
+                                    <CardBody Style="max-height: 230px; overflow-y: auto; padding: 0.75rem !important;">
+                                        @if (IsLoadingHistories)
+                                        {
+                                            <div class="text-center py-3">
+                                                <RadarSpinner />
+                                            </div>
+                                        }
+                                        else if (!DocumentHistories.Any())
+                                        {
+                                            <div class="text-center text-muted py-3">
+                                                <i class="bi bi-chat-left-dots" style="font-size: 1.5rem;"></i>
+                                                <p class="mt-2 mb-0 small">@L["NoDataAvailable"]</p>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var history in DocumentHistories)
+                                            {
+                                                <div class="d-flex mb-2 p-2 border rounded">
+                                                    <div class="me-2 mt-1">
+                                                        <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; flex-shrink: 0;">
+                                                            <i class="bi bi-person-fill" style="font-size: 0.8rem;"></i>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1" style="min-width: 0;">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <strong style="font-size: 0.8rem;">@(history.FromUser?.Name ?? history.FromUser?.UserName ?? "---")</strong>
+                                                            <small class="text-muted" style="font-size: 0.7rem;">@history.DocumentHistory.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
+                                                        </div>
+                                                        <div style="font-size: 0.8rem;">
+                                                            <span class="badge bg-info text-white me-1" style="font-size: 0.7rem;">@L[history.DocumentHistory.Action]</span>
+                                                            <i class="bi bi-arrow-right mx-1 text-muted"></i>
+                                                            <span class="text-muted">@(history.ToUser?.Name ?? history.ToUser?.UserName ?? "---")</span>
+                                                        </div>
+                                                        @if (!string.IsNullOrWhiteSpace(history.DocumentHistory.Comment))
+                                                        {
+                                                            <div class="mt-1 p-1 bg-light rounded" style="font-size: 0.8rem;">
+                                                                <small>@history.DocumentHistory.Comment</small>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                    </CardBody>
+                                </Card>
+
+                                @* Attached Files *@
+                                @if (IsLoadingFiles || WorkflowFiles.Any())
+                                {
+                                    <Card Class="mt-2">
+                                        <CardHeader Class="p-2">
+                                            <Heading Size="HeadingSize.Is6" Class="fw-bolder mb-0">
+                                                <i class="bi bi-paperclip me-2 text-warning"></i>@L["AttachedFiles"]
+                                                @if (WorkflowFiles.Any())
+                                                {
+                                                    <Badge Color="Color.Warning" Pill Class="ms-2 text-white">@WorkflowFiles.Count</Badge>
+                                                }
+                                            </Heading>
+                                        </CardHeader>
+                                        <CardBody Style="max-height: 170px; overflow-y: auto; padding: 0.75rem !important;">
+                                            @if (IsLoadingFiles)
+                                            {
+                                                <div class="text-center py-3">
+                                                    <RadarSpinner />
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                @foreach (var file in WorkflowFiles)
+                                                {
+                                                    <div class="d-flex align-items-center mb-2 p-2 border rounded">
+                                                        <i class="bi bi-file-earmark-text me-2 text-warning" style="font-size: 1.2rem;"></i>
+                                                        <div class="flex-grow-1 overflow-hidden">
+                                                            <div class="text-truncate fw-bold" style="font-size: 0.85rem;">@file.DocumentFile.Name</div>
+                                                            <small class="text-muted" style="font-size: 0.7rem;">
+                                                                @file.DocumentFile.UploadedAt.ToString("dd/MM/yyyy HH:mm")
+                                                                @if (file.DocumentFile.IsSigned)
+                                                                {
+                                                                    <span class="badge bg-success ms-1" style="font-size: 0.65rem;">@L["Signed"]</span>
+                                                                }
+                                                            </small>
+                                                        </div>
+                                                        <Button Color="Color.Primary" Size="Size.Small" Class="ms-2" Clicked="@(() => DownloadFileAsync(file.DocumentFile.Path, file.DocumentFile.Name))">
+                                                            <Icon Name="IconName.Download" />
+                                                        </Button>
+                                                    </div>
+                                                }
+                                            }
+                                        </CardBody>
+                                    </Card>
+                                }
+                            </TabPanel>
+
+                            @* ===== TAB 2: Workflow History (Logs) ===== *@
+                            <TabPanel Name="workflowHistory">
+                                <Card Class="mt-2">
+                                    <CardBody Style="max-height: 450px; overflow-y: auto; padding: 0.75rem !important;">
+                                        @if (IsLoadingLogs)
+                                        {
+                                            <div class="text-center py-3">
+                                                <RadarSpinner />
+                                            </div>
+                                        }
+                                        else if (!WorkflowLogs.Any())
+                                        {
+                                            <div class="text-center text-muted py-3">
+                                                <i class="bi bi-clock-history" style="font-size: 2rem;"></i>
+                                                <p class="mt-2 mb-0">@L["NoWorkflowLogs"]</p>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var log in WorkflowLogs.OrderByDescending(l => l.DocumentWorkflowInstanceLogs.CreationTime))
+                                            {
+                                                <div class="d-flex mb-3">
+                                                    <div class="me-2 mt-1">
+                                                        <span class="badge rounded-circle @GetLogActionBadgeClass(log.DocumentWorkflowInstanceLogs.Action)" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                                            <i class="@GetLogActionIcon(log.DocumentWorkflowInstanceLogs.Action)"></i>
+                                                        </span>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <strong class="small">@(log.ActorUser?.Name ?? log.ActorUser?.UserName ?? "---")</strong>
+                                                            <small class="text-muted" style="font-size: 0.75rem;">@log.DocumentWorkflowInstanceLogs.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
+                                                        </div>
+                                                        <div>
+                                                            <small class="badge @GetLogActionBadgeClass(log.DocumentWorkflowInstanceLogs.Action) me-1">
+                                                                @L[log.DocumentWorkflowInstanceLogs.Action]
+                                                            </small>
+                                                            @if (!string.IsNullOrWhiteSpace(log.DocumentWorkflowInstanceLogs.ActorRole))
+                                                            {
+                                                                <small class="text-muted">(@L[log.DocumentWorkflowInstanceLogs.ActorRole])</small>
+                                                            }
+                                                        </div>
+                                                        @if (!string.IsNullOrWhiteSpace(log.DocumentWorkflowInstanceLogs.Note))
+                                                        {
+                                                            <div class="mt-1 p-2 bg-light rounded">
+                                                                <small>@log.DocumentWorkflowInstanceLogs.Note</small>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                    </CardBody>
+                                </Card>
+                            </TabPanel>
+                        </Content>
+                    </Tabs>
+                </Column>
+            </Row>
         </ModalBody>
         <ModalFooter>
             <Button Color="Color.Secondary" Clicked="CloseActionModalAsync">@L["Cancel"]</Button>
@@ -544,3 +748,61 @@
         </ModalFooter>
     </ModalContent>
 </Modal>
+
+<style>
+    .signing-action-modal .modal-body {
+        background-color: var(--lpx-content-bg);
+    }
+
+    .signing-action-modal .card {
+        background-color: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.125);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .signing-action-modal .card-header {
+        background-color: #ffffff;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .signing-action-modal .card-body {
+        padding: 1rem !important;
+    }
+
+    .signing-action-modal .nav-pills .nav-link {
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .signing-action-modal .nav-pills .nav-link.active {
+        background-color: #f72585;
+        color: #fff !important;
+    }
+
+    .signing-action-modal .nav-pills .nav-link {
+        border:1px solid #f72585;
+    }
+
+    /* Make right column tabs fill full height to match left card */
+    .signing-action-modal .tabs {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .signing-action-modal .tab-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .signing-action-modal .tab-content > .tab-pane.active {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .signing-action-modal .tab-content > .tab-pane.active > .card:first-child {
+        flex: 1;
+    }
+</style>

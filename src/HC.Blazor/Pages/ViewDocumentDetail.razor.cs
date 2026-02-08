@@ -145,7 +145,7 @@ public partial class ViewDocumentDetail
             if (assignments != null && assignments.TotalCount > 0)
             {
                 var assignment = assignments.Items.FirstOrDefault();
-                if (assignment != null && assignment.DocumentAssignment.Status == DocumentAssignmentStatus.REVOKED.ToString())
+                if (assignment != null && assignment.DocumentAssignment.Status == DocumentAssignmentStatus.REVOKE.ToString())
                 {
                     IsDocumentRevoked = true;
                 }

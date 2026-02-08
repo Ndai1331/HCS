@@ -877,6 +877,7 @@ public partial class Index
             {
                 await UiMessageService.Warn(L["NoPdfAvailable"], 
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                await BlockUiService.UnBlock();
                 return;
             }
             var fileBytes = await BlobContainer.GetAllBytesAsync(path);

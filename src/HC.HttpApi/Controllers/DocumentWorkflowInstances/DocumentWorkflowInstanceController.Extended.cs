@@ -1,11 +1,15 @@
 using Asp.Versioning;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 using HC.DocumentWorkflowInstances;
+using HC.DocumentWorkflowInstanceLogss;
+using HC.DocumentWorkflowInstanceFiles;
+using HC.DocumentHistories;
 using HC.Shared;
 
 namespace HC.Controllers.DocumentWorkflowInstances;
@@ -53,5 +57,26 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     public Task<DocumentSigningPageResultDto> GetDocumentSigningListAsync([FromQuery] GetDocumentSigningListInput input)
     {
         return _documentWorkflowInstancesAppService.GetDocumentSigningListAsync(input);
+    }
+
+    [HttpGet]
+    [Route("workflow-instance-logs/{workflowInstanceId}")]
+    public Task<List<DocumentWorkflowInstanceLogsWithNavigationPropertiesDto>> GetWorkflowInstanceLogsAsync(Guid workflowInstanceId)
+    {
+        return _documentWorkflowInstancesAppService.GetWorkflowInstanceLogsAsync(workflowInstanceId);
+    }
+
+    [HttpGet]
+    [Route("workflow-instance-files/{workflowInstanceId}")]
+    public Task<List<DocumentWorkflowInstanceFileWithNavigationPropertiesDto>> GetWorkflowInstanceFilesAsync(Guid workflowInstanceId)
+    {
+        return _documentWorkflowInstancesAppService.GetWorkflowInstanceFilesAsync(workflowInstanceId);
+    }
+
+    [HttpGet]
+    [Route("document-histories/{documentId}")]
+    public Task<List<DocumentHistoryWithNavigationPropertiesDto>> GetDocumentHistoriesByDocumentIdAsync(Guid documentId)
+    {
+        return _documentWorkflowInstancesAppService.GetDocumentHistoriesByDocumentIdAsync(documentId);
     }
 }

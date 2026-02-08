@@ -38,4 +38,9 @@ public class SubmitToWorkflowInput
     /// Optional: List of DocumentFile IDs to attach as DocumentWorkflowInstanceFiles
     /// </summary>
     public List<Guid>? AttachedFileIds { get; set; }
+
+    /// <summary>
+    /// Signing content/comment - saved to DocumentHistory.Comment
+    /// </summary>
+    public string? SigningContent { get; set; }
 }

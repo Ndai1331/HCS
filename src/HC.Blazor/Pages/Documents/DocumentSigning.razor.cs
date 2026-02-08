@@ -12,12 +12,18 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.Documents;
 using HC.DocumentFiles;
+using HC.DocumentAssignments;
 using HC.DocumentWorkflowInstances;
+using HC.DocumentWorkflowInstanceLogss;
+using HC.DocumentWorkflowInstanceFiles;
+using HC.DocumentHistories;
 using HC.Permissions;
 using HC.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 using Volo.Abp.AspNetCore.Components.Messages;
+using Volo.Abp.BlobStoring;
 
 namespace HC.Blazor.Pages.Documents;
 
@@ -67,6 +73,9 @@ public partial class DocumentSigning
     private DocumentWithNavigationPropertiesDto? SelectedDocumentDto { get; set; }
     private int ModalResetKey { get; set; } // Used to force re-render Autocomplete via @key
 
+    // Signing content
+    private string? SigningContent { get; set; }
+
     // File upload in submit modal
     private FilePicker? WorkflowFilePicker { get; set; }
     private List<UploadedFileInfo> UploadedFiles { get; set; } = new();
@@ -74,8 +83,17 @@ public partial class DocumentSigning
     // Action Modal
     private Modal WorkflowActionModal { get; set; } = new();
     private DocumentSigningItemDto? SelectedDocumentForAction { get; set; }
-    private string SelectedAction { get; set; } = "APPROVED";
+    private string SelectedAction { get; set; } = nameof(WorkflowInstanceLogAction.APPROVE);
     private string? ActionNote { get; set; }
+
+    // Action Modal - Tabs, Logs, Files, DocumentHistory
+    private string ActionModalActiveTab { get; set; } = "general"; // "general" | "workflowHistory"
+    private List<DocumentWorkflowInstanceLogsWithNavigationPropertiesDto> WorkflowLogs { get; set; } = new();
+    private List<DocumentWorkflowInstanceFileWithNavigationPropertiesDto> WorkflowFiles { get; set; } = new();
+    private List<DocumentHistoryWithNavigationPropertiesDto> DocumentHistories { get; set; } = new();
+    private bool IsLoadingLogs { get; set; }
+    private bool IsLoadingFiles { get; set; }
+    private bool IsLoadingHistories { get; set; }
 
     // Debounce
     private CancellationTokenSource? SearchDebounceCts { get; set; }
@@ -195,6 +213,69 @@ public partial class DocumentSigning
         }
     }
 
+    /// <summary>
+    /// Load workflow instance logs for the action modal
+    /// </summary>
+    private async Task LoadWorkflowLogsAsync(Guid workflowInstanceId)
+    {
+        IsLoadingLogs = true;
+        try
+        {
+            WorkflowLogs = await DocumentWorkflowInstancesAppService.GetWorkflowInstanceLogsAsync(workflowInstanceId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading workflow logs for instance {InstanceId}", workflowInstanceId);
+            WorkflowLogs = new();
+        }
+        finally
+        {
+            IsLoadingLogs = false;
+        }
+    }
+
+    /// <summary>
+    /// Load workflow instance files for the action modal
+    /// </summary>
+    private async Task LoadWorkflowFilesAsync(Guid workflowInstanceId)
+    {
+        IsLoadingFiles = true;
+        try
+        {
+            WorkflowFiles = await DocumentWorkflowInstancesAppService.GetWorkflowInstanceFilesAsync(workflowInstanceId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading workflow files for instance {InstanceId}", workflowInstanceId);
+            WorkflowFiles = new();
+        }
+        finally
+        {
+            IsLoadingFiles = false;
+        }
+    }
+
+    /// <summary>
+    /// Load document histories for the action modal
+    /// </summary>
+    private async Task LoadDocumentHistoriesAsync(Guid documentId)
+    {
+        IsLoadingHistories = true;
+        try
+        {
+            DocumentHistories = await DocumentWorkflowInstancesAppService.GetDocumentHistoriesByDocumentIdAsync(documentId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading document histories for document {DocumentId}", documentId);
+            DocumentHistories = new();
+        }
+        finally
+        {
+            IsLoadingHistories = false;
+        }
+    }
+
     #endregion
 
     #region Filter Events
@@ -281,6 +362,7 @@ public partial class DocumentSigning
             WorkflowSubmitInfo = null;
             UseTemplateFile = true;
             UseWorkflowTemplateFile = false;
+            SigningContent = null;
             UploadedFiles.Clear();
             ModalResetKey++; // Force re-render Autocomplete to clear text
 
@@ -441,6 +523,7 @@ public partial class DocumentSigning
                 WorkflowId = SelectedWorkflowId.Value,
                 UseWorkflowTemplateFile = UseWorkflowTemplateFile,
                 UseTemplateFile = UseTemplateFile,
+                SigningContent = SigningContent,
                 AttachedFileIds = UploadedFiles.Any()
                     ? UploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null
@@ -473,8 +556,25 @@ public partial class DocumentSigning
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             SelectedDocumentForAction = document;
-            SelectedAction = "APPROVED";
+            SelectedAction = nameof(WorkflowInstanceLogAction.APPROVE);
             ActionNote = null;
+            ActionModalActiveTab = "general";
+            WorkflowLogs = new();
+            WorkflowFiles = new();
+            DocumentHistories = new();
+
+            // Load all data in parallel
+            var tasks = new List<Task>();
+
+            if (document.WorkflowInstanceId.HasValue)
+            {
+                tasks.Add(LoadWorkflowLogsAsync(document.WorkflowInstanceId.Value));
+                tasks.Add(LoadWorkflowFilesAsync(document.WorkflowInstanceId.Value));
+            }
+
+            tasks.Add(LoadDocumentHistoriesAsync(document.DocumentId));
+
+            await Task.WhenAll(tasks);
         }
         catch (Exception ex)
         {
@@ -511,9 +611,9 @@ public partial class DocumentSigning
             // Confirmation message based on action
             var confirmMessage = SelectedAction switch
             {
-                "APPROVED" => L["ConfirmApprove"],
-                "RETURNED" => L["ConfirmReturn"],
-                "REJECTED" => L["ConfirmReject"],
+                nameof(WorkflowInstanceLogAction.APPROVE) => L["ConfirmApprove"],
+                nameof(WorkflowInstanceLogAction.RETURN) => L["ConfirmReturn"],
+                nameof(WorkflowInstanceLogAction.REJECT) => L["ConfirmReject"],
                 _ => L["ConfirmAction"]
             };
 
@@ -535,9 +635,9 @@ public partial class DocumentSigning
             // Success message based on action
             var successMessage = SelectedAction switch
             {
-                "APPROVED" => L["DocumentApprovedSuccessfully"],
-                "RETURNED" => L["DocumentReturnedSuccessfully"],
-                "REJECTED" => L["DocumentRejectedSuccessfully"],
+                nameof(WorkflowInstanceLogAction.APPROVE) => L["DocumentApprovedSuccessfully"],
+                nameof(WorkflowInstanceLogAction.RETURN) => L["DocumentReturnedSuccessfully"],
+                nameof(WorkflowInstanceLogAction.REJECT) => L["DocumentRejectedSuccessfully"],
                 _ => L["ActionCompletedSuccessfully"]
             };
 
@@ -569,30 +669,50 @@ public partial class DocumentSigning
 
     private string GetWorkflowStatusBadgeClass(string status) => status switch
     {
-        "IN_PROGRESS" => "bg-info text-white",
-        "COMPLETED" => "bg-success text-white",
-        "REJECTED" => "bg-danger text-white",
-        "RETURNED" => "bg-warning text-dark",
-        "CANCELLED" => "bg-secondary text-white",
-        "DRAFT" => "bg-light text-dark",
+        nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS) => "bg-info text-white",
+        nameof(DocumentWorkflowInstanceStatus.COMPLETED) => "bg-success text-white",
+        nameof(DocumentWorkflowInstanceStatus.REJECTED) => "bg-danger text-white",
+        nameof(DocumentWorkflowInstanceStatus.RETURNED) => "bg-warning text-dark",
+        nameof(DocumentWorkflowInstanceStatus.CANCELLED) => "bg-secondary text-white",
+        nameof(DocumentWorkflowInstanceStatus.DRAFT) => "bg-light text-dark",
         _ => "bg-secondary text-white"
     };
 
     private string GetAssignmentStatusBadgeClass(string status) => status switch
     {
-        "PENDING" => "bg-warning text-dark",
-        "DONE" => "bg-success text-white",
-        "REJECTED" => "bg-danger text-white",
-        "REVOKED" => "bg-secondary text-white",
+        nameof(DocumentAssignmentStatus.PENDING) => "bg-warning text-dark",
+        nameof(DocumentAssignmentStatus.DONE) => "bg-success text-white",
+        nameof(DocumentAssignmentStatus.REJECTED) => "bg-danger text-white",
+        nameof(DocumentAssignmentStatus.REVOKE) => "bg-secondary text-white",
         _ => "bg-secondary text-white"
     };
 
     private Color GetActionButtonColor() => SelectedAction switch
     {
-        "APPROVED" => Color.Success,
-        "RETURNED" => Color.Warning,
-        "REJECTED" => Color.Danger,
+        nameof(WorkflowInstanceLogAction.APPROVE) => Color.Success,
+        nameof(WorkflowInstanceLogAction.RETURN) => Color.Warning,
+        nameof(WorkflowInstanceLogAction.REJECT) => Color.Danger,
         _ => Color.Primary
+    };
+
+    private string GetLogActionBadgeClass(string action) => action switch
+    {
+        nameof(WorkflowInstanceLogAction.SUBMIT_WORKFLOW) => "bg-primary text-white",
+        nameof(WorkflowInstanceLogAction.APPROVE) => "bg-success text-white",
+        nameof(WorkflowInstanceLogAction.RETURN) => "bg-warning text-dark",
+        nameof(WorkflowInstanceLogAction.REJECT) => "bg-danger text-white",
+        nameof(WorkflowInstanceLogAction.SIGN) => "bg-success text-white",
+        _ => "bg-secondary text-white"
+    };
+
+    private string GetLogActionIcon(string action) => action switch
+    {
+        nameof(WorkflowInstanceLogAction.SUBMIT_WORKFLOW) => "bi bi-play-circle-fill",
+        nameof(WorkflowInstanceLogAction.APPROVE) => "bi bi-check-circle-fill",
+        nameof(WorkflowInstanceLogAction.RETURN) => "bi bi-arrow-return-left",
+        nameof(WorkflowInstanceLogAction.REJECT) => "bi bi-x-circle-fill",
+        nameof(WorkflowInstanceLogAction.SIGN) => "bi bi-pen-fill",
+        _ => "bi bi-circle"
     };
 
     private void NavigateToDocumentDetail(Guid documentId)
@@ -612,6 +732,50 @@ public partial class DocumentSigning
             "Are you sure you want to clear the selected files?" => L["FilePicker:ClearConfirmation"],
             _ => L[name] ?? name
         };
+    }
+
+    #endregion
+
+    #region File Download
+
+    private async Task DownloadFileAsync(string? filePath, string fileName)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return;
+
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            var fileBytes = await BlobContainer.GetAllBytesAsync(filePath);
+
+            // Create blob URL and download using JavaScript
+            var base64 = Convert.ToBase64String(fileBytes);
+            var contentType = "application/octet-stream";
+            var jsCode = $@"
+                (function() {{
+                    const blob = new Blob([Uint8Array.from(atob('{base64}'), c => c.charCodeAt(0))], {{ type: '{contentType}' }});
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = '{fileName}';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                }})();
+            ";
+
+            await JSRuntime.InvokeVoidAsync("eval", jsCode);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error downloading file. FilePath: {filePath}, FileName: {fileName}");
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     #endregion
