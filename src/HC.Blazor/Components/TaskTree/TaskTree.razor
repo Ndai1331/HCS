@@ -4,6 +4,7 @@
 <DataGrid TItem="ProjectTaskWithNavigationPropertiesDto"
         Data="@Tasks"
         ShowPager="false"
+        ShowHeader="@(Level == 0)"
         Responsive="true"
         Class="@("child-tasks-grid " + (Level == 0 ? "" : $"level-{Level}"))"
         DetailRowTrigger="@DetailRowTriggerHandler">
@@ -20,7 +21,7 @@
             @* Expand/Collapse column for root level *@
             <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
                             Field="ProjectTask.Id"
-                            Width="0.5rem">
+                            Width="55px">
                 <DisplayTemplate Context="task">
                     @if (GetChildTaskCount(task) > 0)
                     {
@@ -44,7 +45,7 @@
             </DataGridColumn>
             <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto"
                             Field="ProjectTask.Id"
-                            Width="0.5rem">
+                            Width="55px">
                 <DisplayTemplate Context="task">
                     @if (GetChildTaskCount(task) > 0)
                     {
@@ -61,32 +62,51 @@
             </DataGridColumn>
         }
 
-        <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Code" Caption="@CodeCaption">
-            <DisplayTemplate Context="task">
-                <a target="_blank" href="@GetTaskDetailUrl(task)">
-                    <span>#@GetTaskCode(task)</span>
-                </a>
-            </DisplayTemplate>
-        </DataGridColumn>
-        <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Title" Caption="@TitleCaption">
-            <DisplayTemplate Context="task">
-                @* @if (Level > 0 && !string.IsNullOrWhiteSpace(GetTaskParentTaskId(task)))
-                {
-                    <div class="text-muted">
-                        @ParentTaskTitleLabel: #@GetTaskParentTaskId(task) - @GetParentTaskTitle(task)
+        @if (Level == 0)
+        {
+            @* Root level: Code and Title in separate columns *@
+            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Code" Caption="@CodeCaption">
+                <DisplayTemplate Context="task">
+                    <a target="_blank" href="@GetTaskDetailUrl(task)">
+                        <span>#@GetTaskCode(task)</span>
+                    </a>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Title" Caption="@TitleCaption">
+                <DisplayTemplate Context="task">
+                    <div class="d-flex align-items-center gap-2">
+                        <span>@GetTaskTitle(task)</span>
+                        @* @if (GetChildTaskCount(task) > 0)
+                        {
+                            <span class="text-muted">
+                                <i aria-hidden="true" class="fa fa-list me-1"></i>@GetChildTaskCount(task)
+                            </span>
+                        } *@
                     </div>
-                } *@
-                <div class="d-flex align-items-center gap-2">
-                    <span>@GetTaskTitle(task)</span>
-                    @if (GetChildTaskCount(task) > 0)
-                    {
-                        <span class="text-muted">
-                            <i aria-hidden="true" class="fa fa-list me-1"></i>@GetChildTaskCount(task)
-                        </span>
-                    }
-                </div>
-            </DisplayTemplate>
-        </DataGridColumn>
+                </DisplayTemplate>
+            </DataGridColumn>
+        }
+        else
+        {
+            @* Child level: Code and Title merged in one column *@
+            <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Title" Caption="@TitleCaption">
+                <DisplayTemplate Context="task">
+                    <div class="d-flex align-items-center gap-2">
+                        <a target="_blank" href="@GetTaskDetailUrl(task)">
+                            <span>#@GetTaskCode(task)</span>
+                        </a>
+                        <span> - @GetTaskTitle(task)</span>
+                        @* @if (GetChildTaskCount(task) > 0)
+                        {
+                            <span class="text-muted">
+                                <i aria-hidden="true" class="fa fa-list me-1"></i>@GetChildTaskCount(task)
+                            </span>
+                        } *@
+                    </div>
+                </DisplayTemplate>
+            </DataGridColumn>
+        }
+
         <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.StartDate" Caption="@StartDateCaption">
             <DisplayTemplate Context="task">
                 @GetTaskStartDate(task).ToString("dd/MM/yyyy HH:mm")
@@ -127,38 +147,36 @@
             var childTasks = GetChildTasksForTask(task);
             if (childTasks != null && childTasks.Count > 0)
             {
-                <div class="bg-light rounded p-3 pb-2">
-                    @* Recursive call to render child tasks *@
-                    <TaskTree Tasks="@childTasks"
-                             Level="@(Level + 1)"
-                             ChildTasksByParentCode="@ChildTasksByParentCode"
-                             ExpandedTasks="@ExpandedTasks"
-                             OnTaskExpanded="@HandleTaskExpanded"
-                             GetChildTaskCount="@GetChildTaskCount"
-                             GetChildTasksForTask="@GetChildTasksForTask"
-                             GetTaskCode="@GetTaskCode"
-                             GetTaskTitle="@GetTaskTitle"
-                             GetTaskStartDate="@GetTaskStartDate"
-                             GetTaskDueDate="@GetTaskDueDate"
-                             GetTaskStatus="@GetTaskStatus"
-                             GetTaskPriority="@GetTaskPriority"
-                             GetTaskProgressPercent="@GetTaskProgressPercent"
-                             GetTaskDetailUrl="@GetTaskDetailUrl"
-                             GetTaskParentTaskId="@GetTaskParentTaskId"
-                             GetParentTaskTitle="@GetParentTaskTitle"
-                             CodeCaption="@CodeCaption"
-                             TitleCaption="@TitleCaption"
-                             StartDateCaption="@StartDateCaption"
-                             DueDateCaption="@DueDateCaption"
-                             StatusCaption="@StatusCaption"
-                             PriorityCaption="@PriorityCaption"
-                             ProgressPercentCaption="@ProgressPercentCaption"
-                             ParentTaskTitleLabel="@ParentTaskTitleLabel"
-                             GetStatusBadgeColor="@GetStatusBadgeColor"
-                             GetPriorityBadgeColor="@GetPriorityBadgeColor"
-                             GetStatusText="@GetStatusText"
-                             GetPriorityText="@GetPriorityText" />
-                </div>
+                @* Direct rendering without container - child rows look like regular rows *@
+                <TaskTree Tasks="@childTasks"
+                         Level="@(Level + 1)"
+                         ChildTasksByParentCode="@ChildTasksByParentCode"
+                         ExpandedTasks="@ExpandedTasks"
+                         OnTaskExpanded="@HandleTaskExpanded"
+                         GetChildTaskCount="@GetChildTaskCount"
+                         GetChildTasksForTask="@GetChildTasksForTask"
+                         GetTaskCode="@GetTaskCode"
+                         GetTaskTitle="@GetTaskTitle"
+                         GetTaskStartDate="@GetTaskStartDate"
+                         GetTaskDueDate="@GetTaskDueDate"
+                         GetTaskStatus="@GetTaskStatus"
+                         GetTaskPriority="@GetTaskPriority"
+                         GetTaskProgressPercent="@GetTaskProgressPercent"
+                         GetTaskDetailUrl="@GetTaskDetailUrl"
+                         GetTaskParentTaskId="@GetTaskParentTaskId"
+                         GetParentTaskTitle="@GetParentTaskTitle"
+                         CodeCaption="@CodeCaption"
+                         TitleCaption="@TitleCaption"
+                         StartDateCaption="@StartDateCaption"
+                         DueDateCaption="@DueDateCaption"
+                         StatusCaption="@StatusCaption"
+                         PriorityCaption="@PriorityCaption"
+                         ProgressPercentCaption="@ProgressPercentCaption"
+                         ParentTaskTitleLabel="@ParentTaskTitleLabel"
+                         GetStatusBadgeColor="@GetStatusBadgeColor"
+                         GetPriorityBadgeColor="@GetPriorityBadgeColor"
+                         GetStatusText="@GetStatusText"
+                         GetPriorityText="@GetPriorityText" />
             }
         }
     </DetailRowTemplate>
@@ -174,5 +192,47 @@
         .hc-progress {
             width: 100px;
         }
+    }
+
+    /* Hide header for child tables (Level > 0) */
+    .child-tasks-grid:not(:first-child) thead {
+        display: none !important;
+    }
+    
+    /* Hide header for tables with level class */
+    .child-tasks-grid.level-1 thead,
+    .child-tasks-grid.level-2 thead,
+    .child-tasks-grid.level-3 thead,
+    .child-tasks-grid.level-4 thead,
+    .child-tasks-grid.level-5 thead {
+        display: none !important;
+    }
+
+    /* Remove margins and padding for child tables - target parent table-responsive */
+    .table-responsive:has(.child-tasks-grid.level-1),
+    .table-responsive:has(.child-tasks-grid.level-2),
+    .table-responsive:has(.child-tasks-grid.level-3),
+    .table-responsive:has(.child-tasks-grid.level-4),
+    .table-responsive:has(.child-tasks-grid.level-5) {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .child-tasks-grid.level-1,
+    .child-tasks-grid.level-2,
+    .child-tasks-grid.level-3,
+    .child-tasks-grid.level-4,
+    .child-tasks-grid.level-5 {
+        margin: 0 !important;
+    }
+
+    /* Remove padding for child tables - target parent td > .table-responsive > .child-tasks-grid */
+    td:has(> form .table-responsive .child-tasks-grid) {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
+    table {
+        margin: 0 !important;
     }
 </style>
