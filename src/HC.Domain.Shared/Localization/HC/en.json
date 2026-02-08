@@ -1106,6 +1106,7 @@
     "Processor": "Processor",
     "WorkflowOverdue": "Processing Overdue",
     "WorkflowOverdueDescription": "This document has exceeded the processing deadline. No actions can be performed. The workflow has been cancelled.",
-    "WorkflowOverdueComment": "Document processing deadline expired"
+    "WorkflowOverdueComment": "Document processing deadline expired",
+    "ViewWorkflowInfo": "View Workflow Info"
   }
 }

@@ -173,6 +173,18 @@
                                             <Icon Name="IconName.CheckSquare" />
                                         </Button>
                                     }
+                                    @* View workflow info (read-only modal) *@
+                                    @if (context.WorkflowInstanceId.HasValue)
+                                    {
+                                        <Button @onclick="@(() => ShowActionModalAsync(context, viewOnly: true))"
+                                            Color="Color.Info"
+                                            Outline
+                                            Size="Size.Small"
+                                            Class="mb-1"
+                                            title="@L["ViewWorkflowInfo"]">
+                                            <Icon Name="IconName.Search" />
+                                        </Button>
+                                    }
                                     @* View PDF *@
                                     <Button @onclick="@(() => OpenDocumentPdfViewerModalAsync(context))"
                                         Color="Color.Primary"
@@ -182,7 +194,7 @@
                                         title="@L["ViewPdf"]">
                                         <Icon Name="IconName.Eye" />
                                     </Button>
-                                    @* View detail *@
+                                    @* View detail 
                                     <Button @onclick="@(() => NavigateToDocumentDetail(context.DocumentId))"
                                         Color="Color.Secondary"
                                         Outline
@@ -190,7 +202,7 @@
                                         Class="mb-1"
                                         title="@L["ViewDetail"]">
                                         <Icon Name="IconName.FileAlt" />
-                                    </Button>
+                                    </Button>*@
                                 </Div>
                             </DisplayTemplate>
                         </DataGridColumn>
@@ -487,17 +499,24 @@
 <Modal @ref="WorkflowActionModal" Closing="@WorkflowActionModal.CancelClosingModalWhenFocusLost" Class="signing-action-modal">
     <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
         <ModalHeader>
-            <ModalTitle>@L["ProcessSigning"]</ModalTitle>
+            <ModalTitle>@(IsViewOnly ? L["ViewWorkflowInfo"] : L["ProcessSigning"])</ModalTitle>
             <CloseButton Clicked="CloseActionModalAsync" />
         </ModalHeader>
         <ModalBody Style="padding: 5px !important;">
             <Row>
-                @* ===== LEFT COLUMN: Action Form ===== *@
+                @* ===== LEFT COLUMN: Info + Action Form ===== *@
                 <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile" Style="padding-right: 0px !important;">
                     <Card Class="h-100">
                         <CardHeader Class="p-2">
                             <Heading Size="HeadingSize.Is6" Class="fw-bolder mb-0">
-                                <i class="bi bi-pencil-square me-2 text-primary"></i>@L["ProcessSigning"]
+                                @if (IsViewOnly)
+                                {
+                                    <i class="bi bi-info-circle me-2 text-info"></i>@L["ViewWorkflowInfo"]
+                                }
+                                else
+                                {
+                                    <i class="bi bi-pencil-square me-2 text-primary"></i>@L["ProcessSigning"]
+                                }
                             </Heading>
                         </CardHeader>
                         <CardBody Style="padding: 1rem !important;">
@@ -536,55 +555,58 @@
                                 </div>
                             }
 
-                            @* Action selection - disabled when overdue *@
-                            <fieldset disabled="@IsOverdue">
-                                <Field>
-                                    <FieldLabel class="fw-bold">@L["SelectAction"] <span class="text-danger">*</span></FieldLabel>
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="radio" name="workflowAction" id="approveAction"
-                                            @onchange="@(() => SelectedAction = "APPROVE")"
-                                            checked="@(SelectedAction == "APPROVE")">
-                                        <label class="form-check-label" for="approveAction">
-                                            <strong class="text-success">
-                                                <i class="bi bi-check-circle me-1"></i>@L["Approve"]
-                                            </strong>
-                                            <small class="d-block text-muted">@L["ApproveDescription"]</small>
-                                        </label>
-                                    </div>
-                                    @* Return action - only shown when current step allows return *@
-                                    @if (AllowReturnAction)
-                                    {
+                            @* Action selection + Note - only shown when NOT view-only *@
+                            @if (!IsViewOnly)
+                            {
+                                <fieldset disabled="@IsOverdue">
+                                    <Field>
+                                        <FieldLabel class="fw-bold">@L["SelectAction"] <span class="text-danger">*</span></FieldLabel>
                                         <div class="form-check mb-2">
-                                            <input class="form-check-input" type="radio" name="workflowAction" id="returnAction"
-                                                @onchange="@(() => SelectedAction = "RETURN")"
-                                                checked="@(SelectedAction == "RETURN")">
-                                            <label class="form-check-label" for="returnAction">
-                                                <strong class="text-warning">
-                                                    <i class="bi bi-arrow-return-left me-1"></i>@L["Return"]
+                                            <input class="form-check-input" type="radio" name="workflowAction" id="approveAction"
+                                                @onchange="@(() => SelectedAction = "APPROVE")"
+                                                checked="@(SelectedAction == "APPROVE")">
+                                            <label class="form-check-label" for="approveAction">
+                                                <strong class="text-success">
+                                                    <i class="bi bi-check-circle me-1"></i>@L["Approve"]
                                                 </strong>
-                                                <small class="d-block text-muted">@L["ReturnDescription"]</small>
+                                                <small class="d-block text-muted">@L["ApproveDescription"]</small>
                                             </label>
                                         </div>
-                                    }
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="radio" name="workflowAction" id="rejectAction"
-                                            @onchange="@(() => SelectedAction = "REJECT")"
-                                            checked="@(SelectedAction == "REJECT")">
-                                        <label class="form-check-label" for="rejectAction">
-                                            <strong class="text-danger">
-                                                <i class="bi bi-x-circle me-1"></i>@L["Reject"]
-                                            </strong>
-                                            <small class="d-block text-muted">@L["RejectDescription"]</small>
-                                        </label>
-                                    </div>
-                                </Field>
+                                        @* Return action - only shown when current step allows return *@
+                                        @if (AllowReturnAction)
+                                        {
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="radio" name="workflowAction" id="returnAction"
+                                                    @onchange="@(() => SelectedAction = "RETURN")"
+                                                    checked="@(SelectedAction == "RETURN")">
+                                                <label class="form-check-label" for="returnAction">
+                                                    <strong class="text-warning">
+                                                        <i class="bi bi-arrow-return-left me-1"></i>@L["Return"]
+                                                    </strong>
+                                                    <small class="d-block text-muted">@L["ReturnDescription"]</small>
+                                                </label>
+                                            </div>
+                                        }
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="radio" name="workflowAction" id="rejectAction"
+                                                @onchange="@(() => SelectedAction = "REJECT")"
+                                                checked="@(SelectedAction == "REJECT")">
+                                            <label class="form-check-label" for="rejectAction">
+                                                <strong class="text-danger">
+                                                    <i class="bi bi-x-circle me-1"></i>@L["Reject"]
+                                                </strong>
+                                                <small class="d-block text-muted">@L["RejectDescription"]</small>
+                                            </label>
+                                        </div>
+                                    </Field>
 
-                                @* Note *@
-                                <Field>
-                                    <FieldLabel class="fw-bold">@L["Note"]</FieldLabel>
-                                    <MemoEdit Rows="3" @bind-Text="@ActionNote" Placeholder="@L["EnterNoteOptional"]" />
-                                </Field>
-                            </fieldset>
+                                    @* Note *@
+                                    <Field>
+                                        <FieldLabel class="fw-bold">@L["Note"]</FieldLabel>
+                                        <MemoEdit Rows="3" @bind-Text="@ActionNote" Placeholder="@L["EnterNoteOptional"]" />
+                                    </Field>
+                                </fieldset>
+                            }
                         </CardBody>
                     </Card>
                 </Column>
@@ -768,10 +790,13 @@
             </Row>
         </ModalBody>
         <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="CloseActionModalAsync">@L["Cancel"]</Button>
-            <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsOverdue || string.IsNullOrEmpty(SelectedAction))">
-                <Icon Name="IconName.Check" Class="me-1" />@L["Confirm"]
-            </Button>
+            <Button Color="Color.Secondary" Clicked="CloseActionModalAsync">@L["Close"]</Button>
+            @if (!IsViewOnly)
+            {
+                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsOverdue || string.IsNullOrEmpty(SelectedAction))">
+                    <Icon Name="IconName.Check" Class="me-1" />@L["Confirm"]
+                </Button>
+            }
         </ModalFooter>
     </ModalContent>
 </Modal>

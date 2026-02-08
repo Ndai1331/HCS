@@ -101,6 +101,9 @@ public partial class DocumentSigning
     private bool IsOverdue { get; set; }
     private bool AllowReturnAction { get; set; }
 
+    // View-only mode for Action Modal (no actions allowed)
+    private bool IsViewOnly { get; set; }
+
     // Debounce
     private CancellationTokenSource? SearchDebounceCts { get; set; }
 
@@ -561,7 +564,7 @@ public partial class DocumentSigning
 
     #region Workflow Action Modal
 
-    private async Task ShowActionModalAsync(DocumentSigningItemDto document)
+    private async Task ShowActionModalAsync(DocumentSigningItemDto document, bool viewOnly = false)
     {
         try
         {
@@ -575,6 +578,7 @@ public partial class DocumentSigning
             DocumentHistories = new();
             IsOverdue = false;
             AllowReturnAction = false;
+            IsViewOnly = viewOnly;
 
             // Load all data in parallel
             var tasks = new List<Task>();

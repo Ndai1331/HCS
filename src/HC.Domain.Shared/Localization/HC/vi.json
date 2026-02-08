@@ -1160,6 +1160,7 @@
     "Processor": "Người xử lý",
     "WorkflowOverdue": "Đã quá hạn xử lý",
     "WorkflowOverdueDescription": "Tài liệu này đã quá hạn xử lý. Không thể thực hiện bất kỳ hành động nào. Quy trình đã bị hủy.",
-    "WorkflowOverdueComment": "Hết hạn xử lý tài liệu"
+    "WorkflowOverdueComment": "Hết hạn xử lý tài liệu",
+    "ViewWorkflowInfo": "Xem thông tin quy trình"
   }
 }
