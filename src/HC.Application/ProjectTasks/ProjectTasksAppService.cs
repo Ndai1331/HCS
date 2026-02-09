@@ -48,8 +48,8 @@ public abstract class ProjectTasksAppServiceBase : HCAppService
         {
             input.UserId = CurrentUser.Id;
         }
-        var totalCount = await _projectTaskRepository.GetCountAsync(input.FilterText, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId, input.UserId   );
-        var items = await _projectTaskRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId, input.UserId, input.Sorting, input.MaxResultCount, input.SkipCount);
+        var totalCount = await _projectTaskRepository.GetCountAsync(input.FilterText, input.OnlyParentTasks, input.OnlyChildTasks, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId, input.UserId   );
+        var items = await _projectTaskRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.OnlyParentTasks, input.OnlyChildTasks, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId, input.UserId, input.Sorting, input.MaxResultCount, input.SkipCount);
         return new PagedResultDto<ProjectTaskWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,
@@ -150,7 +150,7 @@ public abstract class ProjectTasksAppServiceBase : HCAppService
             throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
         }
 
-        var projectTasks = await _projectTaskRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId);
+        var projectTasks = await _projectTaskRepository.GetListWithNavigationPropertiesAsync(input.FilterText, false, false, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId, null, null, int.MaxValue, 0);
         var items = projectTasks.Select(item => new { ParentTaskId = item.ProjectTask.ParentTaskId, Code = item.ProjectTask.Code, Title = item.ProjectTask.Title, Description = item.ProjectTask.Description, StartDate = item.ProjectTask.StartDate, DueDate = item.ProjectTask.DueDate, Priority = item.ProjectTask.Priority, Status = item.ProjectTask.Status, ProgressPercent = item.ProjectTask.ProgressPercent, Project = item.Project?.Name, });
         var memoryStream = new MemoryStream();
         await memoryStream.SaveAsAsync(items);
