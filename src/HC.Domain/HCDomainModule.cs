@@ -24,7 +24,7 @@ using Volo.FileManagement;
 using Volo.Abp.TextTemplateManagement;
 using Volo.Saas;
 using Volo.Abp.Gdpr;
-using HC.Chat;
+using Volo.Abp.Localization.ExceptionHandling;
 
 namespace HC;
 
@@ -41,7 +41,6 @@ namespace HC;
     typeof(AbpIdentityProDomainModule),
     typeof(AbpOpenIddictProDomainModule),
     typeof(SaasDomainModule),
-    typeof(HCChatDomainModule),
     typeof(TextTemplateManagementDomainModule),
     typeof(LanguageManagementDomainModule),
     typeof(FileManagementDomainModule),
@@ -56,6 +55,11 @@ public class HCDomainModule : AbpModule
         Configure<AbpMultiTenancyOptions>(options =>
         {
             options.IsEnabled = MultiTenancyConsts.IsEnabled;
+        });
+
+        Configure<AbpExceptionLocalizationOptions>(options =>
+        {
+            options.MapCodeNamespace("HC.Chat", typeof(HCResource));
         });
 
         // ABP đã có sẵn DefaultMinioBlobNameCalculator với logic tương tự

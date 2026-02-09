@@ -8,6 +8,6 @@ public abstract class ChatAppService : ApplicationService
     protected ChatAppService()
     {
         LocalizationResource = typeof(HCResource);
-        ObjectMapperContext = typeof(HCChatApplicationModule);
+        ObjectMapperContext = typeof(HCApplicationModule);
     }
 }

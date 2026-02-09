@@ -15,7 +15,6 @@ using Volo.Abp.LanguageManagement;
 using Volo.FileManagement;
 using Volo.Abp.TextTemplateManagement;
 using Volo.Saas;
-using HC.Chat;
 using Volo.Abp.Gdpr;
 using Volo.Abp.GlobalFeatures;
 
@@ -32,7 +31,6 @@ namespace HC;
     typeof(LanguageManagementDomainSharedModule),
     typeof(FileManagementDomainSharedModule),
     typeof(SaasDomainSharedModule),
-    typeof(HCChatDomainSharedModule),
     typeof(TextTemplateManagementDomainSharedModule),
     typeof(AbpGdprDomainSharedModule),
     typeof(AbpGlobalFeaturesModule)

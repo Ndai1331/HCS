@@ -14,7 +14,7 @@ using Volo.Saas.Host;
 using Volo.Abp.TextTemplateManagement;
 using Volo.Abp.Gdpr;
 using Volo.Abp.OpenIddict;
-using HC.Chat;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HC;
 
@@ -32,11 +32,18 @@ namespace HC;
     typeof(FileManagementHttpApiModule),
     typeof(SaasHostHttpApiModule),
     typeof(AbpGdprHttpApiModule),
-    typeof(HCChatHttpApiModule),
     typeof(AbpFeatureManagementHttpApiModule)
     )]
 public class HCHttpApiModule : AbpModule
 {
+    public override void PreConfigureServices(ServiceConfigurationContext context)
+    {
+        PreConfigure<IMvcBuilder>(mvcBuilder =>
+        {
+            mvcBuilder.AddApplicationPartIfNotExists(typeof(HCHttpApiModule).Assembly);
+        });
+    }
+
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
         ConfigureLocalization();

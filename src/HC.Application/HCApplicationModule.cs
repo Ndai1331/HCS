@@ -13,8 +13,6 @@ using Volo.FileManagement;
 using Volo.Abp.OpenIddict;
 using Volo.Abp.TextTemplateManagement;
 using Volo.Saas.Host;
-using HC.Chat;
-
 namespace HC;
 
 [DependsOn(
@@ -26,16 +24,19 @@ namespace HC;
     typeof(AbpAccountPublicApplicationModule),
     typeof(AbpAccountAdminApplicationModule),
     typeof(SaasHostApplicationModule),
-    typeof(HCChatApplicationModule),
     typeof(AbpAuditLoggingApplicationModule),
     typeof(TextTemplateManagementApplicationModule),
     typeof(AbpOpenIddictProApplicationModule),
     typeof(LanguageManagementApplicationModule),
     typeof(FileManagementApplicationModule),
     typeof(AbpGdprApplicationModule),
-    typeof(AbpSettingManagementApplicationModule)
+    typeof(AbpSettingManagementApplicationModule),
+    typeof(AbpMapperlyModule)
     )]
 public class HCApplicationModule : AbpModule
 {
-
+    public override void ConfigureServices(ServiceConfigurationContext context)
+    {
+        context.Services.AddMapperlyObjectMapper<HCApplicationModule>();
+    }
 }

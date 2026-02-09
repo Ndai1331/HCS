@@ -1,5 +1,6 @@
 using Volo.Abp.Account;
 using Volo.Abp.Modularity;
+using Volo.Abp.VirtualFileSystem;
 using Volo.Abp.PermissionManagement;
 using Volo.Abp.SettingManagement;
 using Volo.Abp.FeatureManagement;
@@ -11,8 +12,6 @@ using Volo.Saas.Host;
 using Volo.Abp.Gdpr;
 using Volo.Abp.OpenIddict;
 using Volo.FileManagement;
-using HC.Chat;
-
 namespace HC;
 
 [DependsOn(
@@ -29,7 +28,6 @@ namespace HC;
     typeof(LanguageManagementApplicationContractsModule),
     typeof(FileManagementApplicationContractsModule),
     typeof(AbpGdprApplicationContractsModule),
-    typeof(HCChatApplicationContractsModule),
     typeof(AbpPermissionManagementApplicationContractsModule)
 )]
 public class HCApplicationContractsModule : AbpModule
@@ -37,5 +35,13 @@ public class HCApplicationContractsModule : AbpModule
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {
         HCDtoExtensions.Configure();
+    }
+
+    public override void ConfigureServices(ServiceConfigurationContext context)
+    {
+        Configure<AbpVirtualFileSystemOptions>(options =>
+        {
+            options.FileSets.AddEmbedded<HCApplicationContractsModule>();
+        });
     }
 }
