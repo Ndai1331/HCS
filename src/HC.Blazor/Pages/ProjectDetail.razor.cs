@@ -17,6 +17,7 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.Blazor.Shared;
 using HC.Blazor.Components.ProjectTaskCreateModal;
 using Volo.Abp.AspNetCore.Components.Messages;
+using Microsoft.Extensions.Logging;
 
 namespace HC.Blazor.Pages;
 
@@ -79,6 +80,15 @@ public partial class ProjectDetail : HCComponentBase
     private int TasksCurrentPage { get; set; } = 1;
     private string TasksSorting { get; set; } = string.Empty;
     private string? TasksFilterText { get; set; }
+    private List<ProjectTaskWithNavigationPropertiesDto> SelectedTasks { get; set; } = new();
+    private ProjectTaskWithNavigationPropertiesDto? SelectedTask { get; set; }
+
+    // Child tasks dictionary for all parent tasks (loaded at initialization)
+    // Key: parent task Code (not ID), Value: list of child tasks
+    private Dictionary<string, List<ProjectTaskWithNavigationPropertiesDto>> ChildTasksByParentCode { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    // Set of expanded task codes for the tree view (auto-expanded by default)
+    private HashSet<string> ExpandedTasks { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     // Members tab
     public DataGrid<ProjectMemberWithNavigationPropertiesDto>? MembersDataGridRef { get; set; }
@@ -275,10 +285,13 @@ public partial class ProjectDetail : HCComponentBase
 
     private async Task LoadTasksAsync(int page)
     {
+        // Load parent tasks
         var input = new GetProjectTasksInput
         {
             ProjectId = ProjectId,
+            OnlyParentTasks = true, // Only load tasks without ParentTaskId (parent tasks)
             FilterText = TasksFilterText,
+            ParentTaskId = null,
             MaxResultCount = PageSize,
             SkipCount = (page - 1) * PageSize,
             Sorting = TasksSorting
@@ -288,6 +301,127 @@ public partial class ProjectDetail : HCComponentBase
         TasksList = result.Items;
         TasksTotalCount = (int)result.TotalCount;
         TasksCurrentPage = page;
+
+        // Debug: Log each child count
+        foreach (var task in result.Items)
+        {
+            Logger.LogInformation("Parent task loaded: {TaskId} - {ChildTaskCount}", task.ProjectTask.Id, task.ChildTaskCount);
+        }
+
+        // Load all child tasks for the project (only on first page load)
+        await LoadAllChildTasksAsync();
+
+        // Auto-expand all tasks that have children (including child of child, grandchild, etc.)
+        ExpandedTasks.Clear();
+        
+        // First, expand all root parent tasks that have children
+        foreach (var task in result.Items)
+        {
+            if (task.ChildTaskCount > 0)
+            {
+                ExpandedTasks.Add(task.ProjectTask.Code);
+                Logger.LogInformation("Auto-expanding parent task: {TaskCode}", task.ProjectTask.Code);
+            }
+        }
+        
+        // Then, recursively expand all child tasks that have children
+        foreach (var task in result.Items)
+        {
+            ExpandAllChildrenRecursively(task.ProjectTask.Code);
+        }
+        
+        Logger.LogInformation("Auto-expanded {Count} tasks total", ExpandedTasks.Count);
+    }
+
+    private async Task LoadAllChildTasksAsync()
+    {
+        Logger.LogInformation("Loading all child tasks for project: {ProjectId}", ProjectId);
+
+        // Load only child tasks using pagination (to avoid validation limits)
+        var allChildTasks = new List<ProjectTaskWithNavigationPropertiesDto>();
+        int skipCount = 0;
+        const int batchSize = 1000; // Use reasonable batch size
+        bool hasMore = true;
+
+        while (hasMore)
+        {
+            var input = new GetProjectTasksInput
+            {
+                ProjectId = ProjectId,
+                OnlyChildTasks = true, // Only load tasks with ParentTaskId (child tasks)
+                FilterText = null,
+                MaxResultCount = batchSize,
+                SkipCount = skipCount,
+                Sorting = "ProjectTask.Title ASC"
+            };
+
+            var result = await ProjectTasksAppService.GetListAsync(input);
+
+            // Debug: Log each child count
+            foreach (var task in result.Items)
+            {
+                Logger.LogInformation("Child task loaded: {TaskId} - {ParentTaskId}", task.ProjectTask.Id, task.ProjectTask.ParentTaskId);
+            }
+            
+            if (result.Items.Count == 0)
+            {
+                hasMore = false;
+            }
+            else
+            {
+                allChildTasks.AddRange(result.Items);
+                skipCount += result.Items.Count;
+                
+                // Check if we've loaded all items
+                if (allChildTasks.Count >= result.TotalCount)
+                {
+                    hasMore = false;
+                }
+            }
+        }
+        
+        // Group child tasks by parent task Code (ParentTaskId stores parent task's Code as string)
+        ChildTasksByParentCode = allChildTasks
+            .GroupBy(t => t.ProjectTask.ParentTaskId!)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        Logger.LogInformation("Loaded {Count} child tasks for {ParentCount} parent tasks", 
+            ChildTasksByParentCode.Values.Sum(v => v.Count), ChildTasksByParentCode.Count);
+        
+        // Debug: Log parent codes with child tasks
+        foreach (var kvp in ChildTasksByParentCode)
+        {
+            Logger.LogInformation("ParentTaskCode: {ParentCode}, ChildTaskCount: {Count}", kvp.Key, kvp.Value.Count);
+        }
+    }
+
+    // Helper method to get child tasks for a parent task (by parent's Code)
+    private List<ProjectTaskWithNavigationPropertiesDto> GetChildTasksForParent(string parentCode)
+    {
+        var result = ChildTasksByParentCode.ContainsKey(parentCode) ? ChildTasksByParentCode[parentCode] : new List<ProjectTaskWithNavigationPropertiesDto>();
+        Logger.LogInformation("GetChildTasksForParent called for ParentCode: {ParentCode}, Found: {Count} child tasks", parentCode, result.Count);
+        return result;
+    }
+
+    /// <summary>
+    /// Recursively expand all tasks that have children
+    /// </summary>
+    private void ExpandAllChildrenRecursively(string parentCode)
+    {
+        var childTasks = GetChildTasksForParent(parentCode);
+        
+        foreach (var childTask in childTasks)
+        {
+            // If this child has its own children, expand it and continue recursively
+            if (childTask.ChildTaskCount > 0)
+            {
+                ExpandedTasks.Add(childTask.ProjectTask.Code);
+                Logger.LogInformation("Auto-expanding child task: {TaskCode}", childTask.ProjectTask.Code);
+                
+                // Recursively expand this child's children
+                ExpandAllChildrenRecursively(childTask.ProjectTask.Code);
+            }
+        }
     }
 
     private async Task SearchTasksAsync()
@@ -321,6 +455,15 @@ public partial class ProjectDetail : HCComponentBase
     protected string GetStatusText(ProjectTaskStatus status) => L[$"Enum:ProjectTaskStatus.{status}"];
     protected string GetPriorityText(ProjectTaskPriority priority) => L[$"Enum:ProjectTaskPriority.{priority}"];
 
+    protected bool RowSelectableHandler(RowSelectableEventArgs<ProjectTaskWithNavigationPropertiesDto> rowSelectableEventArgs)
+    {
+        return rowSelectableEventArgs.SelectReason is not DataGridSelectReason.RowClick;
+    }
+
+    protected Task SelectedTaskRowsChanged()
+    {
+        return Task.CompletedTask;
+    }
 
     // ---------------------------
     // Members
@@ -841,7 +984,145 @@ public partial class ProjectDetail : HCComponentBase
     private async Task OnTaskCreatedAsync()
     {
         // Refresh tasks grid after a new task is created
-        await LoadTasksAsync(page: TasksCurrentPage);
+        TasksCurrentPage = 1; // Reset to first page to see new tasks
+        await LoadTasksAsync(page: 1);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ---------------------------
+    // TaskTree Helper Methods
+    // ---------------------------
+
+    /// <summary>
+    /// Get child task count for a task
+    /// </summary>
+    private int GetChildTaskCount(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return task.ChildTaskCount;
+    }
+
+    /// <summary>
+    /// Get child tasks for a task
+    /// </summary>
+    private List<ProjectTaskWithNavigationPropertiesDto> GetChildTasksForTask(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return GetChildTasksForParent(task.ProjectTask.Code);
+    }
+
+    /// <summary>
+    /// Get task code
+    /// </summary>
+    private string GetTaskCode(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return task.ProjectTask.Code;
+    }
+
+    /// <summary>
+    /// Get task title
+    /// </summary>
+    private string GetTaskTitle(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return task.ProjectTask.Title;
+    }
+
+    /// <summary>
+    /// Get task start date
+    /// </summary>
+    private DateTime GetTaskStartDate(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return task.ProjectTask.StartDate;
+    }
+
+    /// <summary>
+    /// Get task due date
+    /// </summary>
+    private DateTime GetTaskDueDate(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return task.ProjectTask.DueDate;
+    }
+
+    /// <summary>
+    /// Get task status
+    /// </summary>
+    private ProjectTaskStatus GetTaskStatus(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return ParseStatus(task.ProjectTask.Status);
+    }
+
+    /// <summary>
+    /// Get task priority
+    /// </summary>
+    private ProjectTaskPriority GetTaskPriority(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return ParsePriority(task.ProjectTask.Priority);
+    }
+
+    /// <summary>
+    /// Get task progress percent
+    /// </summary>
+    private int GetTaskProgressPercent(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return task.ProjectTask.ProgressPercent;
+    }
+
+    /// <summary>
+    /// Get task detail URL
+    /// </summary>
+    private string GetTaskDetailUrl(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return $"/project-task-detail/{task.ProjectTask.Id}";
+    }
+
+    /// <summary>
+    /// Get parent task ID
+    /// </summary>
+    private string GetTaskParentTaskId(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return task.ProjectTask.ParentTaskId ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Get parent task title
+    /// </summary>
+    private string GetParentTaskTitle(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return task.ParentTaskTitle ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Get status badge color
+    /// </summary>
+    private Color GetStatusBadgeColor(ProjectTaskStatus status)
+    {
+        return EnumStatusColorHelper.GetProjectTaskStatusBadgeColor(status);
+    }
+
+    /// <summary>
+    /// Get priority badge color
+    /// </summary>
+    private Color GetPriorityBadgeColor(ProjectTaskPriority priority)
+    {
+        return EnumStatusColorHelper.GetProjectTaskPriorityBadgeColor(priority);
+    }
+
+    /// <summary>
+    /// Handle task expanded event from TaskTree
+    /// </summary>
+    private async Task HandleTaskExpanded((string TaskCode, bool IsExpanded) eventArgs)
+    {
+        // Update the expanded state in the parent's HashSet
+        if (eventArgs.IsExpanded)
+        {
+            ExpandedTasks.Add(eventArgs.TaskCode);
+        }
+        else
+        {
+            ExpandedTasks.Remove(eventArgs.TaskCode);
+        }
+
+        Logger.LogInformation("Task {TaskCode} expanded: {IsExpanded}, Total expanded: {Count}",
+            eventArgs.TaskCode, eventArgs.IsExpanded, ExpandedTasks.Count);
+
         await InvokeAsync(StateHasChanged);
     }
 }
