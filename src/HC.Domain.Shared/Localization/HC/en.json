@@ -712,7 +712,10 @@
     "MinRating": "Min Rating",
     "MaxRating": "Max Rating",
     "NewSurveyResult": "New Survey Result",
-    "Menu:SurveyResults": "Survey Results",
+    "Menu:Survey": "Surveys",
+    "Menu:SurveyResults": "Satisfaction Survey",
+    "Menu:Forms": "Forms",
+
     "StorageNumber": "Storage Number",
     "DocumentNumber": "Document Number",
     "EditDocument": "Edit Document",

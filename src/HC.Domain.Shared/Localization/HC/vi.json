@@ -9,6 +9,8 @@
     "Menu:Dashboard": "Thống kê",
     "Menu:FileManagement": "Quản lý files",
     "Menu:HomePage": "Trang chủ",
+    "Menu:": "Trang chủ",
+    "Menu:Forms": "Biểu mẫu",
     "Dashboard": "Thống kê",
     "SeeAdvancedFilters": "Xem bộ lọc nâng cao",
     "Filters": "Bộ lọc",
@@ -550,7 +552,9 @@
     "MinRating": "Điểm đánh giá tối thiểu",
     "MaxRating": "Điểm đánh giá tối đa",
     "NewSurveyResult": "Tạo kết quả khảo sát mới",
-    "Menu:SurveyResults": "Kết quả khảo sát",
+    "Menu:Survey": "Khảo sát",
+    "Menu:SurveyResults": "Khảo sát hài lòng",
+    
 
     "HeadOfDepartment": "Trưởng phòng",
     "LeaderUser": "Trưởng phòng",
