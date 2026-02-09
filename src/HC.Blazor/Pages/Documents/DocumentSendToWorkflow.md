@@ -244,3 +244,7 @@ PENDING / DONE / REJECTED/ REVOKE
 1. Code dễ maintain, chia ra các component nếu dùng chung được 
 2. Sử dụng các thuộc tính modal giống các page khác
 3. Required ràng buộc các mục chặt chẽ, cần thiết ở các step ví dụ: step 1 bắt buộc phải có file trình ký ....
+
+
+
+
