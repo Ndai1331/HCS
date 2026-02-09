@@ -155,6 +155,6 @@
       "contentType": "permission",
       "name": "HC.Books.Delete",
       "summary": null
-    },
+    }
   ]
 }

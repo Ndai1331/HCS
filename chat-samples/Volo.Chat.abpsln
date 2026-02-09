@@ -1,7 +1,0 @@
-{
-  "modules": {
-    "Volo.Chat": {
-      "path": "Volo.Chat.abpmdl"
-    }
-  }
-}
