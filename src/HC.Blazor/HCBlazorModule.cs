@@ -88,6 +88,7 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.Layout;
 using Microsoft.AspNetCore.Authentication;
 using HC.Blazor.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Volo.Forms.Web;
 
 namespace HC.Blazor;
 
@@ -124,7 +125,8 @@ namespace HC.Blazor;
     typeof(AbpSettingManagementBlazorServerModule),
     typeof(AbpBlobStoringMinioModule)
     )]
-public class HCBlazorModule : AbpModule
+[DependsOn(typeof(FormsWebModule))]
+    public class HCBlazorModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {

@@ -1119,7 +1119,9 @@
     "PrimaryUser": "Primary",
     "SecondaryUser": "Secondary",
     "ProcessingDeadline": "Processing Deadline",
-    "StartedAt": "Started",
-    "FinishedAt": "Deadline"
+    "FormsManagement": "Forms Management",
+    "Permission:Forms:Form.Delete": "Delete form",
+    "ResponseManagement": "Response Management",
+    "DeletingResponse": "Deleting response"
   }
 }

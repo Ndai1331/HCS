@@ -73,17 +73,18 @@ public class HCMenuContributor : IMenuContributor
         administration.SetSubItemOrder(AbpAuditLoggingMenus.GroupName, 7);
         //Administration->Settings
         administration.SetSubItemOrder(SettingManagementMenus.GroupName, 8);
-        administration.SetSubItemOrder(SettingManagementMenus.GroupName, 9);
+        //Administration->Saas
+        administration.SetSubItemOrder(SaasHostMenus.GroupName, 9);
+
         //Saas
         // context.Menu.SetSubItemOrder(SaasHostMenus.GroupName, 5);
         // context.Menu.SetSubItemOrder(FileManagementMenuNames.GroupName, 5);
         context.Menu.TryRemoveMenuItem(FileManagementMenuNames.GroupName);
-        context.Menu.TryRemoveMenuItem(SaasHostMenus.GroupName);
+        // context.Menu.TryRemoveMenuItem(SaasHostMenus.GroupName);
         context.Menu.TryRemoveMenuItem(IdentityProMenus.ClaimTypes);
         context.Menu.TryRemoveMenuItem(IdentityProMenus.OrganizationUnits);
         context.Menu.TryRemoveMenuItem(IdentityProMenus.SecurityLogs);
         //Administration->Saas
-        administration.SetSubItemOrder(SaasHostMenus.GroupName, 10);
         return Task.CompletedTask;
     }
 

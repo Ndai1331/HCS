@@ -4466,6 +4466,373 @@ namespace HC.TenantMigrations
                     b.ToTable("FmFileDescriptors", (string)null);
                 });
 
+            modelBuilder.Entity("Volo.Forms.Answers.Answer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AnswerDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("ChoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FormResponseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FormResponseId");
+
+                    b.HasIndex("Id", "QuestionId", "FormResponseId", "TenantId");
+
+                    b.ToTable("FrmAnswers", (string)null);
+                });
+
+            modelBuilder.Entity("Volo.Forms.Choices.Choice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChoosableQuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("Value");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChoosableQuestionId");
+
+                    b.HasIndex("Id", "ChoosableQuestionId", "TenantId");
+
+                    b.ToTable("FrmChoices", (string)null);
+                });
+
+            modelBuilder.Entity("Volo.Forms.Forms.Form", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("CanEditResponse")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("Description");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<bool>("HasLimitOneResponsePerUser")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsAcceptingResponses")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsCollectingEmail")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<bool>("IsQuiz")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<bool>("RequiresLogin")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("Title");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Id", "TenantId");
+
+                    b.ToTable("FrmForms", (string)null);
+                });
+
+            modelBuilder.Entity("Volo.Forms.Questions.QuestionBase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("Description");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<Guid>("FormId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("FormId");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("Title");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Id", "FormId", "TenantId");
+
+                    b.ToTable("FrmQuestions", (string)null);
+
+                    b.HasDiscriminator<int>("Type");
+
+                    b.UseTphMappingStrategy();
+                });
+
+            modelBuilder.Entity("Volo.Forms.Responses.FormResponse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<Guid>("FormId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Id", "FormId", "UserId", "TenantId");
+
+                    b.ToTable("FrmFormResponses", (string)null);
+                });
+
+            modelBuilder.Entity("Volo.Forms.Questions.ChoosableItems.Checkbox", b =>
+                {
+                    b.HasBaseType("Volo.Forms.Questions.QuestionBase");
+
+                    b.Property<bool>("HasOtherOption")
+                        .ValueGeneratedOnUpdateSometimes()
+                        .HasColumnType("boolean")
+                        .HasColumnName("HasOtherOption");
+
+                    b.Property<bool>("IsRequired")
+                        .ValueGeneratedOnUpdateSometimes()
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsRequired");
+
+                    b.HasDiscriminator().HasValue(4);
+                });
+
+            modelBuilder.Entity("Volo.Forms.Questions.ChoosableItems.ChoiceMultiple", b =>
+                {
+                    b.HasBaseType("Volo.Forms.Questions.QuestionBase");
+
+                    b.Property<bool>("HasOtherOption")
+                        .ValueGeneratedOnUpdateSometimes()
+                        .HasColumnType("boolean")
+                        .HasColumnName("HasOtherOption");
+
+                    b.Property<bool>("IsRequired")
+                        .ValueGeneratedOnUpdateSometimes()
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsRequired");
+
+                    b.HasDiscriminator().HasValue(3);
+                });
+
+            modelBuilder.Entity("Volo.Forms.Questions.ChoosableItems.DropdownList", b =>
+                {
+                    b.HasBaseType("Volo.Forms.Questions.QuestionBase");
+
+                    b.Property<bool>("IsRequired")
+                        .ValueGeneratedOnUpdateSometimes()
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsRequired");
+
+                    b.HasDiscriminator().HasValue(5);
+                });
+
+            modelBuilder.Entity("Volo.Forms.Questions.ShortText", b =>
+                {
+                    b.HasBaseType("Volo.Forms.Questions.QuestionBase");
+
+                    b.Property<bool>("IsRequired")
+                        .ValueGeneratedOnUpdateSometimes()
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsRequired");
+
+                    b.HasDiscriminator().HasValue(1);
+                });
+
             modelBuilder.Entity("HC.CalendarEventParticipants.CalendarEventParticipant", b =>
                 {
                     b.HasOne("HC.CalendarEvents.CalendarEvent", null)
@@ -5002,6 +5369,36 @@ namespace HC.TenantMigrations
                         .HasForeignKey("DirectoryId");
                 });
 
+            modelBuilder.Entity("Volo.Forms.Answers.Answer", b =>
+                {
+                    b.HasOne("Volo.Forms.Responses.FormResponse", null)
+                        .WithMany("Answers")
+                        .HasForeignKey("FormResponseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Volo.Forms.Choices.Choice", b =>
+                {
+                    b.HasOne("Volo.Forms.Questions.ChoosableItems.Checkbox", null)
+                        .WithMany("Choices")
+                        .HasForeignKey("ChoosableQuestionId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
+                    b.HasOne("Volo.Forms.Questions.ChoosableItems.ChoiceMultiple", null)
+                        .WithMany("Choices")
+                        .HasForeignKey("ChoosableQuestionId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
+                    b.HasOne("Volo.Forms.Questions.ChoosableItems.DropdownList", null)
+                        .WithMany("Choices")
+                        .HasForeignKey("ChoosableQuestionId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("HC.Chat.Conversations.Conversation", b =>
                 {
                     b.Navigation("Members");
@@ -5052,6 +5449,26 @@ namespace HC.TenantMigrations
             modelBuilder.Entity("Volo.Abp.Identity.OrganizationUnit", b =>
                 {
                     b.Navigation("Roles");
+                });
+
+            modelBuilder.Entity("Volo.Forms.Responses.FormResponse", b =>
+                {
+                    b.Navigation("Answers");
+                });
+
+            modelBuilder.Entity("Volo.Forms.Questions.ChoosableItems.Checkbox", b =>
+                {
+                    b.Navigation("Choices");
+                });
+
+            modelBuilder.Entity("Volo.Forms.Questions.ChoosableItems.ChoiceMultiple", b =>
+                {
+                    b.Navigation("Choices");
+                });
+
+            modelBuilder.Entity("Volo.Forms.Questions.ChoosableItems.DropdownList", b =>
+                {
+                    b.Navigation("Choices");
                 });
 #pragma warning restore 612, 618
         }

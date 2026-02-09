@@ -25,6 +25,7 @@ using Volo.Abp.TextTemplateManagement;
 using Volo.Saas;
 using Volo.Abp.Gdpr;
 using Volo.Abp.Localization.ExceptionHandling;
+using Volo.Forms;
 
 namespace HC;
 
@@ -46,7 +47,8 @@ namespace HC;
     typeof(FileManagementDomainModule),
     typeof(VoloAbpCommercialSuiteTemplatesModule),
     typeof(AbpGdprDomainModule),
-    typeof(AbpBlobStoringMinioModule)
+    typeof(AbpBlobStoringMinioModule),
+    typeof(FormsDomainModule)
     )]
 public class HCDomainModule : AbpModule
 {

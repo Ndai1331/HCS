@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  
+  
+
+  <PropertyGroup><LangVersion>latest</LangVersion>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Volo.Abp.EntityFrameworkCore" VersionOverride="10.0.1" />
+    <ProjectReference Include="..\Volo.Forms.Domain\Volo.Forms.Domain.csproj" />
+    <PackageReference Include="Volo.Abp.Commercial.Core" VersionOverride="10.0.1" />
+  </ItemGroup>
+
+</Project>

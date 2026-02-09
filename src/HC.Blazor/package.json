@@ -3,11 +3,12 @@
   "name": "my-app",
   "private": true,
   "dependencies": {
-    "@volo/language-management": "~10.0.1",
-    "@volo/file-management": "~10.0.1",
-    "@volo/chat": "~10.0.1",
-    "@volo/account": "~10.0.1",
     "@volo/abp.aspnetcore.mvc.ui.theme.leptonx": "~5.0.1",
-    "@volo/aspnetcore.components.server.leptonxtheme": "~5.0.1"
+    "@volo/account": "~10.0.1",
+    "@volo/aspnetcore.components.server.leptonxtheme": "~5.0.1",
+    "@volo/chat": "~10.0.1",
+    "@volo/file-management": "~10.0.1",
+    "@volo/forms": "~10.0.1",
+    "@volo/language-management": "~10.0.1"
   }
 }

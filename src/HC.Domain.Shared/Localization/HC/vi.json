@@ -1174,6 +1174,10 @@
     "SecondaryUser": "Phụ",
     "ProcessingDeadline": "Thời hạn xử lý",
     "StartedAt": "Bắt đầu",
-    "FinishedAt": "Kết thúc"
+    "FinishedAt": "Kết thúc",
+    "FormsManagement": "Quản lý biểu mẫu",
+    "Permission:Forms:Form.Delete": "Xóa biểu mẫu",
+    "ResponseManagement": "Quản lý phản hồi",
+    "DeletingResponse": "Xóa phản hồi"
   }
 }

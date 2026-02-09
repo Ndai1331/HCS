@@ -15,6 +15,7 @@ using Volo.Abp.TextTemplateManagement;
 using Volo.Abp.Gdpr;
 using Volo.Abp.OpenIddict;
 using Microsoft.Extensions.DependencyInjection;
+using Volo.Forms;
 
 namespace HC;
 
@@ -34,7 +35,8 @@ namespace HC;
     typeof(AbpGdprHttpApiModule),
     typeof(AbpFeatureManagementHttpApiModule)
     )]
-public class HCHttpApiModule : AbpModule
+[DependsOn(typeof(FormsHttpApiModule))]
+    public class HCHttpApiModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {

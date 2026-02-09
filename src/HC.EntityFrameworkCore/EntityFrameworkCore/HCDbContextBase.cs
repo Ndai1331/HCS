@@ -19,6 +19,7 @@ using HC.Chat.EntityFrameworkCore;
 using HC.Chat.Conversations;
 using HC.Chat.Messages;
 using HC.Chat.Users;
+using Volo.Forms.EntityFrameworkCore;
 
 namespace HC.EntityFrameworkCore;
 
@@ -84,5 +85,6 @@ public abstract class HCDbContextBase<TDbContext> : AbpDbContext<TDbContext>, IC
         //    /* Tip: Configure mappings like that for the entities only available in the host side,
         //     * but should not be in the tenant databases. */
         //}
-    }
+        builder.ConfigureForms();
+        }
 }
