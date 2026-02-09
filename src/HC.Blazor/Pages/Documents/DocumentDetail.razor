@@ -340,7 +340,7 @@
                                                 <Table Hoverable="true" Bordered="true" Striped="true">
                                                     <thead>
                                                         <tr>
-                                                            <th style="max-width: 200px;">@L["Name"]</th>
+                                                            <th style="max-width: 280px;">@L["Name"]</th>
                                                             <th>@L["UploadedAt"]</th>
                                                             <th>@L["IsSigned"]</th>
                                                             <th>@L["Actions"]</th>
@@ -350,7 +350,7 @@
                                                         @foreach (var file in DocumentFilesList)
                                                         {
                                                             <tr>
-                                                                <td>@file.DocumentFile.Name</td>
+                                                                <td style="max-width: 280px;">@file.DocumentFile.Name</td>
                                                                 <td>@file.DocumentFile.UploadedAt.ToString("dd/MM/yyyy HH:mm")</td>
                                                                 <td>
                                                                     @if (file.DocumentFile.IsSigned)

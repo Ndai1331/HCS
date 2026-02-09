@@ -17,6 +17,7 @@ using HC.DocumentWorkflowInstances;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.DocumentHistories;
+using HC.MasterDatas;
 using HC.Permissions;
 using HC.Shared;
 using Microsoft.AspNetCore.Components;
@@ -30,6 +31,7 @@ namespace HC.Blazor.Pages.Documents;
 public partial class DocumentSigning
 {
     [Inject] private IDocumentAssignmentsAppService DocumentAssignmentsAppService { get; set; } = default!;
+    [Inject] private IMasterDatasAppService MasterDatasAppService { get; set; } = default!;
 
     #region Properties
 
@@ -103,6 +105,18 @@ public partial class DocumentSigning
 
     // View-only mode for Action Modal (no actions allowed)
     private bool IsViewOnly { get; set; }
+
+    // Signing Methods (MasterData Type = "LOAI_KY")
+    private List<MasterDataDto> SigningMethods { get; set; } = new();
+    private Guid? SelectedSigningMethodId { get; set; }
+
+    // Signing Document Files (from DocumentAssignments.DocumentFileResultId)
+    private List<DocumentAssignmentWithNavigationPropertiesDto> SigningDocumentAssignments { get; set; } = new();
+    private bool IsLoadingSigningDocuments { get; set; }
+
+    // Current Step Detail (loaded from WorkflowStepTemplates + WorkflowStepAssignments)
+    private WorkflowStepDetailDto? CurrentStepDetailInfo { get; set; }
+    private DocumentWorkflowInstanceDto? WorkflowInstanceInfo { get; set; }
 
     // Debounce
     private CancellationTokenSource? SearchDebounceCts { get; set; }
@@ -287,6 +301,87 @@ public partial class DocumentSigning
         finally
         {
             IsLoadingHistories = false;
+        }
+    }
+
+    /// <summary>
+    /// Load signing methods from MasterData (Type = "LOAI_KY")
+    /// </summary>
+    private async Task LoadSigningMethodsAsync()
+    {
+        try
+        {
+            var result = await MasterDatasAppService.GetListAsync(new GetMasterDatasInput
+            {
+                Type = "LOAI_KY",
+                IsActive = true,
+                MaxResultCount = 100
+            });
+            SigningMethods = result.Items.ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading signing methods");
+            SigningMethods = new();
+        }
+    }
+
+    /// <summary>
+    /// Load signing document files from DocumentAssignments that have DocumentFileResultId.
+    /// Shows the latest processed files for the document workflow.
+    /// </summary>
+    private async Task LoadSigningDocumentFilesAsync(Guid documentId)
+    {
+        IsLoadingSigningDocuments = true;
+        try
+        {
+            var result = await DocumentAssignmentsAppService.GetListAsync(new GetDocumentAssignmentsInput
+            {
+                DocumentId = documentId,
+                MaxResultCount = 100,
+                SkipCount = 0
+            });
+
+            // Filter assignments that have DocumentFileResultId and sort by creation date desc
+            SigningDocumentAssignments = result.Items
+                .Where(a => a.DocumentAssignment.DocumentFileResultId.HasValue && a.DocumentFileResult != null)
+                .OrderByDescending(a => a.DocumentAssignment.CreationTime)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading signing document files for document {DocumentId}", documentId);
+            SigningDocumentAssignments = new();
+        }
+        finally
+        {
+            IsLoadingSigningDocuments = false;
+        }
+    }
+
+    /// <summary>
+    /// Load current step detail info (step name, assigned users, SLA) and workflow instance (StartedAt, FinishedAt).
+    /// Uses GetAsync to get the instance, then GetWorkflowSubmitInfoAsync to get step details with assigned users.
+    /// </summary>
+    private async Task LoadCurrentStepDetailAsync(Guid workflowInstanceId)
+    {
+        try
+        {
+            // Load workflow instance to get StartedAt, FinishedAt, CurrentStepId, WorkflowId
+            WorkflowInstanceInfo = await DocumentWorkflowInstancesAppService.GetAsync(workflowInstanceId);
+
+            if (WorkflowInstanceInfo != null)
+            {
+                // Load workflow submit info to get all steps with assigned users
+                var submitInfo = await DocumentWorkflowInstancesAppService.GetWorkflowSubmitInfoAsync(WorkflowInstanceInfo.WorkflowId);
+                CurrentStepDetailInfo = submitInfo.Steps.FirstOrDefault(s => s.StepId == WorkflowInstanceInfo.CurrentStepId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading current step detail for workflow instance {InstanceId}", workflowInstanceId);
+            CurrentStepDetailInfo = null;
+            WorkflowInstanceInfo = null;
         }
     }
 
@@ -507,14 +602,16 @@ public partial class DocumentSigning
             // Validate workflow selection
             if (!SelectedWorkflowId.HasValue || WorkflowSubmitInfo == null)
             {
-                await UiMessageService.Error(L["PleaseSelectWorkflow"]);
+                await UiMessageService.Error(L["PleaseSelectWorkflow"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
             // Validate document selection (required only when not using template file)
             if (!UseWorkflowTemplateFile && !SelectedDocumentId.HasValue)
             {
-                await UiMessageService.Error(L["The {0} field is required.", L["Document"]]);
+                await UiMessageService.Error(L["The {0} field is required.", L["Document"]],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -522,7 +619,8 @@ public partial class DocumentSigning
             var firstStep = WorkflowSubmitInfo.Steps.OrderBy(s => s.Order).FirstOrDefault();
             if (firstStep == null || !firstStep.AssignedUsers.Any())
             {
-                await UiMessageService.Error(L["FirstStepMustHaveAssignedUsers"]);
+                await UiMessageService.Error(L["FirstStepMustHaveAssignedUsers"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -545,7 +643,8 @@ public partial class DocumentSigning
 
             await DocumentWorkflowInstancesAppService.SubmitToWorkflowAsync(input);
 
-            await UiMessageService.Success(L["WorkflowSubmittedSuccessfully"]);
+            await UiMessageService.Success(L["WorkflowSubmittedSuccessfully"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await InvokeAsync(SubmitWorkflowModal.Hide);
             await LoadDocumentSigningListAsync();
             await InvokeAsync(StateHasChanged);
@@ -576,9 +675,13 @@ public partial class DocumentSigning
             WorkflowLogs = new();
             WorkflowFiles = new();
             DocumentHistories = new();
+            SigningDocumentAssignments = new();
+            CurrentStepDetailInfo = null;
+            WorkflowInstanceInfo = null;
             IsOverdue = false;
             AllowReturnAction = false;
             IsViewOnly = viewOnly;
+            SelectedSigningMethodId = null;
 
             // Load all data in parallel
             var tasks = new List<Task>();
@@ -587,9 +690,12 @@ public partial class DocumentSigning
             {
                 tasks.Add(LoadWorkflowLogsAsync(document.WorkflowInstanceId.Value));
                 tasks.Add(LoadWorkflowFilesAsync(document.WorkflowInstanceId.Value));
+                tasks.Add(LoadCurrentStepDetailAsync(document.WorkflowInstanceId.Value));
             }
 
             tasks.Add(LoadDocumentHistoriesAsync(document.DocumentId));
+            tasks.Add(LoadSigningMethodsAsync());
+            tasks.Add(LoadSigningDocumentFilesAsync(document.DocumentId));
 
             await Task.WhenAll(tasks);
 
@@ -631,13 +737,23 @@ public partial class DocumentSigning
         {
             if (SelectedDocumentForAction == null || string.IsNullOrEmpty(SelectedAction))
             {
-                await UiMessageService.Error(L["PleaseSelectAction"]);
+                await UiMessageService.Error(L["PleaseSelectAction"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
             if (!SelectedDocumentForAction.WorkflowInstanceId.HasValue || !SelectedDocumentForAction.MyAssignmentId.HasValue)
             {
-                await UiMessageService.Error(L["NoActiveAssignment"]);
+                await UiMessageService.Error(L["NoActiveAssignment"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                return;
+            }
+
+            // Validate signing method is selected when approving
+            if (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && !SelectedSigningMethodId.HasValue)
+            {
+                await UiMessageService.Error(L["PleaseSelectSigningMethod"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -660,7 +776,8 @@ public partial class DocumentSigning
                 DocumentWorkflowInstanceId = SelectedDocumentForAction.WorkflowInstanceId.Value,
                 DocumentAssignmentId = SelectedDocumentForAction.MyAssignmentId.Value,
                 Action = SelectedAction,
-                Note = ActionNote
+                Note = ActionNote,
+                SigningMethodId = SelectedSigningMethodId
             };
 
             await DocumentWorkflowInstancesAppService.ProcessWorkflowActionAsync(input);
@@ -674,7 +791,8 @@ public partial class DocumentSigning
                 _ => L["ActionCompletedSuccessfully"]
             };
 
-            await UiMessageService.Success(successMessage);
+            await UiMessageService.Success(successMessage,
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await InvokeAsync(WorkflowActionModal.Hide);
             await LoadDocumentSigningListAsync();
             await InvokeAsync(StateHasChanged);
@@ -843,6 +961,32 @@ public partial class DocumentSigning
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error opening PDF viewer for document {DocumentId}", item.DocumentId);
+            await UiMessageService.Warn(L["NoPdfAvailable"] + ": " + ex.Message,
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    /// <summary>
+    /// View signing document PDF from the Signing Documents tab
+    /// </summary>
+    private async Task ViewSigningDocumentPdfAsync(string filePath, string fileName)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            var fileBytes = await BlobContainer.GetAllBytesAsync(filePath);
+            var base64 = Convert.ToBase64String(fileBytes);
+            DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
+            IsDocumentPdfFile = true;
+            await DocumentPdfViewerModal.Show();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error viewing signing document PDF. FilePath: {FilePath}", filePath);
             await UiMessageService.Warn(L["NoPdfAvailable"] + ": " + ex.Message,
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }

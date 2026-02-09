@@ -32,6 +32,7 @@ using HC.MasterDatas;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.DocumentFiles;
 using HC.DocumentHistories;
+using Volo.Abp.BlobStoring;
 using Microsoft.Extensions.Logging;
 
 namespace HC.DocumentWorkflowInstances;
@@ -53,6 +54,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     private readonly IRepository<DocumentFile, Guid> _documentFileRepository;
     private readonly DocumentHistoryManager _documentHistoryManager;
     private readonly IDocumentHistoryRepository _documentHistoryRepository;
+    private readonly IBlobContainer _blobContainer;
 
     public DocumentWorkflowInstancesAppService(
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
@@ -76,7 +78,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         DocumentManager documentManager,
         IRepository<DocumentFile, Guid> documentFileRepository,
         DocumentHistoryManager documentHistoryManager,
-        IDocumentHistoryRepository documentHistoryRepository
+        IDocumentHistoryRepository documentHistoryRepository,
+        IBlobContainer blobContainer
     ) : base(documentWorkflowInstanceRepository, documentWorkflowInstanceManager, downloadTokenCache, documentRepository, workflowRepository, workflowTemplateRepository, workflowStepTemplateRepository)
     {
         _workflowStepAssignmentRepository = workflowStepAssignmentRepository;
@@ -94,6 +97,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         _documentFileRepository = documentFileRepository;
         _documentHistoryManager = documentHistoryManager;
         _documentHistoryRepository = documentHistoryRepository;
+        _blobContainer = blobContainer;
     }
 
     #region GetWorkflowSubmitInfoAsync
@@ -289,7 +293,14 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         );
 
         // 2. Create DocumentAssignments for step 1 users
-        var signingFileId = templateDocumentFileId ?? input.DocumentFileId;
+        // DocumentFileResultId = the document's file so processors can see/download it
+        Guid? signingFileId = templateDocumentFileId;
+        if (signingFileId == null)
+        {
+            // Get the document's first file (ordered by upload date) as the initial signing file
+            var documentFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
+            signingFileId = documentFiles.OrderBy(f => f.UploadedAt).FirstOrDefault()?.Id ?? input.DocumentFileId;
+        }
         foreach (var user in firstStep.AssignedUsers)
         {
             await _documentAssignmentManager.CreateAsync(
@@ -396,31 +407,44 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
     /// <summary>
     /// Process a workflow action: APPROVE, RETURN, REJECT
+    /// Includes server-side overdue validation to prevent actions on expired workflows.
     /// </summary>
     [Authorize(HCPermissions.DocumentAssignments.Default)]
     public async Task<DocumentWorkflowInstanceDto> ProcessWorkflowActionAsync(WorkflowActionInput input)
     {
-        // Validate
+        // 1. Validate workflow instance
         var instance = await _documentWorkflowInstanceRepository.GetAsync(input.DocumentWorkflowInstanceId);
         if (instance.Status != nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS))
         {
             throw new UserFriendlyException(L["WorkflowNotInProgress"]);
         }
 
+        // 2. Server-side overdue check (prevent actions on expired workflows)
+        if (instance.FinishedAt > DateTime.MinValue && instance.FinishedAt <= DateTime.Now)
+        {
+            throw new UserFriendlyException(L["WorkflowOverdue"]);
+        }
+
+        // 3. Validate assignment
         var assignment = await _documentAssignmentRepository.GetAsync(input.DocumentAssignmentId);
         if (assignment.Status != nameof(DocumentAssignmentStatus.PENDING))
         {
             throw new UserFriendlyException(L["AssignmentNotPending"]);
         }
 
-        // Verify current user is the assignment receiver
+        // 4. Verify current user is the assignment receiver
         if (assignment.ReceiverUserId != CurrentUser.Id!.Value)
         {
             throw new UserFriendlyException(L["NotAuthorizedForThisAction"]);
         }
 
+        // 5. Verify assignment belongs to this workflow instance's document
+        if (assignment.DocumentId != instance.DocumentId)
+        {
+            throw new UserFriendlyException(L["InvalidWorkflowAction"]);
+        }
+
         var now = DateTime.Now;
-        var previousStatus = instance.Status;
 
         switch (input.Action.ToUpper())
         {
@@ -428,10 +452,18 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 await HandleApproveAsync(instance, assignment, now, input.Note);
                 break;
             case nameof(WorkflowInstanceLogAction.RETURN):
-                await HandleReturnAsync(instance, assignment, now, input.Note);
+                await HandleTerminalActionAsync(instance, assignment, now, input.Note,
+                    nameof(DocumentWorkflowInstanceStatus.RETURNED),
+                    nameof(WorkflowInstanceLogAction.RETURN),
+                    "WorkflowReturned", "WorkflowReturnedMessage",
+                    DocumentStatusCode.HT);
                 break;
             case nameof(WorkflowInstanceLogAction.REJECT):
-                await HandleRejectAsync(instance, assignment, now, input.Note);
+                await HandleTerminalActionAsync(instance, assignment, now, input.Note,
+                    nameof(DocumentWorkflowInstanceStatus.REJECTED),
+                    nameof(WorkflowInstanceLogAction.REJECT),
+                    "WorkflowRejected", "WorkflowRejectedMessage",
+                    DocumentStatusCode.HT);
                 break;
             default:
                 throw new UserFriendlyException(L["InvalidWorkflowAction"]);
@@ -442,14 +474,41 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
     private async Task HandleApproveAsync(DocumentWorkflowInstance instance, DocumentAssignment assignment, DateTime now, string? note)
     {
-        // 1. Update assignment
+        // 1. Update the current user's assignment
         assignment.Status = nameof(DocumentAssignmentStatus.DONE);
         assignment.ProcessedAt = now;
         assignment.IsCurrent = false;
-        await _documentAssignmentRepository.UpdateAsync(assignment);
+        // IMPORTANT: autoSave=true to flush changes to DB before querying remaining pending assignments.
+        // Without this, the subsequent GetListAsync queries the DB which still has the old data
+        // (IsCurrent=true, Status=PENDING), causing the workflow to incorrectly think there are
+        // still pending assignments and NOT move to the next step.
+        await _documentAssignmentRepository.UpdateAsync(assignment, autoSave: true);
 
-        // 2. Check if there's a next step
+        // 2. Get current step info (needed for all paths)
         var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
+
+        // 3. Check if ALL assignments for the current step are done
+        //    (a step may have multiple users - only proceed when everyone approved)
+        var remainingPending = await _documentAssignmentRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId
+            && x.IsCurrent
+            && x.Status == nameof(DocumentAssignmentStatus.PENDING));
+
+        if (remainingPending.Any())
+        {
+            // Other users at this step still need to process - just log and return
+            await _documentWorkflowInstanceLogsManager.CreateAsync(
+                instance.Id, assignment.Id, CurrentUser.Id,
+                nameof(WorkflowInstanceLogAction.APPROVE),
+                currentStep.Type,
+                nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
+                nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS), note);
+
+            await UpdateDocumentStatusAsync(instance.DocumentId, DocumentStatusCode.DANG_XU_LY);
+            return;
+        }
+
+        // 4. All assignments at current step are done - check if there's a next step
         var allSteps = await _workflowStepTemplateRepository.GetListAsync(
             x => x.WorkflowTemplateId == instance.WorkflowTemplateId && x.IsActive);
         allSteps = allSteps.OrderBy(s => s.Order).ToList();
@@ -510,6 +569,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             var stepAssignments = await _workflowStepAssignmentRepository.GetListAsync(
                 x => x.StepId == nextStep.Id && x.IsActive);
 
+            // Copy the result file from current step for the next step's assignments
+            var nextStepFileId = await CopyDocumentFileForNextStepAsync(
+                assignment.DocumentFileResultId, instance.DocumentId);
+
             var document = await _documentRepository.GetAsync(instance.DocumentId);
             var nextUserIds = new List<Guid>();
 
@@ -525,7 +588,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                     now,
                     DateTime.MinValue,
                     true,
-                    null
+                    nextStepFileId
                 );
                 nextUserIds.Add(sa.DefaultUserId.Value);
             }
@@ -547,74 +610,72 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         }
     }
 
-    private async Task HandleReturnAsync(DocumentWorkflowInstance instance, DocumentAssignment assignment, DateTime now, string? note)
+    /// <summary>
+    /// Shared handler for RETURN and REJECT actions.
+    /// - Updates the acting user's assignment
+    /// - Revokes all other PENDING assignments at the same step (multi-user step safety)
+    /// - Updates workflow instance status
+    /// - Creates log, sends notification, updates document status
+    /// </summary>
+    private async Task HandleTerminalActionAsync(
+        DocumentWorkflowInstance instance,
+        DocumentAssignment assignment,
+        DateTime now,
+        string? note,
+        string newInstanceStatus,        // e.g. RETURNED or REJECTED
+        string logAction,                // e.g. RETURN or REJECT
+        string notificationTitleKey,     // e.g. "WorkflowReturned"
+        string notificationMessageKey,   // e.g. "WorkflowReturnedMessage"
+        DocumentStatusCode documentStatusCode)
     {
-        // 1. Update assignment
+        // 1. Update the acting user's assignment
         assignment.Status = nameof(DocumentAssignmentStatus.REJECTED);
         assignment.ProcessedAt = now;
         assignment.IsCurrent = false;
-        await _documentAssignmentRepository.UpdateAsync(assignment);
+        // autoSave=true to flush changes to DB before querying other pending assignments
+        await _documentAssignmentRepository.UpdateAsync(assignment, autoSave: true);
 
-        // 2. Update instance
+        // 2. Revoke all other PENDING assignments at the same step
+        //    (when a step has multiple users and one returns/rejects, others must be revoked)
+        var otherPendingAssignments = await _documentAssignmentRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId
+            && x.IsCurrent
+            && x.Status == nameof(DocumentAssignmentStatus.PENDING)
+            && x.Id != assignment.Id);
+
+        foreach (var other in otherPendingAssignments)
+        {
+            other.Status = nameof(DocumentAssignmentStatus.REVOKE);
+            other.ProcessedAt = now;
+            other.IsCurrent = false;
+            await _documentAssignmentRepository.UpdateAsync(other);
+        }
+
+        // 3. Update workflow instance status
         var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
-        instance.Status = nameof(DocumentWorkflowInstanceStatus.RETURNED);
+        instance.Status = newInstanceStatus;
         instance.FinishedAt = now;
         await _documentWorkflowInstanceRepository.UpdateAsync(instance);
 
-        // 3. Log
+        // 4. Log
         await _documentWorkflowInstanceLogsManager.CreateAsync(
             instance.Id, assignment.Id, CurrentUser.Id,
-            nameof(WorkflowInstanceLogAction.RETURN),
+            logAction,
             currentStep.Type,
             nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
-            nameof(DocumentWorkflowInstanceStatus.RETURNED), note);
+            newInstanceStatus, note);
 
-        // 4. Notify workflow initiator
+        // 5. Notify workflow initiator
         var document = await _documentRepository.GetAsync(instance.DocumentId);
         await SendWorkflowNotificationAsync(
             document,
             new List<Guid> { instance.CreatorId!.Value },
-            "WorkflowReturned",
-            $"WorkflowReturnedMessage|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? "System"}"
+            notificationTitleKey,
+            $"{notificationMessageKey}|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? "System"}"
         );
 
-        // 5. Update document status to HT (Hoàn thành) - workflow returned
-        await UpdateDocumentStatusAsync(instance.DocumentId, DocumentStatusCode.HT);
-    }
-
-    private async Task HandleRejectAsync(DocumentWorkflowInstance instance, DocumentAssignment assignment, DateTime now, string? note)
-    {
-        // 1. Update assignment
-        assignment.Status = nameof(DocumentAssignmentStatus.REJECTED);
-        assignment.ProcessedAt = now;
-        assignment.IsCurrent = false;
-        await _documentAssignmentRepository.UpdateAsync(assignment);
-
-        // 2. Update instance
-        var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
-        instance.Status = nameof(DocumentWorkflowInstanceStatus.REJECTED);
-        instance.FinishedAt = now;
-        await _documentWorkflowInstanceRepository.UpdateAsync(instance);
-
-        // 3. Log
-        await _documentWorkflowInstanceLogsManager.CreateAsync(
-            instance.Id, assignment.Id, CurrentUser.Id,
-            nameof(WorkflowInstanceLogAction.REJECT),
-            currentStep.Type,
-            nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
-            nameof(DocumentWorkflowInstanceStatus.REJECTED), note);
-
-        // 4. Notify workflow initiator
-        var document = await _documentRepository.GetAsync(instance.DocumentId);
-        await SendWorkflowNotificationAsync(
-            document,
-            new List<Guid> { instance.CreatorId!.Value },
-            "WorkflowRejected",
-            $"WorkflowRejectedMessage|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? "System"}"
-        );
-
-        // 5. Update document status to HT (Hoàn thành) - workflow rejected
-        await UpdateDocumentStatusAsync(instance.DocumentId, DocumentStatusCode.HT);
+        // 6. Update document status
+        await UpdateDocumentStatusAsync(instance.DocumentId, documentStatusCode);
     }
 
     #endregion
@@ -707,54 +768,55 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         // All = union of SentToMe + SentByMe + Following
         var allDocIds = receivedDocIds.Union(createdDocIds).Distinct().ToList();
 
-        // Count for each filter mode
-        int sentToMeCount = receivedDocIds.Count;
-        int sentByMeCount = createdDocIds.Count;
-        int followingCount = 0; // No logic for now
-        int allCount = allDocIds.Count;
-
-        // Apply filter mode
-        List<Guid> filteredDocIds;
-        switch (input.FilterMode)
-        {
-            case DocumentSigningFilterMode.SentToMe:
-                filteredDocIds = receivedDocIds;
-                break;
-            case DocumentSigningFilterMode.SentByMe:
-                filteredDocIds = createdDocIds;
-                break;
-            case DocumentSigningFilterMode.Following:
-                filteredDocIds = new List<Guid>(); // Empty for now
-                break;
-            default: // All = union of SentToMe + SentByMe + Following
-                filteredDocIds = allDocIds;
-                break;
-        }
-
-        // Get documents
-        var documents = filteredDocIds.Any()
-            ? await _documentRepository.GetListAsync(x => filteredDocIds.Contains(x.Id))
+        // Get ALL relevant documents first (to apply date/text filters before counting)
+        var allRelevantDocuments = allDocIds.Any()
+            ? await _documentRepository.GetListAsync(x => allDocIds.Contains(x.Id))
             : new List<Document>();
 
         // Apply date filter on IncommingDate
         if (input.FromDate.HasValue)
         {
-            documents = documents.Where(d => d.IncommingDate >= input.FromDate.Value.Date).ToList();
+            allRelevantDocuments = allRelevantDocuments.Where(d => d.IncommingDate >= input.FromDate.Value.Date).ToList();
         }
         if (input.ToDate.HasValue)
         {
             var toDateEnd = input.ToDate.Value.Date.AddDays(1).AddSeconds(-1);
-            documents = documents.Where(d => d.IncommingDate <= toDateEnd).ToList();
+            allRelevantDocuments = allRelevantDocuments.Where(d => d.IncommingDate <= toDateEnd).ToList();
         }
 
         // Apply text filter
         if (!string.IsNullOrWhiteSpace(input.FilterText))
         {
-            documents = documents.Where(d =>
+            allRelevantDocuments = allRelevantDocuments.Where(d =>
                 (d.Title != null && d.Title.Contains(input.FilterText, StringComparison.OrdinalIgnoreCase)) ||
                 (d.No != null && d.No.Contains(input.FilterText, StringComparison.OrdinalIgnoreCase)) ||
                 (d.StorageNumber != null && d.StorageNumber.Contains(input.FilterText, StringComparison.OrdinalIgnoreCase))
             ).ToList();
+        }
+
+        // After filtering, calculate counts per category from filtered results
+        var filteredDocIdSet = allRelevantDocuments.Select(d => d.Id).ToHashSet();
+        int sentToMeCount = receivedDocIds.Count(id => filteredDocIdSet.Contains(id));
+        int sentByMeCount = createdDocIds.Count(id => filteredDocIdSet.Contains(id));
+        int followingCount = 0; // No logic for now
+        int allCount = filteredDocIdSet.Count;
+
+        // Apply filter mode on the already-filtered documents
+        List<Document> documents;
+        switch (input.FilterMode)
+        {
+            case DocumentSigningFilterMode.SentToMe:
+                documents = allRelevantDocuments.Where(d => receivedDocIds.Contains(d.Id)).ToList();
+                break;
+            case DocumentSigningFilterMode.SentByMe:
+                documents = allRelevantDocuments.Where(d => createdDocIds.Contains(d.Id)).ToList();
+                break;
+            case DocumentSigningFilterMode.Following:
+                documents = new List<Document>(); // Empty for now
+                break;
+            default: // All
+                documents = allRelevantDocuments;
+                break;
         }
 
         var totalCount = documents.Count;
@@ -772,7 +834,45 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             ? await _documentWorkflowInstanceRepository.GetListAsync(x => pagedDocIds.Contains(x.DocumentId))
             : new List<DocumentWorkflowInstance>();
 
-        // Build items
+        // ===== BATCH LOAD: avoid N+1 queries in the loop =====
+
+        // 1. Batch load MasterData for StatusId + TypeId
+        var masterDataIds = pagedDocuments
+            .SelectMany(d => new[] { d.StatusId, (Guid?)d.TypeId })
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+        var masterDataDict = masterDataIds.Any()
+            ? (await _masterDataRepository.GetListAsync(x => masterDataIds.Contains(x.Id)))
+                .ToDictionary(m => m.Id, m => m)
+            : new Dictionary<Guid, MasterData>();
+
+        // 2. Batch load Workflows referenced by instances
+        var workflowIds = allInstances.Select(i => i.WorkflowId).Distinct().ToList();
+        var workflowDict = workflowIds.Any()
+            ? (await _workflowRepository.GetListAsync(x => workflowIds.Contains(x.Id)))
+                .ToDictionary(w => w.Id, w => w)
+            : new Dictionary<Guid, Workflow>();
+
+        // 3. Batch load current steps (WorkflowStepTemplates) referenced by instances
+        var stepIds = allInstances.Select(i => i.CurrentStepId).Distinct().ToList();
+        var stepDict = stepIds.Any()
+            ? (await _workflowStepTemplateRepository.GetListAsync(x => stepIds.Contains(x.Id)))
+                .ToDictionary(s => s.Id, s => s)
+            : new Dictionary<Guid, WorkflowStepTemplate>();
+
+        // 4. Batch load total step counts per WorkflowTemplate
+        var templateIds = allInstances.Select(i => i.WorkflowTemplateId).Distinct().ToList();
+        var allStepsForTemplates = templateIds.Any()
+            ? await _workflowStepTemplateRepository.GetListAsync(
+                x => templateIds.Contains(x.WorkflowTemplateId) && x.IsActive)
+            : new List<WorkflowStepTemplate>();
+        var totalStepsDict = allStepsForTemplates
+            .GroupBy(s => s.WorkflowTemplateId)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        // ===== BUILD ITEMS (no more DB calls in loop) =====
         var items = new List<DocumentSigningItemDto>();
         foreach (var doc in pagedDocuments)
         {
@@ -786,35 +886,27 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 .Where(a => a.DocumentId == doc.Id && a.Status == nameof(DocumentAssignmentStatus.PENDING) && a.IsCurrent)
                 .FirstOrDefault();
 
-            // Get status and type names
-            string? statusName = null;
-            string? typeName = null;
+            // Resolve names from batch-loaded dictionaries
+            string? statusName = doc.StatusId.HasValue && masterDataDict.TryGetValue(doc.StatusId.Value, out var statusMd) ? statusMd.Name : null;
+            string? typeName = masterDataDict.TryGetValue(doc.TypeId, out var typeMd) ? typeMd.Name : null;
+
             string? workflowName = null;
             string? currentStepName = null;
             int? currentStepOrder = null;
             int? totalSteps = null;
 
-            if (doc.StatusId.HasValue)
-            {
-                var status = await _masterDataRepository.FindAsync(doc.StatusId.Value);
-                statusName = status?.Name;
-            }
-
-            var type = await _masterDataRepository.FindAsync(doc.TypeId);
-            typeName = type?.Name;
-
             if (docInstance != null)
             {
-                var workflow = await _workflowRepository.FindAsync(docInstance.WorkflowId);
-                workflowName = workflow?.Name;
+                workflowName = workflowDict.TryGetValue(docInstance.WorkflowId, out var wf) ? wf.Name : null;
 
-                var step = await _workflowStepTemplateRepository.FindAsync(docInstance.CurrentStepId);
-                currentStepName = step?.Name;
-                currentStepOrder = step?.Order;
+                if (stepDict.TryGetValue(docInstance.CurrentStepId, out var step))
+                {
+                    currentStepName = step.Name;
+                    currentStepOrder = step.Order;
+                }
 
-                var steps = await _workflowStepTemplateRepository.GetListAsync(
-                    x => x.WorkflowTemplateId == docInstance.WorkflowTemplateId && x.IsActive);
-                totalSteps = steps.Count;
+                totalStepsDict.TryGetValue(docInstance.WorkflowTemplateId, out var stepsCount);
+                totalSteps = stepsCount > 0 ? stepsCount : null;
             }
 
             items.Add(new DocumentSigningItemDto
@@ -878,11 +970,18 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var files = await _documentWorkflowInstanceFileRepository.GetListAsync(
             x => x.DocumentWorkflowInstanceId == workflowInstanceId);
 
-        // Load navigation properties (DocumentFile) manually
+        if (!files.Any())
+            return new List<DocumentWorkflowInstanceFileWithNavigationPropertiesDto>();
+
+        // Batch load all DocumentFiles at once (avoid N+1)
+        var docFileIds = files.Select(f => f.DocumentFileId).Distinct().ToList();
+        var docFiles = await _documentFileRepository.GetListAsync(x => docFileIds.Contains(x.Id));
+        var docFileDict = docFiles.ToDictionary(f => f.Id, f => f);
+
         var result = new List<DocumentWorkflowInstanceFileWithNavigationPropertiesDto>();
         foreach (var instanceFile in files)
         {
-            var docFile = await _documentFileRepository.FindAsync(instanceFile.DocumentFileId);
+            docFileDict.TryGetValue(instanceFile.DocumentFileId, out var docFile);
             result.Add(new DocumentWorkflowInstanceFileWithNavigationPropertiesDto
             {
                 DocumentWorkflowInstanceFile = ObjectMapper.Map<DocumentWorkflowInstanceFile, DocumentWorkflowInstanceFileDto>(instanceFile),
@@ -966,43 +1065,54 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     /// Returns overdue status and whether the current step allows return action.
     /// If overdue: updates Document status to DA_HUY, creates DocumentHistory,
     /// sets instance status to CANCELLED, creates a log entry.
+    /// Thread-safe: checks status before updating to prevent duplicate overdue handling.
     /// </summary>
     [Authorize(HCPermissions.DocumentAssignments.Default)]
     public async Task<WorkflowOverdueCheckResultDto> CheckAndHandleOverdueAsync(Guid workflowInstanceId)
     {
-        var instance = await _documentWorkflowInstanceRepository.GetAsync(workflowInstanceId);
-        var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
-
         var result = new WorkflowOverdueCheckResultDto
         {
             IsOverdue = false,
-            AllowReturn = currentStep.AllowReturn
+            AllowReturn = false
         };
 
-        // Check overdue: FinishedAt must be set (> MinValue), FinishedAt <= now,
-        // and status must not be terminal (COMPLETED, REJECTED, CANCELLED)
-        var terminalStatuses = new[]
+        try
         {
-            nameof(DocumentWorkflowInstanceStatus.COMPLETED),
-            nameof(DocumentWorkflowInstanceStatus.REJECTED),
-            nameof(DocumentWorkflowInstanceStatus.CANCELLED)
-        };
+            var instance = await _documentWorkflowInstanceRepository.GetAsync(workflowInstanceId);
+            var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
+            result.AllowReturn = currentStep.AllowReturn;
 
-        if (instance.FinishedAt > DateTime.MinValue
-            && instance.FinishedAt <= DateTime.Now
-            && !terminalStatuses.Contains(instance.Status))
+            // Check overdue: FinishedAt must be set (> MinValue), FinishedAt <= now,
+            // and status must not be terminal (COMPLETED, REJECTED, CANCELLED, RETURNED)
+            var terminalStatuses = new[]
+            {
+                nameof(DocumentWorkflowInstanceStatus.COMPLETED),
+                nameof(DocumentWorkflowInstanceStatus.REJECTED),
+                nameof(DocumentWorkflowInstanceStatus.CANCELLED),
+                nameof(DocumentWorkflowInstanceStatus.RETURNED)
+            };
+
+            if (instance.FinishedAt > DateTime.MinValue
+                && instance.FinishedAt <= DateTime.Now
+                && !terminalStatuses.Contains(instance.Status))
+            {
+                result.IsOverdue = true;
+
+                // Perform overdue updates using the common helper (pass instance to avoid re-fetch)
+                await UpdateWorkflowStatusCommonAsync(
+                    instance: instance,
+                    documentStatusCode: DocumentStatusCode.DA_HUY,
+                    historyComment: "Hết hạn xử lý tài liệu",
+                    workflowInstanceStatus: nameof(DocumentWorkflowInstanceStatus.CANCELLED),
+                    logNote: "Hết hạn xử lý tài liệu",
+                    logAction: nameof(WorkflowInstanceLogAction.WORKFLOW_COMPLETED)
+                );
+            }
+        }
+        catch (Exception ex)
         {
-            result.IsOverdue = true;
-
-            // Perform overdue updates using the common helper
-            await UpdateWorkflowStatusCommonAsync(
-                workflowInstanceId: instance.Id,
-                documentStatusCode: DocumentStatusCode.DA_HUY,
-                historyComment: "Hết hạn xử lý tài liệu",
-                workflowInstanceStatus: nameof(DocumentWorkflowInstanceStatus.CANCELLED),
-                logNote: "Hết hạn xử lý tài liệu",
-                logAction: nameof(WorkflowInstanceLogAction.WORKFLOW_COMPLETED)
-            );
+            Logger.LogError(ex, "Error checking/handling overdue for workflow instance {InstanceId}", workflowInstanceId);
+            // Return safe defaults - don't block the UI
         }
 
         return result;
@@ -1015,64 +1125,154 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     /// <summary>
     /// Common helper to update workflow-related entities in batch.
     /// Each parameter is optional: null/empty means skip that update.
+    /// Each step is wrapped in try-catch so one failure doesn't block the rest.
+    /// Accepts a pre-loaded instance to avoid unnecessary re-fetch from DB.
     /// </summary>
-    /// <param name="workflowInstanceId">The workflow instance to update</param>
-    /// <param name="documentStatusCode">Document status code (null = skip)</param>
-    /// <param name="historyComment">DocumentHistory comment (empty = skip)</param>
-    /// <param name="workflowInstanceStatus">New workflow instance status (null = skip)</param>
-    /// <param name="logNote">Log note (empty = skip)</param>
-    /// <param name="logAction">Log action string (defaults to WORKFLOW_COMPLETED)</param>
     private async Task UpdateWorkflowStatusCommonAsync(
-        Guid workflowInstanceId,
+        DocumentWorkflowInstance instance,
         DocumentStatusCode? documentStatusCode,
         string historyComment,
         string? workflowInstanceStatus,
         string logNote,
         string? logAction = null)
     {
-        var instance = await _documentWorkflowInstanceRepository.GetAsync(workflowInstanceId);
         var previousStatus = instance.Status;
         var effectiveLogAction = logAction ?? nameof(WorkflowInstanceLogAction.WORKFLOW_COMPLETED);
 
         // 1. Update Document status (null = skip)
         if (documentStatusCode.HasValue)
         {
-            await UpdateDocumentStatusAsync(instance.DocumentId, documentStatusCode.Value);
+            try
+            {
+                await UpdateDocumentStatusAsync(instance.DocumentId, documentStatusCode.Value);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "UpdateWorkflowStatusCommon: Failed to update document status for instance {InstanceId}", instance.Id);
+            }
         }
 
         // 2. Create DocumentHistory (empty = skip)
         if (!string.IsNullOrEmpty(historyComment))
         {
-            await _documentHistoryManager.CreateAsync(
-                instance.DocumentId,
-                CurrentUser.Id,              // FromUser
-                CurrentUser.Id ?? Guid.Empty, // ToUser (self for system actions)
-                effectiveLogAction,           // Action
-                historyComment                // Comment
-            );
+            try
+            {
+                await _documentHistoryManager.CreateAsync(
+                    instance.DocumentId,
+                    CurrentUser.Id,              // FromUser
+                    CurrentUser.Id ?? Guid.Empty, // ToUser (self for system actions)
+                    effectiveLogAction,           // Action
+                    historyComment                // Comment
+                );
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "UpdateWorkflowStatusCommon: Failed to create document history for instance {InstanceId}", instance.Id);
+            }
         }
 
         // 3. Update DocumentWorkflowInstances status (null = skip)
         if (!string.IsNullOrEmpty(workflowInstanceStatus))
         {
-            instance.Status = workflowInstanceStatus;
-            instance.FinishedAt = DateTime.Now;
-            await _documentWorkflowInstanceRepository.UpdateAsync(instance);
+            try
+            {
+                instance.Status = workflowInstanceStatus;
+                instance.FinishedAt = DateTime.Now;
+                await _documentWorkflowInstanceRepository.UpdateAsync(instance);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "UpdateWorkflowStatusCommon: Failed to update instance status for instance {InstanceId}", instance.Id);
+            }
         }
 
         // 4. Create DocumentWorkflowInstanceLogs (empty = skip)
         if (!string.IsNullOrEmpty(logNote))
         {
-            await _documentWorkflowInstanceLogsManager.CreateAsync(
-                instance.Id,
-                null,                          // no specific assignment
-                CurrentUser.Id,
-                effectiveLogAction,
-                "System",
-                previousStatus,
-                workflowInstanceStatus ?? instance.Status,
-                logNote
+            try
+            {
+                await _documentWorkflowInstanceLogsManager.CreateAsync(
+                    instance.Id,
+                    null,                          // no specific assignment
+                    CurrentUser.Id,
+                    effectiveLogAction,
+                    "System",
+                    previousStatus,
+                    workflowInstanceStatus ?? instance.Status,
+                    logNote
+                );
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "UpdateWorkflowStatusCommon: Failed to create log for instance {InstanceId}", instance.Id);
+            }
+        }
+    }
+
+    #endregion
+
+    #region CopyDocumentFileForNextStepAsync
+
+    /// <summary>
+    /// Copy a DocumentFile (and its blob) for the next workflow step.
+    /// Each step gets its own copy of the file so the audit trail is clear.
+    /// - Reads the source blob from storage
+    /// - Creates a new blob at a new path (signing-steps/{guid}{extension})
+    /// - Creates a new DocumentFile record pointing to the new blob
+    /// Returns the new DocumentFile ID, or null if no source file found.
+    /// </summary>
+    private async Task<Guid?> CopyDocumentFileForNextStepAsync(Guid? sourceFileId, Guid documentId)
+    {
+        if (!sourceFileId.HasValue)
+        {
+            // Fallback: try to get any completed assignment's result file for this document
+            var completedAssignments = await _documentAssignmentRepository.GetListAsync(
+                x => x.DocumentId == documentId
+                && x.Status == nameof(DocumentAssignmentStatus.DONE)
+                && x.DocumentFileResultId.HasValue);
+            sourceFileId = completedAssignments
+                .OrderByDescending(a => a.ProcessedAt)
+                .FirstOrDefault()?.DocumentFileResultId;
+        }
+
+        if (!sourceFileId.HasValue) return null;
+
+        var sourceFile = await _documentFileRepository.FindAsync(sourceFileId.Value);
+        if (sourceFile == null || string.IsNullOrEmpty(sourceFile.Path)) return null;
+
+        try
+        {
+            // Read the source blob
+            var fileBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
+
+            // Create new blob path
+            var extension = Path.GetExtension(sourceFile.Name);
+            var newBlobPath = $"signing-steps/{Guid.NewGuid()}{extension}";
+
+            // Upload to new path in blob storage
+            await _blobContainer.SaveAsync(newBlobPath, fileBytes);
+
+            // Create new DocumentFile record
+            var newFile = new DocumentFile(
+                GuidGenerator.Create(),
+                documentId,
+                sourceFile.Name,
+                sourceFile.IsSigned,
+                DateTime.Now,
+                newBlobPath,
+                sourceFile.Hash
             );
+            newFile.TenantId = CurrentTenant.Id;
+            await _documentFileRepository.InsertAsync(newFile);
+
+            return newFile.Id;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error copying document file for next step. SourceFileId={SourceFileId}, DocumentId={DocumentId}",
+                sourceFileId, documentId);
+            // Fallback: return the source file ID directly (no copy, but at least the reference is there)
+            return sourceFileId;
         }
     }
 

@@ -658,9 +658,22 @@ DocumentWorkflowInstances.cs Status  => Null thì ko update
 Update DocumentWorkflowInstanceLogs.cs  =>  string empty thì ko upadte (khác thì update Note  = param truyền vào)
 
 
-<!-- 
-Khi người dùng chọn option trả về: 
-- Update Document.cs Status = 
-- Delete DocumentAssigment (gửi đến tôi)
-- Update DocumentHistory.cs (Đã trả về)
-- Update DocumentWorkflowInstances.cs:  Status = RETURNED, CurrentStepId = Step trước  -->
+===========WORKFLOW 09/02/2026 
+1. Modal ký chọn phương pháp ký (SigningMethods.cs)
+- Thêm select chọn phương pháp ký.
+- Bắt buộc chọn 1 option mới cho ký
+
+2. Fix Filter 
+- Tôi có thay đổi ở ngày giờ, filter text nhưng các số ở mục tất cả tài liệu, văn bản đến, văn bản đã gửi chưa thay đổi
+
+3. Đổi vị trí của Lịch sử văn bản và lịch sử quy trình
+- tab lịch sử quy trình đổi tên => Lịch sử văn bản 
+- Đưa lịch sử quy trình qua bên thông tin chung
+- Đưa lịch sử văn bản qua bên tab mới Lịch sử văn bản
+
+
+4. Modal WorkflowActionModal / Modal trình ký cho phép tải văn bản cuối cùng của workflow.
+- Bổ sung tab Xem tài liệu (Thông tin chung | Tài liệu trình ký | Lịch sử văn bản)
+- Ở tab "Tài liệu trình ký" Tài liệu cho phép tải hoặc xem file pdf cuối cùng hiển thị DocumentFile tại bước DocumentAssignments (mới nhất theo ngày tạo) lấy DocumentFiles từ DocumentAssignments.DocumentFileResultId  hiển thị lên 
+
+

@@ -412,7 +412,8 @@ public partial class DocumentDetail : HCComponentBase
         {
             Type = type.GetTypeValue(),
             MaxResultCount = 1000,
-            SkipCount = 0
+            SkipCount = 0,
+            Sorting = "SortOrder asc"
         });
         var masterData = result.Items.FirstOrDefault(x => x.Id == id);
         if (masterData != null)

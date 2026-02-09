@@ -27,6 +27,7 @@
 @using HC.DocumentWorkflowInstanceFiles
 @using HC.DocumentHistories
 @using HC.DocumentAssignments
+@using HC.MasterDatas
 @using Volo.Abp.Identity
 
 @inherits HCComponentBase
@@ -387,7 +388,7 @@
 
                 @if (SelectedDocumentId.HasValue && SelectedDocumentDto != null)
                 {
-                    <Alert Color="Color.Info" Visible="true" Class="mb-3">
+                    <Alert Color="Color.Info" Visible="true" Class="mb-0">
                         <AlertMessage>
                             <i class="bi bi-file-earmark-text me-1"></i>@L["Document"]:
                         </AlertMessage>
@@ -401,14 +402,14 @@
             @* Step 4: Show workflow info and steps *@
             @if (WorkflowSubmitInfo != null)
             {
-                <Card Class="mt-2">
+                <Card>
                     <CardHeader>
                         <strong>@L["WorkflowSteps"]</strong> - @WorkflowSubmitInfo.WorkflowName
                     </CardHeader>
                     <CardBody>
                         @foreach (var step in WorkflowSubmitInfo.Steps)
                         {
-                            <div class="d-flex align-items-start mb-3 p-2 border rounded">
+                            <div class="d-flex align-items-start mb-1 p-2 border rounded">
                                 <div class="me-3">
                                     <Badge Color="Color.Primary" Pill>@step.Order</Badge>
                                 </div>
@@ -446,7 +447,7 @@
             }
 
             @* Step 3: Signing Content *@
-            <Field Class="mt-3">
+            <Field>
                 <FieldLabel>@L["SigningContent"]</FieldLabel>
                 <MemoEdit Rows="3" @bind-Text="@SigningContent" Placeholder="@L["EnterSigningContent"]" />
             </Field>
@@ -535,6 +536,7 @@
                                 }
 
                                 <div class="mb-3 p-3 rounded" style="background-color: var(--lpx-content-bg);">
+                                    @* Document info *@
                                     <div class="d-flex align-items-start mb-2">
                                         <i class="bi bi-file-earmark-text text-primary me-2" style="font-size: 1.1rem; margin-top: 2px;"></i>
                                         <div>
@@ -542,16 +544,108 @@
                                             <div class="small">@SelectedDocumentForAction.DocumentTitle - #@SelectedDocumentForAction.DocumentNo</div>
                                         </div>
                                     </div>
-                                    <div class="d-flex align-items-start">
+
+                                    @* Current Step - enhanced detail *@
+                                    <div class="d-flex align-items-start mb-2">
                                         <i class="bi bi-signpost-split text-success me-2" style="font-size: 1.1rem; margin-top: 2px;"></i>
-                                        <div>
+                                        <div class="flex-grow-1">
                                             <label class="form-label fw-bold mb-0">@L["CurrentStep"]</label>
                                             <div class="small">
                                                 @SelectedDocumentForAction.CurrentStepName
                                                 <span class="badge bg-primary ms-1">@L["Step"] @SelectedDocumentForAction.CurrentStepOrder / @SelectedDocumentForAction.TotalSteps</span>
+                                                @if (CurrentStepDetailInfo != null)
+                                                {
+                                                    <span class="badge bg-secondary ms-1">@L[CurrentStepDetailInfo.Type]</span>
+                                                }
                                             </div>
                                         </div>
                                     </div>
+
+                                    @* Assigned Users for current step *@
+                                    @if (CurrentStepDetailInfo != null && CurrentStepDetailInfo.AssignedUsers.Any())
+                                    {
+                                        <div class="d-flex align-items-start mb-2">
+                                            <i class="bi bi-people text-info me-2" style="font-size: 1.1rem; margin-top: 2px;"></i>
+                                            <div class="flex-grow-1">
+                                                <label class="form-label fw-bold mb-0">@L["AssignedUsers"]</label>
+                                                <div class="mt-1">
+                                                    @foreach (var user in CurrentStepDetailInfo.AssignedUsers.OrderByDescending(u => u.IsPrimary))
+                                                    {
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            @if (user.IsPrimary)
+                                                            {
+                                                                <span class="badge bg-warning text-dark me-1" style="font-size: 0.7rem;">
+                                                                    <i class="bi bi-star-fill me-1"></i>@L["PrimaryUser"]
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-light text-dark me-1" style="font-size: 0.7rem;">
+                                                                    <i class="bi bi-person me-1"></i>@L["SecondaryUser"]
+                                                                </span>
+                                                            }
+                                                            <small>@(user.FullName ?? user.UserName)</small>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+
+                                    @* Processing Deadline (StartedAt -> FinishedAt) *@
+                                    @if (WorkflowInstanceInfo != null)
+                                    {
+                                        <div class="d-flex align-items-start">
+                                            <i class="bi bi-calendar-range text-warning me-2" style="font-size: 1.1rem; margin-top: 2px;"></i>
+                                            <div class="flex-grow-1">
+                                                <label class="form-label fw-bold mb-0">@L["ProcessingDeadline"]</label>
+                                                <div class="small mt-1">
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <span class="text-muted me-2" style="min-width: 65px;">@L["StartedAt"]:</span>
+                                                        <span>
+                                                            @if (WorkflowInstanceInfo.StartedAt > DateTime.MinValue)
+                                                            {
+                                                                @WorkflowInstanceInfo.StartedAt.ToString("dd/MM/yyyy HH:mm")
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">---</span>
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="text-muted me-2" style="min-width: 65px;">@L["FinishedAt"]:</span>
+                                                        <span>
+                                                            @if (WorkflowInstanceInfo.FinishedAt > DateTime.MinValue)
+                                                            {
+                                                                @WorkflowInstanceInfo.FinishedAt.ToString("dd/MM/yyyy HH:mm")
+                                                                @if (WorkflowInstanceInfo.FinishedAt <= DateTime.Now
+                                                                    && WorkflowInstanceInfo.Status != nameof(DocumentWorkflowInstanceStatus.COMPLETED)
+                                                                    && WorkflowInstanceInfo.Status != nameof(DocumentWorkflowInstanceStatus.REJECTED)
+                                                                    && WorkflowInstanceInfo.Status != nameof(DocumentWorkflowInstanceStatus.CANCELLED))
+                                                                {
+                                                                    <span class="badge bg-danger ms-1" style="font-size: 0.65rem;">@L["WorkflowOverdue"]</span>
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">---</span>
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                    @if (CurrentStepDetailInfo?.SLADays.HasValue == true)
+                                                    {
+                                                        <div class="d-flex align-items-center mt-1">
+                                                            <span class="text-muted me-2" style="min-width: 65px;">SLA:</span>
+                                                            <span class="badge bg-info text-white" style="font-size: 0.7rem;">
+                                                                <i class="bi bi-clock me-1"></i>@CurrentStepDetailInfo.SLADays @L["Days"]
+                                                            </span>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
                                 </div>
                             }
 
@@ -600,6 +694,23 @@
                                         </div>
                                     </Field>
 
+                                    @* Signing Method (required when Approve) *@
+                                    @if (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE))
+                                    {
+                                        <Field>
+                                            <FieldLabel class="fw-bold">@L["SelectSigningMethod"] <span class="text-danger">*</span></FieldLabel>
+                                            <Select TValue="Guid?"
+                                                SelectedValue="@SelectedSigningMethodId"
+                                                SelectedValueChanged="@(val => SelectedSigningMethodId = val)">
+                                                <SelectItem TValue="Guid?" Value="@null">-- @L["SelectSigningMethod"] --</SelectItem>
+                                                @foreach (var sm in SigningMethods)
+                                                {
+                                                    <SelectItem TValue="Guid?" Value="@sm.Id">@sm.Name</SelectItem>
+                                                }
+                                            </Select>
+                                        </Field>
+                                    }
+
                                     @* Note *@
                                     <Field>
                                         <FieldLabel class="fw-bold">@L["Note"]</FieldLabel>
@@ -615,65 +726,72 @@
                 <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile" Class="d-flex flex-column">
                     <Tabs SelectedTab="@ActionModalActiveTab" SelectedTabChanged="@(name => ActionModalActiveTab = name)" Pills Class="w-100 bg-white p-1">
                         <Items>
-                            <Tab Name="general" Class="w-auto me-1">
+                            <Tab Name="general" Class="w-auto me-1 mb-1">
                                 <i class="bi bi-info-circle me-1"></i>@L["GeneralInfo"]
                             </Tab>
-                            <Tab Name="workflowHistory" Class="w-auto">
-                                <i class="bi bi-clock-history me-1"></i>@L["WorkflowHistory"]
+                            <Tab Name="signingDocuments" Class="w-auto me-1 mb-1">
+                                <i class="bi bi-file-earmark-check me-1"></i>@L["SigningDocuments"]
+                            </Tab>
+                            <Tab Name="documentHistory" Class="w-auto mb-1">
+                                <i class="bi bi-clock-history me-1"></i>@L["DocumentHistory"]
                             </Tab>
                         </Items>
                         <Content>
-                            @* ===== TAB 1: General Info (DocumentHistory + Files) ===== *@
+                            @* ===== TAB 1: General Info (Workflow Logs + Attached Files) ===== *@
                             <TabPanel Name="general">
-                                @* Document History *@
+                                @* Workflow Logs (moved from old tab 2) *@
                                 <Card Class="mt-2 mb-2">
                                     <CardHeader Class="p-2">
                                         <Heading Size="HeadingSize.Is6" Class="fw-bolder mb-0">
-                                            <i class="bi bi-chat-left-text me-2 text-info"></i>@L["DocumentHistory"]
-                                            @if (DocumentHistories.Any())
+                                            <i class="bi bi-clock-history me-2 text-primary"></i>@L["WorkflowHistory"]
+                                            @if (WorkflowLogs.Any())
                                             {
-                                                <Badge Color="Color.Info" Pill Class="ms-2 text-white">@DocumentHistories.Count</Badge>
+                                                <Badge Color="Color.Primary" Pill Class="ms-2 text-white">@WorkflowLogs.Count</Badge>
                                             }
                                         </Heading>
                                     </CardHeader>
                                     <CardBody Style="max-height: 230px; overflow-y: auto; padding: 0.75rem !important;">
-                                        @if (IsLoadingHistories)
+                                        @if (IsLoadingLogs)
                                         {
                                             <div class="text-center py-3">
                                                 <RadarSpinner />
                                             </div>
                                         }
-                                        else if (!DocumentHistories.Any())
+                                        else if (!WorkflowLogs.Any())
                                         {
                                             <div class="text-center text-muted py-3">
-                                                <i class="bi bi-chat-left-dots" style="font-size: 1.5rem;"></i>
-                                                <p class="mt-2 mb-0 small">@L["NoDataAvailable"]</p>
+                                                <i class="bi bi-clock-history" style="font-size: 1.5rem;"></i>
+                                                <p class="mt-2 mb-0 small">@L["NoWorkflowLogs"]</p>
                                             </div>
                                         }
                                         else
                                         {
-                                            @foreach (var history in DocumentHistories)
+                                            @foreach (var log in WorkflowLogs.OrderByDescending(l => l.DocumentWorkflowInstanceLogs.CreationTime))
                                             {
                                                 <div class="d-flex mb-2 p-2 border rounded">
                                                     <div class="me-2 mt-1">
-                                                        <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; flex-shrink: 0;">
-                                                            <i class="bi bi-person-fill" style="font-size: 0.8rem;"></i>
-                                                        </div>
+                                                        <span class="badge rounded-circle @GetLogActionBadgeClass(log.DocumentWorkflowInstanceLogs.Action)" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
+                                                            <i class="@GetLogActionIcon(log.DocumentWorkflowInstanceLogs.Action)" style="font-size: 0.7rem;"></i>
+                                                        </span>
                                                     </div>
                                                     <div class="flex-grow-1" style="min-width: 0;">
                                                         <div class="d-flex justify-content-between align-items-start">
-                                                            <strong style="font-size: 0.8rem;">@(history.FromUser?.Name ?? history.FromUser?.UserName ?? "---")</strong>
-                                                            <small class="text-muted" style="font-size: 0.7rem;">@history.DocumentHistory.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
+                                                            <strong style="font-size: 0.8rem;">@(log.ActorUser?.Name ?? log.ActorUser?.UserName ?? "---")</strong>
+                                                            <small class="text-muted" style="font-size: 0.7rem;">@log.DocumentWorkflowInstanceLogs.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
                                                         </div>
                                                         <div style="font-size: 0.8rem;">
-                                                            <span class="badge bg-info text-white me-1" style="font-size: 0.7rem;">@L[history.DocumentHistory.Action]</span>
-                                                            <i class="bi bi-arrow-right mx-1 text-muted"></i>
-                                                            <span class="text-muted">@(history.ToUser?.Name ?? history.ToUser?.UserName ?? "---")</span>
+                                                            <small class="badge @GetLogActionBadgeClass(log.DocumentWorkflowInstanceLogs.Action) me-1" style="font-size: 0.7rem;">
+                                                                @L[log.DocumentWorkflowInstanceLogs.Action]
+                                                            </small>
+                                                            @if (!string.IsNullOrWhiteSpace(log.DocumentWorkflowInstanceLogs.ActorRole))
+                                                            {
+                                                                <small class="text-muted">(@L[log.DocumentWorkflowInstanceLogs.ActorRole])</small>
+                                                            }
                                                         </div>
-                                                        @if (!string.IsNullOrWhiteSpace(history.DocumentHistory.Comment))
+                                                        @if (!string.IsNullOrWhiteSpace(log.DocumentWorkflowInstanceLogs.Note))
                                                         {
                                                             <div class="mt-1 p-1 bg-light rounded" style="font-size: 0.8rem;">
-                                                                <small>@history.DocumentHistory.Comment</small>
+                                                                <small>@log.DocumentWorkflowInstanceLogs.Note</small>
                                                             </div>
                                                         }
                                                     </div>
@@ -730,51 +848,132 @@
                                 }
                             </TabPanel>
 
-                            @* ===== TAB 2: Workflow History (Logs) ===== *@
-                            <TabPanel Name="workflowHistory">
+                            @* ===== TAB 2: Signing Documents (DocumentFileResultId from Assignments) ===== *@
+                            <TabPanel Name="signingDocuments">
                                 <Card Class="mt-2">
+                                    <CardHeader Class="p-2">
+                                        <Heading Size="HeadingSize.Is6" Class="fw-bolder mb-0">
+                                            <i class="bi bi-file-earmark-check me-2 text-success"></i>@L["SigningDocuments"]
+                                            @if (SigningDocumentAssignments.Any())
+                                            {
+                                                <Badge Color="Color.Success" Pill Class="ms-2 text-white">@SigningDocumentAssignments.Count</Badge>
+                                            }
+                                        </Heading>
+                                    </CardHeader>
                                     <CardBody Style="max-height: 450px; overflow-y: auto; padding: 0.75rem !important;">
-                                        @if (IsLoadingLogs)
+                                        @if (IsLoadingSigningDocuments)
                                         {
                                             <div class="text-center py-3">
                                                 <RadarSpinner />
                                             </div>
                                         }
-                                        else if (!WorkflowLogs.Any())
+                                        else if (!SigningDocumentAssignments.Any())
                                         {
                                             <div class="text-center text-muted py-3">
-                                                <i class="bi bi-clock-history" style="font-size: 2rem;"></i>
-                                                <p class="mt-2 mb-0">@L["NoWorkflowLogs"]</p>
+                                                <i class="bi bi-file-earmark-x" style="font-size: 2rem;"></i>
+                                                <p class="mt-2 mb-0">@L["NoSigningDocuments"]</p>
                                             </div>
                                         }
                                         else
                                         {
-                                            @foreach (var log in WorkflowLogs.OrderByDescending(l => l.DocumentWorkflowInstanceLogs.CreationTime))
+                                            @foreach (var assignment in SigningDocumentAssignments)
                                             {
-                                                <div class="d-flex mb-3">
-                                                    <div class="me-2 mt-1">
-                                                        <span class="badge rounded-circle @GetLogActionBadgeClass(log.DocumentWorkflowInstanceLogs.Action)" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
-                                                            <i class="@GetLogActionIcon(log.DocumentWorkflowInstanceLogs.Action)"></i>
-                                                        </span>
+                                                <div class="d-flex align-items-center mb-2 p-2 border rounded">
+                                                    <div class="me-2">
+                                                        <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 1.5rem;"></i>
                                                     </div>
-                                                    <div class="flex-grow-1">
-                                                        <div class="d-flex justify-content-between align-items-start">
-                                                            <strong class="small">@(log.ActorUser?.Name ?? log.ActorUser?.UserName ?? "---")</strong>
-                                                            <small class="text-muted" style="font-size: 0.75rem;">@log.DocumentWorkflowInstanceLogs.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
+                                                    <div class="flex-grow-1 overflow-hidden">
+                                                        <div class="text-truncate fw-bold" style="font-size: 0.85rem;">
+                                                            @assignment.DocumentFileResult!.Name
                                                         </div>
-                                                        <div>
-                                                            <small class="badge @GetLogActionBadgeClass(log.DocumentWorkflowInstanceLogs.Action) me-1">
-                                                                @L[log.DocumentWorkflowInstanceLogs.Action]
-                                                            </small>
-                                                            @if (!string.IsNullOrWhiteSpace(log.DocumentWorkflowInstanceLogs.ActorRole))
+                                                        <small class="text-muted" style="font-size: 0.7rem;">
+                                                            <i class="bi bi-person me-1"></i>@L["ProcessedBy"]: @(assignment.ReceiverUser?.Name ?? assignment.ReceiverUser?.UserName ?? "---")
+                                                        </small>
+                                                        <br />
+                                                        <small class="text-muted" style="font-size: 0.7rem;">
+                                                            @if (assignment.WorkflowStepTemplate != null)
                                                             {
-                                                                <small class="text-muted">(@L[log.DocumentWorkflowInstanceLogs.ActorRole])</small>
+                                                                <span class="badge bg-light text-dark me-1" style="font-size: 0.65rem;">
+                                                                    @L["StepInfo"] @assignment.WorkflowStepTemplate.Order: @assignment.WorkflowStepTemplate.Name
+                                                                </span>
                                                             }
-                                                        </div>
-                                                        @if (!string.IsNullOrWhiteSpace(log.DocumentWorkflowInstanceLogs.Note))
+                                                            <i class="bi bi-calendar me-1"></i>@assignment.DocumentAssignment.CreationTime.ToString("dd/MM/yyyy HH:mm")
+                                                        </small>
+                                                    </div>
+                                                    <div class="d-flex gap-1 ms-2">
+                                                        @if (assignment.DocumentFileResult != null
+                                                            && !string.IsNullOrEmpty(assignment.DocumentFileResult.Path)
+                                                            && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(assignment.DocumentFileResult.Name))
                                                         {
-                                                            <div class="mt-1 p-2 bg-light rounded">
-                                                                <small>@log.DocumentWorkflowInstanceLogs.Note</small>
+                                                            <Button Color="Color.Info" Size="Size.Small"
+                                                                Clicked="@(() => ViewSigningDocumentPdfAsync(assignment.DocumentFileResult.Path, assignment.DocumentFileResult.Name))"
+                                                                title="@L["ViewPdf"]">
+                                                                <Icon Name="IconName.Eye" />
+                                                            </Button>
+                                                        }
+                                                        <Button Color="Color.Primary" Size="Size.Small"
+                                                            Clicked="@(() => DownloadFileAsync(assignment.DocumentFileResult?.Path, assignment.DocumentFileResult?.Name ?? "file"))"
+                                                            title="@L["Download"]">
+                                                            <Icon Name="IconName.Download" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                    </CardBody>
+                                </Card>
+                            </TabPanel>
+
+                            @* ===== TAB 3: Document History (moved from old general tab) ===== *@
+                            <TabPanel Name="documentHistory">
+                                <Card Class="mt-2">
+                                    <CardHeader Class="p-2">
+                                        <Heading Size="HeadingSize.Is6" Class="fw-bolder mb-0">
+                                            <i class="bi bi-chat-left-text me-2 text-info"></i>@L["DocumentHistory"]
+                                            @if (DocumentHistories.Any())
+                                            {
+                                                <Badge Color="Color.Info" Pill Class="ms-2 text-white">@DocumentHistories.Count</Badge>
+                                            }
+                                        </Heading>
+                                    </CardHeader>
+                                    <CardBody Style="max-height: 450px; overflow-y: auto; padding: 0.75rem !important;">
+                                        @if (IsLoadingHistories)
+                                        {
+                                            <div class="text-center py-3">
+                                                <RadarSpinner />
+                                            </div>
+                                        }
+                                        else if (!DocumentHistories.Any())
+                                        {
+                                            <div class="text-center text-muted py-3">
+                                                <i class="bi bi-chat-left-dots" style="font-size: 2rem;"></i>
+                                                <p class="mt-2 mb-0">@L["NoDataAvailable"]</p>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var history in DocumentHistories)
+                                            {
+                                                <div class="d-flex mb-2 p-2 border rounded">
+                                                    <div class="me-2 mt-1">
+                                                        <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; flex-shrink: 0;">
+                                                            <i class="bi bi-person-fill" style="font-size: 0.8rem;"></i>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1" style="min-width: 0;">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <strong style="font-size: 0.8rem;">@(history.FromUser?.Name ?? history.FromUser?.UserName ?? "---")</strong>
+                                                            <small class="text-muted" style="font-size: 0.7rem;">@history.DocumentHistory.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
+                                                        </div>
+                                                        <div style="font-size: 0.8rem;">
+                                                            <span class="badge bg-info text-white me-1" style="font-size: 0.7rem;">@L[history.DocumentHistory.Action]</span>
+                                                            <i class="bi bi-arrow-right mx-1 text-muted"></i>
+                                                            <span class="text-muted">@(history.ToUser?.Name ?? history.ToUser?.UserName ?? "---")</span>
+                                                        </div>
+                                                        @if (!string.IsNullOrWhiteSpace(history.DocumentHistory.Comment))
+                                                        {
+                                                            <div class="mt-1 p-1 bg-light rounded" style="font-size: 0.8rem;">
+                                                                <small>@history.DocumentHistory.Comment</small>
                                                             </div>
                                                         }
                                                     </div>
@@ -793,7 +992,7 @@
             <Button Color="Color.Secondary" Clicked="CloseActionModalAsync">@L["Close"]</Button>
             @if (!IsViewOnly)
             {
-                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsOverdue || string.IsNullOrEmpty(SelectedAction))">
+                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsOverdue || string.IsNullOrEmpty(SelectedAction) || (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && !SelectedSigningMethodId.HasValue))">
                     <Icon Name="IconName.Check" Class="me-1" />@L["Confirm"]
                 </Button>
             }

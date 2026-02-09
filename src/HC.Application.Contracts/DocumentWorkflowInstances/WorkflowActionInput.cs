@@ -24,4 +24,10 @@ public class WorkflowActionInput
     /// Optional note/comment for the action
     /// </summary>
     public string? Note { get; set; }
+
+    /// <summary>
+    /// Signing method ID (required when action is APPROVE).
+    /// References MasterData with Type = "LOAI_KY".
+    /// </summary>
+    public Guid? SigningMethodId { get; set; }
 }

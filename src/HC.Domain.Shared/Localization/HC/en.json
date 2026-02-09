@@ -1107,6 +1107,19 @@
     "WorkflowOverdue": "Processing Overdue",
     "WorkflowOverdueDescription": "This document has exceeded the processing deadline. No actions can be performed. The workflow has been cancelled.",
     "WorkflowOverdueComment": "Document processing deadline expired",
-    "ViewWorkflowInfo": "View Workflow Info"
+    "ViewWorkflowInfo": "View Workflow Info",
+    "NoSignaturesFound": "No signatures found",
+    "SelectSigningMethod": "Select Signing Method",
+    "PleaseSelectSigningMethod": "Please select a signing method",
+    "SigningDocuments": "Signing Documents",
+    "NoSigningDocuments": "No signing documents yet",
+    "ProcessedBy": "Processed by",
+    "StepInfo": "Step",
+    "AssignedUsers": "Assigned Users",
+    "PrimaryUser": "Primary",
+    "SecondaryUser": "Secondary",
+    "ProcessingDeadline": "Processing Deadline",
+    "StartedAt": "Started",
+    "FinishedAt": "Deadline"
   }
 }
