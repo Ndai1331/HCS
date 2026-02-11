@@ -694,6 +694,9 @@ namespace HC.Blazor;
         
         // Chat handler factory - Used by Chat1 component to create handlers with component-specific state
         context.Services.AddScoped<Pages.Chat1.Handlers.IChatHandlerFactory, Pages.Chat1.Handlers.ChatHandlerFactory>();
+
+        // DocxToPdf converter - LibreOffice based converter for Word to PDF conversion
+        context.Services.AddSingleton<HC.Blazor.Services.DocxToPdfConverter.IDocxToPdfConverter, HC.Blazor.Services.DocxToPdfConverter.LibreOfficeDocxToPdfConverter>();
     }
 
     public override void OnPostApplicationInitialization(ApplicationInitializationContext context)

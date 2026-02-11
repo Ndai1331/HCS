@@ -35,6 +35,10 @@ services:
       - MinIO__WithSSL=false
       - MinIO__CreateContainerIfNotExists=true
 
+      - LibreOffice__SofficePath=soffice
+      - LibreOffice__UnoconvPath=unoconv
+      - LibreOffice__UnoPort=2002
+
     ports:
       - "44302:8081"
       - "8082:8080"

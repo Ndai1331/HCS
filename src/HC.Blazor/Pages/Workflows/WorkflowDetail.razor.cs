@@ -29,9 +29,10 @@ using HC.Blazor.Shared;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.BlobStoring;
 using Blazorise.Extensions;
+using Blazorise.PdfViewer;
 using System.IO;
-using Volo.Abp.AspNetCore.Components.Messages;
-namespace HC.Blazor.Pages;
+using HC.Blazor.Services.DocxToPdfConverter;
+namespace HC.Blazor.Pages.Workflows;
 
 public partial class WorkflowDetail : ValidationPageBase, IDisposable
 {
@@ -44,6 +45,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
     [Inject] private ILogger<WorkflowDetail> Logger { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
+    [Inject] private IDocxToPdfConverter DocxToPdfConverter { get; set; } = default!;
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
     [Parameter] public Guid? Id { get; set; }
 
@@ -120,6 +123,12 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     private bool IsUploadingWordTemplate { get; set; }
     private string? UploadedWordTemplatePath { get; set; }
     private string? UploadedWordTemplateFileName { get; set; }
+
+    // PDF viewer state for converted Word template
+    private PdfViewer? WordTemplatePdfViewerRef { get; set; }
+    private string? WordTemplatePdfUrl { get; set; }
+    private string? UploadedWordTemplatePdfPath { get; set; }
+    private bool IsConvertingToPdf { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -477,11 +486,16 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 {
                     UploadedWordTemplatePath = template.WordTemplatePath;
                     UploadedWordTemplateFileName = Path.GetFileName(template.WordTemplatePath);
+                    
+                    // Try to load the converted PDF for viewer
+                    await LoadWordTemplatePdfAsync(template.WordTemplatePath);
                 }
                 else
                 {
                     UploadedWordTemplatePath = null;
                     UploadedWordTemplateFileName = null;
+                    UploadedWordTemplatePdfPath = null;
+                    WordTemplatePdfUrl = null;
                 }
                 
                 await InvokeAsync(StateHasChanged);
@@ -1185,8 +1199,10 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             }
 
             IsUploadingWordTemplate = true;
+            IsConvertingToPdf = true;
             SelectedWordTemplateFile = file;
             WordTemplateFilePickerProgress = 0;
+            await InvokeAsync(StateHasChanged);
 
             // Read file stream FIRST before any other async operations
             // to prevent SignalR pipe reader from being completed/timeout
@@ -1199,7 +1215,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
 
             var fileBytes = memoryStream.ToArray();
 
-            // Delete old file if exists (safe to do after reading the new file)
+            // Delete old files if exists (safe to do after reading the new file)
             var oldFilePath = UploadedWordTemplatePath ?? CurrentWorkflowTemplate?.WordTemplatePath;
             if (!string.IsNullOrWhiteSpace(oldFilePath))
             {
@@ -1213,16 +1229,83 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 }
             }
 
-            // Generate unique file name
+            // Delete old PDF if exists
+            if (!string.IsNullOrWhiteSpace(UploadedWordTemplatePdfPath))
+            {
+                try
+                {
+                    await BlobContainer.DeleteAsync(UploadedWordTemplatePdfPath);
+                }
+                catch
+                {
+                    // Ignore if file doesn't exist
+                }
+            }
+
+            // Generate unique file name for Word file
             var fileName = $"{Guid.NewGuid()}_{file.Name}";
             var filePath = $"workflow-templates/{fileName}";
 
-            // Upload to MinIO
+            // Upload Word file to MinIO
             await BlobContainer.SaveAsync(filePath, fileBytes);
-
             UploadedWordTemplatePath = filePath;
             UploadedWordTemplateFileName = file.Name;
+            WordTemplateFilePickerProgress = 50;
+            await InvokeAsync(StateHasChanged);
+
+            // Convert Word to PDF using LibreOffice
+            byte[]? pdfBytes = null;
+            string? tempDocxPath = null;
+            try
+            {
+                // Write Word file to temp location for conversion
+                tempDocxPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}{fileExtension}");
+                await File.WriteAllBytesAsync(tempDocxPath, fileBytes);
+
+                Logger?.LogInformation("Converting Word to PDF: {FileName}", file.Name);
+                pdfBytes = await DocxToPdfConverter.ConvertFileAsync(tempDocxPath);
+                Logger?.LogInformation("Word to PDF conversion completed: {FileName}, PDF size: {Size} bytes", file.Name, pdfBytes.Length);
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "Failed to convert Word to PDF: {FileName}", file.Name);
+                // Show warning to user - file uploaded OK but PDF conversion failed
+                await UiMessageService.Warn(
+                    L["WordToPdfConversionFailed"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+            }
+            finally
+            {
+                // Cleanup temp file
+                if (!string.IsNullOrEmpty(tempDocxPath) && File.Exists(tempDocxPath))
+                {
+                    try { File.Delete(tempDocxPath); }
+                    catch { /* ignore */ }
+                }
+            }
+
+            // Upload converted PDF to MinIO and show in PDF viewer
+            if (pdfBytes != null && pdfBytes.Length > 0)
+            {
+                var pdfFileName = $"{Path.GetFileNameWithoutExtension(fileName)}.pdf";
+                var pdfFilePath = $"workflow-templates/pdf/{pdfFileName}";
+                await BlobContainer.SaveAsync(pdfFilePath, pdfBytes);
+                UploadedWordTemplatePdfPath = pdfFilePath;
+
+                // Create data URL for PDF viewer
+                var base64 = Convert.ToBase64String(pdfBytes);
+                WordTemplatePdfUrl = $"data:application/pdf;base64,{base64}";
+
+                Logger?.LogInformation("PDF uploaded to MinIO: {PdfPath}", pdfFilePath);
+            }
+            else
+            {
+                UploadedWordTemplatePdfPath = null;
+                WordTemplatePdfUrl = null;
+            }
+
             WordTemplateFilePickerProgress = 100;
+            IsConvertingToPdf = false;
 
             await UiMessageService.Success(L["FileUploadedSuccessfully"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
@@ -1232,12 +1315,47 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             await HandleErrorAsync(ex);
             UploadedWordTemplatePath = null;
             UploadedWordTemplateFileName = null;
+            UploadedWordTemplatePdfPath = null;
+            WordTemplatePdfUrl = null;
             WordTemplateFilePickerProgress = 0;
         }
         finally
         {
             IsUploadingWordTemplate = false;
+            IsConvertingToPdf = false;
             await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <summary>
+    /// Load converted PDF from MinIO for the PDF viewer.
+    /// Derives the PDF path from the Word template path.
+    /// </summary>
+    private async Task LoadWordTemplatePdfAsync(string wordTemplatePath)
+    {
+        try
+        {
+            // Derive PDF path from Word template path
+            // Word: workflow-templates/{guid}_{name}.docx -> PDF: workflow-templates/pdf/{guid}_{name}.pdf
+            var wordFileName = Path.GetFileName(wordTemplatePath);
+            var pdfFileName = $"{Path.GetFileNameWithoutExtension(wordFileName)}.pdf";
+            var pdfPath = $"workflow-templates/pdf/{pdfFileName}";
+
+            var pdfBytes = await BlobContainer.GetAllBytesAsync(pdfPath);
+            if (pdfBytes != null && pdfBytes.Length > 0)
+            {
+                UploadedWordTemplatePdfPath = pdfPath;
+                var base64 = Convert.ToBase64String(pdfBytes);
+                WordTemplatePdfUrl = $"data:application/pdf;base64,{base64}";
+                Logger?.LogInformation("PDF loaded for viewer: {PdfPath}", pdfPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            // PDF might not exist yet (old templates before this feature)
+            Logger?.LogWarning(ex, "Could not load converted PDF for Word template: {Path}", wordTemplatePath);
+            UploadedWordTemplatePdfPath = null;
+            WordTemplatePdfUrl = null;
         }
     }
 
@@ -1252,11 +1370,26 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 return;
             }
 
-            // Delete from MinIO
+            // Delete Word file from MinIO
             await BlobContainer.DeleteAsync(filePathToDelete);
+
+            // Delete converted PDF from MinIO
+            if (!string.IsNullOrWhiteSpace(UploadedWordTemplatePdfPath))
+            {
+                try
+                {
+                    await BlobContainer.DeleteAsync(UploadedWordTemplatePdfPath);
+                }
+                catch
+                {
+                    // Ignore if PDF doesn't exist
+                }
+            }
 
             UploadedWordTemplatePath = null;
             UploadedWordTemplateFileName = null;
+            UploadedWordTemplatePdfPath = null;
+            WordTemplatePdfUrl = null;
             await WordTemplateFilePicker.Clear();
 
             // Update template if exists

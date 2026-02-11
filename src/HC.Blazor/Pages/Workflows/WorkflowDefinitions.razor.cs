@@ -20,7 +20,7 @@ using Microsoft.JSInterop;
 using Volo.Abp;
 using Volo.Abp.Content;
 
-namespace HC.Blazor.Pages;
+namespace HC.Blazor.Pages.Workflows;
 
 public partial class WorkflowDefinitions
 {

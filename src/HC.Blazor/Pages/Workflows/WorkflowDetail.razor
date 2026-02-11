@@ -27,6 +27,7 @@
 @using Volo.Abp.Http.Client
 @using Volo.Abp.Identity
 @using Microsoft.Extensions.Caching.Memory
+@using Blazorise.PdfViewer
 @inherits ValidationPageBase
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IBlockUiService BlockUiService
@@ -329,7 +330,7 @@
                                         }
                                     </Column>
                                     
-                                    <!-- Right Column: File Upload (6 columns) -->
+                                    <!-- Right Column: File Upload + PDF Viewer (6 columns) -->
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                         @if (!HasWordTemplateFile())
                                         {
@@ -341,7 +342,8 @@
                                                            Changed="OnWordTemplateFileChanged"
                                                            ShowMode="FilePickerShowMode.List"
                                                            MaxFileSize="52428800"
-                                                           FilePickerLocalizer="FilePickerLocalizer">
+                                                           FilePickerLocalizer="FilePickerLocalizer"
+                                                           Accept=".docx,.doc">
                                                     <ButtonsTemplate>
                                                         <Progress Value="@WordTemplateFilePickerProgress" />
                                                         <Buttons>
@@ -394,6 +396,26 @@
                                                         </tr>
                                                     </tbody>
                                                 </Table>
+                                            </div>
+                                        }
+
+                                        @* Converting indicator *@
+                                        @if (IsConvertingToPdf)
+                                        {
+                                            <Alert Color="Color.Info" Dismissible="false" Class="mt-2">
+                                                <Icon Name="IconName.Sync" Class="me-2 fa-spin" />
+                                                @L["ConvertingToPdf"]...
+                                            </Alert>
+                                        }
+
+                                        @* PDF Viewer for converted Word template *@
+                                        @if (!string.IsNullOrEmpty(WordTemplatePdfUrl))
+                                        {
+                                            <div class="mt-3">
+                                                <PdfViewerContainer Height="Height.Rem(40)">
+                                                    <PdfViewerToolbar />
+                                                    <PdfViewer Source="@WordTemplatePdfUrl" @ref="@WordTemplatePdfViewerRef" />
+                                                </PdfViewerContainer>
                                             </div>
                                         }
                                     </Column>

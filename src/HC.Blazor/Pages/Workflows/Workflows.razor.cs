@@ -22,7 +22,7 @@ using Volo.Abp;
 using Volo.Abp.Content;
 using Microsoft.Extensions.Caching.Memory;
 using Volo.Abp.AspNetCore.Components.Messages;
-namespace HC.Blazor.Pages;
+namespace HC.Blazor.Pages.Workflows;
 
 public partial class Workflows
 {
