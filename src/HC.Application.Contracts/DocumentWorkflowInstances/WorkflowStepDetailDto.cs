@@ -38,7 +38,7 @@ public class WorkflowSubmitInfoDto
     public string WorkflowName { get; set; } = null!;
     public Guid WorkflowTemplateId { get; set; }
     public string WorkflowTemplateName { get; set; } = null!;
-    public string? WordTemplatePath { get; set; }
+    public string? PdfTemplatePath { get; set; }
     public bool HasTemplateFile { get; set; }
     public List<WorkflowStepDetailDto> Steps { get; set; } = new();
 }

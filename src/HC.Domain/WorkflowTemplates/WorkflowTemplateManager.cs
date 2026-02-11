@@ -19,7 +19,7 @@ public abstract class WorkflowTemplateManagerBase : DomainService
         _workflowTemplateRepository = workflowTemplateRepository;
     }
 
-    public virtual async Task<WorkflowTemplate> CreateAsync(Guid workflowId, string code, string name, string? wordTemplatePath = null, string? contentSchema = null, string? outputFormat = null, string? signMode = null)
+    public virtual async Task<WorkflowTemplate> CreateAsync(Guid workflowId, string code, string name, string? wordTemplatePath = null, string? pdfTemplatePath = null, string? contentSchema = null, string? outputFormat = null, string? signMode = null)
     {
         Check.NotNull(workflowId, nameof(workflowId));
         Check.NotNullOrWhiteSpace(code, nameof(code));
@@ -27,11 +27,11 @@ public abstract class WorkflowTemplateManagerBase : DomainService
         Check.NotNullOrWhiteSpace(name, nameof(name));
         Check.Length(outputFormat, nameof(outputFormat), WorkflowTemplateConsts.OutputFormatMaxLength);
         Check.Length(signMode, nameof(signMode), WorkflowTemplateConsts.SignModeMaxLength);
-        var workflowTemplate = new WorkflowTemplate(GuidGenerator.Create(), workflowId, code, name, wordTemplatePath, contentSchema, outputFormat, signMode);
+        var workflowTemplate = new WorkflowTemplate(GuidGenerator.Create(), workflowId, code, name, wordTemplatePath, pdfTemplatePath, contentSchema, outputFormat, signMode);
         return await _workflowTemplateRepository.InsertAsync(workflowTemplate);
     }
 
-    public virtual async Task<WorkflowTemplate> UpdateAsync(Guid id, Guid workflowId, string code, string name, string? wordTemplatePath = null, string? contentSchema = null, string? outputFormat = null, string? signMode = null, [CanBeNull] string? concurrencyStamp = null)
+    public virtual async Task<WorkflowTemplate> UpdateAsync(Guid id, Guid workflowId, string code, string name, string? wordTemplatePath = null, string? pdfTemplatePath = null, string? contentSchema = null, string? outputFormat = null, string? signMode = null, [CanBeNull] string? concurrencyStamp = null)
     {
         Check.NotNull(workflowId, nameof(workflowId));
         Check.NotNullOrWhiteSpace(code, nameof(code));
@@ -44,6 +44,7 @@ public abstract class WorkflowTemplateManagerBase : DomainService
         workflowTemplate.Code = code;
         workflowTemplate.Name = name;
         workflowTemplate.WordTemplatePath = wordTemplatePath;
+        workflowTemplate.PdfTemplatePath = pdfTemplatePath;
         workflowTemplate.ContentSchema = contentSchema;
         workflowTemplate.OutputFormat = outputFormat;
         workflowTemplate.SignMode = signMode;

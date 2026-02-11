@@ -330,7 +330,7 @@
                                         }
 
                                         @* File Upload Section - Below ContentSchema *@
-                                        <Row Class="mt-3">
+                                        <Row>
                                             <Column ColumnSize="ColumnSize.Is12">
                                                 @if (!HasWordTemplateFile())
                                                 {
@@ -343,7 +343,7 @@
                                                                    ShowMode="FilePickerShowMode.List"
                                                                    MaxFileSize="52428800"
                                                                    FilePickerLocalizer="FilePickerLocalizer"
-                                                                   Accept=".docx,.doc">
+                                                                   Accept=".docx,.doc,.pdf">
                                                             <ButtonsTemplate>
                                                                 <Progress Value="@WordTemplateFilePickerProgress" />
                                                                 <Buttons>
@@ -381,7 +381,7 @@
                                                                         <div class="d-flex gap-2 align-items-center">
                                                                             <FilePicker @ref="WordTemplateFilePicker"
                                                                                        Multiple="false"
-                                                                                       Filter=".docx,.doc"
+                                                                                       Filter=".docx,.doc,.pdf"
                                                                                        DisableProgressReport="true"
                                                                                        Changed="OnWordTemplateFileChanged"
                                                                                        ShowMode="FilePickerShowMode.List"
@@ -401,7 +401,7 @@
                                     </Column>
                                     
                                     <!-- Right Column: PDF Viewer only (6 columns) -->
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="bg-dark">
                                         @if (IsConvertingToPdf)
                                         {
                                             @* Loading indicator while converting *@

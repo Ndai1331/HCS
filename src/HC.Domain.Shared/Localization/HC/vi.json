@@ -160,6 +160,7 @@
     "FileUploadedSuccessfully": "Tải file lên thành công",
     "FileDeletedSuccessfully": "Xóa file thành công",
     "OnlyWordFilesAllowed": "Chỉ cho phép tải lên file Word (.docx, .doc)",
+    "OnlyWordAndPdfFilesAllowed": "Chỉ cho phép tải lên file Word (.docx, .doc) và PDF (.pdf)",
     "FileUploaded": "File đã tải lên",
     "CurrentImage": "Hình ảnh hiện tại",
     "CurrentFile": "File hiện tại",

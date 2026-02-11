@@ -148,8 +148,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             WorkflowName = workflow.Name,
             WorkflowTemplateId = activeTemplate.Id,
             WorkflowTemplateName = activeTemplate.Name,
-            WordTemplatePath = activeTemplate.WordTemplatePath,
-            HasTemplateFile = !string.IsNullOrWhiteSpace(activeTemplate.WordTemplatePath),
+            PdfTemplatePath = activeTemplate.PdfTemplatePath,
+            HasTemplateFile = !string.IsNullOrWhiteSpace(activeTemplate.PdfTemplatePath),
             Steps = stepTemplates.Select(step => new WorkflowStepDetailDto
             {
                 StepId = step.Id,
@@ -205,7 +205,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             //Workflow tạm 
             //Chính là nếu file doc docx thì convert sang pdf trước khi tạo document
             
-            if (!workflowInfo.HasTemplateFile || string.IsNullOrWhiteSpace(workflowInfo.WordTemplatePath))
+            if (!workflowInfo.HasTemplateFile || string.IsNullOrWhiteSpace(workflowInfo.PdfTemplatePath))
             {
                 throw new UserFriendlyException(L["WorkflowTemplateHasNoFile"]);
             }
@@ -236,14 +236,14 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             );
 
             // Create a DocumentFile for the template file path
-            var templateFileName = System.IO.Path.GetFileName(workflowInfo.WordTemplatePath);
+            var templateFileName = System.IO.Path.GetFileName(workflowInfo.PdfTemplatePath);
             var documentFile = new DocumentFile(
                 GuidGenerator.Create(),
                 createdDocument.Id,
                 templateFileName,
                 false,
                 now,
-                workflowInfo.WordTemplatePath,
+                workflowInfo.PdfTemplatePath,
                 null
             );
             documentFile.TenantId = CurrentTenant.Id;

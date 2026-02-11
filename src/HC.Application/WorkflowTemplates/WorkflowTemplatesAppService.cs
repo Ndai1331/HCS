@@ -86,7 +86,7 @@ public abstract class WorkflowTemplatesAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["Workflow"]]);
         }
 
-        var workflowTemplate = await _workflowTemplateManager.CreateAsync(input.WorkflowId, input.Code, input.Name, input.WordTemplatePath, input.ContentSchema, input.OutputFormat, input.SignMode);
+        var workflowTemplate = await _workflowTemplateManager.CreateAsync(input.WorkflowId, input.Code, input.Name, input.WordTemplatePath, input.PdfTemplatePath, input.ContentSchema, input.OutputFormat, input.SignMode);
         return ObjectMapper.Map<WorkflowTemplate, WorkflowTemplateDto>(workflowTemplate);
     }
 
@@ -98,7 +98,7 @@ public abstract class WorkflowTemplatesAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["Workflow"]]);
         }
 
-        var workflowTemplate = await _workflowTemplateManager.UpdateAsync(id, input.WorkflowId, input.Code, input.Name, input.WordTemplatePath, input.ContentSchema, input.OutputFormat, input.SignMode, input.ConcurrencyStamp);
+        var workflowTemplate = await _workflowTemplateManager.UpdateAsync(id, input.WorkflowId, input.Code, input.Name, input.WordTemplatePath, input.PdfTemplatePath, input.ContentSchema, input.OutputFormat, input.SignMode, input.ConcurrencyStamp);
         return ObjectMapper.Map<WorkflowTemplate, WorkflowTemplateDto>(workflowTemplate);
     }
 

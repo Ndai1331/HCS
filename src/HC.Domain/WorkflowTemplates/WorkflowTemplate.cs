@@ -42,7 +42,7 @@ public abstract class WorkflowTemplateBase : FullAuditedAggregateRoot<Guid>, IMu
     {
     }
 
-    public WorkflowTemplateBase(Guid id, Guid workflowId, string code, string name, string? wordTemplatePath = null, string? contentSchema = null, string? outputFormat = null, string? signMode = null)
+    public WorkflowTemplateBase(Guid id, Guid workflowId, string code, string name, string? wordTemplatePath = null, string? pdfTemplatePath = null, string? contentSchema = null, string? outputFormat = null, string? signMode = null)
     {
         Id = id;
         Check.NotNull(code, nameof(code));
@@ -53,6 +53,7 @@ public abstract class WorkflowTemplateBase : FullAuditedAggregateRoot<Guid>, IMu
         Code = code;
         Name = name;
         WordTemplatePath = wordTemplatePath;
+        PdfTemplatePath = pdfTemplatePath;
         ContentSchema = contentSchema;
         OutputFormat = outputFormat;
         SignMode = signMode;

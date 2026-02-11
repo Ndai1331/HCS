@@ -332,7 +332,7 @@
             </Field>
 
             @* Step 2: Template file option (shown when workflow has a template file) *@
-            @if (WorkflowSubmitInfo != null && WorkflowSubmitInfo.HasTemplateFile && !string.IsNullOrWhiteSpace(WorkflowSubmitInfo.WordTemplatePath))
+            @if (WorkflowSubmitInfo != null && WorkflowSubmitInfo.HasTemplateFile && !string.IsNullOrWhiteSpace(WorkflowSubmitInfo.PdfTemplatePath))
             {
                 <Card Class="mt-2 mb-2 border-info">
                     <CardBody>
@@ -348,9 +348,9 @@
                             <small class="text-muted">@L["WorkflowTemplateFile"]:</small>
                             <div class="d-flex align-items-center mt-1">
                                 <Icon Name="IconName.File" Class="me-2 text-primary" />
-                                <span class="fw-bold">@System.IO.Path.GetFileName(WorkflowSubmitInfo.WordTemplatePath)</span>
+                                <span class="fw-bold">@System.IO.Path.GetFileName(WorkflowSubmitInfo.PdfTemplatePath)</span>
                             </div>
-                            <small class="text-muted d-block mt-1">@WorkflowSubmitInfo.WordTemplatePath</small>
+                            <small class="text-muted d-block mt-1">@WorkflowSubmitInfo.PdfTemplatePath</small>
                         </div>
                     </CardBody>
                 </Card>

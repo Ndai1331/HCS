@@ -373,3 +373,184 @@
 
 
 
+/* FilePicker Container - Purple dropzone theme */
+.b-file-picker {
+    background-color: #f8f7fc !important;
+    border: 2px dashed #8b5cf6 !important;
+    border-radius: 12px !important;
+    padding: 2rem !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+}
+
+.b-file-picker:hover {
+    background-color: #f3f0ff !important;
+    border-color: #7c3aed !important;
+}
+
+/* Input group styling */
+.b-file-picker .input-group.form-file {
+    background-color: transparent !important;
+    border: 1px solid #8b5cf6 !important;
+    border-radius: 8px !important;
+    justify-content: center !important;
+    margin-bottom: 0.5rem !important;
+    overflow: hidden !important;
+}
+
+/* Label/Text styling - Purple */
+.b-file-picker .input-group-text {
+    background-color: #8b5cf6 !important;
+    border: 1px solid #8b5cf6 !important;
+    border-right: none !important;
+    padding: 0.5rem 1rem !important;
+    color: #ffffff !important;
+}
+
+.b-file-picker .input-group-text .text-muted {
+    color: white !important;
+    font-weight: 500 !important;
+    font-size: 1rem !important;
+}
+
+/* File input styling - Ensure it's clickable */
+.b-file-picker .form-control[type="file"] {
+    border: 1px solid #8b5cf6 !important;
+    border-left: none !important;
+    background-color: #ffffff !important;
+    color: #8b5cf6 !important;
+    cursor: pointer !important;
+    padding: 0.5rem !important;
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border-radius: 0 8px 8px 0 !important;
+}
+
+.b-file-picker .form-control[type="file"]::file-selector-button {
+    background-color: #8b5cf6 !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    margin-right: 0.75rem !important;
+}
+
+.b-file-picker .form-control[type="file"]::file-selector-button:hover {
+    background-color: #7c3aed !important;
+}
+
+/* Drop text styling - Purple */
+.b-file-picker .b-text-drop {
+    color: #8b5cf6 !important;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    margin-top: 0.75rem !important;
+    padding-top: 2.5rem;
+    padding-bottom: 2.5rem;
+    border-radius: 12px !important;
+}
+
+/* File list items - Uploading state */
+.b-file-picker .b-file-picker-item {
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important;
+    padding: 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+    background-color: #ffffff !important;
+}
+
+.b-file-picker .b-file-picker-item .b-file-picker-item-name {
+    color: #111827 !important;
+    font-weight: 500 !important;
+}
+
+/* Progress bar styling - Purple */
+.b-file-picker .b-progress {
+    margin-top: 0.5rem !important;
+    height: 8px !important;
+    border-radius: 4px !important;
+    background-color: #e5e7eb !important;
+}
+
+.b-file-picker .b-progress-bar {
+    background-color: #8b5cf6 !important;
+    border-radius: 4px !important;
+}
+
+/* FilePicker List - Uploaded files (success state - Green) */
+.b-file-picker .b-file-picker-item.b-file-picker-item-success,
+.b-file-picker .b-file-picker-item[data-state="success"] {
+    background-color: #ecfdf5 !important;
+    border-color: #10b981 !important;
+}
+
+.b-file-picker .b-file-picker-item.b-file-picker-item-success .b-file-picker-item-name,
+.b-file-picker .b-file-picker-item[data-state="success"] .b-file-picker-item-name {
+    color: #065f46 !important;
+}
+
+/* Upload button styling - Purple */
+.b-file-picker .b-file-picker-buttons .btn-primary,
+.b-file-picker .b-file-picker-buttons button.btn-primary {
+    background-color: #7c3aed !important;
+    border-color: #7c3aed !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 1.5rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    border-radius: 8px !important;
+}
+
+.b-file-picker .b-file-picker-buttons .btn-primary:hover,
+.b-file-picker .b-file-picker-buttons button.btn-primary:hover {
+    background-color: #6d28d9 !important;
+    border-color: #6d28d9 !important;
+}
+
+.b-file-picker .b-file-picker-buttons .btn-primary:disabled,
+.b-file-picker .b-file-picker-buttons button.btn-primary:disabled {
+    background-color: #c4b5fd !important;
+    border-color: #c4b5fd !important;
+    opacity: 0.6 !important;
+}
+
+/* File remove button (trash icon) - Red */
+.b-file-picker .b-file-picker-item-remove,
+.b-file-picker .b-file-picker-item .btn-close {
+    color: #ef4444 !important;
+}
+
+.b-file-picker .b-file-picker-item-remove:hover,
+.b-file-picker .b-file-picker-item .btn-close:hover {
+    color: #dc2626 !important;
+}
+
+/* Button group spacing */
+.b-file-picker .b-file-picker-buttons {
+    display: flex !important;
+    gap: 0.75rem !important;
+    margin-top: 1rem !important;
+    justify-content: center !important;
+}
+
+/* Ensure input file is always clickable */
+.b-file-picker .form-control[type="file"]:not([disabled]) {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.b-file-picker .input-group.form-file {
+    pointer-events: auto !important;
+}
+
+.b-file-picker .b-file-picker-file{
+    min-width: 10rem !important;
+}
+/* End of Filepicker styles */

@@ -196,6 +196,7 @@
     "FileUploadedSuccessfully": "File uploaded successfully",
     "FileDeletedSuccessfully": "File deleted successfully",
     "OnlyWordFilesAllowed": "Only Word files (.docx, .doc) are allowed",
+    "OnlyWordAndPdfFilesAllowed": "Only Word (.docx, .doc) and PDF (.pdf) files are allowed",
     "FileUploaded": "File uploaded",
     "CurrentImage": "Current image",
     "CurrentFile": "Current file",
