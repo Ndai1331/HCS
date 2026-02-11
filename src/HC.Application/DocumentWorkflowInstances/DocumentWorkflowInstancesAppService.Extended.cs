@@ -202,6 +202,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         // If UseWorkflowTemplateFile = true, create a new Document + DocumentFile from the template
         if (input.UseWorkflowTemplateFile)
         {
+            //Workflow tạm 
+            //Chính là nếu file doc docx thì convert sang pdf trước khi tạo document
+            
             if (!workflowInfo.HasTemplateFile || string.IsNullOrWhiteSpace(workflowInfo.WordTemplatePath))
             {
                 throw new UserFriendlyException(L["WorkflowTemplateHasNoFile"]);
@@ -391,7 +394,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var typeValue = type.GetTypeValue();
         var queryable = await _masterDataRepository.GetQueryableAsync();
         var masterData = await AsyncExecuter.FirstOrDefaultAsync(
-            queryable.Where(m => m.Type == typeValue).OrderBy(m => m.CreationTime));
+            queryable.Where(m => m.Type == typeValue).OrderBy(m => m.SortOrder));
 
         if (masterData == null)
         {
@@ -1255,7 +1258,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             // Create new DocumentFile record
             var newFile = new DocumentFile(
                 GuidGenerator.Create(),
-                documentId,
+                null, //documentId
                 sourceFile.Name,
                 sourceFile.IsSigned,
                 DateTime.Now,

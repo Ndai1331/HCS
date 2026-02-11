@@ -354,7 +354,8 @@ public partial class DocumentDetail : HCComponentBase
             Type = MasterDataType.UrgencyLevel.GetTypeValue(),
             FilterText = filter,
             MaxResultCount = 1000,
-            SkipCount = 0
+            SkipCount = 0,
+            Sorting = "SortOrder asc"
         });
         UrgencyLevelMasterDataCollection = result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
         return UrgencyLevelMasterDataCollection.ToList();

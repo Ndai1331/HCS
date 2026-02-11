@@ -574,7 +574,7 @@ public partial class DocumentSigning
                 Hash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(fileBytes)),
                 IsSigned = false,
                 UploadedAt = DateTime.Now,
-                DocumentId = SelectedDocumentId
+                // DocumentId = SelectedDocumentId
             });
 
             UploadedFiles.Add(new UploadedFileInfo
