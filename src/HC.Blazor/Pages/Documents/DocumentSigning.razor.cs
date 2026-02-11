@@ -25,6 +25,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using Volo.Abp.AspNetCore.Components.Messages;
 using Volo.Abp.BlobStoring;
+using HC.SignatureSettings;
 
 namespace HC.Blazor.Pages.Documents;
 
@@ -770,6 +771,18 @@ public partial class DocumentSigning
             if (!confirmed) return;
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            // Show signing-in-progress message for APPROVE with signing method
+            if (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && SelectedSigningMethodId.HasValue)
+            {
+                // Check if the selected signing method is ELECTRONIC
+                var selectedMethod = SigningMethods.FirstOrDefault(m => m.Id == SelectedSigningMethodId.Value);
+                if (selectedMethod != null && selectedMethod.Code == nameof(SignType.ELECTRONIC))
+                {
+                    await UiMessageService.Info(L["SigningInProgress"],
+                        options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                }
+            }
 
             var input = new WorkflowActionInput
             {

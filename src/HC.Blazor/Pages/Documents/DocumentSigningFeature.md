@@ -677,3 +677,186 @@ Update DocumentWorkflowInstanceLogs.cs  =>  string empty thì ko upadte (khác t
 - Ở tab "Tài liệu trình ký" Tài liệu cho phép tải hoặc xem file pdf cuối cùng hiển thị DocumentFile tại bước DocumentAssignments (mới nhất theo ngày tạo) lấy DocumentFiles từ DocumentAssignments.DocumentFileResultId  hiển thị lên 
 
 
+======= 11/02/2026 logic mới : Ký điện tử ELECTRONIC (MasterData.Type = LOAI_KY  && MasterData.Code = ELECTRONIC)
+ <!-- KÝ SỐ Digital (MasterData Type = LOAI_KY  && Code = DIGITAL)  Chưa áp dụng logic  -->
+Logic ký tuần tự (WorkflowTemplate.SignMode = SEQUENTIAL)
+
+1.File PDF cần ký sẽ có <<Sign01>> ,  <<FullName01>>,  <<NoteContent01>>  theo thứ tự step 
+
+2. Khi chọn ký điện tử ở modal ký 
+- Kiểm tra user đã cấu hình chữ ký điện tử chưa (Chữ ký của user bảng UserSignature.cs)
+- SignType = ELECTRONIC
+- SignatureImage 
+- Còn hiệu lực hay ko
+- Kích hoạt chưa
+- FullName = Surname + " " + Name 
+
+3. Thoả mãn các diều kiện trên băt đầu ký điện tử 
+(viết hàm riêng sau này dùng cho ký số luôn vì params là như nhau)
+- Nếu thứ tự là 1 thì replace biến ở file pdf 01 <<Sign01>> là ảnh chữ ký (SignatureImage) của user   <<FullName01>> là Surname + " " + Name  <<NoteContent01>>  là nội dung SigningContent ở modal, tương tự cho vị trí 02, 03.....
+- Lưu file đã ký thành file mới upload lên minio + lưu kết quả file đã ký vào (AppDocumentAssignments.DocumentFileResultId) 
+- Logic gửi thông báo và next step tiếp theo vẫn giữ như cũ
+
+=> 
+1. Yêu cầu code ràng buộc rõ ràng, try catch hiển thị UI service message cho Frontend để biết đang stuck ở đâu tránh lỗi hệ thống 
+2. Thiết kế các hàm phải dễ maintain và reuse 
+3. Gợi ý thêm kết quả file lưu như nào nếu ký song song (PARALLEL)
+
+======= ĐÃ TRIỂN KHAI (11/02/2026) =======
+
+## Implementation Details: Electronic Signing (SEQUENTIAL)
+
+### Files đã thay đổi:
+
+| File | Thay đổi |
+|------|----------|
+| `HC.Application/DocumentWorkflowInstances/DocumentWorkflowInstancesAppService.Extended.cs` | Thêm `IUserSignatureRepository`, `ApplyElectronicSignatureAsync()`, `ReplacePdfPlaceholders()`, `ResolveSignatureImageBytesAsync()`. Sửa `ProcessWorkflowActionAsync` gọi ký trước approve |
+| `HC.Domain.Shared/Localization/HC/vi.json` | Thêm ~12 keys cho ký điện tử (error messages, validation) |
+| `HC.Domain.Shared/Localization/HC/en.json` | Thêm ~12 keys tương ứng tiếng Anh |
+| `HC.Blazor/Pages/Documents/DocumentSigning.razor.cs` | Thêm thông báo "Đang ký điện tử..." khi chọn phương pháp ELECTRONIC |
+
+### Flow ký điện tử tuần tự (SEQUENTIAL):
+
+```
+[User chọn Approve + Signing Method = ELECTRONIC]
+       │
+       ▼
+[ProcessWorkflowActionAsync]
+       │
+       ├── Kiểm tra SigningMethodId → MasterData Code = "ELECTRONIC"
+       │
+       ▼
+[ApplyElectronicSignatureAsync] ── BEFORE HandleApproveAsync
+       │
+       ├── STEP 1: Validate UserSignature
+       │   ├── Tìm UserSignature (SignType=ELECTRONIC, IsActive=true, IdentityUserId=currentUser)
+       │   ├── Check IsActive
+       │   ├── Check SignatureImage not empty
+       │   ├── Check ValidFrom <= now
+       │   └── Check ValidTo >= now
+       │   → UserFriendlyException nếu bất kỳ check nào fail
+       │
+       ├── STEP 2: Get FullName = IdentityUser.Surname + " " + IdentityUser.Name
+       │
+       ├── STEP 3: Read PDF from DocumentAssignment.DocumentFileResultId → BlobStorage
+       │
+       ├── STEP 4: Resolve SignatureImage bytes (base64 data URI / plain base64 / blob path)
+       │
+       ├── STEP 5: ReplacePdfPlaceholders (PdfPig + PDFsharp)
+       │   ├── PdfPig: Scan letters → find <<Sign{NN}>>, <<FullName{NN}>>, <<NoteContent{NN}>>
+       │   ├── PDFsharp: White-out placeholder text
+       │   ├── <<Sign{NN}>> → Draw signature image (scaled, maintain aspect ratio)
+       │   ├── <<FullName{NN}>> → Draw full name text (Helvetica font)
+       │   └── <<NoteContent{NN}>> → Draw note content text
+       │
+       ├── STEP 6: Upload signed PDF → Minio (path: electronic-signed/{guid}.pdf)
+       │
+       ├── STEP 7: Create DocumentFile (IsSigned=true, newBlobPath, SHA256 hash)
+       │
+       └── STEP 8: Update assignment.DocumentFileResultId = signedFile.Id
+              │
+              ▼
+[HandleApproveAsync] ── Logic gửi thông báo và next step giữ nguyên
+       │
+       └── CopyDocumentFileForNextStepAsync copies the SIGNED file to next step
+```
+
+### Error Messages (UserFriendlyException → UI):
+
+| Điều kiện | Error Key | Message (VI) |
+|-----------|-----------|-------------|
+| Không có UserSignature ELECTRONIC | UserHasNoElectronicSignature | Bạn chưa cấu hình chữ ký điện tử |
+| IsActive = false | SignatureNotActivated | Chữ ký điện tử chưa được kích hoạt |
+| SignatureImage empty | SignatureImageNotConfigured | Ảnh chữ ký điện tử chưa được cấu hình |
+| ValidFrom > now | SignatureNotYetValid | Chữ ký điện tử chưa đến ngày hiệu lực |
+| ValidTo < now | SignatureExpired | Chữ ký điện tử đã hết hạn |
+| Không có file PDF | NoFileToSign | Không tìm thấy file PDF để ký |
+| Lỗi đọc ảnh chữ ký | ErrorReadingSignatureImage | Lỗi đọc ảnh chữ ký điện tử |
+| Lỗi xử lý PDF | ErrorProcessingPdf | Lỗi xử lý file PDF khi ký |
+
+### Libraries sử dụng:
+- **PdfPig 0.1.13**: Đọc PDF, tìm vị trí placeholder text (letter-level extraction)
+- **PDFsharp 6.2.4**: Sửa PDF, vẽ white box + overlay image/text tại vị trí placeholder
+
+### ĐÃ TRIỂN KHAI: Ký song song (PARALLEL) - 11/02/2026
+
+#### Thay đổi bổ sung:
+
+| File | Thay đổi |
+|------|----------|
+| `HC.Application.Contracts/.../WorkflowStepDetailDto.cs` | Thêm `SignMode` vào `WorkflowSubmitInfoDto` |
+| `HC.Application/.../DocumentWorkflowInstancesAppService.Extended.cs` | Sửa `SubmitToWorkflowAsync` (tạo tất cả assignments khi PARALLEL), sửa `HandleApproveAsync` (parallel complete + merge), thêm `HandleParallelCompleteAsync`, thêm `MergeSignedPdfsForParallelAsync` |
+| `HC.Domain.Shared/Localization/HC/vi.json` | Thêm key `AllStepsMustHaveAssignedUsers` |
+| `HC.Domain.Shared/Localization/HC/en.json` | Thêm key tương ứng |
+| `HC.Blazor/Pages/Documents/DocumentSigning.razor.cs` | Thay `"ELECTRONIC"` → `nameof(SignType.ELECTRONIC)` |
+
+#### Thay thế Hardcoded bằng Enum:
+- `"ELECTRONIC"` → `nameof(SignType.ELECTRONIC)` (`HC.SignatureSettings.SignType`)
+- `"DIGITAL"` → `nameof(SignType.DIGITAL)` (`HC.SignatureSettings.SignType`)
+- `"PARALLEL"` / `"SEQUENTIAL"` → `nameof(SignMode.PARALLEL)` / `nameof(SignMode.SEQUENTIAL)` (`HC.WorkflowTemplates.SignMode`)
+
+#### Flow ký song song (PARALLEL):
+
+```
+[SubmitToWorkflowAsync - PARALLEL detected]
+       │
+       ├── Validate: TẤT CẢ steps phải có assigned users
+       │
+       ├── FinishedAt = now + MAX(SLADays) across all steps
+       │
+       ├── Tạo DocumentAssignments cho TẤT CẢ steps cùng lúc
+       │   ├── Step 1 users: IsCurrent=true, file = original
+       │   ├── Step 2 users: IsCurrent=true, file = copy of original
+       │   ├── Step 3 users: IsCurrent=true, file = copy of original
+       │   └── (mỗi step > 1 nhận bản copy riêng qua CopyDocumentFileForNextStepAsync)
+       │
+       ├── DocumentHistory cho TẤT CẢ users
+       │
+       └── Notification cho TẤT CẢ users (distinct)
+
+[User X ký (ProcessWorkflowActionAsync → ApplyElectronicSignatureAsync)]
+       │
+       ├── Ký trên bản copy riêng (replace <<Sign{NN}>> etc.)
+       │
+       └── HandleApproveAsync:
+           ├── Mark assignment DONE
+           ├── Check remaining PENDING (IsCurrent=true)
+           │
+           ├── Nếu CÒN pending → log + return (chờ user khác)
+           │
+           └── Nếu TẤT CẢ done → HandleParallelCompleteAsync:
+               │
+               ├── MergeSignedPdfsForParallelAsync:
+               │   ├── Đọc file GỐC (original template từ instance files)
+               │   ├── Cho mỗi completed assignment (order by stepOrder):
+               │   │   ├── Lấy UserSignature + FullName + Note từ log
+               │   │   └── ReplacePdfPlaceholders (step's placeholders)
+               │   │       → Các step có placeholder KHÁC NHAU nên không conflict
+               │   │
+               │   ├── Upload merged PDF → Minio (electronic-signed/parallel-merged-{guid}.pdf)
+               │   ├── Tạo DocumentFile (IsSigned=true, hash SHA256)
+               │   ├── Update TẤT CẢ assignments → DocumentFileResultId = merged file
+               │   └── Attach merged file vào workflow instance files
+               │
+               ├── Complete workflow (status = COMPLETED)
+               ├── Log
+               ├── Notify initiator
+               └── Update document status = HT
+```
+
+#### So sánh SEQUENTIAL vs PARALLEL:
+
+| Tiêu chí | SEQUENTIAL | PARALLEL |
+|-----------|-----------|----------|
+| Tạo assignments | Chỉ step 1, các step sau tạo khi step trước done | TẤT CẢ steps cùng lúc |
+| IsCurrent | Chỉ step hiện tại | TẤT CẢ assignments |
+| File signing | Chuỗi: step 1 ký → copy → step 2 ký | Mỗi step ký bản copy riêng |
+| Completion check | Per step → next step or complete | ALL assignments done → merge → complete |
+| SLA/Deadline | Per step (reset mỗi step) | Max SLA across all steps |
+| File kết quả | File cuối cùng = đã qua tất cả steps | Merged file = overlay tất cả signatures |
+| Merge | Không cần (đã nối tiếp) | MergeSignedPdfsForParallelAsync |
+
+#### Gợi ý mở rộng:
+1. **Parallel per-step**: Nếu muốn parallel CHỈ trong cùng step (vẫn sequential giữa steps), thêm field `StepSignMode` cho mỗi step
+2. **Placeholder naming**: Hiện dùng `<<Sign{stepOrder:D2}>>` cho cả 2 mode. Nếu cần parallel trong cùng step với nhiều user, dùng `<<Sign{stepOrder}_{userOrder}>>`
+3. **Conflict resolution**: Nếu 2 user cùng step ký song song, hiện mỗi user ký bản copy riêng → merge sẽ lấy cả 2 signatures

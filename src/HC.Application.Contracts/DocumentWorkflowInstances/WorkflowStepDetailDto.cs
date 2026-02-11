@@ -40,6 +40,12 @@ public class WorkflowSubmitInfoDto
     public string WorkflowTemplateName { get; set; } = null!;
     public string? PdfTemplatePath { get; set; }
     public bool HasTemplateFile { get; set; }
+    /// <summary>
+    /// Signing mode: SEQUENTIAL (default) or PARALLEL.
+    /// SEQUENTIAL: step-by-step signing, each step completes before the next begins.
+    /// PARALLEL: all steps are created at once, all users can sign simultaneously.
+    /// </summary>
+    public string? SignMode { get; set; }
     public List<WorkflowStepDetailDto> Steps { get; set; } = new();
 }
 
