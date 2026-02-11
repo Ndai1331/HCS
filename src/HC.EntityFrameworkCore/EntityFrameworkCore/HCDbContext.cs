@@ -120,6 +120,7 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.Property(x => x.Code).HasColumnName(nameof(WorkflowTemplate.Code)).IsRequired().HasMaxLength(WorkflowTemplateConsts.CodeMaxLength);
             b.Property(x => x.Name).HasColumnName(nameof(WorkflowTemplate.Name)).IsRequired();
             b.Property(x => x.WordTemplatePath).HasColumnName(nameof(WorkflowTemplate.WordTemplatePath));
+            b.Property(x => x.PdfTemplatePath).HasColumnName(nameof(WorkflowTemplate.PdfTemplatePath));
             b.Property(x => x.ContentSchema).HasColumnName(nameof(WorkflowTemplate.ContentSchema));
             b.Property(x => x.OutputFormat).HasColumnName(nameof(WorkflowTemplate.OutputFormat)).HasMaxLength(WorkflowTemplateConsts.OutputFormatMaxLength);
             b.Property(x => x.SignMode).HasColumnName(nameof(WorkflowTemplate.SignMode)).HasMaxLength(WorkflowTemplateConsts.SignModeMaxLength);

@@ -169,6 +169,7 @@
     "FileSizeTooLarge": "Kích thước file quá lớn. Kích thước tối đa cho phép là '{0}mb'",
     "WordToPdfConversionFailed": "File đã tải lên thành công, nhưng chuyển đổi sang PDF tự động thất bại. Vui lòng liên hệ quản trị viên hệ thống để kiểm tra cấu hình LibreOffice.",
     "ConvertingToPdf": "Đang chuyển đổi file Word sang PDF, vui lòng chờ",
+    "UploadWordFileToPreviewPdf": "Tải lên file Word (.doc, .docx) để xem trước dưới dạng PDF",
     "BookDeletionConfirmationMessage": "Are you sure to delete the book '{0}'?",
     "Enum:BookType.0": "Undefined",
     "Enum:BookType.1": "Adventure",

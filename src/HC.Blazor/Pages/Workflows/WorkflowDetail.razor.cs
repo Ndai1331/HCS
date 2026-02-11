@@ -486,14 +486,20 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 {
                     UploadedWordTemplatePath = template.WordTemplatePath;
                     UploadedWordTemplateFileName = Path.GetFileName(template.WordTemplatePath);
-                    
-                    // Try to load the converted PDF for viewer
-                    await LoadWordTemplatePdfAsync(template.WordTemplatePath);
                 }
                 else
                 {
                     UploadedWordTemplatePath = null;
                     UploadedWordTemplateFileName = null;
+                }
+                
+                // Load converted PDF from PdfTemplatePath column
+                if (!string.IsNullOrWhiteSpace(template.PdfTemplatePath))
+                {
+                    await LoadWordTemplatePdfAsync(template.PdfTemplatePath);
+                }
+                else
+                {
                     UploadedWordTemplatePdfPath = null;
                     WordTemplatePdfUrl = null;
                 }
@@ -549,6 +555,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             NewWorkflowTemplate.OutputFormat = NewWorkflowTemplateOutputFormat?.ToString();
             NewWorkflowTemplate.SignMode = NewWorkflowTemplateSignMode?.ToString();
             NewWorkflowTemplate.WordTemplatePath = UploadedWordTemplatePath;
+            NewWorkflowTemplate.PdfTemplatePath = UploadedWordTemplatePdfPath;
 
             await WorkflowTemplatesAppService.CreateAsync(NewWorkflowTemplate);
             NewWorkflowTemplate = new WorkflowTemplateCreateDto();
@@ -627,6 +634,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             EditingWorkflowTemplate.OutputFormat = EditingWorkflowTemplateOutputFormat?.ToString();
             EditingWorkflowTemplate.SignMode = EditingWorkflowTemplateSignMode?.ToString();
             EditingWorkflowTemplate.WordTemplatePath = UploadedWordTemplatePath;
+            EditingWorkflowTemplate.PdfTemplatePath = UploadedWordTemplatePdfPath;
 
             await WorkflowTemplatesAppService.UpdateAsync(CurrentWorkflowTemplate!.Id, EditingWorkflowTemplate);
             await LoadWorkflowTemplateAsync();
@@ -1328,32 +1336,25 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     }
 
     /// <summary>
-    /// Load converted PDF from MinIO for the PDF viewer.
-    /// Derives the PDF path from the Word template path.
+    /// Load converted PDF from MinIO for the PDF viewer using the stored PdfTemplatePath.
     /// </summary>
-    private async Task LoadWordTemplatePdfAsync(string wordTemplatePath)
+    private async Task LoadWordTemplatePdfAsync(string pdfTemplatePath)
     {
         try
         {
-            // Derive PDF path from Word template path
-            // Word: workflow-templates/{guid}_{name}.docx -> PDF: workflow-templates/pdf/{guid}_{name}.pdf
-            var wordFileName = Path.GetFileName(wordTemplatePath);
-            var pdfFileName = $"{Path.GetFileNameWithoutExtension(wordFileName)}.pdf";
-            var pdfPath = $"workflow-templates/pdf/{pdfFileName}";
-
-            var pdfBytes = await BlobContainer.GetAllBytesAsync(pdfPath);
+            var pdfBytes = await BlobContainer.GetAllBytesAsync(pdfTemplatePath);
             if (pdfBytes != null && pdfBytes.Length > 0)
             {
-                UploadedWordTemplatePdfPath = pdfPath;
+                UploadedWordTemplatePdfPath = pdfTemplatePath;
                 var base64 = Convert.ToBase64String(pdfBytes);
                 WordTemplatePdfUrl = $"data:application/pdf;base64,{base64}";
-                Logger?.LogInformation("PDF loaded for viewer: {PdfPath}", pdfPath);
+                Logger?.LogInformation("PDF loaded for viewer: {PdfPath}", pdfTemplatePath);
             }
         }
         catch (Exception ex)
         {
             // PDF might not exist yet (old templates before this feature)
-            Logger?.LogWarning(ex, "Could not load converted PDF for Word template: {Path}", wordTemplatePath);
+            Logger?.LogWarning(ex, "Could not load converted PDF from MinIO: {Path}", pdfTemplatePath);
             UploadedWordTemplatePdfPath = null;
             WordTemplatePdfUrl = null;
         }
@@ -1396,10 +1397,12 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             if (CurrentWorkflowTemplate != null)
             {
                 EditingWorkflowTemplate.WordTemplatePath = null;
+                EditingWorkflowTemplate.PdfTemplatePath = null;
             }
             else
             {
                 NewWorkflowTemplate.WordTemplatePath = null;
+                NewWorkflowTemplate.PdfTemplatePath = null;
             }
 
             await UiMessageService.Success(L["FileDeletedSuccessfully"],

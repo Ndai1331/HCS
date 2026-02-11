@@ -13,6 +13,8 @@ public abstract class WorkflowTemplateCreateDtoBase
     public string Name { get; set; } = null!;
     public string? WordTemplatePath { get; set; }
 
+    public string? PdfTemplatePath { get; set; }
+
     public string? ContentSchema { get; set; }
 
     [StringLength(WorkflowTemplateConsts.OutputFormatMaxLength)]

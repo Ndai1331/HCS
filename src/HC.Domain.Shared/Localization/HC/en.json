@@ -205,6 +205,7 @@
     "FileSizeTooLarge": "File size is too large. Maximum allowed size is '{0}mb'",
     "WordToPdfConversionFailed": "File uploaded successfully, but automatic PDF conversion failed. Please contact the system administrator to check LibreOffice configuration.",
     "ConvertingToPdf": "Converting Word file to PDF, please wait",
+    "UploadWordFileToPreviewPdf": "Upload a Word file (.doc, .docx) to preview as PDF",
     "MaxFileSizeLimit": "Max file size: {0}mb",
     "Filters": "Filters",
     "Menu:Positions": "Positions",

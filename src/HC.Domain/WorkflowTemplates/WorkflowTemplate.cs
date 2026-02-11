@@ -25,6 +25,9 @@ public abstract class WorkflowTemplateBase : FullAuditedAggregateRoot<Guid>, IMu
     public virtual string? WordTemplatePath { get; set; }
 
     [CanBeNull]
+    public virtual string? PdfTemplatePath { get; set; }
+
+    [CanBeNull]
     public virtual string? ContentSchema { get; set; }
 
     [CanBeNull]

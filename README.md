@@ -134,6 +134,6 @@ chown -R 1654:1654 /www/server/panel/data/compose/hcs/certs
 chmod 700 /www/server/panel/data/compose/hcs/certs
 
 
-dotnet ef migrations add AllowNotNullDocumentInDocumentFile -c HCDbContext
+dotnet ef migrations add AddPdfPathToWorkflowTemplate -c HCDbContext
 
 dotnet ef database update -c HCDbContext
