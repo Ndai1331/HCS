@@ -860,3 +860,6 @@ Logic ký tuần tự (WorkflowTemplate.SignMode = SEQUENTIAL)
 1. **Parallel per-step**: Nếu muốn parallel CHỈ trong cùng step (vẫn sequential giữa steps), thêm field `StepSignMode` cho mỗi step
 2. **Placeholder naming**: Hiện dùng `<<Sign{stepOrder:D2}>>` cho cả 2 mode. Nếu cần parallel trong cùng step với nhiều user, dùng `<<Sign{stepOrder}_{userOrder}>>`
 3. **Conflict resolution**: Nếu 2 user cùng step ký song song, hiện mỗi user ký bản copy riêng → merge sẽ lấy cả 2 signatures
+
+
+

@@ -916,35 +916,18 @@ public partial class DocumentSigning
 
             string? pdfFilePath = null;
 
-            // Step 1: Try to get the original document files (same as DocumentDetail.LoadPdfUrlAsync)
-            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
+            var assignmentsResult = await DocumentAssignmentsAppService.GetListAsync(new GetDocumentAssignmentsInput
             {
                 DocumentId = item.DocumentId,
-                MaxResultCount = 100,
-                SkipCount = 0
+                MaxResultCount = 1,
+                SkipCount = 0,
+                Sorting = "DocumentAssignment.CreationTime desc"
             });
 
-            // Find the first PDF file from the document's files
-            var pdfFile = documentFilesResult.Items
-                .FirstOrDefault(f => f.DocumentFile != null
-                    && !string.IsNullOrEmpty(f.DocumentFile.Path)
-                    && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(f.DocumentFile.Name));
-
-            if (pdfFile != null)
+          
+            if (assignmentsResult != null && assignmentsResult.Items.Any())
             {
-                pdfFilePath = pdfFile.DocumentFile.Path;
-            }
-            else
-            {
-                // Step 2: Fallback - check DocumentAssignment's DocumentFileResultId (signed result file)
-                var assignmentsResult = await DocumentAssignmentsAppService.GetListAsync(new GetDocumentAssignmentsInput
-                {
-                    DocumentId = item.DocumentId,
-                    MaxResultCount = 100,
-                    SkipCount = 0
-                });
-
-                var assignmentWithFile = assignmentsResult.Items
+                 var assignmentWithFile = assignmentsResult.Items
                     .FirstOrDefault(a => a.DocumentAssignment.DocumentFileResultId.HasValue
                         && a.DocumentFileResult != null
                         && !string.IsNullOrEmpty(a.DocumentFileResult.Path)
@@ -954,6 +937,23 @@ public partial class DocumentSigning
                 {
                     pdfFilePath = assignmentWithFile.DocumentFileResult!.Path;
                 }
+            }
+            else
+            {
+                var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
+                {
+                    DocumentId = item.DocumentId,
+                    MaxResultCount = 100,
+                    SkipCount = 0
+                });
+
+                var pdfFile = documentFilesResult.Items
+                    .FirstOrDefault(f => f.DocumentFile != null
+                        && !string.IsNullOrEmpty(f.DocumentFile.Path)
+                        && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(f.DocumentFile.Name));
+
+                pdfFilePath = pdfFile?.DocumentFile?.Path ?? string.Empty;
+
             }
 
             if (string.IsNullOrEmpty(pdfFilePath))
