@@ -14,6 +14,8 @@ using Volo.Abp.OpenIddict;
 using Volo.Abp.TextTemplateManagement;
 using Volo.Saas.Host;
 using Volo.Forms;
+using PdfSharp.Fonts;
+using HC.Helpers;
 namespace HC;
 
 [DependsOn(
@@ -40,5 +42,12 @@ public class HCApplicationModule : AbpModule
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
         context.Services.AddMapperlyObjectMapper<HCApplicationModule>();
+
+        // Register custom font resolver for PDFsharp (required on non-Windows platforms)
+        // Maps Helvetica -> Arial and searches system font directories
+        if (GlobalFontSettings.FontResolver == null || GlobalFontSettings.FontResolver is not CustomFontResolver)
+        {
+            GlobalFontSettings.FontResolver = new CustomFontResolver();
+        }
     }
 }

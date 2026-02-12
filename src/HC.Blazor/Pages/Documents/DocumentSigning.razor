@@ -1001,8 +1001,8 @@
 </Modal>
 
 @* ************************* MODAL: PDF VIEWER ************************* *@
-<Modal @ref="DocumentPdfViewerModal" Class="pdf-viewer-modal" Size="ModalSize.ExtraLarge" Centered="true">
-    <ModalContent>
+<Modal @ref="DocumentPdfViewerModal" Class="pdf-viewer-modal">
+    <ModalContent  Size="ModalSize.ExtraLarge" Centered="true">
         <ModalHeader>
             <ModalTitle>@L["DocumentPreview"]</ModalTitle>
             <CloseButton Clicked="CloseDocumentPdfViewerModalAsync" />

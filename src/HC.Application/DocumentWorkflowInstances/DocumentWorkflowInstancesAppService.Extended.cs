@@ -510,13 +510,14 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         var now = DateTime.Now;
 
-        // If action is APPROVE and signing method is ELECTRONIC, apply electronic signature BEFORE approve
-        // (so the signed file gets copied to the next step correctly)
         if (input.Action.ToUpper() == nameof(WorkflowInstanceLogAction.APPROVE) && input.SigningMethodId.HasValue)
         {
             var signingMethod = await _masterDataRepository.FindAsync(input.SigningMethodId.Value);
+            Logger.LogInformation("SigningMethod, SigningMethodCode: {SigningMethodId}, SigningMethod: {SigningMethod}", input.SigningMethodId, signingMethod?.Code);
             if (signingMethod != null && signingMethod.Code == nameof(SignType.ELECTRONIC))
             {
+                Logger.LogInformation("Apply Electronic Signature");
+
                 await ApplyElectronicSignatureAsync(assignment, instance, input.Note);
             }
             // Note: DIGITAL signing (signingMethod.Code == nameof(SignType.DIGITAL)) is not yet implemented
@@ -1460,18 +1461,21 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         if (signature == null)
         {
+            Logger.LogError("[ELECTRONIC_SIGN] User has no electronic signature. UserId={UserId}", currentUserId);
             throw new UserFriendlyException(L["UserHasNoElectronicSignature"]);
         }
 
         // Check if signature is activated
         if (!signature.IsActive)
         {
+            Logger.LogError("[ELECTRONIC_SIGN] Signature not activated. SignatureId={SignatureId}", signature.Id);
             throw new UserFriendlyException(L["SignatureNotActivated"]);
         }
 
         // Check signature image is configured
         if (string.IsNullOrWhiteSpace(signature.SignatureImage))
         {
+            Logger.LogError("[ELECTRONIC_SIGN] SignatureImage not configured. SignatureId={SignatureId}", signature.Id);
             throw new UserFriendlyException(L["SignatureImageNotConfigured"]);
         }
 
@@ -1479,10 +1483,12 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var now = DateTime.Now;
         if (signature.ValidFrom.HasValue && signature.ValidFrom.Value > now)
         {
+            Logger.LogError("[ELECTRONIC_SIGN] Signature not yet valid. SignatureId={SignatureId}", signature.Id);
             throw new UserFriendlyException(L["SignatureNotYetValid"]);
         }
         if (signature.ValidTo.HasValue && signature.ValidTo.Value < now)
         {
+            Logger.LogError("[ELECTRONIC_SIGN] Signature expired. SignatureId={SignatureId}", signature.Id);
             throw new UserFriendlyException(L["SignatureExpired"]);
         }
 
@@ -1508,6 +1514,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         // ==================== STEP 3: Read the current PDF file ====================
         if (!assignment.DocumentFileResultId.HasValue)
         {
+            Logger.LogError("[ELECTRONIC_SIGN] No file to sign. AssignmentId={AssignmentId}", assignment.Id);
             throw new UserFriendlyException(L["NoFileToSign"]);
         }
 
@@ -1515,15 +1522,19 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         byte[] pdfBytes;
         try
         {
+            Logger.LogInformation("[ELECTRONIC_SIGN] Getting source file. AssignmentId={AssignmentId}", assignment.Id);
             sourceFile = await _documentFileRepository.GetAsync(assignment.DocumentFileResultId.Value);
             if (string.IsNullOrEmpty(sourceFile.Path))
             {
+                Logger.LogError("[ELECTRONIC_SIGN] Source file not found. AssignmentId={AssignmentId}", assignment.Id);
                 throw new UserFriendlyException(L["NoFileToSign"]);
             }
+            Logger.LogInformation("[ELECTRONIC_SIGN] Getting source file bytes. AssignmentId={AssignmentId}", assignment.Id);
             pdfBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
         }
-        catch (UserFriendlyException)
+        catch (UserFriendlyException ex)
         {
+            Logger.LogError(ex, "[ELECTRONIC_SIGN] Error getting source file. AssignmentId={AssignmentId}", assignment.Id);
             throw; // Re-throw user-friendly exceptions as-is
         }
         catch (Exception ex)
@@ -1686,6 +1697,11 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 // Concatenate all letter values to build the full text of the page
                 var fullText = string.Concat(letters.Select(l => l.Value));
 
+                // Log extracted text for debugging (first 500 chars)
+                var textPreview = fullText.Length > 500 ? fullText[..500] + "..." : fullText;
+                Logger.LogInformation("[PDF_REPLACE] Page {Page}: Extracted {LetterCount} letters, text preview: '{TextPreview}'",
+                    p + 1, letters.Count, textPreview);
+
                 // Search for each placeholder tag in the concatenated text
                 var searchPairs = new[]
                 {
@@ -1697,11 +1713,27 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 foreach (var (tag, type) in searchPairs)
                 {
                     var index = fullText.IndexOf(tag, StringComparison.Ordinal);
-                    if (index < 0) continue;
+                    if (index < 0)
+                    {
+                        Logger.LogWarning("[PDF_REPLACE] Placeholder '{Tag}' NOT found on page {Page}. Trying case-insensitive...", tag, p + 1);
+
+                        // Try case-insensitive search as fallback
+                        index = fullText.IndexOf(tag, StringComparison.OrdinalIgnoreCase);
+                        if (index < 0)
+                        {
+                            Logger.LogWarning("[PDF_REPLACE] Placeholder '{Tag}' NOT found (case-insensitive) on page {Page}", tag, p + 1);
+                            continue;
+                        }
+                    }
 
                     // Get the letters that form this placeholder
                     var placeholderLetters = letters.Skip(index).Take(tag.Length).ToList();
-                    if (placeholderLetters.Count < tag.Length) continue;
+                    if (placeholderLetters.Count < tag.Length)
+                    {
+                        Logger.LogWarning("[PDF_REPLACE] Not enough letters for placeholder '{Tag}' at index {Index}. Expected {Expected}, got {Actual}",
+                            tag, index, tag.Length, placeholderLetters.Count);
+                        continue;
+                    }
 
                     // Calculate bounding box from the letters
                     var minX = placeholderLetters.Min(l => l.GlyphRectangle.Left);
@@ -1722,20 +1754,25 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                         Type = type
                     });
 
-                    Logger.LogDebug("[PDF_REPLACE] Found placeholder '{Tag}' on page {Page} at ({X},{YBottom})-({MaxX},{YTop})",
-                        tag, p + 1, minX, minY, maxX, maxY);
+                    Logger.LogInformation("[PDF_REPLACE] Found placeholder '{Tag}' on page {Page} at ({X},{YBottom})-({MaxX},{YTop}), fontSize={FontSize}",
+                        tag, p + 1, minX, minY, maxX, maxY, fontSize);
                 }
             }
         }
 
         if (!positions.Any())
         {
-            Logger.LogWarning("[PDF_REPLACE] No placeholders found for step order {StepOrder} (suffix={Suffix}). Tags: {SignTag}, {NameTag}, {NoteTag}",
+            Logger.LogError("[PDF_REPLACE] NO PLACEHOLDERS FOUND for step order {StepOrder} (suffix={Suffix}). Tags searched: '{SignTag}', '{NameTag}', '{NoteTag}'. " +
+                "This means the PDF text extracted by PdfPig does not contain these exact strings. " +
+                "Check if the PDF uses different characters for << >> (e.g. Unicode angle brackets « » or ＜＜ ＞＞).",
                 stepOrder, suffix, signTag, nameTag, noteTag);
             // Return original PDF if no placeholders found - don't throw,
             // because some steps might not have all placeholders
             return pdfBytes;
         }
+
+        Logger.LogInformation("[PDF_REPLACE] Found {Count} placeholders for step order {StepOrder}. Proceeding with replacement...",
+            positions.Count, stepOrder);
 
         // STEP 2: Use PDFsharp to overlay replacement content at found positions
         using var inputStream = new MemoryStream(pdfBytes);
