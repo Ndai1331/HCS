@@ -71,4 +71,11 @@ public partial interface IDocumentWorkflowInstancesAppService
     /// Returns workflow info, original signing content, attached files, etc.
     /// </summary>
     Task<ReturnedWorkflowInfoDto> GetReturnedWorkflowInfoAsync(Guid workflowInstanceId);
+
+    /// <summary>
+    /// Get all workflow steps with their signing status for a given workflow instance.
+    /// Shows each step, assigned users, and whether they have signed (with signing index).
+    /// Used in the action modal to display full workflow progress.
+    /// </summary>
+    Task<List<WorkflowStepStatusDto>> GetAllStepsWithStatusAsync(Guid workflowInstanceId);
 }

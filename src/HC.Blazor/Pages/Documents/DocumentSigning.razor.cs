@@ -120,6 +120,9 @@ public partial class DocumentSigning
     private WorkflowStepDetailDto? CurrentStepDetailInfo { get; set; }
     private DocumentWorkflowInstanceDto? WorkflowInstanceInfo { get; set; }
 
+    // All workflow steps with their signing status (for action modal step overview)
+    private List<WorkflowStepStatusDto> AllStepsWithStatus { get; set; } = new();
+
     // Debounce
     private CancellationTokenSource? SearchDebounceCts { get; set; }
 
@@ -401,6 +404,22 @@ public partial class DocumentSigning
             Logger.LogError(ex, "Error loading current step detail for workflow instance {InstanceId}", workflowInstanceId);
             CurrentStepDetailInfo = null;
             WorkflowInstanceInfo = null;
+        }
+    }
+
+    /// <summary>
+    /// Load all workflow steps with their signing status for the action modal step overview.
+    /// </summary>
+    private async Task LoadAllStepsWithStatusAsync(Guid workflowInstanceId)
+    {
+        try
+        {
+            AllStepsWithStatus = await DocumentWorkflowInstancesAppService.GetAllStepsWithStatusAsync(workflowInstanceId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading all steps with status for workflow instance {InstanceId}", workflowInstanceId);
+            AllStepsWithStatus = new();
         }
     }
 
@@ -697,6 +716,7 @@ public partial class DocumentSigning
             SigningDocumentAssignments = new();
             CurrentStepDetailInfo = null;
             WorkflowInstanceInfo = null;
+            AllStepsWithStatus = new();
             IsOverdue = false;
             AllowReturnAction = false;
             IsViewOnly = viewOnly;
@@ -710,6 +730,7 @@ public partial class DocumentSigning
                 tasks.Add(LoadWorkflowLogsAsync(document.WorkflowInstanceId.Value));
                 tasks.Add(LoadWorkflowFilesAsync(document.WorkflowInstanceId.Value));
                 tasks.Add(LoadCurrentStepDetailAsync(document.WorkflowInstanceId.Value));
+                tasks.Add(LoadAllStepsWithStatusAsync(document.WorkflowInstanceId.Value));
             }
 
             tasks.Add(LoadDocumentHistoriesAsync(document.DocumentId));

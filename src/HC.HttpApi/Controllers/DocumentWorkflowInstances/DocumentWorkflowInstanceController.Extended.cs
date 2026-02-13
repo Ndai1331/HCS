@@ -100,4 +100,11 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     {
         return _documentWorkflowInstancesAppService.GetReturnedWorkflowInfoAsync(workflowInstanceId);
     }
+
+    [HttpGet]
+    [Route("all-steps-with-status/{workflowInstanceId}")]
+    public Task<List<WorkflowStepStatusDto>> GetAllStepsWithStatusAsync(Guid workflowInstanceId)
+    {
+        return _documentWorkflowInstancesAppService.GetAllStepsWithStatusAsync(workflowInstanceId);
+    }
 }

@@ -252,6 +252,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             );
 
             // Create a DocumentFile for the template file path
+            // IMPORTANT: autoSave=true so the file record is flushed to DB before
+            // CopyDocumentFileForNextStepAsync queries it for PARALLEL mode step 2+ copies.
             var templateFileName = System.IO.Path.GetFileName(workflowInfo.PdfTemplatePath);
             var documentFile = new DocumentFile(
                 GuidGenerator.Create(),
@@ -263,7 +265,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 null
             );
             documentFile.TenantId = CurrentTenant.Id;
-            await _documentFileRepository.InsertAsync(documentFile);
+            await _documentFileRepository.InsertAsync(documentFile, autoSave: true);
 
             documentId = createdDocument.Id;
             templateDocumentFileId = documentFile.Id;
@@ -391,6 +393,12 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             {
                 // Copy the file for each subsequent step in parallel mode
                 stepFileId = await CopyDocumentFileForNextStepAsync(signingFileId, documentId);
+                if (!stepFileId.HasValue)
+                {
+                    Logger.LogError("[SUBMIT] CopyDocumentFileForNextStepAsync returned null for parallel step {StepOrder}. SigningFileId={SigningFileId}, DocumentId={DocumentId}",
+                        step.Order, signingFileId, documentId);
+                    throw new UserFriendlyException(L["ErrorCopyingFileForNextStep"]);
+                }
             }
 
             foreach (var user in step.AssignedUsers)
@@ -596,9 +604,28 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         // 3. Get current step info (needed for logging)
         var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
 
-        // 4. Check remaining PENDING assignments
-        //    For SEQUENTIAL: checks current step only (IsCurrent filter)
-        //    For PARALLEL: checks ALL steps (all were created as IsCurrent=true at submit)
+        // 4. ISSUE-FIX: When ANY user at a step signs (primary or secondary), treat the step as complete.
+        //    Revoke ALL other PENDING assignments at the SAME step so the step is considered done.
+        var sameStepPending = await _documentAssignmentRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId
+            && x.WorkflowStepTemplateId == assignment.WorkflowStepTemplateId
+            && x.IsCurrent
+            && x.Status == nameof(DocumentAssignmentStatus.PENDING)
+            && x.Id != assignment.Id);
+
+        foreach (var other in sameStepPending)
+        {
+            other.Status = nameof(DocumentAssignmentStatus.REVOKE);
+            other.ProcessedAt = now;
+            other.IsCurrent = false;
+            await _documentAssignmentRepository.UpdateAsync(other);
+            Logger.LogInformation("[APPROVE] Revoked same-step assignment {AssignmentId} for user {UserId} (secondary user auto-revoke)",
+                other.Id, other.ReceiverUserId);
+        }
+
+        // 5. Check remaining PENDING assignments across OTHER steps
+        //    For SEQUENTIAL: should be none since only current step has IsCurrent=true
+        //    For PARALLEL: checks ALL remaining steps (all were created as IsCurrent=true at submit)
         var remainingPending = await _documentAssignmentRepository.GetListAsync(
             x => x.DocumentId == instance.DocumentId
             && x.IsCurrent
@@ -606,7 +633,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         if (remainingPending.Any())
         {
-            // Other users still need to process - just log and return
+            // Other STEPS still need to process - just log and return
             await _documentWorkflowInstanceLogsManager.CreateAsync(
                 instance.Id, assignment.Id, CurrentUser.Id,
                 nameof(WorkflowInstanceLogAction.APPROVE),
@@ -1122,6 +1149,12 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             if (isParallel && step.Order > firstStep.Order)
             {
                 stepFileId = await CopyDocumentFileForNextStepAsync(signingFileId, documentId);
+                if (!stepFileId.HasValue)
+                {
+                    Logger.LogError("[RE_SUBMIT] CopyDocumentFileForNextStepAsync returned null for parallel step {StepOrder}. SigningFileId={SigningFileId}, DocumentId={DocumentId}",
+                        step.Order, signingFileId, documentId);
+                    throw new UserFriendlyException(L["ErrorCopyingFileForNextStep"]);
+                }
             }
 
             foreach (var user in step.AssignedUsers)
@@ -1290,6 +1323,105 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                     FilePath = f.Path
                 }).ToList()
         };
+    }
+
+    #endregion
+
+    #region GetAllStepsWithStatusAsync
+
+    /// <summary>
+    /// Get all workflow steps with their signing status for the action modal.
+    /// Shows each step name, assigned users, and whether they have signed (with signing index).
+    /// </summary>
+    [Authorize(HCPermissions.DocumentAssignments.Default)]
+    public async Task<List<WorkflowStepStatusDto>> GetAllStepsWithStatusAsync(Guid workflowInstanceId)
+    {
+        var instance = await _documentWorkflowInstanceRepository.GetAsync(workflowInstanceId);
+
+        // Get all steps for the workflow template
+        var allSteps = await _workflowStepTemplateRepository.GetListAsync(
+            x => x.WorkflowTemplateId == instance.WorkflowTemplateId && x.IsActive);
+        allSteps = allSteps.OrderBy(s => s.Order).ToList();
+
+        // Get all step assignments (for step user info)
+        var stepIds = allSteps.Select(s => s.Id).ToList();
+        var stepAssignments = await _workflowStepAssignmentRepository.GetListAsync(
+            x => x.StepId.HasValue && stepIds.Contains(x.StepId.Value) && x.IsActive);
+
+        // Get all document assignments for this document (current workflow pass)
+        var docAssignments = await _documentAssignmentRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId
+            && x.CreationTime >= instance.StartedAt);
+
+        // Batch load all involved user IDs
+        var allUserIds = stepAssignments
+            .Where(sa => sa.DefaultUserId.HasValue)
+            .Select(sa => sa.DefaultUserId!.Value)
+            .Union(docAssignments.Select(a => a.ReceiverUserId))
+            .Distinct()
+            .ToList();
+        var users = await _identityUserRepository.GetListAsync(x => allUserIds.Contains(x.Id));
+        var userDict = users.ToDictionary(u => u.Id);
+
+        var result = new List<WorkflowStepStatusDto>();
+
+        foreach (var step in allSteps)
+        {
+            var stepDto = new WorkflowStepStatusDto
+            {
+                StepId = step.Id,
+                Order = step.Order,
+                Name = step.Name,
+                Type = step.Type,
+                IsCurrentStep = instance.CurrentStepId == step.Id,
+                Users = new List<StepAssignmentUserDto>()
+            };
+
+            // Get step's assigned users from step assignments
+            var thisStepAssignments = stepAssignments.Where(sa => sa.StepId == step.Id).ToList();
+
+            // Check document assignments for this step
+            var thisStepDocAssignments = docAssignments
+                .Where(a => a.WorkflowStepTemplateId == step.Id)
+                .ToList();
+
+            bool hasCompletedUser = false;
+
+            foreach (var sa in thisStepAssignments)
+            {
+                if (!sa.DefaultUserId.HasValue) continue;
+
+                var userId = sa.DefaultUserId.Value;
+                userDict.TryGetValue(userId, out var user);
+
+                // Find the document assignment for this user at this step
+                var docAssignment = thisStepDocAssignments
+                    .FirstOrDefault(a => a.ReceiverUserId == userId);
+
+                var userStatus = docAssignment?.Status;
+                if (userStatus == nameof(DocumentAssignmentStatus.DONE))
+                {
+                    hasCompletedUser = true;
+                }
+
+                stepDto.Users.Add(new StepAssignmentUserDto
+                {
+                    UserId = userId,
+                    FullName = user != null ? $"{user.Surname} {user.Name}".Trim() : null,
+                    UserName = user?.UserName,
+                    IsPrimary = sa.IsPrimary,
+                    Status = userStatus,
+                    ProcessedAt = docAssignment?.ProcessedAt > DateTime.MinValue ? docAssignment.ProcessedAt : null,
+                    // SigningIndex = step order (matches placeholder <<Sign{NN}>> in PDF)
+                    SigningIndex = userStatus == nameof(DocumentAssignmentStatus.DONE) ? step.Order : null
+                });
+            }
+
+            stepDto.IsCompleted = hasCompletedUser;
+            result.Add(stepDto);
+        }
+
+        return result;
     }
 
     #endregion
@@ -1917,10 +2049,19 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 .FirstOrDefault()?.DocumentFileResultId;
         }
 
-        if (!sourceFileId.HasValue) return null;
+        if (!sourceFileId.HasValue)
+        {
+            Logger.LogWarning("[COPY_FILE] sourceFileId is null and no fallback found. DocumentId={DocumentId}", documentId);
+            return null;
+        }
 
         var sourceFile = await _documentFileRepository.FindAsync(sourceFileId.Value);
-        if (sourceFile == null || string.IsNullOrEmpty(sourceFile.Path)) return null;
+        if (sourceFile == null || string.IsNullOrEmpty(sourceFile.Path))
+        {
+            Logger.LogWarning("[COPY_FILE] Source file not found or has no path. SourceFileId={SourceFileId}, DocumentId={DocumentId}, Found={Found}, Path={Path}",
+                sourceFileId.Value, documentId, sourceFile != null, sourceFile?.Path);
+            return null;
+        }
 
         try
         {
@@ -1974,16 +2115,11 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     /// 2. Get user's full name (Surname + Name) from IdentityUser
     /// 3. Read the current PDF file from the assignment's DocumentFileResultId
     /// 4. Replace placeholders based on step order:
-    ///    - &lt;&lt;Sign{stepOrder:D2}&gt;&gt; → Signature image
-    ///    - &lt;&lt;FullName{stepOrder:D2}&gt;&gt; → User's full name
-    ///    - &lt;&lt;NoteContent{stepOrder:D2}&gt;&gt; → Note/signing content
+    ///    User at step N replaces &lt;&lt;Sign{N:D2}&gt;&gt;, &lt;&lt;FullName{N:D2}&gt;&gt;, &lt;&lt;NoteContent{N:D2}&gt;&gt;
+    ///    This ensures each step's placeholder area in the PDF template is correctly matched.
     /// 5. Upload signed PDF to Minio as a new file
     /// 6. Create new DocumentFile record (IsSigned = true)
     /// 7. Update assignment's DocumentFileResultId to reference the signed file
-    /// 
-    /// For PARALLEL signing: each user would sign on their own copy, then a merge step
-    /// would combine all signatures. This can be implemented by creating per-user copies
-    /// and a final merge operation using PDFsharp to overlay all signatures onto one document.
     /// </summary>
     private async Task ApplyElectronicSignatureAsync(
         DocumentAssignment assignment,
@@ -1993,7 +2129,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var currentUserId = CurrentUser.Id!.Value;
 
         // ==================== STEP 1: Validate user's electronic signature ====================
-        Logger.LogInformation("[ELECTRONIC_SIGN] Starting electronic signing for user {UserId}, assignment {AssignmentId}, step {StepOrder}",
+        Logger.LogInformation("[ELECTRONIC_SIGN] Starting electronic signing for user {UserId}, assignment {AssignmentId}, stepOrder={StepOrder}",
             currentUserId, assignment.Id, assignment.StepOrder);
 
         UserSignature? signature;
@@ -2112,6 +2248,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         }
 
         // ==================== STEP 5: Replace placeholders in PDF ====================
+        // Use assignment.StepOrder to match the correct placeholder in the PDF template.
+        // User at step N → replaces <<Sign{N:D2}>>, <<FullName{N:D2}>>, <<NoteContent{N:D2}>>
         byte[] signedPdfBytes;
         try
         {
@@ -2218,6 +2356,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     /// 
     /// Placeholders follow the pattern: &lt;&lt;Sign{NN}&gt;&gt;, &lt;&lt;FullName{NN}&gt;&gt;, &lt;&lt;NoteContent{NN}&gt;&gt;
     /// where NN is the step order zero-padded to 2 digits (01, 02, 03...).
+    /// User at step N replaces placeholder Sign{N}, ensuring each step's designated area is matched.
     /// </summary>
     private byte[] ReplacePdfPlaceholders(
         byte[] pdfBytes,
@@ -2506,10 +2645,13 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             throw new UserFriendlyException(L["ErrorProcessingPdf"]);
         }
 
-        // 2. Get ALL completed assignments for this workflow, ordered by step order
+        // 2. Get ALL completed assignments for this workflow, ordered by step order.
+        //    Each user's signature replaces the placeholder matching their step number:
+        //    Step 1 user → <<Sign01>>, Step 2 user → <<Sign02>>, etc.
         var allDoneAssignments = await _documentAssignmentRepository.GetListAsync(
             x => x.DocumentId == instance.DocumentId
-            && x.Status == nameof(DocumentAssignmentStatus.DONE));
+            && x.Status == nameof(DocumentAssignmentStatus.DONE)
+            && x.CreationTime >= instance.StartedAt);
         allDoneAssignments = allDoneAssignments.OrderBy(a => a.StepOrder).ToList();
 
         if (!allDoneAssignments.Any())
@@ -2517,11 +2659,6 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             Logger.LogWarning("[PARALLEL_MERGE] No completed assignments found. InstanceId={InstanceId}", instance.Id);
             return;
         }
-
-        // ISSUE-11 FIX: Batch load all related data before the loop to avoid N+1 queries.
-        // Previously: 3 DB queries per assignment (user, signature, logs) = 3N queries.
-        // Now: 3 batch queries total regardless of N.
-
         // Batch load users
         var userIds = allDoneAssignments.Select(a => a.ReceiverUserId).Distinct().ToList();
         var users = await _identityUserRepository.GetListAsync(x => userIds.Contains(x.Id));
@@ -2547,7 +2684,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             .GroupBy(l => l.DocumentAssignmentId ?? Guid.Empty)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(l => l.CreationTime).First());
 
-        // 3. For each completed assignment, apply their signature to the original PDF
+        // 3. For each completed assignment, apply their signature to the original PDF.
+        //    Use the assignment's StepOrder to match the correct placeholder in the template:
+        //    Step 1 user → <<Sign01>>, Step 2 user → <<Sign02>>, etc.
         foreach (var doneAssignment in allDoneAssignments)
         {
             try
@@ -2585,7 +2724,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 logDict.TryGetValue(doneAssignment.Id, out var log);
                 var noteContent = log?.Note;
 
-                // Apply this step's placeholders to the PDF
+                // Apply this step's placeholders to the PDF using step order
                 pdfBytes = ReplacePdfPlaceholders(
                     pdfBytes,
                     doneAssignment.StepOrder,

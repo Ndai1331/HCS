@@ -83,3 +83,57 @@ public class DocumentAssignmentInfoDto
     public bool IsCurrent { get; set; }
     public bool CanAct { get; set; }
 }
+
+/// <summary>
+/// DTO for displaying all workflow steps with their signing status in the action modal.
+/// Shows each step, its assigned users, and whether they have signed.
+/// </summary>
+public class WorkflowStepStatusDto
+{
+    public Guid StepId { get; set; }
+    public int Order { get; set; }
+    public string Name { get; set; } = null!;
+    public string Type { get; set; } = null!;
+
+    /// <summary>
+    /// Whether this step is the current active step
+    /// </summary>
+    public bool IsCurrentStep { get; set; }
+
+    /// <summary>
+    /// Whether at least one user at this step has completed (signed)
+    /// </summary>
+    public bool IsCompleted { get; set; }
+
+    /// <summary>
+    /// Users assigned to this step with their signing status
+    /// </summary>
+    public List<StepAssignmentUserDto> Users { get; set; } = new();
+}
+
+/// <summary>
+/// DTO for a user's assignment status within a workflow step
+/// </summary>
+public class StepAssignmentUserDto
+{
+    public Guid UserId { get; set; }
+    public string? FullName { get; set; }
+    public string? UserName { get; set; }
+    public bool IsPrimary { get; set; }
+
+    /// <summary>
+    /// Assignment status: PENDING, DONE, REVOKE, REJECTED, or null if no assignment found
+    /// </summary>
+    public string? Status { get; set; }
+
+    /// <summary>
+    /// When the user processed (signed/rejected/etc.) their assignment
+    /// </summary>
+    public DateTime? ProcessedAt { get; set; }
+
+    /// <summary>
+    /// Step order used for the signing placeholder (Sign01, Sign02, etc.)
+    /// Null if not yet signed.
+    /// </summary>
+    public int? SigningIndex { get; set; }
+}

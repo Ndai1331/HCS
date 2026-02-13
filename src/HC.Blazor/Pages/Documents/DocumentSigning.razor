@@ -559,52 +559,101 @@
                                         </div>
                                     </div>
 
-                                    @* Current Step - enhanced detail *@
+                                    @* All Steps Overview with Signing Status *@
                                     <div class="d-flex align-items-start mb-2">
                                         <i class="bi bi-signpost-split text-success me-2" style="font-size: 1.1rem; margin-top: 2px;"></i>
                                         <div class="flex-grow-1">
-                                            <label class="form-label fw-bold mb-0">@L["CurrentStep"]</label>
-                                            <div class="small">
-                                                @SelectedDocumentForAction.CurrentStepName
-                                                <span class="badge bg-primary ms-1">@L["Step"] @SelectedDocumentForAction.CurrentStepOrder / @SelectedDocumentForAction.TotalSteps</span>
-                                                @if (CurrentStepDetailInfo != null)
-                                                {
-                                                    <span class="badge bg-secondary ms-1">@L[CurrentStepDetailInfo.Type]</span>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    @* Assigned Users for current step *@
-                                    @if (CurrentStepDetailInfo != null && CurrentStepDetailInfo.AssignedUsers.Any())
-                                    {
-                                        <div class="d-flex align-items-start mb-2">
-                                            <i class="bi bi-people text-info me-2" style="font-size: 1.1rem; margin-top: 2px;"></i>
-                                            <div class="flex-grow-1">
-                                                <label class="form-label fw-bold mb-0">@L["AssignedUsers"]</label>
-                                                <div class="mt-1">
-                                                    @foreach (var user in CurrentStepDetailInfo.AssignedUsers.OrderByDescending(u => u.IsPrimary))
+                                            <label class="form-label fw-bold mb-1">@L["WorkflowSteps"]</label>
+                                            @if (AllStepsWithStatus.Any())
+                                            {
+                                                <div class="mt-1" style="max-height: 220px; overflow-y: auto;">
+                                                    @foreach (var step in AllStepsWithStatus.OrderBy(s => s.Order))
                                                     {
-                                                        <div class="d-flex align-items-center mb-1">
-                                                            @if (user.IsPrimary)
-                                                            {
-                                                                <span class="badge bg-warning text-dark me-1" style="font-size: 0.7rem;">
-                                                                    <i class="bi bi-star-fill me-1"></i>@L["PrimaryUser"]
+                                                        <div class="border rounded p-2 mb-1 @(step.IsCurrentStep ? "border-primary" : "")"
+                                                             style="font-size: 0.8rem; @(step.IsCurrentStep ? "background-color: rgba(13,110,253,0.05);" : "")">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <div class="d-flex align-items-center">
+                                                                    @if (step.IsCompleted)
+                                                                    {
+                                                                        <i class="bi bi-check-circle-fill text-success me-1" style="font-size: 0.9rem;"></i>
+                                                                    }
+                                                                    else if (step.IsCurrentStep)
+                                                                    {
+                                                                        <i class="bi bi-arrow-right-circle-fill text-primary me-1" style="font-size: 0.9rem;"></i>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <i class="bi bi-circle text-muted me-1" style="font-size: 0.9rem;"></i>
+                                                                    }
+                                                                    <strong>@L["Step"] @step.Order:</strong>
+                                                                    <span class="ms-1">@step.Name</span>
+                                                                </div>
+                                                                <span class="badge @(step.Type == "SIGN" ? "bg-success" : "bg-secondary")" style="font-size: 0.6rem;">
+                                                                    @L[step.Type]
                                                                 </span>
-                                                            }
-                                                            else
+                                                            </div>
+                                                            @if (step.Users.Any())
                                                             {
-                                                                <span class="badge bg-light text-dark me-1" style="font-size: 0.7rem;">
-                                                                    <i class="bi bi-person me-1"></i>@L["SecondaryUser"]
-                                                                </span>
+                                                                <div class="mt-1 ms-3">
+                                                                    @foreach (var user in step.Users.OrderByDescending(u => u.IsPrimary))
+                                                                    {
+                                                                        <div class="d-flex align-items-center mb-1" style="font-size: 0.75rem;">
+                                                                            @if (user.Status == nameof(DocumentAssignmentStatus.DONE))
+                                                                            {
+                                                                                <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                                                            }
+                                                                            else if (user.Status == nameof(DocumentAssignmentStatus.PENDING))
+                                                                            {
+                                                                                <i class="bi bi-hourglass-split text-warning me-1"></i>
+                                                                            }
+                                                                            else if (user.Status == nameof(DocumentAssignmentStatus.REVOKE))
+                                                                            {
+                                                                                <i class="bi bi-dash-circle text-secondary me-1"></i>
+                                                                            }
+                                                                            else if (user.Status == nameof(DocumentAssignmentStatus.REJECTED))
+                                                                            {
+                                                                                <i class="bi bi-x-circle-fill text-danger me-1"></i>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <i class="bi bi-circle text-muted me-1"></i>
+                                                                            }
+                                                                            @if (user.IsPrimary)
+                                                                            {
+                                                                                <span class="badge bg-warning text-dark me-1" style="font-size: 0.6rem;">
+                                                                                    <i class="bi bi-star-fill"></i>
+                                                                                </span>
+                                                                            }
+                                                                            <span class="@(user.Status == nameof(DocumentAssignmentStatus.DONE) ? "fw-bold text-success" : user.Status == nameof(DocumentAssignmentStatus.REVOKE) ? "text-muted text-decoration-line-through" : "")">
+                                                                                @(user.FullName ?? user.UserName ?? "---")
+                                                                            </span>
+                                                                            @if (user.SigningIndex.HasValue)
+                                                                            {
+                                                                                <span class="badge bg-info text-white ms-1" style="font-size: 0.55rem;">
+                                                                                    Sign@(user.SigningIndex.Value.ToString("D2"))
+                                                                                </span>
+                                                                            }
+                                                                            @if (user.ProcessedAt.HasValue)
+                                                                            {
+                                                                                <small class="text-muted ms-1">@user.ProcessedAt.Value.ToString("dd/MM HH:mm")</small>
+                                                                            }
+                                                                        </div>
+                                                                    }
+                                                                </div>
                                                             }
-                                                            <small>@(user.FullName ?? user.UserName)</small>
                                                         </div>
                                                     }
                                                 </div>
-                                            </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="small">
+                                                    @SelectedDocumentForAction.CurrentStepName
+                                                    <span class="badge bg-primary ms-1">@L["Step"] @SelectedDocumentForAction.CurrentStepOrder / @SelectedDocumentForAction.TotalSteps</span>
+                                                </div>
+                                            }
                                         </div>
-                                    }
+                                    </div>
 
                                     @* Processing Deadline (StartedAt -> FinishedAt) *@
                                     @if (WorkflowInstanceInfo != null)
