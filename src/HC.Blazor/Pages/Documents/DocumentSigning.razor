@@ -29,8 +29,10 @@
 @using HC.DocumentAssignments
 @using HC.MasterDatas
 @using Volo.Abp.Identity
+@using Volo.Abp.Timing
 
 @inherits HCComponentBase
+@inject IClock Clock
 @inject IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService
 @inject IDocumentsAppService DocumentsAppService
 @inject IDocumentFilesAppService DocumentFilesAppService
@@ -184,6 +186,18 @@
                                             Class="mb-1"
                                             title="@L["ViewWorkflowInfo"]">
                                             <Icon Name="IconName.Search" />
+                                        </Button>
+                                    }
+                                    @* Resubmit returned workflow *@
+                                    @if (context.CanResubmit && context.WorkflowInstanceId.HasValue)
+                                    {
+                                        <Button @onclick="@(() => ShowResubmitModalAsync(context))"
+                                            Color="Color.Success"
+                                            Outline
+                                            Size="Size.Small"
+                                            Class="mb-1"
+                                            title="@L["ResubmitWorkflow"]">
+                                            <Icon Name="IconName.Redo" />
                                         </Button>
                                     }
                                     @* View PDF *@
@@ -1019,6 +1033,214 @@
         <ModalFooter>
             <Button Color="Color.Secondary" Clicked="CloseDocumentPdfViewerModalAsync">
                 @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@* ************************* MODAL: RESUBMIT RETURNED WORKFLOW ************************* *@
+<Modal @ref="ResubmitWorkflowModal" Closing="@ResubmitWorkflowModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>
+                <Icon Name="IconName.Redo" Class="me-2 text-success" />
+                @L["ResubmitWorkflow"]
+            </ModalTitle>
+            <CloseButton Clicked="CloseResubmitModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @if (ReturnedWorkflowInfo != null)
+            {
+                @* Info banner about returned workflow *@
+                <Alert Color="Color.Warning" Visible="true" Class="mb-3">
+                    <AlertMessage>
+                        <i class="bi bi-arrow-return-left me-1"></i>@L["WorkflowReturnedInfo"]
+                    </AlertMessage>
+                    <AlertDescription>
+                        @L["Document"]: <strong>@ReturnedWorkflowInfo.DocumentTitle</strong>
+                        @if (!string.IsNullOrEmpty(ReturnedWorkflowInfo.DocumentNo))
+                        {
+                            <span> - #@ReturnedWorkflowInfo.DocumentNo</span>
+                        }
+                        <span class="ms-2">(@ReturnedWorkflowInfo.StorageNumber)</span>
+                    </AlertDescription>
+                </Alert>
+
+                @* Template file option *@
+                @if (ReturnedWorkflowInfo.WorkflowInfo.HasTemplateFile && !string.IsNullOrWhiteSpace(ReturnedWorkflowInfo.WorkflowInfo.PdfTemplatePath))
+                {
+                    <Card Class="mt-2 mb-2 border-info">
+                        <CardBody>
+                            <div class="d-flex align-items-center">
+                                <Check TValue="bool"
+                                    Checked="@ResubmitUseWorkflowTemplateFile"
+                                    CheckedChanged="@OnResubmitUseWorkflowTemplateFileChanged"
+                                    Class="me-2">
+                                    <ChildContent>@L["UseWorkflowTemplateFile"]</ChildContent>
+                                </Check>
+                            </div>
+                            <div class="mt-2 p-2 bg-light rounded">
+                                <small class="text-muted">@L["WorkflowTemplateFile"]:</small>
+                                <div class="d-flex align-items-center mt-1">
+                                    <Icon Name="IconName.File" Class="me-2 text-primary" />
+                                    <span class="fw-bold">@System.IO.Path.GetFileName(ReturnedWorkflowInfo.WorkflowInfo.PdfTemplatePath)</span>
+                                </div>
+                            </div>
+                        </CardBody>
+                    </Card>
+                }
+
+                @* Select Document (when not using template) *@
+                @if (!ResubmitUseWorkflowTemplateFile)
+                {
+                    <Field Class="mt-2">
+                        <FieldLabel>
+                            @L["SelectDocument"] <span class="text-danger">*</span>
+                        </FieldLabel>
+                        <Autocomplete @key="ResubmitModalResetKey"
+                            TItem="DocumentWithNavigationPropertiesDto"
+                            TValue="Guid?"
+                            Data="@MyDocumentsList"
+                            TextField="@(item => $"{item.Document.StorageNumber} - {item.Document.Title}")"
+                            ValueField="@(item => (Guid?)item.Document.Id)"
+                            SelectedValue="@ResubmitSelectedDocumentId"
+                            SelectedValueChanged="@OnResubmitDocumentSelected"
+                            Placeholder="@L["SearchByTitleOrNumber"]"
+                            FreeTyping
+                            MinLength="0"
+                            Filter="AutocompleteFilter.Contains">
+                        </Autocomplete>
+                    </Field>
+
+                    @if (ResubmitSelectedDocumentId.HasValue && ResubmitSelectedDocumentDto != null)
+                    {
+                        <Alert Color="Color.Info" Visible="true" Class="mb-0">
+                            <AlertMessage>
+                                <i class="bi bi-file-earmark-text me-1"></i>@L["Document"]:
+                            </AlertMessage>
+                            <AlertDescription>
+                                @ResubmitSelectedDocumentDto.Document.Title - #@ResubmitSelectedDocumentDto.Document.No (@ResubmitSelectedDocumentDto.Document.StorageNumber)
+                            </AlertDescription>
+                        </Alert>
+                    }
+                }
+
+                @* Workflow Steps Info (read-only) *@
+                @if (ReturnedWorkflowInfo.WorkflowInfo != null)
+                {
+                    <Card Class="mt-2">
+                        <CardHeader>
+                            <strong>@L["WorkflowSteps"]</strong> - @ReturnedWorkflowInfo.WorkflowInfo.WorkflowName
+                        </CardHeader>
+                        <CardBody>
+                            @foreach (var step in ReturnedWorkflowInfo.WorkflowInfo.Steps)
+                            {
+                                <div class="d-flex align-items-start mb-1 p-2 border rounded">
+                                    <div class="me-3">
+                                        <Badge Color="Color.Primary" Pill>@step.Order</Badge>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <strong>@step.Name</strong>
+                                        <small class="text-muted ms-2">(@L[step.Type])</small>
+                                        @if (step.SLADays.HasValue)
+                                        {
+                                            <small class="text-warning ms-2">
+                                                <i class="bi bi-clock"></i> @step.SLADays @L["Days"]
+                                            </small>
+                                        }
+                                        <div class="mt-1">
+                                            @foreach (var user in step.AssignedUsers)
+                                            {
+                                                <small class="badge bg-light text-dark me-1">
+                                                    <i class="bi bi-person"></i>
+                                                    @(user.FullName ?? user.UserName)
+                                                    @if (user.IsPrimary)
+                                                    {
+                                                        <i class="bi bi-star-fill text-warning ms-1"></i>
+                                                    }
+                                                </small>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </CardBody>
+                    </Card>
+                }
+
+                @* Signing Content (editable, pre-populated) *@
+                <Field Class="mt-2">
+                    <FieldLabel>@L["SigningContent"]</FieldLabel>
+                    <MemoEdit Rows="3" @bind-Text="@ResubmitSigningContent" Placeholder="@L["EnterSigningContent"]" />
+                </Field>
+
+                @* Existing Attached Files (can be removed) *@
+                @if (ResubmitExistingFiles.Any())
+                {
+                    <Field Class="mt-2">
+                        <FieldLabel>@L["ExistingAttachedFiles"]</FieldLabel>
+                        <div>
+                            @foreach (var file in ResubmitExistingFiles)
+                            {
+                                <Alert Color="Color.Info" Dismissible="false" Class="mb-1 py-1 px-2 d-flex align-items-center justify-content-between">
+                                    <small>
+                                        <Icon Name="IconName.FileAlt" Class="me-1" />@file.FileName
+                                    </small>
+                                    <Button Color="Color.Danger" Size="Size.ExtraSmall" Outline Clicked="@(() => RemoveExistingFile(file))">
+                                        <Icon Name="IconName.Times" />
+                                    </Button>
+                                </Alert>
+                            }
+                        </div>
+                    </Field>
+                }
+
+                @* Upload New Files *@
+                <Field Class="mt-2">
+                    <FieldLabel>@L["AttachFiles"]</FieldLabel>
+                    <FilePicker @ref="ResubmitFilePicker"
+                        Multiple
+                        Upload="OnResubmitFileUpload"
+                        ShowMode="FilePickerShowMode.List"
+                        MaxFileSize="52428800"
+                        FilePickerLocalizer="FilePickerLocalizer">
+                        <ButtonsTemplate>
+                            <Progress Value="@ResubmitFilePicker?.GetProgressPercentage()" />
+                            <Buttons>
+                                <Button Clicked="@context.Upload" Color="Color.Primary" Size="Size.Small">
+                                    <Icon Name="IconName.FileUpload" /> @L["Upload"]
+                                </Button>
+                                <Button Clicked="@context.Clear" Color="Color.Warning" Size="Size.Small">
+                                    <Icon Name="IconName.Clear" /> @L["Clear"]
+                                </Button>
+                            </Buttons>
+                        </ButtonsTemplate>
+                    </FilePicker>
+                    @if (ResubmitUploadedFiles.Any())
+                    {
+                        <div class="mt-2">
+                            @foreach (var file in ResubmitUploadedFiles)
+                            {
+                                <Alert Color="Color.Success" Dismissible="false" Class="mb-1 py-1 px-2">
+                                    <small><Icon Name="IconName.CheckCircle" Class="me-1" />@file.Name</small>
+                                </Alert>
+                            }
+                        </div>
+                    }
+                </Field>
+            }
+            else
+            {
+                <Div TextAlignment="TextAlignment.Center" Class="p-4">
+                    <RadarSpinner />
+                </Div>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseResubmitModalAsync">@L["Cancel"]</Button>
+            <Button Color="Color.Success" Clicked="ConfirmResubmitWorkflowAsync"
+                    Disabled="@(ReturnedWorkflowInfo == null || (!ResubmitUseWorkflowTemplateFile && !ResubmitSelectedDocumentId.HasValue))">
+                <Icon Name="IconName.Redo" Class="me-1" />@L["ResubmitWorkflow"]
             </Button>
         </ModalFooter>
     </ModalContent>

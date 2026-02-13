@@ -40,8 +40,9 @@ public partial class DocumentSigning
     protected PageToolbar Toolbar { get; } = new PageToolbar();
 
     // Filter properties
-    private DateTime? FromDate { get; set; } = DateTime.Now.AddDays(-60);
-    private DateTime? ToDate { get; set; } = DateTime.Now;
+    // BUG-4 FIX: Initialized in OnAfterRenderAsync using Clock.Now (IClock) for timezone consistency
+    private DateTime? FromDate { get; set; }
+    private DateTime? ToDate { get; set; }
     private string? FilterText { get; set; }
     private DocumentSigningFilterMode CurrentFilterMode { get; set; } = DocumentSigningFilterMode.All;
 
@@ -127,6 +128,19 @@ public partial class DocumentSigning
     private string? DocumentPdfFileUrl { get; set; }
     private bool IsDocumentPdfFile { get; set; }
 
+    // Resubmit Returned Workflow Modal
+    private Modal ResubmitWorkflowModal { get; set; } = new();
+    private ReturnedWorkflowInfoDto? ReturnedWorkflowInfo { get; set; }
+    private string? ResubmitSigningContent { get; set; }
+    private bool ResubmitUseWorkflowTemplateFile { get; set; }
+    private Guid? ResubmitSelectedDocumentId { get; set; }
+    private DocumentWithNavigationPropertiesDto? ResubmitSelectedDocumentDto { get; set; }
+    private FilePicker? ResubmitFilePicker { get; set; }
+    private List<UploadedFileInfo> ResubmitUploadedFiles { get; set; } = new();
+    private List<AttachedFileDto> ResubmitExistingFiles { get; set; } = new();
+    private List<Guid> ResubmitDeleteFileIds { get; set; } = new();
+    private int ResubmitModalResetKey { get; set; }
+
     #endregion
 
     #region Inner Classes
@@ -149,6 +163,10 @@ public partial class DocumentSigning
     {
         if (firstRender)
         {
+            // BUG-4 FIX: Initialize filter dates using Clock.Now (IClock) for timezone consistency
+            FromDate = Clock.Now.AddDays(-60);
+            ToDate = Clock.Now;
+
             BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["DocumentSigning"]));
             await SetToolbarItemsAsync();
             await LoadWorkflowLookupAsync();
@@ -574,7 +592,7 @@ public partial class DocumentSigning
                 Path = filePath,
                 Hash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(fileBytes)),
                 IsSigned = false,
-                UploadedAt = DateTime.Now,
+                UploadedAt = Clock.Now, // BUG-4 FIX: use Clock.Now instead of DateTime.Now
                 // DocumentId = SelectedDocumentId
             });
 
@@ -807,6 +825,201 @@ public partial class DocumentSigning
             await UiMessageService.Success(successMessage,
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await InvokeAsync(WorkflowActionModal.Hide);
+            await LoadDocumentSigningListAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    #endregion
+
+    #region Resubmit Returned Workflow Modal
+
+    /// <summary>
+    /// Show the resubmit modal for a returned workflow.
+    /// Pre-populates with data from the returned workflow instance.
+    /// </summary>
+    private async Task ShowResubmitModalAsync(DocumentSigningItemDto document)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            // Reset resubmit modal state
+            ReturnedWorkflowInfo = null;
+            ResubmitSigningContent = null;
+            ResubmitUseWorkflowTemplateFile = false;
+            ResubmitSelectedDocumentId = null;
+            ResubmitSelectedDocumentDto = null;
+            ResubmitUploadedFiles.Clear();
+            ResubmitExistingFiles.Clear();
+            ResubmitDeleteFileIds.Clear();
+            ResubmitModalResetKey++;
+
+            if (ResubmitFilePicker != null)
+            {
+                await ResubmitFilePicker.Clear();
+            }
+
+            // Load personal documents for selection
+            await LoadMyDocumentsAsync();
+
+            // Load returned workflow info
+            if (document.WorkflowInstanceId.HasValue)
+            {
+                ReturnedWorkflowInfo = await DocumentWorkflowInstancesAppService
+                    .GetReturnedWorkflowInfoAsync(document.WorkflowInstanceId.Value);
+
+                if (ReturnedWorkflowInfo != null)
+                {
+                    // Pre-populate with previous data
+                    ResubmitSigningContent = ReturnedWorkflowInfo.LastSigningContent;
+                    ResubmitExistingFiles = ReturnedWorkflowInfo.AttachedFiles.ToList();
+                    ResubmitSelectedDocumentId = ReturnedWorkflowInfo.DocumentId;
+                    ResubmitSelectedDocumentDto = MyDocumentsList
+                        .FirstOrDefault(d => d.Document.Id == ReturnedWorkflowInfo.DocumentId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            await InvokeAsync(ResubmitWorkflowModal.Show);
+        }
+    }
+
+    private async Task CloseResubmitModalAsync()
+    {
+        await InvokeAsync(ResubmitWorkflowModal.Hide);
+    }
+
+    private void OnResubmitDocumentSelected(Guid? documentId)
+    {
+        ResubmitSelectedDocumentId = documentId;
+        ResubmitSelectedDocumentDto = documentId.HasValue
+            ? MyDocumentsList.FirstOrDefault(d => d.Document.Id == documentId.Value)
+            : null;
+    }
+
+    private void OnResubmitUseWorkflowTemplateFileChanged(bool value)
+    {
+        ResubmitUseWorkflowTemplateFile = value;
+        if (value)
+        {
+            ResubmitSelectedDocumentId = null;
+            ResubmitSelectedDocumentDto = null;
+        }
+    }
+
+    /// <summary>
+    /// Remove an existing attached file (mark for deletion)
+    /// </summary>
+    private void RemoveExistingFile(AttachedFileDto file)
+    {
+        ResubmitDeleteFileIds.Add(file.FileId);
+        ResubmitExistingFiles.Remove(file);
+    }
+
+    /// <summary>
+    /// Upload handler for resubmit modal
+    /// </summary>
+    private async Task OnResubmitFileUpload(FileUploadEventArgs e)
+    {
+        try
+        {
+            using var memoryStream = new MemoryStream();
+            await e.File.OpenReadStream(long.MaxValue).CopyToAsync(memoryStream);
+            var fileBytes = memoryStream.ToArray();
+
+            var extension = Path.GetExtension(e.File.Name);
+            var filePath = $"workflow-files/{Guid.NewGuid()}{extension}";
+
+            using var uploadStream = new MemoryStream(fileBytes);
+            await BlobContainer.SaveAsync(filePath, uploadStream);
+
+            var documentFileDto = await DocumentFilesAppService.CreateAsync(new DocumentFileCreateDto
+            {
+                Name = e.File.Name,
+                Path = filePath,
+                Hash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(fileBytes)),
+                IsSigned = false,
+                UploadedAt = Clock.Now, // BUG-4 FIX: use Clock.Now instead of DateTime.Now
+            });
+
+            ResubmitUploadedFiles.Add(new UploadedFileInfo
+            {
+                DocumentFileId = documentFileDto.Id,
+                Name = e.File.Name,
+                Path = filePath
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error uploading file {FileName} in resubmit modal", e.File.Name);
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <summary>
+    /// Confirm and submit the re-submit workflow
+    /// </summary>
+    private async Task ConfirmResubmitWorkflowAsync()
+    {
+        try
+        {
+            if (ReturnedWorkflowInfo == null)
+            {
+                await UiMessageService.Error(L["WorkflowNotReturned"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                return;
+            }
+
+            // Validate document selection (when not using template file)
+            if (!ResubmitUseWorkflowTemplateFile && !ResubmitSelectedDocumentId.HasValue)
+            {
+                await UiMessageService.Error(L["The {0} field is required.", L["Document"]],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                return;
+            }
+
+            var confirmed = await UiMessageService.Confirm(L["ConfirmResubmitForSigning"]);
+            if (!confirmed) return;
+
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            var input = new ResubmitReturnedWorkflowInput
+            {
+                ReturnedWorkflowInstanceId = ReturnedWorkflowInfo.WorkflowInstanceId,
+                UseWorkflowTemplateFile = ResubmitUseWorkflowTemplateFile,
+                DocumentFileId = null, // Will be resolved from new document
+                NewDocumentId = ResubmitUseWorkflowTemplateFile ? null : ResubmitSelectedDocumentId,
+                SigningContent = ResubmitSigningContent,
+                AttachedFileIds = ResubmitUploadedFiles.Any()
+                    ? ResubmitUploadedFiles.Select(f => f.DocumentFileId).ToList()
+                    : null,
+                DeleteFileIds = ResubmitDeleteFileIds.Any() ? ResubmitDeleteFileIds : null
+            };
+
+            await DocumentWorkflowInstancesAppService.ResubmitReturnedWorkflowAsync(input);
+
+            await UiMessageService.Success(L["WorkflowResubmittedSuccessfully"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+            await InvokeAsync(ResubmitWorkflowModal.Hide);
             await LoadDocumentSigningListAsync();
             await InvokeAsync(StateHasChanged);
         }

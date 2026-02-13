@@ -38,8 +38,9 @@ public class WorkflowStepAssignmentsAppService : WorkflowStepAssignmentsAppServi
     protected INotificationRepository _notificationRepository;
     protected INotificationReceiverRepository _notificationReceiverRepository;
     protected IDistributedEventBus _distributedEventBus;
-    protected IRepository<HC.WorkflowStepTemplates.WorkflowStepTemplate, Guid> _workflowStepTemplateRepository;
-    protected IRepository<Volo.Abp.Identity.IdentityUser, Guid> _identityUserRepository;
+    // ISSUE-17 FIX: Removed shadowed fields _workflowStepTemplateRepository and _identityUserRepository.
+    // These are already declared in the base class WorkflowStepAssignmentsAppServiceBase.
+    // Declaring them again here would shadow the base class fields and could cause subtle bugs.
     protected IRepository<HC.DocumentAssignments.DocumentAssignment, Guid> _documentAssignmentRepository;
     protected IRepository<HC.Documents.Document, Guid> _documentRepository;
     
@@ -59,8 +60,7 @@ public class WorkflowStepAssignmentsAppService : WorkflowStepAssignmentsAppServi
         _notificationRepository = notificationRepository;
         _notificationReceiverRepository = notificationReceiverRepository;
         _distributedEventBus = distributedEventBus;
-        _workflowStepTemplateRepository = workflowStepTemplateRepository;
-        _identityUserRepository = identityUserRepository;
+        // Base class fields are set via base(...) constructor call above
         _documentAssignmentRepository = documentAssignmentRepository;
         _documentRepository = documentRepository;
     }

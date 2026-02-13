@@ -1142,6 +1142,16 @@
     "FormsManagement": "Forms Management",
     "Permission:Forms:Form.Delete": "Delete form",
     "ResponseManagement": "Response Management",
-    "DeletingResponse": "Deleting response"
+    "DeletingResponse": "Deleting response",
+    "ErrorCopyingFileForNextStep": "Error copying file for next step. Please try again or contact administrator.",
+    "ResubmitWorkflow": "Resubmit",
+    "WorkflowReturnedInfo": "This document was returned. You can edit and resubmit.",
+    "ConfirmResubmitForSigning": "Are you sure you want to resubmit this document?",
+    "WorkflowResubmittedSuccessfully": "Resubmitted successfully",
+    "WorkflowNotReturned": "Workflow is not in returned status",
+    "OnlyInitiatorCanResubmit": "Only the initiator can resubmit the document",
+    "ExistingAttachedFiles": "Existing attached files",
+    "WorkflowResubmitted": "Document resubmitted",
+    "WorkflowResubmittedMessage": "The document has been resubmitted"
   }
 }

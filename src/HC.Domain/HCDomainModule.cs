@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using HC.Localization;
 using HC.MultiTenancy;
 using System;
+using System.Threading.Tasks;
+using Volo.Abp.BackgroundWorkers;
 using Volo.Abp.Localization;
 using Volo.Abp.Modularity;
 using Volo.Abp.MultiTenancy;
@@ -26,6 +28,7 @@ using Volo.Saas;
 using Volo.Abp.Gdpr;
 using Volo.Abp.Localization.ExceptionHandling;
 using Volo.Forms;
+using Volo.Abp;
 
 namespace HC;
 
@@ -71,5 +74,13 @@ public class HCDomainModule : AbpModule
 #if DEBUG
         context.Services.Replace(ServiceDescriptor.Singleton<IEmailSender, NullEmailSender>());
 #endif
+    }
+
+    public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)
+    {
+        await base.OnApplicationInitializationAsync(context);
+
+        // Register background worker for checking overdue workflow instances
+        await context.AddBackgroundWorkerAsync<HC.DocumentWorkflowInstances.WorkflowOverdueBackgroundWorker>();
     }
 }

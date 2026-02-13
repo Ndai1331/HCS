@@ -58,4 +58,17 @@ public partial interface IDocumentWorkflowInstancesAppService
     /// Also returns whether the current step allows the Return action.
     /// </summary>
     Task<WorkflowOverdueCheckResultDto> CheckAndHandleOverdueAsync(Guid workflowInstanceId);
+
+    /// <summary>
+    /// Re-submit a workflow that was previously returned (RETURNED status).
+    /// Allows the initiator to edit signing content, re-attach files, and change document/file selection.
+    /// Creates a new workflow instance starting from step 1.
+    /// </summary>
+    Task<DocumentWorkflowInstanceDto> ResubmitReturnedWorkflowAsync(ResubmitReturnedWorkflowInput input);
+
+    /// <summary>
+    /// Get info for a returned workflow instance to pre-populate the re-submit modal.
+    /// Returns workflow info, original signing content, attached files, etc.
+    /// </summary>
+    Task<ReturnedWorkflowInfoDto> GetReturnedWorkflowInfoAsync(Guid workflowInstanceId);
 }

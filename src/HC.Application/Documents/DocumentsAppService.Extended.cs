@@ -261,7 +261,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             notification.TenantId = CurrentTenant.Id;
             await _notificationRepository.InsertAsync(notification);
 
-            var now = DateTime.Now;
+            var now = Clock.Now; // ISSUE-18 FIX: Use ABP Clock instead of DateTime.Now
 
             // Create notification receivers and document histories for each user
             foreach (var receiverUserId in allReceiverUserIds)

@@ -862,4 +862,9 @@ Logic ký tuần tự (WorkflowTemplate.SignMode = SEQUENTIAL)
 3. **Conflict resolution**: Nếu 2 user cùng step ký song song, hiện mỗi user ký bản copy riêng → merge sẽ lấy cả 2 signatures
 
 
+======= LOGIC TRẢ VỀ 13/02/2026 =======
 
+Khi đang ở bất kỳ bước nào mà chọn option trả về:
+- Nếu ký song song => update status CANCLE hêt các file gửi đến các người khác  => trở về bước đầu tiên 
+- Nếu ký tuần tự => trở về bước đầu tiên 
+- Nếu file có status là TRA_VE, người trình được phép chỉnh sửa nội dung modal trình ký , cho phép đính kèm lại file, có thể xoá file đính kèm, chọn lại file từ văn bản của tôi hoặc chọn lại file từ workflow template 

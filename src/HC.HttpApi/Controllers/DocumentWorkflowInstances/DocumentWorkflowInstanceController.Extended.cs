@@ -86,4 +86,18 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     {
         return _documentWorkflowInstancesAppService.CheckAndHandleOverdueAsync(workflowInstanceId);
     }
+
+    [HttpPost]
+    [Route("resubmit-returned-workflow")]
+    public Task<DocumentWorkflowInstanceDto> ResubmitReturnedWorkflowAsync(ResubmitReturnedWorkflowInput input)
+    {
+        return _documentWorkflowInstancesAppService.ResubmitReturnedWorkflowAsync(input);
+    }
+
+    [HttpGet]
+    [Route("returned-workflow-info/{workflowInstanceId}")]
+    public Task<ReturnedWorkflowInfoDto> GetReturnedWorkflowInfoAsync(Guid workflowInstanceId)
+    {
+        return _documentWorkflowInstancesAppService.GetReturnedWorkflowInfoAsync(workflowInstanceId);
+    }
 }

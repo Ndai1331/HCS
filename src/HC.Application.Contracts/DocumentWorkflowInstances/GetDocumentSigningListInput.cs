@@ -93,6 +93,12 @@ public class DocumentSigningItemDto
     public string? MyAssignmentStatus { get; set; }
     public bool CanAct { get; set; }
     public Guid? MyAssignmentId { get; set; }
+
+    /// <summary>
+    /// True if the workflow was returned (RETURNED) and the current user is the initiator,
+    /// allowing them to re-submit the workflow with edits.
+    /// </summary>
+    public bool CanResubmit { get; set; }
 }
 
 /// <summary>

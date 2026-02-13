@@ -36,6 +36,7 @@ using HC.DocumentFiles;
 using HC.DocumentHistories;
 using Volo.Abp.BlobStoring;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.Uow;
 using UglyToad.PdfPig;
 using PdfSharpPdf = PdfSharp.Pdf;
 using PdfSharpIO = PdfSharp.Pdf.IO;
@@ -120,9 +121,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         // Get workflow
         var workflow = await _workflowRepository.GetAsync(workflowId);
 
-        // Get active workflow template
+        // ISSUE-07 FIX: Sort by CreationTime descending to consistently get the latest template
+        // (FullAuditedAggregateRoot handles soft-delete via IsDeleted filter automatically)
         var templates = await _workflowTemplateRepository.GetListAsync(x => x.WorkflowId == workflowId);
-        var activeTemplate = templates.FirstOrDefault();
+        var activeTemplate = templates.OrderByDescending(x => x.CreationTime).FirstOrDefault();
         if (activeTemplate == null)
         {
             throw new UserFriendlyException(L["NoActiveWorkflowTemplateFound"]);
@@ -188,8 +190,12 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     #region SubmitToWorkflowAsync
 
     /// <summary>
-    /// Submit a document to a workflow
+    /// Submit a document to a workflow.
+    /// ISSUE-13 FIX: Explicit [UnitOfWork] to ensure all DB operations (document, file, instance,
+    /// assignments, history, logs, notifications) are committed atomically. If any step fails,
+    /// all previous operations are rolled back.
     /// </summary>
+    [UnitOfWork]
     [Authorize(HCPermissions.Documents.SubmitForSigning)]
     public async Task<DocumentWorkflowInstanceDto> SubmitToWorkflowAsync(SubmitToWorkflowInput input)
     {
@@ -226,7 +232,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             var defaultSecrecyLevelId = await GetDefaultMasterDataIdAsync(MasterDataType.SecrecyLevel);
 
             // Create a new Document with SourceType = Workflow
-            var now = DateTime.Now;
+            var now = Clock.Now; // ISSUE-08 FIX: Use ABP Clock instead of DateTime.Now
             var storageNumber = $"WF-{now:yyyyMMddHHmmss}";
             createdDocument = await _documentManager.CreateAsync(
                 fieldId: null,
@@ -279,6 +285,35 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             throw new UserFriendlyException(L["DocumentAlreadyHasActiveWorkflow"]);
         }
 
+        // ISSUE-09 FIX: Cleanup old workflow-related assignments from previous RETURNED/REJECTED instances.
+        // When re-submitting, mark old assignments as obsolete so they don't appear in queries.
+        var oldTerminatedInstances = await _documentWorkflowInstanceRepository.GetListAsync(
+            x => x.DocumentId == documentId &&
+            (x.Status == nameof(DocumentWorkflowInstanceStatus.RETURNED) ||
+             x.Status == nameof(DocumentWorkflowInstanceStatus.REJECTED)));
+
+        if (oldTerminatedInstances.Any())
+        {
+            var oldAssignments = await _documentAssignmentRepository.GetListAsync(
+                x => x.DocumentId == documentId
+                && x.IsCurrent
+                && (x.Status == nameof(DocumentAssignmentStatus.REJECTED)
+                    || x.Status == nameof(DocumentAssignmentStatus.REVOKE)));
+
+            foreach (var oldAssignment in oldAssignments)
+            {
+                oldAssignment.IsCurrent = false; // Mark as not current so they don't interfere with new workflow
+                await _documentAssignmentRepository.UpdateAsync(oldAssignment);
+            }
+
+            if (oldAssignments.Any())
+            {
+                Logger.LogInformation(
+                    "[RE_SUBMIT] Cleaned up {Count} old assignments for document {DocumentId} before re-submit.",
+                    oldAssignments.Count, documentId);
+            }
+        }
+
         var allStepsOrdered = workflowInfo.Steps.OrderBy(s => s.Order).ToList();
         var firstStep = allStepsOrdered.First();
         var isParallel = workflowInfo.SignMode == nameof(SignMode.PARALLEL);
@@ -301,7 +336,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             }
         }
 
-        var nowTime = DateTime.Now;
+        var nowTime = Clock.Now; // ISSUE-08 FIX
 
         // 1. Create DocumentWorkflowInstance
         // SEQUENTIAL: FinishedAt = now + step1 SLADays
@@ -398,7 +433,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             null,
             CurrentUser.Id,
             nameof(WorkflowInstanceLogAction.SUBMIT_WORKFLOW),
-            "Initiator",
+            WorkflowConstants.RoleInitiator,
             null,
             nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
             isParallel ? $"PARALLEL - {allStepsOrdered.Count} steps" : null
@@ -484,7 +519,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         }
 
         // 2. Server-side overdue check (prevent actions on expired workflows)
-        if (instance.FinishedAt > DateTime.MinValue && instance.FinishedAt <= DateTime.Now)
+        if (instance.FinishedAt > DateTime.MinValue && instance.FinishedAt <= Clock.Now)
         {
             throw new UserFriendlyException(L["WorkflowOverdue"]);
         }
@@ -508,7 +543,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             throw new UserFriendlyException(L["InvalidWorkflowAction"]);
         }
 
-        var now = DateTime.Now;
+        var now = Clock.Now; // ISSUE-08 FIX
 
         if (input.Action.ToUpper() == nameof(WorkflowInstanceLogAction.APPROVE) && input.SigningMethodId.HasValue)
         {
@@ -529,18 +564,14 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 await HandleApproveAsync(instance, assignment, now, input.Note);
                 break;
             case nameof(WorkflowInstanceLogAction.RETURN):
-                await HandleTerminalActionAsync(instance, assignment, now, input.Note,
-                    nameof(DocumentWorkflowInstanceStatus.RETURNED),
-                    nameof(WorkflowInstanceLogAction.RETURN),
-                    "WorkflowReturned", "WorkflowReturnedMessage",
-                    DocumentStatusCode.HT);
+                await HandleReturnAsync(instance, assignment, now, input.Note);
                 break;
             case nameof(WorkflowInstanceLogAction.REJECT):
                 await HandleTerminalActionAsync(instance, assignment, now, input.Note,
                     nameof(DocumentWorkflowInstanceStatus.REJECTED),
                     nameof(WorkflowInstanceLogAction.REJECT),
                     "WorkflowRejected", "WorkflowRejectedMessage",
-                    DocumentStatusCode.HT);
+                    DocumentStatusCode.TU_CHOI);  // ISSUE-03 FIX: REJECT → TU_CHOI instead of HT
                 break;
             default:
                 throw new UserFriendlyException(L["InvalidWorkflowAction"]);
@@ -587,6 +618,30 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             return;
         }
 
+        // ===== RACE CONDITION GUARD (ISSUE-01 FIX) =====
+        // Re-fetch instance from DB to check if another concurrent thread already completed it.
+        // This prevents duplicate completion in PARALLEL mode when 2 users approve simultaneously.
+        var freshInstance = await _documentWorkflowInstanceRepository.GetAsync(instance.Id);
+        if (freshInstance.Status != nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS))
+        {
+            Logger.LogWarning(
+                "[RACE_GUARD] Workflow {InstanceId} already transitioned to {Status} by another thread. " +
+                "Current user {UserId} approve logged but completion skipped.",
+                instance.Id, freshInstance.Status, CurrentUser.Id);
+
+            // Still log this user's approve action (the assignment was already marked DONE above)
+            await _documentWorkflowInstanceLogsManager.CreateAsync(
+                instance.Id, assignment.Id, CurrentUser.Id,
+                nameof(WorkflowInstanceLogAction.APPROVE),
+                currentStep.Type,
+                freshInstance.Status,
+                freshInstance.Status,
+                $"[RACE_GUARD] Workflow already {freshInstance.Status}. {note}");
+            return;
+        }
+        // Use the fresh instance for all subsequent operations to avoid stale data
+        instance = freshInstance;
+
         // 5. All assignments are done
         if (isParallel)
         {
@@ -632,7 +687,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 // Move to next step
                 var nextStep = allSteps[currentIndex + 1];
                 instance.CurrentStepId = nextStep.Id;
-                instance.StartedAt = now;
+                // ISSUE-10 FIX: Do NOT overwrite StartedAt - it tracks when the workflow was created.
+                // instance.StartedAt = now; // REMOVED - preserves original workflow start time
                 instance.FinishedAt = nextStep.SLADays.HasValue
                     ? now.AddDays(nextStep.SLADays.Value)
                     : DateTime.MinValue;
@@ -745,9 +801,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     }
 
     /// <summary>
-    /// Shared handler for RETURN and REJECT actions.
+    /// BUG-3 FIX: Now used ONLY for REJECT action (RETURN has its own HandleReturnAsync).
     /// - Updates the acting user's assignment
-    /// - Revokes all other PENDING assignments at the same step (multi-user step safety)
+    /// - Revokes ALL other PENDING assignments (entire workflow is terminated on REJECT)
     /// - Updates workflow instance status
     /// - Creates log, sends notification, updates document status
     /// </summary>
@@ -756,10 +812,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         DocumentAssignment assignment,
         DateTime now,
         string? note,
-        string newInstanceStatus,        // e.g. RETURNED or REJECTED
-        string logAction,                // e.g. RETURN or REJECT
-        string notificationTitleKey,     // e.g. "WorkflowReturned"
-        string notificationMessageKey,   // e.g. "WorkflowReturnedMessage"
+        string newInstanceStatus,        // e.g. REJECTED
+        string logAction,                // e.g. REJECT
+        string notificationTitleKey,     // e.g. "WorkflowRejected"
+        string notificationMessageKey,   // e.g. "WorkflowRejectedMessage"
         DocumentStatusCode documentStatusCode)
     {
         // 1. Update the acting user's assignment
@@ -769,8 +825,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         // autoSave=true to flush changes to DB before querying other pending assignments
         await _documentAssignmentRepository.UpdateAsync(assignment, autoSave: true);
 
-        // 2. Revoke all other PENDING assignments at the same step
-        //    (when a step has multiple users and one returns/rejects, others must be revoked)
+        // 2. Revoke ALL other PENDING assignments (REJECT terminates entire workflow)
+        // ISSUE-14 FIX: For SEQUENTIAL mode, filter by StepOrder as a safety guard
+        // to avoid revoking stale assignments from previous steps if data inconsistency occurs.
         var otherPendingAssignments = await _documentAssignmentRepository.GetListAsync(
             x => x.DocumentId == instance.DocumentId
             && x.IsCurrent
@@ -805,11 +862,434 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             document,
             new List<Guid> { instance.CreatorId!.Value },
             notificationTitleKey,
-            $"{notificationMessageKey}|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? "System"}"
+            $"{notificationMessageKey}|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? WorkflowConstants.RoleSystem}"
         );
 
         // 6. Update document status
         await UpdateDocumentStatusAsync(instance.DocumentId, documentStatusCode);
+    }
+
+    #endregion
+
+    #region HandleReturnAsync
+
+    /// <summary>
+    /// Handle RETURN action: Reset workflow back to step 1 instead of terminating.
+    /// - PARALLEL: Cancel ALL pending assignments across all steps, then reset to step 1
+    /// - SEQUENTIAL: Cancel pending assignments at current step, then reset to step 1
+    /// The workflow instance status is set to RETURNED and document status to TRA_VE.
+    /// The initiator can then re-submit (edit and re-send) the workflow from the signing page.
+    /// </summary>
+    private async Task HandleReturnAsync(
+        DocumentWorkflowInstance instance,
+        DocumentAssignment assignment,
+        DateTime now,
+        string? note)
+    {
+        // 1. Update the acting user's assignment
+        assignment.Status = nameof(DocumentAssignmentStatus.REJECTED);
+        assignment.ProcessedAt = now;
+        assignment.IsCurrent = false;
+        await _documentAssignmentRepository.UpdateAsync(assignment, autoSave: true);
+
+        // 2. Determine sign mode (SEQUENTIAL or PARALLEL)
+        var template = await _workflowTemplateRepository.GetAsync(instance.WorkflowTemplateId);
+        var isParallel = template.SignMode == nameof(SignMode.PARALLEL);
+
+        // 3. Cancel/Revoke ALL other pending assignments
+        // For PARALLEL: cancel ALL pending assignments across ALL steps (entire workflow resets)
+        // For SEQUENTIAL: cancel all pending at current step
+        var otherPendingAssignments = await _documentAssignmentRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId
+            && x.IsCurrent
+            && x.Status == nameof(DocumentAssignmentStatus.PENDING)
+            && x.Id != assignment.Id);
+
+        if (!isParallel)
+        {
+            // SEQUENTIAL: only revoke same-step assignments (safety guard)
+            otherPendingAssignments = otherPendingAssignments
+                .Where(x => x.StepOrder == assignment.StepOrder).ToList();
+        }
+        // PARALLEL: revoke ALL pending assignments (all steps)
+
+        foreach (var other in otherPendingAssignments)
+        {
+            other.Status = nameof(DocumentAssignmentStatus.REVOKE);
+            other.ProcessedAt = now;
+            other.IsCurrent = false;
+            await _documentAssignmentRepository.UpdateAsync(other);
+        }
+
+        // 4. Update workflow instance status to RETURNED
+        var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
+
+        // Reset CurrentStepId to the first step so re-submit starts from step 1
+        var allSteps = await _workflowStepTemplateRepository.GetListAsync(
+            x => x.WorkflowTemplateId == instance.WorkflowTemplateId && x.IsActive);
+        var firstStep = allSteps.OrderBy(s => s.Order).First();
+
+        instance.Status = nameof(DocumentWorkflowInstanceStatus.RETURNED);
+        instance.CurrentStepId = firstStep.Id; // Reset to first step
+        instance.FinishedAt = now;
+        await _documentWorkflowInstanceRepository.UpdateAsync(instance);
+
+        // 5. Log the RETURN action
+        await _documentWorkflowInstanceLogsManager.CreateAsync(
+            instance.Id, assignment.Id, CurrentUser.Id,
+            nameof(WorkflowInstanceLogAction.RETURN),
+            currentStep.Type,
+            nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
+            nameof(DocumentWorkflowInstanceStatus.RETURNED), note);
+
+        // 6. Notify workflow initiator
+        var document = await _documentRepository.GetAsync(instance.DocumentId);
+        await SendWorkflowNotificationAsync(
+            document,
+            new List<Guid> { instance.CreatorId!.Value },
+            "WorkflowReturned",
+            $"WorkflowReturnedMessage|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? WorkflowConstants.RoleSystem}"
+        );
+
+        // 7. Update document status to TRA_VE
+        await UpdateDocumentStatusAsync(instance.DocumentId, DocumentStatusCode.TRA_VE);
+    }
+
+    #endregion
+
+    #region ResubmitReturnedWorkflowAsync
+
+    /// <summary>
+    /// Re-submit a workflow that was previously returned (RETURNED status).
+    /// Allows the initiator to edit signing content, re-attach files, change document/file selection.
+    /// Creates a new workflow instance (re-uses the same workflow + template) starting from step 1.
+    /// </summary>
+    [UnitOfWork]
+    [Authorize(HCPermissions.Documents.SubmitForSigning)]
+    public async Task<DocumentWorkflowInstanceDto> ResubmitReturnedWorkflowAsync(ResubmitReturnedWorkflowInput input)
+    {
+        // 1. Validate the returned workflow instance
+        var returnedInstance = await _documentWorkflowInstanceRepository.GetAsync(input.ReturnedWorkflowInstanceId);
+        if (returnedInstance.Status != nameof(DocumentWorkflowInstanceStatus.RETURNED))
+        {
+            throw new UserFriendlyException(L["WorkflowNotReturned"]);
+        }
+
+        // 2. Verify current user is the workflow initiator
+        if (returnedInstance.CreatorId != CurrentUser.Id!.Value)
+        {
+            throw new UserFriendlyException(L["OnlyInitiatorCanResubmit"]);
+        }
+
+        var documentId = returnedInstance.DocumentId;
+
+        // 3. If user wants to change the document file, handle it
+        Guid? newSigningFileId = null;
+
+        if (input.UseWorkflowTemplateFile)
+        {
+            // Re-create document file from template
+            var workflowInfo = await GetWorkflowSubmitInfoAsync(returnedInstance.WorkflowId);
+            if (!workflowInfo.HasTemplateFile || string.IsNullOrWhiteSpace(workflowInfo.PdfTemplatePath))
+            {
+                throw new UserFriendlyException(L["WorkflowTemplateHasNoFile"]);
+            }
+
+            var templateFileName = Path.GetFileName(workflowInfo.PdfTemplatePath);
+            var documentFile = new DocumentFile(
+                GuidGenerator.Create(),
+                documentId,
+                templateFileName,
+                false,
+                Clock.Now,
+                workflowInfo.PdfTemplatePath,
+                null
+            );
+            documentFile.TenantId = CurrentTenant.Id;
+            await _documentFileRepository.InsertAsync(documentFile);
+            newSigningFileId = documentFile.Id;
+        }
+        else if (input.DocumentFileId.HasValue)
+        {
+            newSigningFileId = input.DocumentFileId.Value;
+        }
+
+        // 4. If user wants to update the document (change to a different personal document)
+        // BUG-6 FIX: Reset old document status since it's no longer in any active workflow.
+        // Without this, the old document would remain in TRA_VE status indefinitely.
+        if (input.NewDocumentId.HasValue && input.NewDocumentId.Value != documentId)
+        {
+            await UpdateDocumentStatusAsync(documentId, DocumentStatusCode.DA_GUI);
+            documentId = input.NewDocumentId.Value;
+        }
+
+        // 5. Cleanup old RETURNED instance's assignments
+        var oldAssignments = await _documentAssignmentRepository.GetListAsync(
+            x => x.DocumentId == returnedInstance.DocumentId
+            && (x.Status == nameof(DocumentAssignmentStatus.REJECTED)
+                || x.Status == nameof(DocumentAssignmentStatus.REVOKE)));
+
+        foreach (var oldAssignment in oldAssignments)
+        {
+            oldAssignment.IsCurrent = false;
+            await _documentAssignmentRepository.UpdateAsync(oldAssignment);
+        }
+
+        // 6. Get workflow info for creating new instance
+        var submitInfo = await GetWorkflowSubmitInfoAsync(returnedInstance.WorkflowId);
+        var allStepsOrdered = submitInfo.Steps.OrderBy(s => s.Order).ToList();
+        var firstStep = allStepsOrdered.First();
+        var isParallel = submitInfo.SignMode == nameof(SignMode.PARALLEL);
+
+        if (!firstStep.AssignedUsers.Any())
+        {
+            throw new UserFriendlyException(L["FirstStepMustHaveAssignedUsers"]);
+        }
+
+        if (isParallel)
+        {
+            foreach (var step in allStepsOrdered)
+            {
+                if (!step.AssignedUsers.Any())
+                    throw new UserFriendlyException(L["AllStepsMustHaveAssignedUsers"]);
+            }
+        }
+
+        var nowTime = Clock.Now;
+
+        // 7. Calculate FinishedAt (deadline)
+        DateTime finishedAt;
+        if (isParallel)
+        {
+            var maxSlaDays = allStepsOrdered
+                .Where(s => s.SLADays.HasValue)
+                .Select(s => s.SLADays!.Value)
+                .DefaultIfEmpty(0)
+                .Max();
+            finishedAt = maxSlaDays > 0 ? nowTime.AddDays(maxSlaDays) : DateTime.MinValue;
+        }
+        else
+        {
+            finishedAt = firstStep.SLADays.HasValue
+                ? nowTime.AddDays(firstStep.SLADays.Value)
+                : DateTime.MinValue;
+        }
+
+        // 8. BUG-2 FIX: Archive/close old RETURNED instance before creating new one.
+        // Without this, old RETURNED instances accumulate for the same document,
+        // causing confusion in logs/history. Mark as CANCELLED to indicate it was superseded.
+        returnedInstance.Status = nameof(DocumentWorkflowInstanceStatus.CANCELLED);
+        returnedInstance.FinishedAt = nowTime;
+        await _documentWorkflowInstanceRepository.UpdateAsync(returnedInstance);
+
+        await _documentWorkflowInstanceLogsManager.CreateAsync(
+            returnedInstance.Id,
+            null,
+            CurrentUser.Id,
+            nameof(WorkflowInstanceLogAction.WORKFLOW_CANCELLED),
+            WorkflowConstants.RoleInitiator,
+            nameof(DocumentWorkflowInstanceStatus.RETURNED),
+            nameof(DocumentWorkflowInstanceStatus.CANCELLED),
+            "Superseded by re-submit"
+        );
+
+        // 9. Create new DocumentWorkflowInstance
+        var newInstance = await _documentWorkflowInstanceManager.CreateAsync(
+            documentId,
+            returnedInstance.WorkflowId,
+            returnedInstance.WorkflowTemplateId,
+            firstStep.StepId,
+            nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
+            nowTime,
+            finishedAt
+        );
+
+        // 10. Resolve signing file
+        Guid? signingFileId = newSigningFileId;
+        if (signingFileId == null)
+        {
+            var documentFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
+            signingFileId = documentFiles.OrderByDescending(f => f.UploadedAt).FirstOrDefault()?.Id;
+        }
+
+        // 11. Create DocumentAssignments
+        var stepsToAssign = isParallel ? allStepsOrdered : new List<WorkflowStepDetailDto> { firstStep };
+        var allNotifyUserIds = new List<Guid>();
+
+        foreach (var step in stepsToAssign)
+        {
+            Guid? stepFileId = signingFileId;
+            if (isParallel && step.Order > firstStep.Order)
+            {
+                stepFileId = await CopyDocumentFileForNextStepAsync(signingFileId, documentId);
+            }
+
+            foreach (var user in step.AssignedUsers)
+            {
+                await _documentAssignmentManager.CreateAsync(
+                    documentId,
+                    step.StepId,
+                    user.UserId,
+                    step.Order,
+                    step.Type,
+                    nameof(DocumentAssignmentStatus.PENDING),
+                    nowTime,
+                    DateTime.MinValue,
+                    true,
+                    stepFileId
+                );
+                allNotifyUserIds.Add(user.UserId);
+            }
+        }
+
+        // 12. Create DocumentHistory records
+        foreach (var step in stepsToAssign)
+        {
+            foreach (var user in step.AssignedUsers)
+            {
+                await _documentHistoryManager.CreateAsync(
+                    documentId,
+                    CurrentUser.Id,
+                    user.UserId,
+                    nameof(DocumentHistoryAction.TRINH),
+                    input.SigningContent
+                );
+            }
+        }
+
+        // 13. Create log
+        await _documentWorkflowInstanceLogsManager.CreateAsync(
+            newInstance.Id,
+            null,
+            CurrentUser.Id,
+            nameof(WorkflowInstanceLogAction.SUBMIT_WORKFLOW),
+            WorkflowConstants.RoleInitiator, // BUG-5 FIX: use constant instead of hardcoded "Initiator"
+            null,
+            nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
+            $"RE_SUBMIT from returned instance {returnedInstance.Id}"
+        );
+
+        // 14. Handle attached files
+        if (input.AttachedFileIds != null && input.AttachedFileIds.Any())
+        {
+            foreach (var fileId in input.AttachedFileIds)
+            {
+                var instanceFile = new DocumentWorkflowInstanceFile(
+                    GuidGenerator.Create(),
+                    newInstance.Id,
+                    fileId
+                );
+                instanceFile.TenantId = CurrentTenant.Id;
+                await _documentWorkflowInstanceFileRepository.InsertAsync(instanceFile);
+            }
+        }
+
+        // Also attach signing file to workflow instance
+        if (signingFileId.HasValue)
+        {
+            var signingInstanceFile = new DocumentWorkflowInstanceFile(
+                GuidGenerator.Create(),
+                newInstance.Id,
+                signingFileId.Value
+            );
+            signingInstanceFile.TenantId = CurrentTenant.Id;
+            await _documentWorkflowInstanceFileRepository.InsertAsync(signingInstanceFile);
+        }
+
+        // 14. Delete old attached files if requested
+        // BUG-1 FIX: Remove DocumentWorkflowInstanceFile references BEFORE deleting DocumentFile
+        // to avoid FK violations (DocumentWorkflowInstanceFile.DocumentFileId → DocumentFile.Id)
+        if (input.DeleteFileIds != null && input.DeleteFileIds.Any())
+        {
+            foreach (var fileId in input.DeleteFileIds)
+            {
+                // First, remove any DocumentWorkflowInstanceFile records referencing this file
+                var referencingInstanceFiles = await _documentWorkflowInstanceFileRepository.GetListAsync(
+                    x => x.DocumentFileId == fileId);
+                foreach (var refFile in referencingInstanceFiles)
+                {
+                    await _documentWorkflowInstanceFileRepository.DeleteAsync(refFile);
+                }
+
+                // Then safely delete the DocumentFile
+                var file = await _documentFileRepository.FindAsync(fileId);
+                if (file != null)
+                {
+                    await _documentFileRepository.DeleteAsync(file);
+                }
+            }
+        }
+
+        // 16. Send notification
+        var doc = await _documentRepository.GetAsync(documentId);
+        var distinctNotifyUserIds = allNotifyUserIds.Distinct().ToList();
+        if (distinctNotifyUserIds.Any())
+        {
+            await SendWorkflowNotificationAsync(
+                doc,
+                distinctNotifyUserIds,
+                "WorkflowResubmitted",
+                $"WorkflowResubmittedMessage|{doc.StorageNumber}|{doc.Title}|{submitInfo.WorkflowName}|{firstStep.Name}"
+            );
+        }
+
+        // 17. Update document status back to DANG_XU_LY
+        await UpdateDocumentStatusAsync(documentId, DocumentStatusCode.DANG_XU_LY);
+
+        return ObjectMapper.Map<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>(newInstance);
+    }
+
+    /// <summary>
+    /// Get info for a returned workflow instance so the UI can pre-populate the re-submit modal.
+    /// Returns workflow info, original signing content, attached files, etc.
+    /// </summary>
+    [Authorize(HCPermissions.Documents.SubmitForSigning)]
+    public async Task<ReturnedWorkflowInfoDto> GetReturnedWorkflowInfoAsync(Guid workflowInstanceId)
+    {
+        var instance = await _documentWorkflowInstanceRepository.GetAsync(workflowInstanceId);
+        if (instance.Status != nameof(DocumentWorkflowInstanceStatus.RETURNED))
+        {
+            throw new UserFriendlyException(L["WorkflowNotReturned"]);
+        }
+
+        // Get the original document
+        var document = await _documentRepository.GetAsync(instance.DocumentId);
+
+        // Get workflow info
+        var workflowInfo = await GetWorkflowSubmitInfoAsync(instance.WorkflowId);
+
+        // Get the last signing content from DocumentHistory
+        var histories = await _documentHistoryRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId);
+        var lastHistory = histories
+            .OrderByDescending(h => h.CreationTime)
+            .FirstOrDefault();
+
+        // Get attached files from the returned instance
+        var instanceFiles = await _documentWorkflowInstanceFileRepository.GetListAsync(
+            x => x.DocumentWorkflowInstanceId == instance.Id);
+        var attachedFileIds = instanceFiles.Select(f => f.DocumentFileId).ToList();
+        var attachedFiles = attachedFileIds.Any()
+            ? await _documentFileRepository.GetListAsync(x => attachedFileIds.Contains(x.Id))
+            : new List<DocumentFile>();
+
+        return new ReturnedWorkflowInfoDto
+        {
+            WorkflowInstanceId = instance.Id,
+            DocumentId = instance.DocumentId,
+            WorkflowId = instance.WorkflowId,
+            DocumentTitle = document.Title,
+            DocumentNo = document.No,
+            StorageNumber = document.StorageNumber,
+            LastSigningContent = lastHistory?.Comment,
+            WorkflowInfo = workflowInfo,
+            AttachedFiles = attachedFiles.Select(f => new AttachedFileDto
+            {
+                FileId = f.Id,
+                FileName = f.Name,
+                FilePath = f.Path
+            }).ToList()
+        };
     }
 
     #endregion
@@ -877,9 +1357,11 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     #region GetDocumentSigningListAsync
 
     /// <summary>
-    /// Get documents for the signing page with filtering
+    /// ISSUE-06 FIX: Refactored to use queryable JOINs at DB level instead of loading all
+    /// assignments/documents into memory. Filter, count, and page are done in SQL.
+    /// 
     /// Logic:
-    ///   All = Document SourceType=1 AND DocumentAssignment.ReceiverUserId = currentUserId
+    ///   All = Document where user is receiver OR creator of any assignment
     ///   SentToMe = DocumentAssignment.ReceiverUserId = currentUserId
     ///   SentByMe = DocumentAssignment.CreatorId = currentUserId
     ///   Following = empty (no logic for now)
@@ -888,89 +1370,119 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     {
         var currentUserId = CurrentUser.Id!.Value;
 
-        // Get all assignments where current user is receiver
-        var receivedAssignments = await _documentAssignmentRepository.GetListAsync(
-            x => x.ReceiverUserId == currentUserId);
-        var receivedDocIds = receivedAssignments.Select(a => a.DocumentId).Distinct().ToList();
+        // ===== STEP 1: Build queryable for distinct document IDs per category at DB level =====
+        var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
+        var documentQueryable = await _documentRepository.GetQueryableAsync();
 
-        // Get all assignments where current user is creator
-        var allAssignmentsQueryable = await _documentAssignmentRepository.GetQueryableAsync();
-        var createdAssignments = await AsyncExecuter.ToListAsync(
-            allAssignmentsQueryable.Where(x => x.CreatorId == currentUserId));
-        var createdDocIds = createdAssignments.Select(a => a.DocumentId).Distinct().ToList();
+        // Distinct document IDs where user is receiver (DB query, not materialized yet)
+        var receivedDocIdQuery = assignmentQueryable
+            .Where(a => a.ReceiverUserId == currentUserId)
+            .Select(a => a.DocumentId)
+            .Distinct();
 
-        // All = union of SentToMe + SentByMe + Following
-        var allDocIds = receivedDocIds.Union(createdDocIds).Distinct().ToList();
+        // Distinct document IDs where user is creator (DB query, not materialized yet)
+        var createdDocIdQuery = assignmentQueryable
+            .Where(a => a.CreatorId == currentUserId)
+            .Select(a => a.DocumentId)
+            .Distinct();
 
-        // Get ALL relevant documents first (to apply date/text filters before counting)
-        var allRelevantDocuments = allDocIds.Any()
-            ? await _documentRepository.GetListAsync(x => allDocIds.Contains(x.Id))
-            : new List<Document>();
+        // All = union of received + created
+        var allDocIdQuery = receivedDocIdQuery.Union(createdDocIdQuery);
 
-        // Apply date filter on IncommingDate
+        // ===== STEP 2: Build filtered document base query at DB level =====
+        var baseDocQuery = documentQueryable.Where(d => allDocIdQuery.Contains(d.Id));
+
+        // Apply date filter at DB level
         if (input.FromDate.HasValue)
         {
-            allRelevantDocuments = allRelevantDocuments.Where(d => d.IncommingDate >= input.FromDate.Value.Date).ToList();
+            var fromDate = input.FromDate.Value.Date;
+            baseDocQuery = baseDocQuery.Where(d => d.IncommingDate >= fromDate);
         }
         if (input.ToDate.HasValue)
         {
             var toDateEnd = input.ToDate.Value.Date.AddDays(1).AddSeconds(-1);
-            allRelevantDocuments = allRelevantDocuments.Where(d => d.IncommingDate <= toDateEnd).ToList();
+            baseDocQuery = baseDocQuery.Where(d => d.IncommingDate <= toDateEnd);
         }
 
-        // Apply text filter
+        // Apply text filter at DB level
         if (!string.IsNullOrWhiteSpace(input.FilterText))
         {
-            allRelevantDocuments = allRelevantDocuments.Where(d =>
-                (d.Title != null && d.Title.Contains(input.FilterText, StringComparison.OrdinalIgnoreCase)) ||
-                (d.No != null && d.No.Contains(input.FilterText, StringComparison.OrdinalIgnoreCase)) ||
-                (d.StorageNumber != null && d.StorageNumber.Contains(input.FilterText, StringComparison.OrdinalIgnoreCase))
-            ).ToList();
+            var filterText = input.FilterText.Trim();
+            baseDocQuery = baseDocQuery.Where(d =>
+                (d.Title != null && d.Title.Contains(filterText)) ||
+                (d.No != null && d.No.Contains(filterText)) ||
+                (d.StorageNumber != null && d.StorageNumber.Contains(filterText)));
         }
 
-        // After filtering, calculate counts per category from filtered results
-        var filteredDocIdSet = allRelevantDocuments.Select(d => d.Id).ToHashSet();
-        int sentToMeCount = receivedDocIds.Count(id => filteredDocIdSet.Contains(id));
-        int sentByMeCount = createdDocIds.Count(id => filteredDocIdSet.Contains(id));
-        int followingCount = 0; // No logic for now
-        int allCount = filteredDocIdSet.Count;
+        // ===== STEP 3: Count per category at DB level =====
+        var filteredDocIds = baseDocQuery.Select(d => d.Id);
 
-        // Apply filter mode on the already-filtered documents
-        List<Document> documents;
+        int sentToMeCount = await AsyncExecuter.CountAsync(
+            filteredDocIds.Where(id => receivedDocIdQuery.Contains(id)));
+        int sentByMeCount = await AsyncExecuter.CountAsync(
+            filteredDocIds.Where(id => createdDocIdQuery.Contains(id)));
+        int followingCount = 0; // No logic for now
+        int allCount = await AsyncExecuter.CountAsync(filteredDocIds);
+
+        // ===== STEP 4: Apply filter mode at DB level =====
+        IQueryable<Document> modeFilteredQuery;
         switch (input.FilterMode)
         {
             case DocumentSigningFilterMode.SentToMe:
-                documents = allRelevantDocuments.Where(d => receivedDocIds.Contains(d.Id)).ToList();
+                modeFilteredQuery = baseDocQuery.Where(d => receivedDocIdQuery.Contains(d.Id));
                 break;
             case DocumentSigningFilterMode.SentByMe:
-                documents = allRelevantDocuments.Where(d => createdDocIds.Contains(d.Id)).ToList();
+                modeFilteredQuery = baseDocQuery.Where(d => createdDocIdQuery.Contains(d.Id));
                 break;
             case DocumentSigningFilterMode.Following:
-                documents = new List<Document>(); // Empty for now
-                break;
+                // Return empty result for Following mode
+                return new DocumentSigningPageResultDto
+                {
+                    TotalCount = 0,
+                    Items = new List<DocumentSigningItemDto>(),
+                    AllCount = allCount,
+                    SentToMeCount = sentToMeCount,
+                    SentByMeCount = sentByMeCount,
+                    FollowingCount = followingCount
+                };
             default: // All
-                documents = allRelevantDocuments;
+                modeFilteredQuery = baseDocQuery;
                 break;
         }
 
-        var totalCount = documents.Count;
+        // ===== STEP 5: Count + page at DB level =====
+        var totalCount = await AsyncExecuter.CountAsync(modeFilteredQuery);
+        var pagedDocuments = await AsyncExecuter.ToListAsync(
+            modeFilteredQuery
+                .OrderByDescending(d => d.IncommingDate)
+                .Skip(input.SkipCount)
+                .Take(input.MaxResultCount));
 
-        // Apply paging
-        var pagedDocuments = documents
-            .OrderByDescending(d => d.IncommingDate)
-            .Skip(input.SkipCount)
-            .Take(input.MaxResultCount)
-            .ToList();
+        if (!pagedDocuments.Any())
+        {
+            return new DocumentSigningPageResultDto
+            {
+                TotalCount = totalCount,
+                Items = new List<DocumentSigningItemDto>(),
+                AllCount = allCount,
+                SentToMeCount = sentToMeCount,
+                SentByMeCount = sentByMeCount,
+                FollowingCount = followingCount
+            };
+        }
+
+        // ===== STEP 6: Batch load related data for paged documents only =====
+        var pagedDocIds = pagedDocuments.Select(d => d.Id).ToList();
+
+        // Load current user's assignments for the paged documents only (for CanAct/MyAssignment)
+        var myAssignments = await AsyncExecuter.ToListAsync(
+            assignmentQueryable.Where(a => pagedDocIds.Contains(a.DocumentId) && a.ReceiverUserId == currentUserId));
 
         // Get all workflow instances for the paged documents
-        var pagedDocIds = pagedDocuments.Select(d => d.Id).ToList();
-        var allInstances = pagedDocIds.Any()
-            ? await _documentWorkflowInstanceRepository.GetListAsync(x => pagedDocIds.Contains(x.DocumentId))
-            : new List<DocumentWorkflowInstance>();
+        var allInstances = await _documentWorkflowInstanceRepository.GetListAsync(
+            x => pagedDocIds.Contains(x.DocumentId));
 
-        // ===== BATCH LOAD: avoid N+1 queries in the loop =====
-
-        // 1. Batch load MasterData for StatusId + TypeId
+        // Batch load MasterData for StatusId + TypeId
         var masterDataIds = pagedDocuments
             .SelectMany(d => new[] { d.StatusId, (Guid?)d.TypeId })
             .Where(id => id.HasValue)
@@ -982,21 +1494,21 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 .ToDictionary(m => m.Id, m => m)
             : new Dictionary<Guid, MasterData>();
 
-        // 2. Batch load Workflows referenced by instances
+        // Batch load Workflows referenced by instances
         var workflowIds = allInstances.Select(i => i.WorkflowId).Distinct().ToList();
         var workflowDict = workflowIds.Any()
             ? (await _workflowRepository.GetListAsync(x => workflowIds.Contains(x.Id)))
                 .ToDictionary(w => w.Id, w => w)
             : new Dictionary<Guid, Workflow>();
 
-        // 3. Batch load current steps (WorkflowStepTemplates) referenced by instances
+        // Batch load current steps (WorkflowStepTemplates) referenced by instances
         var stepIds = allInstances.Select(i => i.CurrentStepId).Distinct().ToList();
         var stepDict = stepIds.Any()
             ? (await _workflowStepTemplateRepository.GetListAsync(x => stepIds.Contains(x.Id)))
                 .ToDictionary(s => s.Id, s => s)
             : new Dictionary<Guid, WorkflowStepTemplate>();
 
-        // 4. Batch load total step counts per WorkflowTemplate
+        // Batch load total step counts per WorkflowTemplate
         var templateIds = allInstances.Select(i => i.WorkflowTemplateId).Distinct().ToList();
         var allStepsForTemplates = templateIds.Any()
             ? await _workflowStepTemplateRepository.GetListAsync(
@@ -1006,7 +1518,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             .GroupBy(s => s.WorkflowTemplateId)
             .ToDictionary(g => g.Key, g => g.Count());
 
-        // ===== BUILD ITEMS (no more DB calls in loop) =====
+        // ===== STEP 7: BUILD ITEMS (no more DB calls in loop) =====
         var items = new List<DocumentSigningItemDto>();
         foreach (var doc in pagedDocuments)
         {
@@ -1016,7 +1528,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 .OrderByDescending(x => x.StartedAt)
                 .FirstOrDefault();
 
-            var myDocAssignment = receivedAssignments
+            var myDocAssignment = myAssignments
                 .Where(a => a.DocumentId == doc.Id && a.Status == nameof(DocumentAssignmentStatus.PENDING) && a.IsCurrent)
                 .FirstOrDefault();
 
@@ -1061,7 +1573,11 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 WorkflowStartedAt = docInstance?.StartedAt,
                 MyAssignmentStatus = myDocAssignment?.Status,
                 CanAct = myDocAssignment != null && myDocAssignment.Status == nameof(DocumentAssignmentStatus.PENDING),
-                MyAssignmentId = myDocAssignment?.Id
+                MyAssignmentId = myDocAssignment?.Id,
+                // CanResubmit: workflow was returned AND current user is the initiator
+                CanResubmit = docInstance != null
+                    && docInstance.Status == nameof(DocumentWorkflowInstanceStatus.RETURNED)
+                    && docInstance.CreatorId == currentUserId
             });
         }
 
@@ -1157,7 +1673,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 SourceType.DOCUMENT.ToString(),
                 EventType.WORKFLOW_ACTION.ToString(),
                 RelatedType.DOCUMENT.ToString(),
-                "HIGH",
+                WorkflowConstants.PriorityHigh,
                 document.Id.ToString()
             );
             notification.TenantId = CurrentTenant.Id;
@@ -1195,11 +1711,16 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     #region CheckAndHandleOverdueAsync
 
     /// <summary>
-    /// Check if a workflow instance is overdue and handle it.
-    /// Returns overdue status and whether the current step allows return action.
-    /// If overdue: updates Document status to DA_HUY, creates DocumentHistory,
-    /// sets instance status to CANCELLED, creates a log entry.
-    /// Thread-safe: checks status before updating to prevent duplicate overdue handling.
+    /// RISK-2 FIX: Pure READ-ONLY check. No write operations.
+    /// The BackgroundWorker (WorkflowOverdueBackgroundWorker) handles the actual cancellation.
+    /// 
+    /// This method only checks:
+    /// 1. Whether the workflow instance is overdue (FinishedAt <= now and not terminal)
+    /// 2. Whether the workflow has already been cancelled (terminal status)
+    /// 3. Whether the current step allows the Return action
+    /// 
+    /// Security: Verifies the calling user is related to this workflow instance
+    /// (either as creator or as an assignment receiver) before allowing the check.
     /// </summary>
     [Authorize(HCPermissions.DocumentAssignments.Default)]
     public async Task<WorkflowOverdueCheckResultDto> CheckAndHandleOverdueAsync(Guid workflowInstanceId)
@@ -1213,11 +1734,28 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         try
         {
             var instance = await _documentWorkflowInstanceRepository.GetAsync(workflowInstanceId);
+
+            // ISSUE-05 FIX: Authorization - verify user is related to this workflow instance
+            var currentUserId = CurrentUser.Id!.Value;
+            var isCreator = instance.CreatorId == currentUserId;
+            if (!isCreator)
+            {
+                var hasAssignment = await _documentAssignmentRepository.AnyAsync(
+                    x => x.DocumentId == instance.DocumentId && x.ReceiverUserId == currentUserId);
+                if (!hasAssignment)
+                {
+                    Logger.LogWarning(
+                        "[OVERDUE_AUTH] User {UserId} attempted to check overdue for workflow {InstanceId} " +
+                        "but is not creator or assignment receiver.",
+                        currentUserId, workflowInstanceId);
+                    throw new UserFriendlyException(L["NotAuthorizedForThisAction"]);
+                }
+            }
+
             var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
             result.AllowReturn = currentStep.AllowReturn;
 
-            // Check overdue: FinishedAt must be set (> MinValue), FinishedAt <= now,
-            // and status must not be terminal (COMPLETED, REJECTED, CANCELLED, RETURNED)
+            // Terminal statuses - workflow is already finished
             var terminalStatuses = new[]
             {
                 nameof(DocumentWorkflowInstanceStatus.COMPLETED),
@@ -1226,26 +1764,32 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 nameof(DocumentWorkflowInstanceStatus.RETURNED)
             };
 
-            if (instance.FinishedAt > DateTime.MinValue
-                && instance.FinishedAt <= DateTime.Now
+            // If already in terminal status (e.g. cancelled by BackgroundWorker), report as overdue
+            if (instance.Status == nameof(DocumentWorkflowInstanceStatus.CANCELLED))
+            {
+                result.IsOverdue = true;
+            }
+            // If FinishedAt is set and has passed, and status is not terminal → overdue detected
+            // The BackgroundWorker will handle the actual cancellation within its next cycle
+            else if (instance.FinishedAt > DateTime.MinValue
+                && instance.FinishedAt <= Clock.Now
                 && !terminalStatuses.Contains(instance.Status))
             {
                 result.IsOverdue = true;
-
-                // Perform overdue updates using the common helper (pass instance to avoid re-fetch)
-                await UpdateWorkflowStatusCommonAsync(
-                    instance: instance,
-                    documentStatusCode: DocumentStatusCode.DA_HUY,
-                    historyComment: "Hết hạn xử lý tài liệu",
-                    workflowInstanceStatus: nameof(DocumentWorkflowInstanceStatus.CANCELLED),
-                    logNote: "Hết hạn xử lý tài liệu",
-                    logAction: nameof(WorkflowInstanceLogAction.WORKFLOW_COMPLETED)
-                );
+                // No write operations here - BackgroundWorker handles cancellation
+                Logger.LogInformation(
+                    "[OVERDUE_CHECK] Workflow {InstanceId} is overdue (FinishedAt={FinishedAt}). " +
+                    "BackgroundWorker will handle cancellation.",
+                    workflowInstanceId, instance.FinishedAt);
             }
+        }
+        catch (UserFriendlyException)
+        {
+            throw; // Re-throw authorization exceptions to the UI
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error checking/handling overdue for workflow instance {InstanceId}", workflowInstanceId);
+            Logger.LogError(ex, "Error checking overdue for workflow instance {InstanceId}", workflowInstanceId);
             // Return safe defaults - don't block the UI
         }
 
@@ -1311,7 +1855,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             try
             {
                 instance.Status = workflowInstanceStatus;
-                instance.FinishedAt = DateTime.Now;
+                instance.FinishedAt = Clock.Now; // ISSUE-08 FIX
                 await _documentWorkflowInstanceRepository.UpdateAsync(instance);
             }
             catch (Exception ex)
@@ -1330,7 +1874,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                     null,                          // no specific assignment
                     CurrentUser.Id,
                     effectiveLogAction,
-                    "System",
+                    WorkflowConstants.RoleSystem,
                     previousStatus,
                     workflowInstanceStatus ?? instance.Status,
                     logNote
@@ -1354,6 +1898,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     /// - Creates a new blob at a new path (signing-steps/{guid}{extension})
     /// - Creates a new DocumentFile record pointing to the new blob
     /// Returns the new DocumentFile ID, or null if no source file found.
+    /// 
+    /// ISSUE-02 FIX: Throws UserFriendlyException on copy failure instead of returning
+    /// the source file ID. Returning the source ID would allow the next step to overwrite
+    /// the original signed file, destroying the audit trail.
     /// </summary>
     private async Task<Guid?> CopyDocumentFileForNextStepAsync(Guid? sourceFileId, Guid documentId)
     {
@@ -1381,7 +1929,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
             // Create new blob path
             var extension = Path.GetExtension(sourceFile.Name);
-            var newBlobPath = $"signing-steps/{Guid.NewGuid()}{extension}";
+            var newBlobPath = $"{WorkflowConstants.BlobPathSigningSteps}{Guid.NewGuid()}{extension}";
 
             // Upload to new path in blob storage
             await _blobContainer.SaveAsync(newBlobPath, fileBytes);
@@ -1392,7 +1940,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 null, //documentId
                 sourceFile.Name,
                 sourceFile.IsSigned,
-                DateTime.Now,
+                Clock.Now, // ISSUE-08 FIX
                 newBlobPath,
                 sourceFile.Hash
             );
@@ -1403,10 +1951,13 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error copying document file for next step. SourceFileId={SourceFileId}, DocumentId={DocumentId}",
-                sourceFileId, documentId);
-            // Fallback: return the source file ID directly (no copy, but at least the reference is there)
-            return sourceFileId;
+            Logger.LogError(ex,
+                "Error copying document file for next step. SourceFileId={SourceFileId}, DocumentId={DocumentId}, SourcePath={SourcePath}",
+                sourceFileId, documentId, sourceFile.Path);
+            // ISSUE-02 FIX: Do NOT return sourceFileId as fallback.
+            // Returning the original file ID would cause the next step's signing to overwrite
+            // the already-signed file, destroying the audit trail and previous step's signature.
+            throw new UserFriendlyException(L["ErrorCopyingFileForNextStep"]);
         }
     }
 
@@ -1448,10 +1999,12 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         UserSignature? signature;
         try
         {
-            var userSignatures = await _userSignatureRepository.GetListAsync(
-                signType: nameof(SignType.ELECTRONIC),
-                isActive: true);
-            signature = userSignatures.FirstOrDefault(s => s.IdentityUserId == currentUserId);
+            // ISSUE-12 FIX: Query only the current user's signature instead of loading ALL signatures
+            var sigQueryable = await _userSignatureRepository.GetQueryableAsync();
+            signature = await AsyncExecuter.FirstOrDefaultAsync(
+                sigQueryable.Where(s => s.IdentityUserId == currentUserId
+                    && s.SignType == nameof(SignType.ELECTRONIC)
+                    && s.IsActive));
         }
         catch (Exception ex)
         {
@@ -1480,7 +2033,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         }
 
         // Check validity period
-        var now = DateTime.Now;
+        var now = Clock.Now; // ISSUE-08 FIX
         if (signature.ValidFrom.HasValue && signature.ValidFrom.Value > now)
         {
             Logger.LogError("[ELECTRONIC_SIGN] Signature not yet valid. SignatureId={SignatureId}", signature.Id);
@@ -1588,7 +2141,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         {
             var extension = Path.GetExtension(sourceFile.Name);
             if (string.IsNullOrEmpty(extension)) extension = ".pdf";
-            newBlobPath = $"electronic-signed/{Guid.NewGuid()}{extension}";
+            newBlobPath = $"{WorkflowConstants.BlobPathElectronicSigned}{Guid.NewGuid()}{extension}";
             await _blobContainer.SaveAsync(newBlobPath, signedPdfBytes);
         }
         catch (Exception ex)
@@ -1965,23 +2518,52 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             return;
         }
 
+        // ISSUE-11 FIX: Batch load all related data before the loop to avoid N+1 queries.
+        // Previously: 3 DB queries per assignment (user, signature, logs) = 3N queries.
+        // Now: 3 batch queries total regardless of N.
+
+        // Batch load users
+        var userIds = allDoneAssignments.Select(a => a.ReceiverUserId).Distinct().ToList();
+        var users = await _identityUserRepository.GetListAsync(x => userIds.Contains(x.Id));
+        var userDict = users.ToDictionary(u => u.Id);
+
+        // Batch load electronic signatures for all involved users
+        var sigQueryable = await _userSignatureRepository.GetQueryableAsync();
+        var allSignatures = await AsyncExecuter.ToListAsync(
+            sigQueryable.Where(s => userIds.Contains(s.IdentityUserId)
+                && s.SignType == nameof(SignType.ELECTRONIC)
+                && s.IsActive));
+        var signatureDict = allSignatures
+            .GroupBy(s => s.IdentityUserId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        // Batch load approve logs for all completed assignments
+        var assignmentIds = allDoneAssignments.Select(a => a.Id).ToList();
+        var allLogs = await _documentWorkflowInstanceLogsRepository.GetListAsync(
+            x => x.DocumentWorkflowInstanceId == instance.Id
+            && assignmentIds.Contains(x.DocumentAssignmentId ?? Guid.Empty)
+            && x.Action == nameof(WorkflowInstanceLogAction.APPROVE));
+        var logDict = allLogs
+            .GroupBy(l => l.DocumentAssignmentId ?? Guid.Empty)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(l => l.CreationTime).First());
+
         // 3. For each completed assignment, apply their signature to the original PDF
         foreach (var doneAssignment in allDoneAssignments)
         {
             try
             {
-                // Get user info
+                // Get user info from batch-loaded dictionary
                 var userId = doneAssignment.ReceiverUserId;
-                var user = await _identityUserRepository.GetAsync(userId);
+                if (!userDict.TryGetValue(userId, out var user))
+                {
+                    Logger.LogWarning("[PARALLEL_MERGE] User {UserId} not found, skipping", userId);
+                    continue;
+                }
                 var fullName = $"{user.Surname} {user.Name}".Trim();
 
-                // Get user's electronic signature
-                var userSignatures = await _userSignatureRepository.GetListAsync(
-                    signType: nameof(SignType.ELECTRONIC),
-                    isActive: true);
-                var signature = userSignatures.FirstOrDefault(s => s.IdentityUserId == userId);
-
-                if (signature == null || string.IsNullOrWhiteSpace(signature.SignatureImage))
+                // Get user's electronic signature from batch-loaded dictionary
+                if (!signatureDict.TryGetValue(userId, out var signature)
+                    || string.IsNullOrWhiteSpace(signature.SignatureImage))
                 {
                     Logger.LogWarning("[PARALLEL_MERGE] Skipping merge for user {UserId} - no signature found", userId);
                     continue;
@@ -1999,12 +2581,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                     continue;
                 }
 
-                // Get the note from workflow log for this assignment
-                var logs = await _documentWorkflowInstanceLogsRepository.GetListAsync(
-                    x => x.DocumentWorkflowInstanceId == instance.Id
-                    && x.DocumentAssignmentId == doneAssignment.Id
-                    && x.Action == nameof(WorkflowInstanceLogAction.APPROVE));
-                var noteContent = logs.OrderByDescending(l => l.CreationTime).FirstOrDefault()?.Note;
+                // Get the note from batch-loaded logs dictionary
+                logDict.TryGetValue(doneAssignment.Id, out var log);
+                var noteContent = log?.Note;
 
                 // Apply this step's placeholders to the PDF
                 pdfBytes = ReplacePdfPlaceholders(
@@ -2025,7 +2604,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         }
 
         // 4. Upload merged PDF to blob storage
-        var mergedBlobPath = $"electronic-signed/parallel-merged-{Guid.NewGuid()}.pdf";
+        var mergedBlobPath = $"{WorkflowConstants.BlobPathElectronicSigned}parallel-merged-{Guid.NewGuid()}.pdf";
         await _blobContainer.SaveAsync(mergedBlobPath, pdfBytes);
 
         // 5. Create a new DocumentFile record for the merged result
@@ -2035,9 +2614,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var mergedFile = new DocumentFile(
             GuidGenerator.Create(),
             instance.DocumentId,
-            $"parallel-signed-{DateTime.Now:yyyyMMddHHmmss}.pdf",
+            $"parallel-signed-{Clock.Now:yyyyMMddHHmmss}.pdf",
             true, // IsSigned = true
-            DateTime.Now,
+            Clock.Now, // ISSUE-08 FIX
             mergedBlobPath,
             hashString
         );

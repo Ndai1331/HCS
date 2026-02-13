@@ -1199,6 +1199,16 @@
     "FormsManagement": "Quản lý biểu mẫu",
     "Permission:Forms:Form.Delete": "Xóa biểu mẫu",
     "ResponseManagement": "Quản lý phản hồi",
-    "DeletingResponse": "Xóa phản hồi"
+    "DeletingResponse": "Xóa phản hồi",
+    "ErrorCopyingFileForNextStep": "Lỗi sao chép file cho bước tiếp theo. Vui lòng thử lại hoặc liên hệ quản trị viên.",
+    "ResubmitWorkflow": "Trình lại",
+    "WorkflowReturnedInfo": "Văn bản đã bị trả về. Bạn có thể chỉnh sửa và trình lại.",
+    "ConfirmResubmitForSigning": "Bạn có chắc chắn muốn trình lại văn bản này?",
+    "WorkflowResubmittedSuccessfully": "Trình lại thành công",
+    "WorkflowNotReturned": "Quy trình không ở trạng thái trả về",
+    "OnlyInitiatorCanResubmit": "Chỉ người trình mới có thể trình lại văn bản",
+    "ExistingAttachedFiles": "File đính kèm hiện tại",
+    "WorkflowResubmitted": "Trình lại văn bản",
+    "WorkflowResubmittedMessage": "Văn bản đã được trình lại"
   }
 }

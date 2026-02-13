@@ -17,7 +17,13 @@ public enum DocumentStatusCode
     HT,
 
     /// <summary>Đã hủy</summary>
-    DA_HUY
+    DA_HUY,
+
+    /// <summary>Trả về (ISSUE-03 FIX: used when document is returned for revision)</summary>
+    TRA_VE,
+
+    /// <summary>Từ chối (ISSUE-03 FIX: used when document is rejected)</summary>
+    TU_CHOI
 }
 
 /// <summary>
@@ -36,6 +42,8 @@ public static class DocumentStatusCodeExtensions
             DocumentStatusCode.DANG_XU_LY => "DANG_XU_LY",
             DocumentStatusCode.HT => "HT",
             DocumentStatusCode.DA_HUY => "DA_HUY",
+            DocumentStatusCode.TRA_VE => "TRA_VE",
+            DocumentStatusCode.TU_CHOI => "TU_CHOI",
             _ => throw new System.ArgumentOutOfRangeException(nameof(statusCode), statusCode, "Unknown DocumentStatusCode")
         };
     }
