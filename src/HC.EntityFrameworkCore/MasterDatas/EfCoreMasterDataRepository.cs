@@ -8,13 +8,18 @@ using Microsoft.EntityFrameworkCore;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using HC.EntityFrameworkCore;
+using Volo.Abp.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace HC.MasterDatas;
 
 public abstract class EfCoreMasterDataRepositoryBase : EfCoreRepository<HCDbContext, MasterData, Guid>
 {
-    public EfCoreMasterDataRepositoryBase(IDbContextProvider<HCDbContext> dbContextProvider) : base(dbContextProvider)
+    protected ILogger<EfCoreMasterDataRepositoryBase> Logger { get; }
+    public EfCoreMasterDataRepositoryBase(IDbContextProvider<HCDbContext> dbContextProvider, ILogger<EfCoreMasterDataRepositoryBase> logger)
+     : base(dbContextProvider)
     {
+        Logger = logger;
     }
 
     public virtual async Task DeleteAllAsync(string? filterText = null, string? type = null, string? code = null, string? name = null, int? sortOrderMin = null, int? sortOrderMax = null, bool? isActive = null, CancellationToken cancellationToken = default)
@@ -28,6 +33,7 @@ public abstract class EfCoreMasterDataRepositoryBase : EfCoreRepository<HCDbCont
     public virtual async Task<List<MasterData>> GetListAsync(string? filterText = null, string? type = null, string? code = null, string? name = null, int? sortOrderMin = null, int? sortOrderMax = null, bool? isActive = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)
     {
         var query = ApplyFilter((await GetQueryableAsync()), filterText, type, code, name, sortOrderMin, sortOrderMax, isActive);
+        Logger.LogInformation("Sorting: {Sorting}", sorting);
         query = query.OrderBy(string.IsNullOrWhiteSpace(sorting) ? MasterDataConsts.GetDefaultSorting(false) : sorting);
         return await query.PageBy(skipCount, maxResultCount).ToListAsync(cancellationToken);
     }

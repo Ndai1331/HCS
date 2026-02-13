@@ -8,12 +8,14 @@ using Microsoft.EntityFrameworkCore;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using HC.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace HC.MasterDatas;
 
 public class EfCoreMasterDataRepository : EfCoreMasterDataRepositoryBase, IMasterDataRepository
 {
-    public EfCoreMasterDataRepository(IDbContextProvider<HCDbContext> dbContextProvider) : base(dbContextProvider)
+    public EfCoreMasterDataRepository(IDbContextProvider<HCDbContext> dbContextProvider, ILogger<EfCoreMasterDataRepositoryBase> logger) 
+    : base(dbContextProvider, logger)
     {
     }
 }

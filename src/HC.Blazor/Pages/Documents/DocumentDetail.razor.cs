@@ -341,7 +341,8 @@ public partial class DocumentDetail : HCComponentBase
             Type = MasterDataType.DocumentType.GetTypeValue(),
             FilterText = filter,
             MaxResultCount = 1000,
-            SkipCount = 0
+            SkipCount = 0,
+            Sorting = "SortOrder asc"
         });
         TypeMasterDataCollection = result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
         return TypeMasterDataCollection.ToList();
@@ -368,7 +369,8 @@ public partial class DocumentDetail : HCComponentBase
             Type = MasterDataType.SecrecyLevel.GetTypeValue(),
             FilterText = filter,
             MaxResultCount = 1000,
-            SkipCount = 0
+            SkipCount = 0,
+            Sorting = "SortOrder asc"
         });
         SecrecyLevelMasterDataCollection = result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
         return SecrecyLevelMasterDataCollection.ToList();
@@ -381,7 +383,8 @@ public partial class DocumentDetail : HCComponentBase
             Type = MasterDataType.Field.GetTypeValue(),
             FilterText = filter,
             MaxResultCount = 1000,
-            SkipCount = 0
+            SkipCount = 0,
+            Sorting = "SortOrder asc"
         });
         FieldMasterDataCollection = result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
         return FieldMasterDataCollection.ToList();
@@ -394,7 +397,8 @@ public partial class DocumentDetail : HCComponentBase
             Type = MasterDataType.Status.GetTypeValue(),
             FilterText = filter,
             MaxResultCount = 1000,
-            SkipCount = 0
+            SkipCount = 0,
+            Sorting = "SortOrder asc"
         });
         StatusMasterDataCollection = result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
         return StatusMasterDataCollection.ToList();
@@ -819,8 +823,11 @@ public partial class DocumentDetail : HCComponentBase
         // Required: Field
         CreateValidation.ValidateRequiredCollection("Field", SelectedFieldMasterData, "FieldRequired", () => L["FieldRequired"]);
 
-        // Required: Unit
-        CreateValidation.ValidateRequiredCollection("Unit", SelectedUnit, "UnitRequired", () => L["UnitRequired"]);
+        // Required: Unit (only when sourceType is not Personal)
+        if (SelectedSourceType != DocumentSourceType.Personal)
+        {
+            CreateValidation.ValidateRequiredCollection("Unit", SelectedUnit, "UnitRequired", () => L["UnitRequired"]);
+        }
 
         // Required: Status
         CreateValidation.ValidateRequiredCollection("Status", SelectedStatusMasterData, "StatusRequired", () => L["StatusRequired"]);
@@ -853,8 +860,11 @@ public partial class DocumentDetail : HCComponentBase
         // Required: Field
         EditValidation.ValidateRequiredCollection("Field", SelectedFieldMasterData, "FieldRequired", () => L["FieldRequired"]);
 
-        // Required: Unit
-        EditValidation.ValidateRequiredCollection("Unit", SelectedUnit, "UnitRequired", () => L["UnitRequired"]);
+        // Required: Unit (only when sourceType is not Personal)
+        if (SelectedSourceType != DocumentSourceType.Personal)
+        {
+            EditValidation.ValidateRequiredCollection("Unit", SelectedUnit, "UnitRequired", () => L["UnitRequired"]);
+        }
 
         // Required: Status
         EditValidation.ValidateRequiredCollection("Status", SelectedStatusMasterData, "StatusRequired", () => L["StatusRequired"]);

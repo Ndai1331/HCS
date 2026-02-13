@@ -961,8 +961,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
     /// <summary>
     /// Re-submit a workflow that was previously returned (RETURNED status).
+    /// REUSES the same workflow instance (preserves all workflow logs history).
     /// Allows the initiator to edit signing content, re-attach files, change document/file selection.
-    /// Creates a new workflow instance (re-uses the same workflow + template) starting from step 1.
+    /// Resets the instance back to IN_PROGRESS at step 1.
     /// </summary>
     [UnitOfWork]
     [Authorize(HCPermissions.Documents.SubmitForSigning)]
@@ -984,30 +985,49 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var documentId = returnedInstance.DocumentId;
 
         // 3. If user wants to change the document file, handle it
+        // ISSUE-1 FIX: When using template file, REUSE the existing DocumentFile instead of creating a duplicate.
+        // The original submission already created a DocumentFile from the template path.
         Guid? newSigningFileId = null;
 
         if (input.UseWorkflowTemplateFile)
         {
-            // Re-create document file from template
+            // Find the existing template-based DocumentFile for this document (reuse, don't duplicate)
+            var existingDocFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
             var workflowInfo = await GetWorkflowSubmitInfoAsync(returnedInstance.WorkflowId);
+
             if (!workflowInfo.HasTemplateFile || string.IsNullOrWhiteSpace(workflowInfo.PdfTemplatePath))
             {
                 throw new UserFriendlyException(L["WorkflowTemplateHasNoFile"]);
             }
 
-            var templateFileName = Path.GetFileName(workflowInfo.PdfTemplatePath);
-            var documentFile = new DocumentFile(
-                GuidGenerator.Create(),
-                documentId,
-                templateFileName,
-                false,
-                Clock.Now,
-                workflowInfo.PdfTemplatePath,
-                null
-            );
-            documentFile.TenantId = CurrentTenant.Id;
-            await _documentFileRepository.InsertAsync(documentFile);
-            newSigningFileId = documentFile.Id;
+            // Try to find existing file that matches the template path
+            var existingTemplateFile = existingDocFiles
+                .Where(f => f.Path == workflowInfo.PdfTemplatePath && !f.IsSigned)
+                .OrderByDescending(f => f.UploadedAt)
+                .FirstOrDefault();
+
+            if (existingTemplateFile != null)
+            {
+                // Reuse existing file - no duplicate created
+                newSigningFileId = existingTemplateFile.Id;
+            }
+            else
+            {
+                // Template file not found on document (edge case) - create new one
+                var templateFileName = Path.GetFileName(workflowInfo.PdfTemplatePath);
+                var documentFile = new DocumentFile(
+                    GuidGenerator.Create(),
+                    documentId,
+                    templateFileName,
+                    false,
+                    Clock.Now,
+                    workflowInfo.PdfTemplatePath,
+                    null
+                );
+                documentFile.TenantId = CurrentTenant.Id;
+                await _documentFileRepository.InsertAsync(documentFile);
+                newSigningFileId = documentFile.Id;
+            }
         }
         else if (input.DocumentFileId.HasValue)
         {
@@ -1016,14 +1036,15 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         // 4. If user wants to update the document (change to a different personal document)
         // BUG-6 FIX: Reset old document status since it's no longer in any active workflow.
-        // Without this, the old document would remain in TRA_VE status indefinitely.
         if (input.NewDocumentId.HasValue && input.NewDocumentId.Value != documentId)
         {
             await UpdateDocumentStatusAsync(documentId, DocumentStatusCode.DA_GUI);
             documentId = input.NewDocumentId.Value;
+            // Update the instance to point to the new document
+            returnedInstance.DocumentId = documentId;
         }
 
-        // 5. Cleanup old RETURNED instance's assignments
+        // 5. Cleanup old RETURNED instance's assignments (mark as not current)
         var oldAssignments = await _documentAssignmentRepository.GetListAsync(
             x => x.DocumentId == returnedInstance.DocumentId
             && (x.Status == nameof(DocumentAssignmentStatus.REJECTED)
@@ -1035,7 +1056,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             await _documentAssignmentRepository.UpdateAsync(oldAssignment);
         }
 
-        // 6. Get workflow info for creating new instance
+        // 6. Get workflow info
         var submitInfo = await GetWorkflowSubmitInfoAsync(returnedInstance.WorkflowId);
         var allStepsOrdered = submitInfo.Steps.OrderBy(s => s.Order).ToList();
         var firstStep = allStepsOrdered.First();
@@ -1075,36 +1096,15 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 : DateTime.MinValue;
         }
 
-        // 8. BUG-2 FIX: Archive/close old RETURNED instance before creating new one.
-        // Without this, old RETURNED instances accumulate for the same document,
-        // causing confusion in logs/history. Mark as CANCELLED to indicate it was superseded.
-        returnedInstance.Status = nameof(DocumentWorkflowInstanceStatus.CANCELLED);
-        returnedInstance.FinishedAt = nowTime;
+        // 8. ISSUE-2 FIX: REUSE the same workflow instance instead of creating a new one.
+        // This preserves all workflow logs history from previous submissions.
+        returnedInstance.Status = nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS);
+        returnedInstance.CurrentStepId = firstStep.StepId;
+        returnedInstance.StartedAt = nowTime;
+        returnedInstance.FinishedAt = finishedAt;
         await _documentWorkflowInstanceRepository.UpdateAsync(returnedInstance);
 
-        await _documentWorkflowInstanceLogsManager.CreateAsync(
-            returnedInstance.Id,
-            null,
-            CurrentUser.Id,
-            nameof(WorkflowInstanceLogAction.WORKFLOW_CANCELLED),
-            WorkflowConstants.RoleInitiator,
-            nameof(DocumentWorkflowInstanceStatus.RETURNED),
-            nameof(DocumentWorkflowInstanceStatus.CANCELLED),
-            "Superseded by re-submit"
-        );
-
-        // 9. Create new DocumentWorkflowInstance
-        var newInstance = await _documentWorkflowInstanceManager.CreateAsync(
-            documentId,
-            returnedInstance.WorkflowId,
-            returnedInstance.WorkflowTemplateId,
-            firstStep.StepId,
-            nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
-            nowTime,
-            finishedAt
-        );
-
-        // 10. Resolve signing file
+        // 9. Resolve signing file
         Guid? signingFileId = newSigningFileId;
         if (signingFileId == null)
         {
@@ -1112,7 +1112,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             signingFileId = documentFiles.OrderByDescending(f => f.UploadedAt).FirstOrDefault()?.Id;
         }
 
-        // 11. Create DocumentAssignments
+        // 10. Create DocumentAssignments for step 1 (or all steps if PARALLEL)
         var stepsToAssign = isParallel ? allStepsOrdered : new List<WorkflowStepDetailDto> { firstStep };
         var allNotifyUserIds = new List<Guid>();
 
@@ -1142,7 +1142,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             }
         }
 
-        // 12. Create DocumentHistory records
+        // 11. Create DocumentHistory records
         foreach (var step in stepsToAssign)
         {
             foreach (var user in step.AssignedUsers)
@@ -1157,26 +1157,27 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             }
         }
 
-        // 13. Create log
+        // 12. Add RE_SUBMIT log to the SAME workflow instance (preserves history)
         await _documentWorkflowInstanceLogsManager.CreateAsync(
-            newInstance.Id,
+            returnedInstance.Id, // Same instance ID - logs stay together
             null,
             CurrentUser.Id,
             nameof(WorkflowInstanceLogAction.SUBMIT_WORKFLOW),
-            WorkflowConstants.RoleInitiator, // BUG-5 FIX: use constant instead of hardcoded "Initiator"
-            null,
+            WorkflowConstants.RoleInitiator,
+            nameof(DocumentWorkflowInstanceStatus.RETURNED),
             nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
-            $"RE_SUBMIT from returned instance {returnedInstance.Id}"
+            "RE_SUBMIT"
         );
 
-        // 14. Handle attached files
+        // 13. ISSUE-3 FIX: Only attach USER-UPLOADED files, NOT the signing PDF.
+        // The signing PDF is already referenced through DocumentAssignment.DocumentFileResultId.
         if (input.AttachedFileIds != null && input.AttachedFileIds.Any())
         {
             foreach (var fileId in input.AttachedFileIds)
             {
                 var instanceFile = new DocumentWorkflowInstanceFile(
                     GuidGenerator.Create(),
-                    newInstance.Id,
+                    returnedInstance.Id, // Same instance
                     fileId
                 );
                 instanceFile.TenantId = CurrentTenant.Id;
@@ -1184,21 +1185,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             }
         }
 
-        // Also attach signing file to workflow instance
-        if (signingFileId.HasValue)
-        {
-            var signingInstanceFile = new DocumentWorkflowInstanceFile(
-                GuidGenerator.Create(),
-                newInstance.Id,
-                signingFileId.Value
-            );
-            signingInstanceFile.TenantId = CurrentTenant.Id;
-            await _documentWorkflowInstanceFileRepository.InsertAsync(signingInstanceFile);
-        }
-
         // 14. Delete old attached files if requested
         // BUG-1 FIX: Remove DocumentWorkflowInstanceFile references BEFORE deleting DocumentFile
-        // to avoid FK violations (DocumentWorkflowInstanceFile.DocumentFileId → DocumentFile.Id)
         if (input.DeleteFileIds != null && input.DeleteFileIds.Any())
         {
             foreach (var fileId in input.DeleteFileIds)
@@ -1220,7 +1208,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             }
         }
 
-        // 16. Send notification
+        // 15. Send notification
         var doc = await _documentRepository.GetAsync(documentId);
         var distinctNotifyUserIds = allNotifyUserIds.Distinct().ToList();
         if (distinctNotifyUserIds.Any())
@@ -1233,10 +1221,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             );
         }
 
-        // 17. Update document status back to DANG_XU_LY
+        // 16. Update document status back to DANG_XU_LY
         await UpdateDocumentStatusAsync(documentId, DocumentStatusCode.DANG_XU_LY);
 
-        return ObjectMapper.Map<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>(newInstance);
+        return ObjectMapper.Map<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>(returnedInstance);
     }
 
     /// <summary>
@@ -1265,13 +1253,17 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             .OrderByDescending(h => h.CreationTime)
             .FirstOrDefault();
 
-        // Get attached files from the returned instance
+        // Get user-uploaded attached files from the workflow instance (DocumentWorkflowInstanceFile)
         var instanceFiles = await _documentWorkflowInstanceFileRepository.GetListAsync(
             x => x.DocumentWorkflowInstanceId == instance.Id);
         var attachedFileIds = instanceFiles.Select(f => f.DocumentFileId).ToList();
         var attachedFiles = attachedFileIds.Any()
             ? await _documentFileRepository.GetListAsync(x => attachedFileIds.Contains(x.Id))
             : new List<DocumentFile>();
+
+        // Get document's own files (signing PDF, template file, etc.)
+        var documentFiles = await _documentFileRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId);
 
         return new ReturnedWorkflowInfoDto
         {
@@ -1288,7 +1280,15 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 FileId = f.Id,
                 FileName = f.Name,
                 FilePath = f.Path
-            }).ToList()
+            }).ToList(),
+            DocumentFiles = documentFiles
+                .OrderByDescending(f => f.UploadedAt)
+                .Select(f => new AttachedFileDto
+                {
+                    FileId = f.Id,
+                    FileName = f.Name,
+                    FilePath = f.Path
+                }).ToList()
         };
     }
 

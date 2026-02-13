@@ -58,7 +58,18 @@ public class ReturnedWorkflowInfoDto
     public string? StorageNumber { get; set; }
     public string? LastSigningContent { get; set; }
     public WorkflowSubmitInfoDto WorkflowInfo { get; set; } = null!;
+
+    /// <summary>
+    /// Files uploaded by user as additional attachments (from DocumentWorkflowInstanceFile).
+    /// These can be removed by the user during re-submit.
+    /// </summary>
     public List<AttachedFileDto> AttachedFiles { get; set; } = new();
+
+    /// <summary>
+    /// Document's own files (from DocumentFile where DocumentId = instance.DocumentId).
+    /// Read-only display to show user what signing files exist on the document.
+    /// </summary>
+    public List<AttachedFileDto> DocumentFiles { get; set; } = new();
 }
 
 /// <summary>

@@ -226,6 +226,8 @@
                             
                             <!-- Row 5: Đơn vị ban hành | Trạng thái (6-6) -->
                             <Row>
+                                @if (SelectedSourceType != DocumentSourceType.Personal)
+                                {
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["Unit"] *</FieldLabel>
@@ -247,6 +249,7 @@
                                         }
                                     </Field>
                                 </Column>
+                                }
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["Status"] *</FieldLabel>
@@ -574,6 +577,8 @@
                         
                         <!-- Row 5: Đơn vị ban hành | Trạng thái (6-6) -->
                         <Row>
+                            @if (SelectedSourceType != DocumentSourceType.Personal)
+                            {
                             <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                 <Field>
                                     <FieldLabel>@L["Unit"] *</FieldLabel>
@@ -595,6 +600,7 @@
                                     }
                                 </Field>
                             </Column>
+                            }
                             <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                 <Field>
                                     <FieldLabel>@L["Status"] *</FieldLabel>

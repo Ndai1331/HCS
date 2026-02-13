@@ -764,7 +764,7 @@
                                             }
                                         </Heading>
                                     </CardHeader>
-                                    <CardBody Style="max-height: 230px; overflow-y: auto; padding: 0.75rem !important;">
+                                    <CardBody Style="max-height: 350px; overflow-y: auto; padding: 0.75rem !important;">
                                         @if (IsLoadingLogs)
                                         {
                                             <div class="text-center py-3">
@@ -1174,11 +1174,35 @@
                     <MemoEdit Rows="3" @bind-Text="@ResubmitSigningContent" Placeholder="@L["EnterSigningContent"]" />
                 </Field>
 
-                @* Existing Attached Files (can be removed) *@
+                @* Document Files (read-only - signing PDF, template files) *@
+                @if (ReturnedWorkflowInfo.DocumentFiles.Any())
+                {
+                    <Field Class="mt-2">
+                        <FieldLabel>
+                            <i class="bi bi-file-earmark-pdf me-1"></i>@L["DocumentFiles"]
+                            <Badge Color="Color.Primary" Pill Class="ms-1">@ReturnedWorkflowInfo.DocumentFiles.Count</Badge>
+                        </FieldLabel>
+                        <div>
+                            @foreach (var file in ReturnedWorkflowInfo.DocumentFiles)
+                            {
+                                <Alert Color="Color.Light" Dismissible="false" Class="mb-1 py-1 px-2 d-flex align-items-center">
+                                    <small>
+                                        <Icon Name="IconName.File" Class="me-1 text-primary" />@file.FileName
+                                    </small>
+                                </Alert>
+                            }
+                        </div>
+                    </Field>
+                }
+
+                @* Workflow Attached Files (can be removed) *@
                 @if (ResubmitExistingFiles.Any())
                 {
                     <Field Class="mt-2">
-                        <FieldLabel>@L["ExistingAttachedFiles"]</FieldLabel>
+                        <FieldLabel>
+                            <i class="bi bi-paperclip me-1"></i>@L["ExistingAttachedFiles"]
+                            <Badge Color="Color.Info" Pill Class="ms-1">@ResubmitExistingFiles.Count</Badge>
+                        </FieldLabel>
                         <div>
                             @foreach (var file in ResubmitExistingFiles)
                             {
