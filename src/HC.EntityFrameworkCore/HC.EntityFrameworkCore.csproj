@@ -1,17 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <Import Project="..\..\common.props" />
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <RootNamespace>HC</RootNamespace>
+    <Version></Version>
+    <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\HC.Domain\HC.Domain.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Volo.Abp.EntityFrameworkCore.PostgreSql" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.PermissionManagement.EntityFrameworkCore" Version="10.0.1" />
@@ -21,7 +19,6 @@
     <PackageReference Include="Volo.Abp.FeatureManagement.EntityFrameworkCore" Version="10.0.1" />
     <ProjectReference Include="..\..\modules\Volo.Forms\src\Volo.Forms.EntityFrameworkCore\Volo.Forms.EntityFrameworkCore.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Volo.Abp.OpenIddict.Pro.EntityFrameworkCore" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Identity.Pro.EntityFrameworkCore" Version="10.0.1" />
@@ -31,12 +28,10 @@
     <PackageReference Include="Volo.Abp.TextTemplateManagement.EntityFrameworkCore" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Gdpr.EntityFrameworkCore" Version="10.0.1" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>compile; contentFiles; build; buildMultitargeting; buildTransitive; analyzers; native</PrivateAssets>
     </PackageReference>
   </ItemGroup>
-
 </Project>

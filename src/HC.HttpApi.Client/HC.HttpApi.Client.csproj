@@ -1,24 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <Import Project="..\..\common.props" />
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <RootNamespace>HC</RootNamespace>
+    <Version></Version>
+    <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\HC.Application.Contracts\HC.Application.Contracts.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Volo.Abp.PermissionManagement.HttpApi.Client" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.FeatureManagement.HttpApi.Client" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.SettingManagement.HttpApi.Client" Version="10.0.1" />
     <ProjectReference Include="..\..\modules\Volo.Forms\src\Volo.Forms.HttpApi.Client\Volo.Forms.HttpApi.Client.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Volo.Abp.Identity.Pro.HttpApi.Client" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Account.Pro.Admin.HttpApi.Client" Version="10.0.1" />
@@ -31,10 +28,8 @@
     <PackageReference Include="Volo.Abp.TextTemplateManagement.HttpApi.Client" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Gdpr.HttpApi.Client" Version="10.0.1" />
   </ItemGroup>
-
   <ItemGroup>
     <EmbeddedResource Include="**\*generate-proxy.json" />
     <Content Remove="**\*generate-proxy.json" />
   </ItemGroup>
-
 </Project>

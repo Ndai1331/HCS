@@ -1,15 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <Import Project="..\..\common.props" />
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
     <RootNamespace>HC</RootNamespace>
     <PreserveCompilationReferences>true</PreserveCompilationReferences>
+    <Version></Version>
+    <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="AspNetCore.HealthChecks.UI" Version="9.0.0" />
     <PackageReference Include="KubernetesClient" Version="18.0.5" />
@@ -23,7 +22,6 @@
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="10.0.0" />
     <PackageReference Include="DistributedLock.Redis" Version="1.1.0" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Volo.Abp.AspNetCore.Mvc.UI.MultiTenancy" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Autofac" Version="10.0.1" />
@@ -36,23 +34,18 @@
     <PackageReference Include="Volo.Abp.EventBus.RabbitMQ" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.BlobStoring.Minio" Version="10.0.1" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\HC.Application\HC.Application.csproj" />
     <ProjectReference Include="..\HC.HttpApi\HC.HttpApi.csproj" />
     <ProjectReference Include="..\HC.EntityFrameworkCore\HC.EntityFrameworkCore.csproj" />
   </ItemGroup>
-
-
   <ItemGroup>
     <PackageReference Include="Volo.Abp.Studio.Client.AspNetCore" Version="2.1.4" />
   </ItemGroup>
-
   <ItemGroup>
     <Compile Remove="Logs\**" />
     <Content Remove="Logs\**" />
     <EmbeddedResource Remove="Logs\**" />
     <None Remove="Logs\**" />
   </ItemGroup>
-
 </Project>

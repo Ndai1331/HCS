@@ -1,18 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <Import Project="..\..\common.props" />
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <RootNamespace>HC</RootNamespace>
+    <Version></Version>
+    <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\HC.Domain\HC.Domain.csproj" />
     <ProjectReference Include="..\HC.Application.Contracts\HC.Application.Contracts.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="MiniExcel" Version="1.41.4" />
     <PackageReference Include="Volo.Abp.PermissionManagement.Application" Version="10.0.1" />
@@ -30,5 +28,4 @@
     <PackageReference Include="Volo.Abp.TextTemplateManagement.Application" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Gdpr.Application" Version="10.0.1" />
   </ItemGroup>
-
 </Project>

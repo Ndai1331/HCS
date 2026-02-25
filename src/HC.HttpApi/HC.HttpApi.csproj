@@ -1,24 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <Import Project="..\..\common.props" />
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <RootNamespace>HC</RootNamespace>
+    <Version></Version>
+    <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\HC.Application.Contracts\HC.Application.Contracts.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Volo.Abp.PermissionManagement.HttpApi" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.FeatureManagement.HttpApi" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.SettingManagement.HttpApi" Version="10.0.1" />
     <ProjectReference Include="..\..\modules\Volo.Forms\src\Volo.Forms.HttpApi\Volo.Forms.HttpApi.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Volo.Abp.Identity.Pro.HttpApi" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Account.Pro.Admin.HttpApi" Version="10.0.1" />
@@ -32,5 +29,4 @@
     <PackageReference Include="Volo.Abp.Gdpr.HttpApi" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.BlobStoring" Version="10.0.1" />
   </ItemGroup>
-
 </Project>

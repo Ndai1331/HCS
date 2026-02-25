@@ -1,17 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <Import Project="..\..\common.props" />
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <RootNamespace>HC</RootNamespace>
+    <Version></Version>
+    <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\HC.Domain.Shared\HC.Domain.Shared.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Volo.Abp.Emailing" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Caching" Version="10.0.1" />
@@ -24,7 +22,6 @@
     <PackageReference Include="Volo.Abp.BlobStoring.Minio" Version="10.0.1" />
     <ProjectReference Include="..\..\modules\Volo.Forms\src\Volo.Forms.Domain\Volo.Forms.Domain.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Volo.Abp.OpenIddict.Pro.Domain" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Identity.Pro.Domain" Version="10.0.1" />
@@ -34,7 +31,5 @@
     <PackageReference Include="Volo.Saas.Domain" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.TextTemplateManagement.Domain" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Gdpr.Domain" Version="10.0.1" />
-
   </ItemGroup>
-
 </Project>
