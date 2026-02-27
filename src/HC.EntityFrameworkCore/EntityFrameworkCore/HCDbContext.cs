@@ -247,6 +247,7 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.Property(x => x.SignType).HasColumnName(nameof(UserSignature.SignType)).IsRequired();
             b.Property(x => x.ProviderCode).HasColumnName(nameof(UserSignature.ProviderCode)).IsRequired();
             b.Property(x => x.TokenRef).HasColumnName(nameof(UserSignature.TokenRef));
+            b.Property(x => x.Secret).HasColumnName(nameof(UserSignature.Secret));
             b.Property(x => x.SignatureImage).HasColumnName(nameof(UserSignature.SignatureImage)).IsRequired();
             b.Property(x => x.ValidFrom).HasColumnName(nameof(UserSignature.ValidFrom));
             b.Property(x => x.ValidTo).HasColumnName(nameof(UserSignature.ValidTo));

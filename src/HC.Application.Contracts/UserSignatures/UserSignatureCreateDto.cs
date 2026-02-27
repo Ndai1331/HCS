@@ -11,6 +11,7 @@ public abstract class UserSignatureCreateDtoBase
     [Required]
     public string ProviderCode { get; set; } = null!;
     public string? TokenRef { get; set; }
+    public string? Secret { get; set; }
 
     [Required]
     public string SignatureImage { get; set; } = null!;

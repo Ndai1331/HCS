@@ -85,7 +85,16 @@ public abstract class UserSignaturesAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["IdentityUser"]]);
         }
 
-        var userSignature = await _userSignatureManager.CreateAsync(input.IdentityUserId, input.SignType, input.ProviderCode, input.SignatureImage, input.IsActive, input.TokenRef, input.ValidFrom, input.ValidTo);
+        var userSignature = await _userSignatureManager.CreateAsync(
+            input.IdentityUserId,
+            input.SignType,
+            input.ProviderCode,
+            input.SignatureImage,
+            input.IsActive,
+            input.TokenRef,
+            input.Secret,
+            input.ValidFrom,
+            input.ValidTo);
         return ObjectMapper.Map<UserSignature, UserSignatureDto>(userSignature);
     }
 
@@ -97,7 +106,18 @@ public abstract class UserSignaturesAppServiceBase : HCAppService
             throw new UserFriendlyException(L["The {0} field is required.", L["IdentityUser"]]);
         }
 
-        var userSignature = await _userSignatureManager.UpdateAsync(id, input.IdentityUserId, input.SignType, input.ProviderCode, input.SignatureImage, input.IsActive, input.TokenRef, input.ValidFrom, input.ValidTo, input.ConcurrencyStamp);
+        var userSignature = await _userSignatureManager.UpdateAsync(
+            id,
+            input.IdentityUserId,
+            input.SignType,
+            input.ProviderCode,
+            input.SignatureImage,
+            input.IsActive,
+            input.TokenRef,
+            input.Secret,
+            input.ValidFrom,
+            input.ValidTo,
+            input.ConcurrencyStamp);
         return ObjectMapper.Map<UserSignature, UserSignatureDto>(userSignature);
     }
 
@@ -111,7 +131,18 @@ public abstract class UserSignaturesAppServiceBase : HCAppService
         }
 
         var userSignatures = await _userSignatureRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.SignType, input.ProviderCode, input.TokenRef, input.SignatureImage, input.ValidFromMin, input.ValidFromMax, input.ValidToMin, input.ValidToMax, input.IsActive, input.IdentityUserId);
-        var items = userSignatures.Select(item => new { SignType = item.UserSignature.SignType, ProviderCode = item.UserSignature.ProviderCode, TokenRef = item.UserSignature.TokenRef, SignatureImage = item.UserSignature.SignatureImage, ValidFrom = item.UserSignature.ValidFrom, ValidTo = item.UserSignature.ValidTo, IsActive = item.UserSignature.IsActive, IdentityUser = item.IdentityUser?.Name, });
+        var items = userSignatures.Select(item => new
+        {
+            SignType = item.UserSignature.SignType,
+            ProviderCode = item.UserSignature.ProviderCode,
+            TokenRef = item.UserSignature.TokenRef,
+            Secret = item.UserSignature.Secret,
+            SignatureImage = item.UserSignature.SignatureImage,
+            ValidFrom = item.UserSignature.ValidFrom,
+            ValidTo = item.UserSignature.ValidTo,
+            IsActive = item.UserSignature.IsActive,
+            IdentityUser = item.IdentityUser?.Name,
+        });
         var memoryStream = new MemoryStream();
         await memoryStream.SaveAsAsync(items);
         memoryStream.Seek(0, SeekOrigin.Begin);

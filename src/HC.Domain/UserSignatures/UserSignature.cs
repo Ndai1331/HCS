@@ -24,6 +24,9 @@ public abstract class UserSignatureBase : FullAuditedAggregateRoot<Guid>, IMulti
     [CanBeNull]
     public virtual string? TokenRef { get; set; }
 
+    [CanBeNull]
+    public virtual string? Secret { get; set; }
+
     [NotNull]
     public virtual string SignatureImage { get; set; }
 
@@ -39,7 +42,17 @@ public abstract class UserSignatureBase : FullAuditedAggregateRoot<Guid>, IMulti
     {
     }
 
-    public UserSignatureBase(Guid id, Guid identityUserId, string signType, string providerCode, string signatureImage, bool isActive, string? tokenRef = null, DateTime? validFrom = null, DateTime? validTo = null)
+    public UserSignatureBase(
+        Guid id,
+        Guid identityUserId,
+        string signType,
+        string providerCode,
+        string signatureImage,
+        bool isActive,
+        string? tokenRef = null,
+        string? secret = null,
+        DateTime? validFrom = null,
+        DateTime? validTo = null)
     {
         Id = id;
         Check.NotNull(signType, nameof(signType));
@@ -50,6 +63,7 @@ public abstract class UserSignatureBase : FullAuditedAggregateRoot<Guid>, IMulti
         SignatureImage = signatureImage;
         IsActive = isActive;
         TokenRef = tokenRef;
+        Secret = secret;
         ValidFrom = validFrom;
         ValidTo = validTo;
         IdentityUserId = identityUserId;

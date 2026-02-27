@@ -814,9 +814,10 @@ public partial class DocumentSigning
             // Show signing-in-progress message for APPROVE with signing method
             if (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && SelectedSigningMethodId.HasValue)
             {
-                // Check if the selected signing method is ELECTRONIC
+                // Show signing-in-progress message for supported signing methods
                 var selectedMethod = SigningMethods.FirstOrDefault(m => m.Id == SelectedSigningMethodId.Value);
-                if (selectedMethod != null && selectedMethod.Code == nameof(SignType.ELECTRONIC))
+                if (selectedMethod != null &&
+                    (selectedMethod.Code == nameof(SignType.ELECTRONIC) || selectedMethod.Code == nameof(SignType.DIGITAL)))
                 {
                     await UiMessageService.Info(L["SigningInProgress"],
                         options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));

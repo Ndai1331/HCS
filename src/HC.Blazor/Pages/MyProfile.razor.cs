@@ -398,6 +398,23 @@ public partial class MyProfile
             isValid = false;
         }
 
+        if (IsDigitalSignType(NewUserSignature?.SignType))
+        {
+            if (string.IsNullOrWhiteSpace(NewUserSignature?.TokenRef))
+            {
+                CreateSignatureFieldErrors["TokenRef"] = L["TokenRefRequiredForDigitalSign"];
+                if (isValid) CreateSignatureValidationErrorKey = "TokenRefRequiredForDigitalSign";
+                isValid = false;
+            }
+
+            if (string.IsNullOrWhiteSpace(NewUserSignature?.Secret))
+            {
+                CreateSignatureFieldErrors["Secret"] = L["SecretRequiredForDigitalSign"];
+                if (isValid) CreateSignatureValidationErrorKey = "SecretRequiredForDigitalSign";
+                isValid = false;
+            }
+        }
+
         return isValid;
     }
 
@@ -499,6 +516,23 @@ public partial class MyProfile
             isValid = false;
         }
 
+        if (IsDigitalSignType(EditingUserSignature?.SignType))
+        {
+            if (string.IsNullOrWhiteSpace(EditingUserSignature?.TokenRef))
+            {
+                EditSignatureFieldErrors["TokenRef"] = L["TokenRefRequiredForDigitalSign"];
+                if (isValid) EditSignatureValidationErrorKey = "TokenRefRequiredForDigitalSign";
+                isValid = false;
+            }
+
+            if (string.IsNullOrWhiteSpace(EditingUserSignature?.Secret))
+            {
+                EditSignatureFieldErrors["Secret"] = L["SecretRequiredForDigitalSign"];
+                if (isValid) EditSignatureValidationErrorKey = "SecretRequiredForDigitalSign";
+                isValid = false;
+            }
+        }
+
         return isValid;
     }
 
@@ -537,6 +571,11 @@ public partial class MyProfile
     {
         get => Enum.TryParse<SignType>(EditingUserSignature.SignType, out var result) ? result : null;
         set => EditingUserSignature.SignType = value?.ToString() ?? string.Empty;
+    }
+
+    private static bool IsDigitalSignType(string? signType)
+    {
+        return string.Equals(signType, nameof(SignType.DIGITAL), StringComparison.OrdinalIgnoreCase);
     }
 
     // Department Methods

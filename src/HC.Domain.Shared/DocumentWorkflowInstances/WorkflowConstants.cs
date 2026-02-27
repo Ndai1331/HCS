@@ -18,4 +18,5 @@ public static class WorkflowConstants
     // Blob storage paths
     public const string BlobPathSigningSteps = "signing-steps/";
     public const string BlobPathElectronicSigned = "electronic-signed/";
+    public const string BlobPathDigitalSigned = "digital-signed/";
 }
