@@ -88,7 +88,7 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.Layout;
 using Microsoft.AspNetCore.Authentication;
 using HC.Blazor.Hubs;
 using Microsoft.AspNetCore.SignalR;
-using Volo.Forms.Web;
+// using Volo.Forms.Web;
 
 namespace HC.Blazor;
 
@@ -125,7 +125,7 @@ namespace HC.Blazor;
     typeof(AbpSettingManagementBlazorServerModule),
     typeof(AbpBlobStoringMinioModule)
     )]
-[DependsOn(typeof(FormsWebModule))]
+// [DependsOn(typeof(FormsWebModule))]
     public class HCBlazorModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
@@ -769,41 +769,41 @@ namespace HC.Blazor;
         
         app.UseAuthorization();
 
-        app.Use(async (context, next) =>
-        {
-            if (!context.User?.Identity?.IsAuthenticated == true &&
-                context.Request.Path == "/")
-            {
-                context.Response.Redirect("/Account/Login");
-                return;
-            }
+        // app.Use(async (context, next) =>
+        // {
+        //     if (!context.User?.Identity?.IsAuthenticated == true &&
+        //         context.Request.Path == "/")
+        //     {
+        //         context.Response.Redirect("/Account/Login");
+        //         return;
+        //     }
 
-            try
-            {
-                await next();
-            }
-            catch (Volo.Abp.Authorization.AbpAuthorizationException)
-            {
-                await context.SignOutAsync();
-                context.Response.Redirect("/Account/Logout");
-            }
-            catch (Volo.Abp.Http.Client.AbpRemoteCallException ex)
-            {
-                // Handle Unauthorized exceptions from API calls
-                if (ex.Message.Contains("Unauthorized")
-                 || ex.Message.Contains("401")
-                 || ex.Message.Contains("expired")
-                 || ex.Message.Contains("Authentication"))
-                {
-                    await context.SignOutAsync();
-                    context.Response.Redirect("/Account/Logout");
-                }
-                else
-                {
-                    throw; // Re-throw other remote call exceptions
-                }
-            }
-        });
+        //     try
+        //     {
+        //         await next();
+        //     }
+        //     catch (Volo.Abp.Authorization.AbpAuthorizationException)
+        //     {
+        //         await context.SignOutAsync();
+        //         context.Response.Redirect("/Account/Logout");
+        //     }
+        //     catch (Volo.Abp.Http.Client.AbpRemoteCallException ex)
+        //     {
+        //         // Handle Unauthorized exceptions from API calls
+        //         if (ex.Message.Contains("Unauthorized")
+        //          || ex.Message.Contains("401")
+        //          || ex.Message.Contains("expired")
+        //          || ex.Message.Contains("Authentication"))
+        //         {
+        //             await context.SignOutAsync();
+        //             context.Response.Redirect("/Account/Logout");
+        //         }
+        //         else
+        //         {
+        //             throw; // Re-throw other remote call exceptions
+        //         }
+        //     }
+        // });
 
 
         app.UseSwagger();

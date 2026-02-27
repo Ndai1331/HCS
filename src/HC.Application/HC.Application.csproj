@@ -19,7 +19,7 @@
     <PackageReference Include="Volo.Abp.Account.Pro.Public.Application" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Account.Pro.Admin.Application" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Identity.Pro.Application" Version="10.0.1" />
-    <ProjectReference Include="..\..\modules\Volo.Forms\src\Volo.Forms.Application\Volo.Forms.Application.csproj" />
+    <!-- <ProjectReference Include="..\..\modules\Volo.Forms\src\Volo.Forms.Application\Volo.Forms.Application.csproj" /> -->
     <PackageReference Include="Volo.Saas.Host.Application" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.AuditLogging.Application" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.OpenIddict.Pro.Application" Version="10.0.1" />

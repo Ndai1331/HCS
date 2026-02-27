@@ -13,7 +13,7 @@ using Volo.FileManagement;
 using Volo.Abp.OpenIddict;
 using Volo.Abp.TextTemplateManagement;
 using Volo.Saas.Host;
-using Volo.Forms;
+// using Volo.Forms;
 using PdfSharp.Fonts;
 using HC.Helpers;
 namespace HC;
@@ -34,8 +34,8 @@ namespace HC;
     typeof(FileManagementApplicationModule),
     typeof(AbpGdprApplicationModule),
     typeof(AbpSettingManagementApplicationModule),
-    typeof(AbpMapperlyModule),
-    typeof(FormsApplicationModule)
+    typeof(AbpMapperlyModule)
+    // typeof(FormsApplicationModule)
     )]
 public class HCApplicationModule : AbpModule
 {

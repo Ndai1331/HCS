@@ -91,7 +91,9 @@ public class HCHttpApiHostModule : AbpModule
 
         Configure<PermissionManagementOptions>(options =>
         {
-            options.IsDynamicPermissionStoreEnabled = true;
+            // Forms module was removed; disable dynamic permission store to avoid
+            // loading stale permission definitions from database (e.g. Volo.Forms.*).
+            options.IsDynamicPermissionStoreEnabled = false;
         });
     }
 

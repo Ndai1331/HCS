@@ -17,7 +17,7 @@ using Volo.Abp.TextTemplateManagement;
 using Volo.Saas;
 using Volo.Abp.Gdpr;
 using Volo.Abp.GlobalFeatures;
-using Volo.Forms;
+// using Volo.Forms;
 
 namespace HC;
 
@@ -34,8 +34,8 @@ namespace HC;
     typeof(SaasDomainSharedModule),
     typeof(TextTemplateManagementDomainSharedModule),
     typeof(AbpGdprDomainSharedModule),
-    typeof(AbpGlobalFeaturesModule),
-    typeof(FormsDomainSharedModule)
+    typeof(AbpGlobalFeaturesModule)
+    // typeof(FormsDomainSharedModule)
     )]
 public class HCDomainSharedModule : AbpModule
 {

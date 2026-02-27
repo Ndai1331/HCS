@@ -15,6 +15,7 @@ using HC.Documents;
 using HC.NotificationReceivers;
 using HC.Notifications;
 using HC.DocumentAssignments;
+using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentFiles;
 using Humanizer;
 using Volo.Abp.BlobStoring;
@@ -46,6 +47,7 @@ public partial class Index
     [Inject] private IDocumentsAppService DocumentsAppService { get; set; } = default!;
     [Inject] private INotificationReceiversAppService NotificationReceiversAppService { get; set; } = default!;
     [Inject] private IDocumentAssignmentsAppService DocumentAssignmentsAppService { get; set; } = default!;
+    [Inject] private IDocumentWorkflowInstanceLogssAppService DocumentWorkflowInstanceLogssAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
     [Inject] private IBlockUiService BlockUiService { get; set; } = default!;
@@ -76,6 +78,10 @@ public partial class Index
 
     // Documents data - combined personal docs + assigned docs for current user
     private List<RecentDocumentItem> RecentDocumentsList { get; set; } = new();
+    private int WorkflowSignedCount { get; set; }
+    private int WorkflowSentCount { get; set; }
+    private int WorkflowReturnedOrRejectedCount { get; set; }
+    private int WorkflowTotalCount { get; set; }
 
     // Notifications data
     private List<NotificationReceiverWithNavigationPropertiesDto> RecentNotificationsList { get; set; } = new();
@@ -163,6 +169,7 @@ public partial class Index
                 LoadTasksStatisticsAsync(),
                 LoadCalendarEventsAsync(),
                 LoadRecentDocumentsAsync(),
+                LoadWorkflowChartStatisticsAsync(),
                 LoadRecentNotificationsAsync(),
                 LoadMyTasksAsync()
             );
@@ -394,6 +401,40 @@ public partial class Index
         {
             await HandleErrorAsync(ex);
         }
+    }
+
+    private async Task LoadWorkflowChartStatisticsAsync()
+    {
+        try
+        {
+            var workflowStats = await DocumentWorkflowInstanceLogssAppService.GetWorkflowChartStatisticsAsync(
+                FilterStartDate,
+                FilterEndDate
+            );
+
+            WorkflowSignedCount = workflowStats.SignedCount;
+            WorkflowReturnedOrRejectedCount = workflowStats.ReturnedOrRejectedCount;
+            WorkflowSentCount = workflowStats.SentCount;
+            WorkflowTotalCount = workflowStats.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            WorkflowSignedCount = 0;
+            WorkflowSentCount = 0;
+            WorkflowReturnedOrRejectedCount = 0;
+            WorkflowTotalCount = 0;
+            await HandleErrorAsync(ex);
+        }
+    }
+
+    private double GetWorkflowPercentage(int count)
+    {
+        if (WorkflowTotalCount <= 0)
+        {
+            return 0;
+        }
+
+        return Math.Round((double)count / WorkflowTotalCount * 100, 1);
     }
 
     private async Task LoadMyTasksAsync()

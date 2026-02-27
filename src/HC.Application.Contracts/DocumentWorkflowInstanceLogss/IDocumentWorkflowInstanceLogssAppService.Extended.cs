@@ -1,6 +1,9 @@
+using System;
+using System.Threading.Tasks;
+
 namespace HC.DocumentWorkflowInstanceLogss;
 
 public partial interface IDocumentWorkflowInstanceLogssAppService
 {
-    //Write your custom code here...
+    Task<WorkflowChartStatisticsDto> GetWorkflowChartStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
 }

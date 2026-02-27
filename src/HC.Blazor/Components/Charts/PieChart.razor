@@ -1,4 +1,5 @@
 @using Microsoft.JSInterop
+@using System.Globalization
 @inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
@@ -19,8 +20,7 @@
     private IJSObjectReference? _chartModule;
     private IJSObjectReference? _chartInstance;
     private bool _chartRendered = false;
-    private int _lastLabelsCount = 0;
-    private int _lastDataCount = 0;
+    private string _lastDataSignature = string.Empty;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -38,20 +38,17 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        // Check if data has changed
         if (Labels.Count > 0 && Data.Count > 0 && Labels.Count == Data.Count)
         {
-            var labelsChanged = _lastLabelsCount != Labels.Count;
-            var dataChanged = _lastDataCount != Data.Count;
-            
-            _lastLabelsCount = Labels.Count;
-            _lastDataCount = Data.Count;
+            var currentSignature = BuildDataSignature();
+            var dataChanged = !string.Equals(_lastDataSignature, currentSignature, StringComparison.Ordinal);
 
-            if (_chartInstance != null && (labelsChanged || dataChanged))
+            if (_chartInstance != null && dataChanged)
             {
                 // Update existing chart
                 await Task.Delay(200); // Small delay to ensure DOM is ready
                 await UpdateChart();
+                _lastDataSignature = currentSignature;
             }
             else if (_chartInstance == null && !_chartRendered)
             {
@@ -335,6 +332,7 @@
                 Title,
                 ShowLegend);
             
+            _lastDataSignature = BuildDataSignature();
             _chartRendered = true;
         }
         catch (Exception ex)
@@ -371,6 +369,14 @@
         {
             Console.WriteLine($"Error updating chart: {ex.Message}");
         }
+    }
+
+    private string BuildDataSignature()
+    {
+        var labelsPart = string.Join("||", Labels);
+        var dataPart = string.Join("||", Data.Select(x => x.ToString("G17", CultureInfo.InvariantCulture)));
+        var colorsPart = string.Join("||", BackgroundColors);
+        return $"{labelsPart}##{dataPart}##{colorsPart}##{IsDoughnut}##{ShowLegend}##{Title}";
     }
 
     public async ValueTask DisposeAsync()

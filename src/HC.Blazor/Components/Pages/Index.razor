@@ -650,14 +650,14 @@
         _ => "#355dff"                 // primary
     }).ToList();
 
-    // Workflow Chart Demo Data
+    // Workflow chart data from document signing statistics
     private record WorkflowChartItem(string Label, double Percentage, string Color);
 
     private List<WorkflowChartItem> WorkflowChartItems => new()
     {
-        new WorkflowChartItem(L["Workflow:Signed"], 20, "#4fbf67"),
-        new WorkflowChartItem(L["Workflow:Submitted"], 30, "#ff9f38"),
-        new WorkflowChartItem(L["Workflow:Sent"], 50, "#355dff")
+        new WorkflowChartItem(L["Workflow:Signed"], GetWorkflowPercentage(WorkflowSignedCount), "#4fbf67"),
+        new WorkflowChartItem(L["Workflow:ReturnedOrRejected"], GetWorkflowPercentage(WorkflowReturnedOrRejectedCount), "#c00d49"),
+        new WorkflowChartItem(L["Workflow:Sent"], GetWorkflowPercentage(WorkflowSentCount), "#355dff")
     };
 
     private List<string> WorkflowChartLabels => WorkflowChartItems.Select(x => x.Label).ToList();

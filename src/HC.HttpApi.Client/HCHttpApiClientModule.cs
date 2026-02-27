@@ -1,5 +1,6 @@
 
-using Volo.Forms;using Microsoft.Extensions.DependencyInjection;
+// using Volo.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.Account;
 using Volo.Abp.Modularity;
 using Volo.Abp.PermissionManagement;
@@ -36,7 +37,7 @@ namespace HC;
     // typeof(HCChatHttpApiClientModule),
     typeof(AbpSettingManagementHttpApiClientModule)
 )]
-[DependsOn(typeof(FormsHttpApiClientModule))]
+// [DependsOn(typeof(FormsHttpApiClientModule))]
     public class HCHttpApiClientModule : AbpModule
 {
     public const string RemoteServiceName = "Default";

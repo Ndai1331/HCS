@@ -16,8 +16,8 @@ using Volo.FileManagement.Blazor.Navigation;
 using Volo.Abp.TextTemplateManagement.Blazor.Menus;
 using Volo.Abp.OpenIddict.Pro.Blazor.Menus;
 using Volo.Saas.Host.Blazor.Navigation;
-using Volo.Forms.Web.Menus;
-using Volo.Forms.Permissions;
+// using Volo.Forms.Web.Menus;
+// using Volo.Forms.Permissions;
 
 namespace HC.Blazor.Menus;
 
@@ -56,8 +56,8 @@ public class HCMenuContributor : IMenuContributor
         context.Menu.AddItem(new ApplicationMenuItem("Projects", l["Menu:Projects"], icon: "fa fa-diagram-project", order: 4).AddItem(new ApplicationMenuItem("Projects.List", l["Menu:ProjectList"], icon: "bi bi-menu-button-wide-fill", url: "/projects").RequirePermissions(HCPermissions.Projects.Default)).AddItem(new ApplicationMenuItem("Tasks.List", l["Menu:Tasks"], icon: "bi bi-menu-button-wide-fill", url: "/tasks").RequirePermissions(HCPermissions.Tasks.Default)));
         context.Menu.AddItem(new ApplicationMenuItem("CalendarAndEvents", l["Menu:CalendarAndEvents"], icon: "fa fa-calendar-days", url: "/calendar-events", order: 6).RequirePermissions(HCPermissions.CalendarEvents.Default));
         context.Menu.AddItem(new ApplicationMenuItem("SurveyResults", l["Menu:Survey"], icon: "fa fa-chart-line", order: 6).RequirePermissions(HCPermissions.SurveyResults.Default)
-        .AddItem(new ApplicationMenuItem("SurveyResults.Results", l["Menu:SurveyResults"], icon: "bi bi-menu-button-wide-fill", url: "/survey-results").RequirePermissions(HCPermissions.Projects.Default))
-        .AddItem(new ApplicationMenuItem("SurveyResults.Forms", l["Menu:Forms"], icon: "bi bi-menu-button-wide-fill", url: "/Forms").RequirePermissions(FormsPermissions.Forms.Default)));
+        .AddItem(new ApplicationMenuItem("SurveyResults.Results", l["Menu:SurveyResults"], icon: "bi bi-menu-button-wide-fill", url: "/survey-results").RequirePermissions(HCPermissions.Projects.Default)));
+        // .AddItem(new ApplicationMenuItem("SurveyResults.Forms", l["Menu:Forms"], icon: "bi bi-menu-button-wide-fill", url: "/Forms").RequirePermissions(FormsPermissions.Forms.Default)));
 
 
 

@@ -19,6 +19,17 @@ public class HCToolbarContributor : IToolbarContributor
         var isMainToolbar =
             context.Toolbar.Name == "Main";
 
+        // Remove ABP Chat toolbar item to avoid startup 500 when Chat hub endpoint
+        // is not mapped in the current deployment topology.
+        var chatToolbarItems = context.Toolbar.Items
+            .Where(x => x.ComponentType?.FullName == "Volo.Chat.Blazor.Components.MessagesToolbarItem")
+            .ToList();
+        foreach (var chatToolbarItem in chatToolbarItems)
+        {
+            context.Toolbar.Items.Remove(chatToolbarItem);
+        }
+        var removedChatToolbarCount = chatToolbarItems.Count;
+
         // Add bell once, only on LeptonX main toolbars (desktop/mobile).
         var inserted = false;
         var insertIndex = -1;
@@ -32,9 +43,10 @@ public class HCToolbarContributor : IToolbarContributor
         }
 
         // Helpful debug: list item component types to verify ordering.
-        Log.Information("[HCToolbarContributor] ToolbarName={ToolbarName} IsMain={IsMain} InsertedNotification={Inserted} InsertIndex={InsertIndex} ItemsCountAfter={ItemsCountAfter} Items={Items}",
+        Log.Information("[HCToolbarContributor] ToolbarName={ToolbarName} IsMain={IsMain} RemovedChatToolbarCount={RemovedChatToolbarCount} InsertedNotification={Inserted} InsertIndex={InsertIndex} ItemsCountAfter={ItemsCountAfter} Items={Items}",
             context.Toolbar.Name,
             isMainToolbar,
+            removedChatToolbarCount,
             inserted,
             insertIndex,
             context.Toolbar.Items.Count,

@@ -1064,6 +1064,7 @@
     "Workflow:Signed": "Đã ký",
     "Workflow:Submitted": "Đang xử lý",
     "Workflow:Sent": "Đã gửi",
+    "Workflow:ReturnedOrRejected": "Từ chối/Trả về",
     "Workflow:Cancelled": "Đã hủy",
 
     "Menu:DocumentSigning": "Trình ký",

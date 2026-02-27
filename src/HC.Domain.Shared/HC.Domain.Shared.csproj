@@ -20,7 +20,7 @@
     <PackageReference Include="PdfPig" Version="0.1.13" />
     <PackageReference Include="PDFsharp" Version="6.2.4" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" />
-    <ProjectReference Include="..\..\modules\Volo.Forms\src\Volo.Forms.Domain.Shared\Volo.Forms.Domain.Shared.csproj" />
+    <!-- <ProjectReference Include="..\..\modules\Volo.Forms\src\Volo.Forms.Domain.Shared\Volo.Forms.Domain.Shared.csproj" /> -->
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Volo.Abp.OpenIddict.Pro.Domain.Shared" Version="10.0.1" />
