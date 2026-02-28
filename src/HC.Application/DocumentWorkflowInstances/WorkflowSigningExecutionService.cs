@@ -151,7 +151,9 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         var settingQueryable = await _signatureSettingRepository.GetQueryableAsync();
         var signatureSetting = await _asyncExecuter.FirstOrDefaultAsync(
-            settingQueryable.Where(x => x.ProviderCode == signature.ProviderCode && x.IsActive));
+            settingQueryable.Where(x => 
+            x.ProviderCode == signature.ProviderCode
+             && x.IsActive));
 
         if (signatureSetting == null || string.IsNullOrWhiteSpace(signatureSetting.ApiEndpoint))
         {
@@ -178,6 +180,16 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         var signatureImageBytes = await ResolveSignatureImageBytesAsync(signature.SignatureImage);
         var sealImageBytes = await ResolveSignatureImageBytesAsync(signature.SealImg!);
         var layoutImageBytes = await ResolveSignatureImageBytesAsync(signatureSetting.LayoutImg!);
+        var layoutHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(layoutImageBytes));
+        _logger.LogInformation(
+            "[DIGITAL_SIGN] Loaded signing assets | AssignmentId={AssignmentId} | ProviderCode={ProviderCode} | LayoutPath={LayoutPath} | LayoutBytes={LayoutBytes} | LayoutSha256={LayoutSha256} | SignatureBytes={SignatureBytes} | SealBytes={SealBytes}",
+            assignment.Id,
+            signature.ProviderCode,
+            signatureSetting.LayoutImg,
+            layoutImageBytes.Length,
+            layoutHash,
+            signatureImageBytes.Length,
+            sealImageBytes.Length);
 
         var user = await _identityUserRepository.GetAsync(currentUserId);
         var fullName = $"{user.Surname} {user.Name}".Trim();

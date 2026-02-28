@@ -43,6 +43,11 @@ namespace HC.BnnSoftSigns
                     input.signaturename,
                     input.pagesign,
                     input.typesignature);
+                _logger?.LogInformation(
+                    "[SIGN_ASSET] Asset bytes before signing | LayoutBytes={LayoutBytes} | SealBytes={SealBytes} | SignatureBytes={SignatureBytes}",
+                    input.anhkhung?.Length ?? 0,
+                    input.condau?.Length ?? 0,
+                    input.chukytuoi?.Length ?? 0);
 
                 SignByte signByte = new SignByte(SignClient);
                 byte[]? bytes = input.datapdf;
@@ -176,6 +181,11 @@ namespace HC.BnnSoftSigns
                     input.textsign,
                     xOffset,
                     yOffset);
+                _logger?.LogInformation(
+                    "[SIGN_ASSET_V2] Asset bytes before placeholder signing | LayoutBytes={LayoutBytes} | SealBytes={SealBytes} | SignatureBytes={SignatureBytes}",
+                    input.anhkhung?.Length ?? 0,
+                    input.condau?.Length ?? 0,
+                    input.chukytuoi?.Length ?? 0);
 
                 SignByte signByte = new SignByte(SignClient);
                 byte[] bytes = input.datapdf ?? Array.Empty<byte>();

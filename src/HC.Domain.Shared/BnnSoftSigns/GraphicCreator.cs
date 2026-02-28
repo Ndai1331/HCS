@@ -135,6 +135,14 @@ namespace HC.BnnSoftSigns
             var runtimeLayout = SignGraphicRuntimeContext.CurrentLayout;
             if (runtimeLayout is { Length: > 0 })
             {
+                try
+                {
+                    Console.Error.WriteLine($"[GRAPHIC_LAYOUT] Using runtime layout bytes | Length={runtimeLayout.Length}");
+                }
+                catch
+                {
+                    // Ignore logging failures in graphic generation path.
+                }
                 layout = runtimeLayout;
                 width = 433;
                 height = 250;
@@ -142,6 +150,14 @@ namespace HC.BnnSoftSigns
             }
             else if (hasSeal)
             {
+                try
+                {
+                    Console.Error.WriteLine("[GRAPHIC_LAYOUT] Runtime layout missing. Fallback to embedded/file layout.png");
+                }
+                catch
+                {
+                    // Ignore logging failures in graphic generation path.
+                }
                 layout = LoadLayoutTemplate("layout.png");
                 width = 433;
                 height = 250;
@@ -149,6 +165,14 @@ namespace HC.BnnSoftSigns
             }
             else
             {
+                try
+                {
+                    Console.Error.WriteLine("[GRAPHIC_LAYOUT] Runtime layout missing and no seal. Fallback to embedded/file layout2.png");
+                }
+                catch
+                {
+                    // Ignore logging failures in graphic generation path.
+                }
                 layout = LoadLayoutTemplate("layout2.png");
                 width = 433;
                 height = 250;
@@ -169,10 +193,57 @@ namespace HC.BnnSoftSigns
                     using (var codec = SKCodec.Create(stream))
                     using (var bitmap = new SKBitmap(info.Width, info.Height, info.ColorType, info.IsOpaque ? SKAlphaType.Opaque : SKAlphaType.Premul))
                     {
+                        if (codec == null)
+                        {
+                            throw new InvalidDataException("Cannot decode layout image bytes.");
+                        }
+
+                        try
+                        {
+                            Console.Error.WriteLine(
+                                $"[GRAPHIC_LAYOUT] Decoded layout metadata | EncodedWidth={codec.Info.Width} | EncodedHeight={codec.Info.Height} | ColorType={codec.Info.ColorType}");
+                        }
+                        catch
+                        {
+                            // Ignore logging failures in graphic generation path.
+                        }
+
                         var result = codec.GetPixels(bitmap.Info, bitmap.GetPixels());
+                        try
+                        {
+                            Console.Error.WriteLine(
+                                $"[GRAPHIC_LAYOUT] Layout rasterization result | CodecResult={result} | TargetWidth={bitmap.Width} | TargetHeight={bitmap.Height}");
+                        }
+                        catch
+                        {
+                            // Ignore logging failures in graphic generation path.
+                        }
+
                         if (result == SKCodecResult.Success || result == SKCodecResult.IncompleteInput)
                         {
                             canvas.DrawBitmap(bitmap, 0, 0);
+                        }
+                        else
+                        {
+                            // Some images return InvalidScale when target size differs from encoded size.
+                            using var fallbackBitmap = SKBitmap.Decode(layout);
+                            if (fallbackBitmap == null)
+                            {
+                                throw new InvalidDataException($"Cannot decode layout image. CodecResult={result}");
+                            }
+
+                            try
+                            {
+                                Console.Error.WriteLine(
+                                    $"[GRAPHIC_LAYOUT] Fallback decode used | SourceWidth={fallbackBitmap.Width} | SourceHeight={fallbackBitmap.Height} | DrawWidth={width} | DrawHeight={height}");
+                            }
+                            catch
+                            {
+                                // Ignore logging failures in graphic generation path.
+                            }
+
+                            var destination = new SKRect(0, 0, width, height);
+                            canvas.DrawBitmap(fallbackBitmap, destination);
                         }
                     }
 
