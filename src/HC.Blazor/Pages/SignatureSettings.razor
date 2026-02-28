@@ -643,7 +643,23 @@
                             <FieldLabel>@L["SignHeight"]</FieldLabel>
                             <NumericPicker TValue="int" @bind-Value="@NewSignatureSetting.SignHeight" Decimals="0" />
                         </Field>
+
                         <Field>
+                            <FieldLabel>@L["SignedFileSuffix"] *</FieldLabel>
+                            <TextEdit Text="@NewSignatureSetting.SignedFileSuffix" 
+                                      TextChanged="@((string value) => { NewSignatureSetting.SignedFileSuffix = value; CreateFieldErrors.Remove("SignedFileSuffix"); })"
+                                      Style="@(HasCreateFieldError("SignedFileSuffix") ? "border-color: #dc3545;" : "")" />
+                            @if (HasCreateFieldError("SignedFileSuffix"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateFieldError("SignedFileSuffix")</div>
+                            }
+                        </Field>
+                       
+                       
+                    </Column>
+
+                    <Column ColumnSize="ColumnSize.Is12">
+                     <Field>
                             <FieldLabel>@L["LayoutImg"]</FieldLabel>
                             <FilePicker @ref="CreateLayoutImgFilePicker"
                                         Multiple="false"
@@ -670,16 +686,6 @@
                             @if (HasCreateFieldError("LayoutImg"))
                             {
                                 <div class="invalid-feedback d-block">@GetCreateFieldError("LayoutImg")</div>
-                            }
-                        </Field>
-                        <Field>
-                            <FieldLabel>@L["SignedFileSuffix"] *</FieldLabel>
-                            <TextEdit Text="@NewSignatureSetting.SignedFileSuffix" 
-                                      TextChanged="@((string value) => { NewSignatureSetting.SignedFileSuffix = value; CreateFieldErrors.Remove("SignedFileSuffix"); })"
-                                      Style="@(HasCreateFieldError("SignedFileSuffix") ? "border-color: #dc3545;" : "")" />
-                            @if (HasCreateFieldError("SignedFileSuffix"))
-                            {
-                                <div class="invalid-feedback d-block">@GetCreateFieldError("SignedFileSuffix")</div>
                             }
                         </Field>
                     </Column>

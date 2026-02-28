@@ -312,14 +312,18 @@
                                         <DataGridColumns>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.SignType"
-                                                    Caption="@L["SignType"]">
+                                                    Caption="@L["SignType"]"
+                                                    CellStyle="@((item) => "min-width: 150px")"
+                                                    Width="150px">
                                                 <DisplayTemplate>
                                                     @L[$"Enum:SignType.{context.UserSignature.SignType}"]
                                                 </DisplayTemplate>
                                             </DataGridColumn>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.ProviderCode"
-                                                    Caption="@L["ProviderCode"]">
+                                                    Caption="@L["ProviderCode"]"
+                                                    CellStyle="@((item) => "min-width: 180px")"
+                                                    Width="180px">
                                             </DataGridColumn>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.SignatureImage"
@@ -339,14 +343,6 @@
                                                 </DisplayTemplate>
                                             </DataGridColumn>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
-                                                    Field="UserSignature.TokenRef"
-                                                    Caption="@L["TokenRef"]">
-                                            </DataGridColumn>
-                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
-                                                    Field="UserSignature.Secret"
-                                                    Caption="@L["Secret"]">
-                                            </DataGridColumn>
-                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.SealImg"
                                                     Caption="@L["SealImg"]">
                                                 <DisplayTemplate>
@@ -361,6 +357,22 @@
                                                         <span class="text-muted">@L["NoImage"]</span>
                                                     }
                                                 </DisplayTemplate>
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
+                                                    Field="UserSignature.TokenRef"
+                                                    Caption="@L["TokenRef"]"
+                                                    Width="150px">
+                                                    <DisplayTemplate>
+                                                        <span class="text-muted">@context.UserSignature.TokenRef?.TruncateWithPostfix(20, "...")</span>
+                                                    </DisplayTemplate>
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
+                                                    Field="UserSignature.Secret"
+                                                    Caption="@L["Secret"]"
+                                                    Width="150px">
+                                                    <DisplayTemplate>
+                                                        <span class="text-muted">@context.UserSignature.Secret?.TruncateWithPostfix(20, "...")</span>
+                                                    </DisplayTemplate>
                                             </DataGridColumn>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.ValidFrom"
