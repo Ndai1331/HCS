@@ -38,4 +38,7 @@
     <EmbeddedResource Include="Localization\HC\*.json" />
     <Content Remove="Localization\HC\*.json" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="BnnSoftSigns\*.png" />
+  </ItemGroup>
 </Project>

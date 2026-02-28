@@ -1,17 +1,21 @@
-﻿using Bnn.SignLib;
+using Bnn.SignLib;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using SkiaSharp;
+using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace HC.BnnSoftSigns
 {
     public class GraphicCreator : IGraphicCreator
     {
+        private static readonly Assembly Assembly = typeof(GraphicCreator).Assembly;
+
         static Stream ToStream(byte[] bytes)
         {
             return new MemoryStream(bytes)
@@ -36,9 +40,51 @@ namespace HC.BnnSoftSigns
             return any.Name ?? "Arial";
         }
 
+        private static byte[] LoadLayoutTemplate(string fileName)
+        {
+            // 1) Prefer embedded resource so runtime does not depend on current directory.
+            var embeddedName = Assembly
+                .GetManifestResourceNames()
+                .FirstOrDefault(x =>
+                    x.EndsWith($".BnnSoftSigns.{fileName}", StringComparison.OrdinalIgnoreCase) ||
+                    x.EndsWith($".{fileName}", StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrWhiteSpace(embeddedName))
+            {
+                using var resourceStream = Assembly.GetManifestResourceStream(embeddedName);
+                if (resourceStream != null)
+                {
+                    using var memory = new MemoryStream();
+                    resourceStream.CopyTo(memory);
+                    return memory.ToArray();
+                }
+            }
+
+            // 2) Backward-compatible file system fallback for existing deployments.
+            var candidates = new[]
+            {
+                Path.Combine(AppContext.BaseDirectory, "image", fileName),
+                Path.Combine(AppContext.BaseDirectory, "BnnSoftSigns", fileName),
+                Path.Combine(Directory.GetCurrentDirectory(), "image", fileName),
+                Path.Combine(Directory.GetCurrentDirectory(), "BnnSoftSigns", fileName)
+            };
+
+            var existingPath = candidates.FirstOrDefault(File.Exists);
+            if (!string.IsNullOrWhiteSpace(existingPath))
+            {
+                return File.ReadAllBytes(existingPath);
+            }
+
+            throw new FileNotFoundException(
+                $"Cannot load signing layout template '{fileName}'. " +
+                $"Tried embedded resources and runtime folders: {string.Join(" | ", candidates)}");
+        }
+
         public byte[] CreateGraphic(string nguoiky, string chucvu, string ngayky, byte[] chuky, byte[] condau, int width = 433, int height = 250, int x1 = 10, int x2 = 140, int linebreak = 38)
         {
             byte[]? layout = null;
+            var hasSeal = condau != null && condau.Length > 0;
+            var hasSignature = chuky != null && chuky.Length > 0;
 
             var xcondau = 2;
             var ycondau = 20;
@@ -49,16 +95,16 @@ namespace HC.BnnSoftSigns
             var daichuky = 160;
             var caochuky = 100;
 
-            if (condau != null)
+            if (hasSeal)
             {
-                layout = File.ReadAllBytes("image/layout.png");
+                layout = LoadLayoutTemplate("layout.png");
                 width = 433;
                 height = 250;
                 linebreak = 38;
             }
             else
             {
-                layout = File.ReadAllBytes("image/layout2.png");
+                layout = LoadLayoutTemplate("layout2.png");
                 width = 433;
                 height = 250;
                 linebreak = 38;
@@ -86,13 +132,18 @@ namespace HC.BnnSoftSigns
                     }
 
                     // draw condau and signature images if provided
-                    if (condau != null)
+                    if (hasSeal)
                     {
-                        using (var magstream = ToStream(condau))
+                        using (var magstream = ToStream(condau!))
                         using (var stream = new SKManagedStream(magstream))
                         using (var bitmap = SKBitmap.Decode(stream))
                         using (var paint2 = new SKPaint())
                         {
+                            if (bitmap == null)
+                            {
+                                throw new InvalidDataException("Invalid seal image bytes.");
+                            }
+
                             var bmpRect = SKRectI.Create(200, 200).AspectFit(bitmap.Info.Size);
                             using (var resized = new SKBitmap(bmpRect.Width, bmpRect.Height))
                             {
@@ -113,13 +164,18 @@ namespace HC.BnnSoftSigns
                         ychuky = 20;
                     }
 
-                    if (chuky != null)
+                    if (hasSignature)
                     {
-                        using (var magstream = ToStream(chuky))
+                        using (var magstream = ToStream(chuky!))
                         using (var stream = new SKManagedStream(magstream))
                         using (var bitmap = SKBitmap.Decode(stream))
                         using (var paint2 = new SKPaint())
                         {
+                            if (bitmap == null)
+                            {
+                                throw new InvalidDataException("Invalid signature image bytes.");
+                            }
+
                             var bmpRect = SKRectI.Create(daichuky, caochuky).AspectFit(bitmap.Info.Size);
                             using (var resized = new SKBitmap(bmpRect.Width, bmpRect.Height))
                             {
@@ -192,7 +248,7 @@ namespace HC.BnnSoftSigns
                 {
                     img.Mutate(x => x.Resize(width, height));
 
-                    if (condau != null)
+                    if (hasSeal)
                     {
                         using var condauImg = Image.Load<Rgba32>(condau);
                         condauImg.Mutate(y => y.Resize(200, 200));
@@ -201,7 +257,7 @@ namespace HC.BnnSoftSigns
                         ychuky = ycondau;
                     }
 
-                    if (chuky != null)
+                    if (hasSignature)
                     {
                         using var chukyImg = Image.Load<Rgba32>(chuky);
                         chukyImg.Mutate(y => y.Resize(daichuky, caochuky));
