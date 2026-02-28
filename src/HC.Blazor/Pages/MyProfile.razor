@@ -426,7 +426,7 @@
                             <FieldLabel>@L["SignType"] *</FieldLabel>
                             <Select TValue="SignType?" 
                                     SelectedValue="@NewSignType"
-                                    SelectedValueChanged="@((SignType? value) => { NewSignType = value; CreateSignatureFieldErrors.Remove("SignType"); })"
+                                    SelectedValueChanged="@OnCreateSignTypeChangedAsync"
                                     Autofocus="true"
                                     Style="@(HasCreateSignatureFieldError("SignType") ? "border-color: #dc3545;" : "")">
                                 <ChildContent>
@@ -450,7 +450,7 @@
                             <FieldLabel>@L["ProviderCode"] *</FieldLabel>
                             <Select2 IdSelector="c => c.Id.ToString()"
                                      TextSelector="c => c.DisplayName"
-                                     FilterFunction="GetSignatureSettingsCollectionLookupAsync"
+                                     FilterFunction="GetSignatureSettingsCollectionLookupForCreateAsync"
                                      GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
                                      Datasource="SignatureSettingsCollection"
                                      Value="@SelectedSignatureSettingForCreate"
@@ -576,7 +576,7 @@
                             <FieldLabel>@L["SignType"] *</FieldLabel>
                             <Select TValue="SignType?" 
                                     SelectedValue="@EditingSignType"
-                                    SelectedValueChanged="@((SignType? value) => { EditingSignType = value; EditSignatureFieldErrors.Remove("SignType"); })"
+                                    SelectedValueChanged="@OnEditSignTypeChangedAsync"
                                     Autofocus="true"
                                     Style="@(HasEditSignatureFieldError("SignType") ? "border-color: #dc3545;" : "")">
                                 <ChildContent>
@@ -600,7 +600,7 @@
                             <FieldLabel>@L["ProviderCode"] *</FieldLabel>
                             <Select2 IdSelector="c => c.Id.ToString()"
                                      TextSelector="c => c.DisplayName"
-                                     FilterFunction="GetSignatureSettingsCollectionLookupAsync"
+                                     FilterFunction="GetSignatureSettingsCollectionLookupForEditAsync"
                                      GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
                                      Datasource="SignatureSettingsCollection"
                                      Value="@SelectedSignatureSettingForEdit"

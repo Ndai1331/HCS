@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using HC.DocumentAssignments;
 using HC.SignatureSettings;
@@ -16,8 +17,8 @@ public sealed class DigitalWorkflowSigningStrategy : IWorkflowSigningStrategy, I
         _signingExecutionService = signingExecutionService;
     }
 
-    public Task ApplyAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent)
+    public Task ApplyAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent, Guid? selectedUserSignatureId)
     {
-        return _signingExecutionService.ApplyDigitalSignatureAsync(assignment, instance, noteContent);
+        return _signingExecutionService.ApplyDigitalSignatureAsync(assignment, instance, noteContent, selectedUserSignatureId);
     }
 }

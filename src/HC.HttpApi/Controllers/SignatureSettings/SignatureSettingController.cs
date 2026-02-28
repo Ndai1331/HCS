@@ -92,4 +92,11 @@ public abstract class SignatureSettingControllerBase : AbpController
     {
         return _signatureSettingsAppService.GetSignatureSettingLookupAsync(input);
     }
+
+    [HttpGet]
+    [Route("lookup-by-sign-type")]
+    public virtual Task<PagedResultDto<LookupDto<Guid>>> GetSignatureSettingLookupBySignTypeAsync(GetSignatureSettingLookupBySignTypeInput input)
+    {
+        return _signatureSettingsAppService.GetSignatureSettingLookupBySignTypeAsync(input);
+    }
 }

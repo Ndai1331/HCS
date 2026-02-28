@@ -554,7 +554,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         if (input.Action.ToUpper() == nameof(WorkflowInstanceLogAction.APPROVE))
         {
-            await ApplySigningByMethodAsync(assignment, instance, input.SigningMethodId, input.Note);
+            await ApplySigningByMethodAsync(assignment, instance, input.SigningMethodId, input.Note, input.UserSignatureId);
         }
 
         switch (input.Action.ToUpper())
@@ -2105,7 +2105,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         DocumentAssignment assignment,
         DocumentWorkflowInstance instance,
         Guid? signingMethodId,
-        string? noteContent)
+        string? noteContent,
+        Guid? selectedUserSignatureId)
     {
         if (!signingMethodId.HasValue)
         {
@@ -2127,7 +2128,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             .FirstOrDefault(x => x.MethodCode == signingMethod.Code);
         if (strategy != null)
         {
-            await strategy.ApplyAsync(assignment, instance, noteContent);
+            await strategy.ApplyAsync(assignment, instance, noteContent, selectedUserSignatureId);
         }
     }
 

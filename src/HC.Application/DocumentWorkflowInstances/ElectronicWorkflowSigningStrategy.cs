@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using HC.DocumentAssignments;
 using HC.SignatureSettings;
@@ -10,7 +11,7 @@ public interface IWorkflowSigningStrategy
 {
     string MethodCode { get; }
 
-    Task ApplyAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent);
+    Task ApplyAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent, Guid? selectedUserSignatureId);
 }
 
 
@@ -25,8 +26,8 @@ public sealed class ElectronicWorkflowSigningStrategy : IWorkflowSigningStrategy
         _signingExecutionService = signingExecutionService;
     }
 
-    public Task ApplyAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent)
+    public Task ApplyAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent, Guid? selectedUserSignatureId)
     {
-        return _signingExecutionService.ApplyElectronicSignatureAsync(assignment, instance, noteContent);
+        return _signingExecutionService.ApplyElectronicSignatureAsync(assignment, instance, noteContent, selectedUserSignatureId);
     }
 }

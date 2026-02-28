@@ -28,6 +28,7 @@
 @using HC.DocumentHistories
 @using HC.DocumentAssignments
 @using HC.MasterDatas
+@using HC.UserSignatures
 @using Volo.Abp.Identity
 @using Volo.Abp.Timing
 
@@ -764,7 +765,7 @@
                                             <FieldLabel class="fw-bold">@L["SelectSigningMethod"] <span class="text-danger">*</span></FieldLabel>
                                             <Select TValue="Guid?"
                                                 SelectedValue="@SelectedSigningMethodId"
-                                                SelectedValueChanged="@(val => SelectedSigningMethodId = val)">
+                                                SelectedValueChanged="@OnSigningMethodChangedAsync">
                                                 <SelectItem TValue="Guid?" Value="@null">-- @L["SelectSigningMethod"] --</SelectItem>
                                                 @foreach (var sm in SigningMethods)
                                                 {
@@ -772,6 +773,24 @@
                                                 }
                                             </Select>
                                         </Field>
+
+                                        @if (AvailableUserSignaturesForMethod.Count > 1)
+                                        {
+                                            <Field>
+                                                <FieldLabel class="fw-bold">@L["SelectUserSignature"] <span class="text-danger">*</span></FieldLabel>
+                                                <Select TValue="Guid?"
+                                                    SelectedValue="@SelectedUserSignatureId"
+                                                    SelectedValueChanged="@(val => SelectedUserSignatureId = val)">
+                                                    <SelectItem TValue="Guid?" Value="@null">-- @L["SelectUserSignature"] --</SelectItem>
+                                                    @foreach (var signature in AvailableUserSignaturesForMethod)
+                                                    {
+                                                        <SelectItem TValue="Guid?" Value="@signature.UserSignature.Id">
+                                                            @GetUserSignatureDisplayName(signature)
+                                                        </SelectItem>
+                                                    }
+                                                </Select>
+                                            </Field>
+                                        }
                                     }
 
                                     @* Note *@
@@ -1055,7 +1074,7 @@
             <Button Color="Color.Secondary" Clicked="CloseActionModalAsync">@L["Close"]</Button>
             @if (!IsViewOnly)
             {
-                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsOverdue || string.IsNullOrEmpty(SelectedAction) || (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && !SelectedSigningMethodId.HasValue))">
+                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsOverdue || string.IsNullOrEmpty(SelectedAction) || (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && (!SelectedSigningMethodId.HasValue || (AvailableUserSignaturesForMethod.Count > 1 && !SelectedUserSignatureId.HasValue))))">
                     <Icon Name="IconName.Check" Class="me-1" />@L["Confirm"]
                 </Button>
             }

@@ -30,4 +30,10 @@ public class WorkflowActionInput
     /// References MasterData with Type = "LOAI_KY".
     /// </summary>
     public Guid? SigningMethodId { get; set; }
+
+    /// <summary>
+    /// Selected user signature ID (optional).
+    /// Used when user has multiple active/valid signatures for the same sign type.
+    /// </summary>
+    public Guid? UserSignatureId { get; set; }
 }

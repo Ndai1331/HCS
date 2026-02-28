@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using HC.BnnSoftSigns;
 using HC.DocumentAssignments;
@@ -29,9 +30,9 @@ namespace HC.DocumentWorkflowInstances;
 
 public interface IWorkflowSigningExecutionService
 {
-    Task ApplyElectronicSignatureAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent);
+    Task ApplyElectronicSignatureAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent, Guid? selectedUserSignatureId = null);
 
-    Task ApplyDigitalSignatureAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent);
+    Task ApplyDigitalSignatureAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent, Guid? selectedUserSignatureId = null);
 
     Task<byte[]> ResolveSignatureImageBytesAsync(string signatureImage);
 
@@ -92,16 +93,27 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
     public async Task ApplyDigitalSignatureAsync(
         DocumentAssignment assignment,
         DocumentWorkflowInstance instance,
-        string? noteContent)
+        string? noteContent,
+        Guid? selectedUserSignatureId = null)
     {
         var currentUserId = _currentUser.Id ?? throw new UserFriendlyException(_localizer["NotAuthorizedForThisAction"]);
         var now = _clock.Now;
 
         var sigQueryable = await _userSignatureRepository.GetQueryableAsync();
-        var signature = await _asyncExecuter.FirstOrDefaultAsync(
-            sigQueryable.Where(s => s.IdentityUserId == currentUserId
-                && s.SignType == nameof(SignType.DIGITAL)
-                && s.IsActive));
+        var signatureQuery = sigQueryable.Where(s => s.IdentityUserId == currentUserId
+            && s.SignType == nameof(SignType.DIGITAL)
+            && s.IsActive);
+        if (selectedUserSignatureId.HasValue)
+        {
+            signatureQuery = signatureQuery.Where(s => s.Id == selectedUserSignatureId.Value);
+        }
+
+        var signature = await _asyncExecuter.FirstOrDefaultAsync(signatureQuery);
+        if (selectedUserSignatureId.HasValue && signature == null)
+        {
+            throw new UserFriendlyException(_localizer["SelectedUserSignatureNotFound"]);
+        }
+
 
         if (signature == null)
         {
@@ -121,6 +133,16 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         if (string.IsNullOrWhiteSpace(signature.Secret))
         {
             throw new UserFriendlyException(_localizer["DigitalSignatureSecretRequired"]);
+        }
+
+        if (signature.ValidFrom.HasValue && signature.ValidFrom.Value > now)
+        {
+            throw new UserFriendlyException(_localizer["SignatureNotYetValid"]);
+        }
+
+        if (signature.ValidTo.HasValue && signature.ValidTo.Value < now)
+        {
+            throw new UserFriendlyException(_localizer["SignatureExpired"]);
         }
 
         var settingQueryable = await _signatureSettingRepository.GetQueryableAsync();
@@ -155,15 +177,16 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         var placeholderTag = $"<<Sign{assignment.StepOrder:D2}>>";
         var signer = new SignText(signature.TokenRef, signature.Secret, signatureSetting.ApiEndpoint);
+        var defaultSealBytes = ResolveDefaultSealBytes();
 
         byte[]? signedPdfBytes;
         try
         {
-            signedPdfBytes = signer.SignTextLocationCustomize(new SignPdfInput
+            signedPdfBytes = signer.SignTextLocationCustomizeV2(new SignPdfInput
             {
                 datapdf = pdfBytes,
                 chukytuoi = signatureImageBytes,
-                condau = Array.Empty<byte>(),
+                condau = defaultSealBytes,
                 signaturename = Guid.NewGuid().ToString("N"),
                 nguoiky = fullName,
                 chucvu = string.Empty,
@@ -180,7 +203,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 imgheight = signatureSetting.SignHeight > 0 ? signatureSetting.SignHeight : 70,
                 borderstyle = 0,
                 bordercolor = "#000000"
-            });
+            }, xOffset: 0, yOffset: 42);
         }
         catch (Exception ex)
         {
@@ -191,6 +214,20 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         if (signedPdfBytes == null || signedPdfBytes.Length == 0)
         {
             throw new UserFriendlyException(_localizer["DigitalSigningFailed", "Provider returned empty response"]);
+        }
+
+        try
+        {
+            signedPdfBytes = ReplacePdfNameAndNotePlaceholders(
+                signedPdfBytes,
+                assignment.StepOrder,
+                fullName,
+                noteContent ?? string.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[DIGITAL_SIGN] Error replacing name/note placeholders. StepOrder={StepOrder}", assignment.StepOrder);
+            throw new UserFriendlyException(_localizer["ErrorProcessingPdf", ex.Message]);
         }
 
         var extension = Path.GetExtension(sourceFile.Name);
@@ -222,17 +259,23 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
     public async Task ApplyElectronicSignatureAsync(
         DocumentAssignment assignment,
         DocumentWorkflowInstance instance,
-        string? noteContent)
+        string? noteContent,
+        Guid? selectedUserSignatureId = null)
     {
         var currentUserId = _currentUser.Id ?? throw new UserFriendlyException(_localizer["NotAuthorizedForThisAction"]);
         UserSignature? signature;
         try
         {
             var sigQueryable = await _userSignatureRepository.GetQueryableAsync();
-            signature = await _asyncExecuter.FirstOrDefaultAsync(
-                sigQueryable.Where(s => s.IdentityUserId == currentUserId
-                    && s.SignType == nameof(SignType.ELECTRONIC)
-                    && s.IsActive));
+            var signatureQuery = sigQueryable.Where(s => s.IdentityUserId == currentUserId
+                && s.SignType == nameof(SignType.ELECTRONIC)
+                && s.IsActive);
+            if (selectedUserSignatureId.HasValue)
+            {
+                signatureQuery = signatureQuery.Where(s => s.Id == selectedUserSignatureId.Value);
+            }
+
+            signature = await _asyncExecuter.FirstOrDefaultAsync(signatureQuery);
         }
         catch (Exception ex)
         {
@@ -242,6 +285,11 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         if (signature == null)
         {
+            if (selectedUserSignatureId.HasValue)
+            {
+                throw new UserFriendlyException(_localizer["SelectedUserSignatureNotFound"]);
+            }
+
             throw new UserFriendlyException(_localizer["UserHasNoElectronicSignature"]);
         }
 
@@ -425,6 +473,44 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         string fullName,
         string noteContent)
     {
+        return ReplacePdfPlaceholdersInternal(
+            pdfBytes,
+            stepOrder,
+            signatureImageBytes,
+            fullName,
+            noteContent,
+            includeSign: true,
+            includeFullName: true,
+            includeNote: true);
+    }
+
+    private byte[] ReplacePdfNameAndNotePlaceholders(
+        byte[] pdfBytes,
+        int stepOrder,
+        string fullName,
+        string noteContent)
+    {
+        return ReplacePdfPlaceholdersInternal(
+            pdfBytes,
+            stepOrder,
+            signatureImageBytes: null,
+            fullName,
+            noteContent,
+            includeSign: false,
+            includeFullName: true,
+            includeNote: true);
+    }
+
+    private byte[] ReplacePdfPlaceholdersInternal(
+        byte[] pdfBytes,
+        int stepOrder,
+        byte[]? signatureImageBytes,
+        string fullName,
+        string noteContent,
+        bool includeSign,
+        bool includeFullName,
+        bool includeNote)
+    {
         var suffix = stepOrder.ToString("D2");
         var signTag = $"<<Sign{suffix}>>";
         var nameTag = $"<<FullName{suffix}>>";
@@ -449,12 +535,21 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 }
 
                 var fullText = string.Concat(letters.Select(l => l.Value));
-                var searchPairs = new[]
+                var searchPairs = new List<(string Tag, string Type)>();
+                if (includeSign)
                 {
-                    (Tag: signTag, Type: "SIGN"),
-                    (Tag: nameTag, Type: "FULLNAME"),
-                    (Tag: noteTag, Type: "NOTE")
-                };
+                    searchPairs.Add((signTag, "SIGN"));
+                }
+
+                if (includeFullName)
+                {
+                    searchPairs.Add((nameTag, "FULLNAME"));
+                }
+
+                if (includeNote)
+                {
+                    searchPairs.Add((noteTag, "NOTE"));
+                }
 
                 foreach (var (tag, type) in searchPairs)
                 {
@@ -524,7 +619,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             switch (pos.Type)
             {
                 case "SIGN":
-                    if (signatureImageBytes.Length > 0)
+                    if (signatureImageBytes != null && signatureImageBytes.Length > 0)
                     {
                         using var imgStream = new MemoryStream(signatureImageBytes);
                         var img = PdfSharpDrawing.XImage.FromStream(imgStream);
@@ -562,5 +657,36 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         using var outputStream = new MemoryStream();
         document.Save(outputStream);
         return outputStream.ToArray();
+    }
+
+    private static byte[] ResolveDefaultSealBytes()
+    {
+        try
+        {
+            var assembly = typeof(GraphicCreator).Assembly;
+            var resourceName = assembly.GetManifestResourceNames()
+                .FirstOrDefault(x =>
+                    x.EndsWith(".BnnSoftSigns.condau.png", StringComparison.OrdinalIgnoreCase) ||
+                    x.EndsWith(".condau.png", StringComparison.OrdinalIgnoreCase));
+
+            if (string.IsNullOrWhiteSpace(resourceName))
+            {
+                return Array.Empty<byte>();
+            }
+
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream == null)
+            {
+                return Array.Empty<byte>();
+            }
+
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
+        }
+        catch
+        {
+            return Array.Empty<byte>();
+        }
     }
 }

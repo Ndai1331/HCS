@@ -28,6 +28,7 @@ using System.IO;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.Http.Client;
 using HC.SignatureSettings;
+using Volo.Abp.Application.Dtos;
 
 
 namespace HC.Blazor.Pages;
@@ -155,7 +156,6 @@ public partial class MyProfile
         await LoadUserProfileAsync();
         await LoadUserDepartmentsAsync();
         await LoadUserSignaturesAsync();
-        await LoadSignatureSettingsLookupAsync();
     }
 
     protected virtual async Task LoadUserProfileAsync()
@@ -324,7 +324,8 @@ public partial class MyProfile
         CreateSignatureValidationErrorKey = null;
         CreateSignatureFieldErrors.Clear();
         SelectedSignatureSettingForCreate.Clear();
-        await LoadSignatureSettingsLookupAsync();
+        SignatureSettingsCollection = new List<LookupDto<Guid>>();
+        SignatureSettingsIdToCodeMap.Clear();
         await CreateUserSignatureModal.Show();
     }
 
@@ -426,7 +427,7 @@ public partial class MyProfile
         EditSignatureValidationErrorKey = null;
         EditSignatureFieldErrors.Clear();
         
-        await LoadSignatureSettingsLookupAsync();
+        await LoadSignatureSettingsLookupAsync(signType: EditingUserSignature.SignType);
         
         // Set selected signature setting for Select2
         var signatureSettingId = SignatureSettingsIdToCodeMap
@@ -571,6 +572,24 @@ public partial class MyProfile
     {
         get => Enum.TryParse<SignType>(EditingUserSignature.SignType, out var result) ? result : null;
         set => EditingUserSignature.SignType = value?.ToString() ?? string.Empty;
+    }
+
+    protected virtual async Task OnCreateSignTypeChangedAsync(SignType? value)
+    {
+        NewSignType = value;
+        CreateSignatureFieldErrors.Remove("SignType");
+        SelectedSignatureSettingForCreate.Clear();
+        await LoadSignatureSettingsLookupAsync(signType: value?.ToString());
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected virtual async Task OnEditSignTypeChangedAsync(SignType? value)
+    {
+        EditingSignType = value;
+        EditSignatureFieldErrors.Remove("SignType");
+        SelectedSignatureSettingForEdit.Clear();
+        await LoadSignatureSettingsLookupAsync(signType: value?.ToString());
+        await InvokeAsync(StateHasChanged);
     }
 
     private static bool IsDigitalSignType(string? signType)
@@ -886,9 +905,23 @@ public partial class MyProfile
     }
 
     // Signature Settings Lookup Methods
-    protected virtual async Task LoadSignatureSettingsLookupAsync(string? filterText = null)
+    protected virtual async Task LoadSignatureSettingsLookupAsync(string? filterText = null, string? signType = null)
     {
-        var result = await SignatureSettingsAppService.GetSignatureSettingLookupAsync(new LookupRequestDto { Filter = filterText });
+        PagedResultDto<LookupDto<Guid>> result;
+        if (!string.IsNullOrWhiteSpace(signType))
+        {
+            result = await SignatureSettingsAppService.GetSignatureSettingLookupBySignTypeAsync(
+                new GetSignatureSettingLookupBySignTypeInput
+                {
+                    Filter = filterText,
+                    DefaultSignType = signType
+                });
+        }
+        else
+        {
+            result = await SignatureSettingsAppService.GetSignatureSettingLookupAsync(new LookupRequestDto { Filter = filterText });
+        }
+
         SignatureSettingsCollection = result.Items;
         
         // Build mapper from SignatureSetting Id to ProviderCode
@@ -899,9 +932,15 @@ public partial class MyProfile
         }
     }
 
-    protected virtual async Task<List<LookupDto<Guid>>> GetSignatureSettingsCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    protected virtual async Task<List<LookupDto<Guid>>> GetSignatureSettingsCollectionLookupForCreateAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
-        await LoadSignatureSettingsLookupAsync(filter);
+        await LoadSignatureSettingsLookupAsync(filter, NewSignType?.ToString());
+        return SignatureSettingsCollection.ToList();
+    }
+
+    protected virtual async Task<List<LookupDto<Guid>>> GetSignatureSettingsCollectionLookupForEditAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    {
+        await LoadSignatureSettingsLookupAsync(filter, EditingSignType?.ToString());
         return SignatureSettingsCollection.ToList();
     }
 

@@ -26,6 +26,7 @@ using Microsoft.JSInterop;
 using Volo.Abp.AspNetCore.Components.Messages;
 using Volo.Abp.BlobStoring;
 using HC.SignatureSettings;
+using HC.UserSignatures;
 
 namespace HC.Blazor.Pages.Documents;
 
@@ -33,6 +34,7 @@ public partial class DocumentSigning
 {
     [Inject] private IDocumentAssignmentsAppService DocumentAssignmentsAppService { get; set; } = default!;
     [Inject] private IMasterDatasAppService MasterDatasAppService { get; set; } = default!;
+    [Inject] private IUserSignaturesAppService UserSignaturesAppService { get; set; } = default!;
 
     #region Properties
 
@@ -111,6 +113,8 @@ public partial class DocumentSigning
     // Signing Methods (MasterData Type = "LOAI_KY")
     private List<MasterDataDto> SigningMethods { get; set; } = new();
     private Guid? SelectedSigningMethodId { get; set; }
+    private List<UserSignatureWithNavigationPropertiesDto> AvailableUserSignaturesForMethod { get; set; } = new();
+    private Guid? SelectedUserSignatureId { get; set; }
 
     // Signing Document Files (from DocumentAssignments.DocumentFileResultId)
     private List<DocumentAssignmentWithNavigationPropertiesDto> SigningDocumentAssignments { get; set; } = new();
@@ -721,6 +725,8 @@ public partial class DocumentSigning
             AllowReturnAction = false;
             IsViewOnly = viewOnly;
             SelectedSigningMethodId = null;
+            AvailableUserSignaturesForMethod = new();
+            SelectedUserSignatureId = null;
 
             // Load all data in parallel
             var tasks = new List<Task>();
@@ -797,6 +803,15 @@ public partial class DocumentSigning
                 return;
             }
 
+            if (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE)
+                && AvailableUserSignaturesForMethod.Count > 1
+                && !SelectedUserSignatureId.HasValue)
+            {
+                await UiMessageService.Error(L["PleaseSelectUserSignature"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                return;
+            }
+
             // Confirmation message based on action
             var confirmMessage = SelectedAction switch
             {
@@ -830,7 +845,8 @@ public partial class DocumentSigning
                 DocumentAssignmentId = SelectedDocumentForAction.MyAssignmentId.Value,
                 Action = SelectedAction,
                 Note = ActionNote,
-                SigningMethodId = SelectedSigningMethodId
+                SigningMethodId = SelectedSigningMethodId,
+                UserSignatureId = SelectedUserSignatureId
             };
 
             await DocumentWorkflowInstancesAppService.ProcessWorkflowActionAsync(input);
@@ -1113,6 +1129,54 @@ public partial class DocumentSigning
         nameof(WorkflowInstanceLogAction.SIGN) => "bi bi-pen-fill",
         _ => "bi bi-circle"
     };
+
+    private async Task OnSigningMethodChangedAsync(Guid? signingMethodId)
+    {
+        SelectedSigningMethodId = signingMethodId;
+        SelectedUserSignatureId = null;
+        AvailableUserSignaturesForMethod = new();
+
+        if (!signingMethodId.HasValue || !CurrentUser.Id.HasValue)
+        {
+            return;
+        }
+
+        var selectedMethod = SigningMethods.FirstOrDefault(m => m.Id == signingMethodId.Value);
+        if (selectedMethod == null
+            || (selectedMethod.Code != nameof(SignType.ELECTRONIC) && selectedMethod.Code != nameof(SignType.DIGITAL)))
+        {
+            return;
+        }
+
+        var result = await UserSignaturesAppService.GetListAsync(new GetUserSignaturesInput
+        {
+            IdentityUserId = CurrentUser.Id.Value,
+            SignType = selectedMethod.Code,
+            IsActive = true,
+            MaxResultCount = 100,
+            SkipCount = 0,
+            Sorting = "ValidTo desc"
+        });
+
+        var now = Clock.Now;
+        AvailableUserSignaturesForMethod = result.Items
+            .Where(x =>
+                (!x.UserSignature.ValidFrom.HasValue || x.UserSignature.ValidFrom.Value <= now)
+                && (!x.UserSignature.ValidTo.HasValue || x.UserSignature.ValidTo.Value >= now))
+            .ToList();
+
+        if (AvailableUserSignaturesForMethod.Count == 1)
+        {
+            SelectedUserSignatureId = AvailableUserSignaturesForMethod[0].UserSignature.Id;
+        }
+    }
+
+    private string GetUserSignatureDisplayName(UserSignatureWithNavigationPropertiesDto item)
+    {
+        var providerCode = item.UserSignature.ProviderCode;
+        var validTo = item.UserSignature.ValidTo?.ToString("dd/MM/yyyy") ?? "--";
+        return $"{providerCode} (ValidTo: {validTo})";
+    }
 
     private void NavigateToDocumentDetail(Guid documentId)
     {
