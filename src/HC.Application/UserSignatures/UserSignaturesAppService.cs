@@ -93,6 +93,7 @@ public abstract class UserSignaturesAppServiceBase : HCAppService
             input.IsActive,
             input.TokenRef,
             input.Secret,
+            input.SealImg,
             input.ValidFrom,
             input.ValidTo);
         return ObjectMapper.Map<UserSignature, UserSignatureDto>(userSignature);
@@ -115,6 +116,7 @@ public abstract class UserSignaturesAppServiceBase : HCAppService
             input.IsActive,
             input.TokenRef,
             input.Secret,
+            input.SealImg,
             input.ValidFrom,
             input.ValidTo,
             input.ConcurrencyStamp);
@@ -137,6 +139,7 @@ public abstract class UserSignaturesAppServiceBase : HCAppService
             ProviderCode = item.UserSignature.ProviderCode,
             TokenRef = item.UserSignature.TokenRef,
             Secret = item.UserSignature.Secret,
+            SealImg = item.UserSignature.SealImg,
             SignatureImage = item.UserSignature.SignatureImage,
             ValidFrom = item.UserSignature.ValidFrom,
             ValidTo = item.UserSignature.ValidTo,

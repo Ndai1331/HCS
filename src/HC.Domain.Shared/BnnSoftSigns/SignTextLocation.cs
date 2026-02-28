@@ -86,39 +86,44 @@ namespace HC.BnnSoftSigns
                     input.width,
                     input.height);
 
-                var signed = pdf.SignPdfHashThumbnail(cert,
-                                                      chain,
-                                                      DateTime.Now,
-                                                      input.hashalg,
-                                                      input.typesignature,
-                                                      input.condau,
-                                                      input.chukytuoi,
-                                                      input.nguoiky,
-                                                      input.chucvu,
-                                                      input.signaturename,
-                                                      input.pagesign,
-                                                      input.xpoint,
-                                                      input.ypoint,
-                                                      input.width,
-                                                      input.height,
-                                                      input.imgwidth,
-                                                      input.imgheight,
-                                                      input.borderstyle,
-                                                      input.bordercolor,
-                                                      input.fontcolor,
-                                                      input.fontname,
-                                                      input.fontstyle,
-                                                      input.fontsize,
-                                                      input.tylecondau,
-                                                      input.tylechukytuoi,
-                                                      input.textscale,
-                                                      input.padleft,
-                                                      input.padtop,
-                                                      new GraphicCreator());
+                byte[]? signedPdf;
+                using (SignGraphicRuntimeContext.UseLayout(input.anhkhung))
+                {
+                    var signed = pdf.SignPdfHashThumbnail(cert,
+                                                          chain,
+                                                          DateTime.Now,
+                                                          input.hashalg,
+                                                          input.typesignature,
+                                                          input.condau,
+                                                          input.chukytuoi,
+                                                          input.nguoiky,
+                                                          input.chucvu,
+                                                          input.signaturename,
+                                                          input.pagesign,
+                                                          input.xpoint,
+                                                          input.ypoint,
+                                                          input.width,
+                                                          input.height,
+                                                          input.imgwidth,
+                                                          input.imgheight,
+                                                          input.borderstyle,
+                                                          input.bordercolor,
+                                                          input.fontcolor,
+                                                          input.fontname,
+                                                          input.fontstyle,
+                                                          input.fontsize,
+                                                          input.tylecondau,
+                                                          input.tylechukytuoi,
+                                                          input.textscale,
+                                                          input.padleft,
+                                                          input.padtop,
+                                                          new GraphicCreator());
+                    signedPdf = signed?.Pdf;
+                }
 
                 stopwatch.Stop();
 
-                if (signed?.Pdf == null)
+                if (signedPdf == null)
                 {
                     _logger?.LogError(
                         "[SIGN_ERROR] Signing returned null result | Duration: {DurationMs}ms | SignatureName: {SignatureName}",
@@ -131,10 +136,10 @@ namespace HC.BnnSoftSigns
                     "[SIGN_SUCCESS] PDF signed successfully | Duration: {DurationMs}ms | OriginalSize: {OriginalSize} bytes | SignedSize: {SignedSize} bytes | SignatureName: {SignatureName}",
                     stopwatch.ElapsedMilliseconds,
                     bytes?.Length ?? 0,
-                    signed.Pdf.Length,
+                    signedPdf.Length,
                     input.signaturename);
 
-                return signed.Pdf;
+                return signedPdf;
             }
             catch (Exception ex)
             {
@@ -240,12 +245,17 @@ namespace HC.BnnSoftSigns
                         input.width,
                         input.height);
 
-                    var signed = pdf.SignPdfHashThumbnail(cert, chain, DateTime.Now, input.hashalg, input.typesignature, input.condau, input.chukytuoi, input.nguoiky, input.chucvu, input.signaturename,
-                        input.pagesign, input.xpoint, input.ypoint, input.width, input.height, input.imgwidth, input.imgheight, input.borderstyle, input.bordercolor, input.fontcolor, input.fontname, input.fontstyle, input.fontsize, input.tylecondau, input.tylechukytuoi, input.textscale, input.padleft, input.padtop,
-                        new GraphicCreator());
+                    byte[]? signedPdf;
+                    using (SignGraphicRuntimeContext.UseLayout(input.anhkhung))
+                    {
+                        var signed = pdf.SignPdfHashThumbnail(cert, chain, DateTime.Now, input.hashalg, input.typesignature, input.condau, input.chukytuoi, input.nguoiky, input.chucvu, input.signaturename,
+                            input.pagesign, input.xpoint, input.ypoint, input.width, input.height, input.imgwidth, input.imgheight, input.borderstyle, input.bordercolor, input.fontcolor, input.fontname, input.fontstyle, input.fontsize, input.tylecondau, input.tylechukytuoi, input.textscale, input.padleft, input.padtop,
+                            new GraphicCreator());
+                        signedPdf = signed?.Pdf;
+                    }
 
                     stopwatch.Stop();
-                    if (signed?.Pdf == null)
+                    if (signedPdf == null)
                     {
                         _logger?.LogError(
                             "[SIGN_ERROR_V2] Signing returned null result | Duration: {DurationMs}ms | SignatureName: {SignatureName}",
@@ -258,10 +268,10 @@ namespace HC.BnnSoftSigns
                         "[SIGN_SUCCESS_V2] PDF signed successfully | Duration: {DurationMs}ms | OriginalSize: {OriginalSize} bytes | SignedSize: {SignedSize} bytes | SignatureName: {SignatureName}",
                         stopwatch.ElapsedMilliseconds,
                         bytes.Length,
-                        signed.Pdf.Length,
+                        signedPdf.Length,
                         input.signaturename);
 
-                    return signed.Pdf;
+                    return signedPdf;
                 }
 
                 stopwatch.Stop();

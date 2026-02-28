@@ -27,6 +27,9 @@ public abstract class UserSignatureBase : FullAuditedAggregateRoot<Guid>, IMulti
     [CanBeNull]
     public virtual string? Secret { get; set; }
 
+    [CanBeNull]
+    public virtual string? SealImg { get; set; }
+
     [NotNull]
     public virtual string SignatureImage { get; set; }
 
@@ -51,6 +54,7 @@ public abstract class UserSignatureBase : FullAuditedAggregateRoot<Guid>, IMulti
         bool isActive,
         string? tokenRef = null,
         string? secret = null,
+        string? sealImg = null,
         DateTime? validFrom = null,
         DateTime? validTo = null)
     {
@@ -64,6 +68,7 @@ public abstract class UserSignatureBase : FullAuditedAggregateRoot<Guid>, IMulti
         IsActive = isActive;
         TokenRef = tokenRef;
         Secret = secret;
+        SealImg = sealImg;
         ValidFrom = validFrom;
         ValidTo = validTo;
         IdentityUserId = identityUserId;

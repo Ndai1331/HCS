@@ -20,6 +20,7 @@ using Microsoft.JSInterop;
 using Volo.Abp;
 using Volo.Abp.Content;
 using Volo.Abp.AspNetCore.Components.Messages;
+using Volo.Abp.BlobStoring;
 namespace HC.Blazor.Pages;
 
 public partial class SignatureSettings : HCComponentBase
@@ -47,6 +48,10 @@ public partial class SignatureSettings : HCComponentBase
     private SignatureSettingCreateDto NewSignatureSetting { get; set; }
 
     private SignatureSettingUpdateDto EditingSignatureSetting { get; set; }
+    private FilePicker CreateLayoutImgFilePicker { get; set; } = new();
+    private FilePicker EditLayoutImgFilePicker { get; set; } = new();
+    private bool IsUploadingLayoutImg { get; set; }
+    private string? _apiBaseUrl;
 
     // Field-level validation errors
     private Dictionary<string, string?> CreateFieldErrors { get; set; } = new();
@@ -92,6 +97,8 @@ public partial class SignatureSettings : HCComponentBase
     protected override async Task OnInitializedAsync()
     {
         await SetPermissionsAsync();
+        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
+        _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -325,6 +332,16 @@ public partial class SignatureSettings : HCComponentBase
             isValid = false;
         }
 
+        if (NewSignatureSetting.AllowDigitalSign && string.IsNullOrWhiteSpace(NewSignatureSetting.LayoutImg))
+        {
+            CreateFieldErrors["LayoutImg"] = L["LayoutImgRequiredForDigitalSign"];
+            if (isValid)
+            {
+                CreateSignatureSettingValidationErrorKey = "LayoutImgRequiredForDigitalSign";
+            }
+            isValid = false;
+        }
+
         return isValid;
     }
 
@@ -416,6 +433,16 @@ public partial class SignatureSettings : HCComponentBase
             if (isValid)
             {
                 EditSignatureSettingValidationErrorKey = "SignedFileSuffixRequired";
+            }
+            isValid = false;
+        }
+
+        if (EditingSignatureSetting.AllowDigitalSign && string.IsNullOrWhiteSpace(EditingSignatureSetting.LayoutImg))
+        {
+            EditFieldErrors["LayoutImg"] = L["LayoutImgRequiredForDigitalSign"];
+            if (isValid)
+            {
+                EditSignatureSettingValidationErrorKey = "LayoutImgRequiredForDigitalSign";
             }
             isValid = false;
         }
@@ -643,5 +670,101 @@ public partial class SignatureSettings : HCComponentBase
     {
         Filter.DefaultSignType = value?.ToString();
         await OnDefaultSignTypeChangedAsync(Filter.DefaultSignType);
+    }
+
+    protected virtual async Task OnCreateLayoutImgFileChanged(FileChangedEventArgs e)
+    {
+        if (e.Files != null && e.Files.Any())
+        {
+            await UploadLayoutImgFileAsync(e.Files.First(), false);
+        }
+    }
+
+    protected virtual async Task OnEditLayoutImgFileChanged(FileChangedEventArgs e)
+    {
+        if (e.Files != null && e.Files.Any())
+        {
+            await UploadLayoutImgFileAsync(e.Files.First(), true);
+        }
+    }
+
+    protected virtual async Task UploadLayoutImgFileAsync(IFileEntry file, bool isEditMode)
+    {
+        try
+        {
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg" };
+            var fileExtension = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (!allowedExtensions.Contains(fileExtension))
+            {
+                await Message.Error(L["OnlyImageFilesAllowed"]);
+                if (isEditMode)
+                {
+                    await EditLayoutImgFilePicker.Clear();
+                }
+                else
+                {
+                    await CreateLayoutImgFilePicker.Clear();
+                }
+                return;
+            }
+
+            if (file.Size > 52428800)
+            {
+                await Message.Error(L["FileSizeTooLarge"]);
+                if (isEditMode)
+                {
+                    await EditLayoutImgFilePicker.Clear();
+                }
+                else
+                {
+                    await CreateLayoutImgFilePicker.Clear();
+                }
+                return;
+            }
+
+            IsUploadingLayoutImg = true;
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream(long.MaxValue).CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+            var filePath = $"signature-layout-images/{Guid.NewGuid()}_{file.Name}";
+            await BlobContainer.SaveAsync(filePath, memoryStream.ToArray());
+
+            if (isEditMode)
+            {
+                EditingSignatureSetting.LayoutImg = filePath;
+                EditFieldErrors.Remove("LayoutImg");
+            }
+            else
+            {
+                NewSignatureSetting.LayoutImg = filePath;
+                CreateFieldErrors.Remove("LayoutImg");
+            }
+
+            await Message.Success(L["FileUploadedSuccessfully"]);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsUploadingLayoutImg = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected virtual string GetImageUrl(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath))
+        {
+            return string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(_apiBaseUrl))
+        {
+            _apiBaseUrl = "/";
+        }
+
+        return $"{_apiBaseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
     }
 }

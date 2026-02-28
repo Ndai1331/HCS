@@ -18,6 +18,7 @@
 @using HC.Permissions
 @using Volo.Abp.AspNetCore.Components.Web
 @using Volo.Abp.AspNetCore.Components
+@using Volo.Abp.BlobStoring
 @using Microsoft.AspNetCore.Components
 @using Volo.Abp.Http.Client
 @inherits HCComponentBase
@@ -26,6 +27,7 @@
 @inject IBlockUiService BlockUiService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
+@inject IBlobContainer BlobContainer
 @inject NavigationManager NavigationManager
 @* ************************* PAGE HEADER ************************* *@
 <PageHeader Title="@L["SignatureSettings"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar">
@@ -357,6 +359,24 @@
                       Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SignatureSettingDto"
+                      Field="LayoutImg"
+                      Caption="@L["LayoutImg"]"
+                      CellStyle="@((item) => "min-width: 180px")"
+                      Width="180px">
+                    <DisplayTemplate>
+                        @if (!string.IsNullOrWhiteSpace(context.LayoutImg))
+                        {
+                            <img src="@GetImageUrl(context.LayoutImg)"
+                                 alt="@context.LayoutImg"
+                                 style="max-width: 120px; max-height: 60px; object-fit: contain; border-radius: 4px;" />
+                        }
+                        else
+                        {
+                            <span class="text-muted">@L["NoImage"]</span>
+                        }
+                    </DisplayTemplate>
+              </DataGridColumn>
+              <DataGridColumn TItem="SignatureSettingDto"
                       Field="ApiTimeout"
                       Caption="@L["ApiTimeout"]"
                       CellStyle="@((item) => "min-width: 200px")"
@@ -624,6 +644,35 @@
                             <NumericPicker TValue="int" @bind-Value="@NewSignatureSetting.SignHeight" Decimals="0" />
                         </Field>
                         <Field>
+                            <FieldLabel>@L["LayoutImg"]</FieldLabel>
+                            <FilePicker @ref="CreateLayoutImgFilePicker"
+                                        Multiple="false"
+                                        Changed="OnCreateLayoutImgFileChanged"
+                                        ShowMode="FilePickerShowMode.List"
+                                        MaxFileSize="52428800"
+                                        Accept="image/*">
+                                <ButtonsTemplate>
+                                    <Buttons>
+                                        <Button Clicked="@context.Clear" Color="Color.Warning">
+                                            <Icon Name="IconName.Clear" /> @L["Clear"]
+                                        </Button>
+                                    </Buttons>
+                                </ButtonsTemplate>
+                            </FilePicker>
+                            @if (!string.IsNullOrWhiteSpace(NewSignatureSetting.LayoutImg))
+                            {
+                                <div class="mt-2">
+                                    <img src="@GetImageUrl(NewSignatureSetting.LayoutImg)"
+                                         alt="Layout Preview"
+                                         style="max-width: 300px; max-height: 140px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                                </div>
+                            }
+                            @if (HasCreateFieldError("LayoutImg"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateFieldError("LayoutImg")</div>
+                            }
+                        </Field>
+                        <Field>
                             <FieldLabel>@L["SignedFileSuffix"] *</FieldLabel>
                             <TextEdit Text="@NewSignatureSetting.SignedFileSuffix" 
                                       TextChanged="@((string value) => { NewSignatureSetting.SignedFileSuffix = value; CreateFieldErrors.Remove("SignedFileSuffix"); })"
@@ -777,6 +826,35 @@
                         <Field>
                             <FieldLabel>@L["SignHeight"]</FieldLabel>
                             <NumericPicker TValue="int" @bind-Value="@EditingSignatureSetting.SignHeight" Decimals="0" />
+                        </Field>
+                        <Field>
+                            <FieldLabel>@L["LayoutImg"]</FieldLabel>
+                            <FilePicker @ref="EditLayoutImgFilePicker"
+                                        Multiple="false"
+                                        Changed="OnEditLayoutImgFileChanged"
+                                        ShowMode="FilePickerShowMode.List"
+                                        MaxFileSize="52428800"
+                                        Accept="image/*">
+                                <ButtonsTemplate>
+                                    <Buttons>
+                                        <Button Clicked="@context.Clear" Color="Color.Warning">
+                                            <Icon Name="IconName.Clear" /> @L["Clear"]
+                                        </Button>
+                                    </Buttons>
+                                </ButtonsTemplate>
+                            </FilePicker>
+                            @if (!string.IsNullOrWhiteSpace(EditingSignatureSetting.LayoutImg))
+                            {
+                                <div class="mt-2">
+                                    <img src="@GetImageUrl(EditingSignatureSetting.LayoutImg)"
+                                         alt="Layout Preview"
+                                         style="max-width: 300px; max-height: 140px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                                </div>
+                            }
+                            @if (HasEditFieldError("LayoutImg"))
+                            {
+                                <div class="invalid-feedback d-block">@GetEditFieldError("LayoutImg")</div>
+                            }
                         </Field>
                         <Field>
                             <FieldLabel>@L["SignedFileSuffix"] *</FieldLabel>

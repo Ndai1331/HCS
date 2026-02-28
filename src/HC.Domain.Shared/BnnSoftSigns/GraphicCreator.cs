@@ -9,9 +9,46 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 
 namespace HC.BnnSoftSigns
 {
+    internal static class SignGraphicRuntimeContext
+    {
+        private static readonly AsyncLocal<byte[]?> LayoutOverride = new();
+
+        public static byte[]? CurrentLayout => LayoutOverride.Value;
+
+        public static IDisposable UseLayout(byte[]? layoutBytes)
+        {
+            var previous = LayoutOverride.Value;
+            LayoutOverride.Value = layoutBytes is { Length: > 0 } ? layoutBytes : null;
+            return new Scope(previous);
+        }
+
+        private sealed class Scope : IDisposable
+        {
+            private readonly byte[]? _previous;
+            private bool _disposed;
+
+            public Scope(byte[]? previous)
+            {
+                _previous = previous;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                LayoutOverride.Value = _previous;
+                _disposed = true;
+            }
+        }
+    }
+
     public class GraphicCreator : IGraphicCreator
     {
         private static readonly Assembly Assembly = typeof(GraphicCreator).Assembly;
@@ -95,7 +132,15 @@ namespace HC.BnnSoftSigns
             var daichuky = 160;
             var caochuky = 100;
 
-            if (hasSeal)
+            var runtimeLayout = SignGraphicRuntimeContext.CurrentLayout;
+            if (runtimeLayout is { Length: > 0 })
+            {
+                layout = runtimeLayout;
+                width = 433;
+                height = 250;
+                linebreak = 38;
+            }
+            else if (hasSeal)
             {
                 layout = LoadLayoutTemplate("layout.png");
                 width = 433;

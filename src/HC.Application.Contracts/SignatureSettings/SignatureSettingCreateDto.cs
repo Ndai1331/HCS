@@ -12,6 +12,7 @@ public abstract class SignatureSettingCreateDtoBase
     public string ProviderType { get; set; } = null!;
     [Required]
     public string ApiEndpoint { get; set; } = null!;
+    public string? LayoutImg { get; set; }
     public int ApiTimeout { get; set; }
 
     [Required]

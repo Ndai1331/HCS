@@ -10,6 +10,7 @@ public abstract class SignatureSettingDtoBase : FullAuditedEntityDto<Guid>, IHas
     public string ProviderCode { get; set; } = null!;
     public string ProviderType { get; set; } = null!;
     public string ApiEndpoint { get; set; } = null!;
+    public string? LayoutImg { get; set; }
     public int ApiTimeout { get; set; }
 
     public string DefaultSignType { get; set; } = null!;

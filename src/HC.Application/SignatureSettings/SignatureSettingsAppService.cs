@@ -60,14 +60,14 @@ public abstract class SignatureSettingsAppServiceBase : HCAppService
     [Authorize(HCPermissions.MasterDatas.SignatureSettingsCreate)]
     public virtual async Task<SignatureSettingDto> CreateAsync(SignatureSettingCreateDto input)
     {
-        var signatureSetting = await _signatureSettingManager.CreateAsync(input.ProviderCode, input.ProviderType, input.ApiEndpoint, input.ApiTimeout, input.DefaultSignType, input.AllowElectronicSign, input.AllowDigitalSign, input.RequireOtp, input.SignWidth, input.SignHeight, input.SignedFileSuffix, input.KeepOriginalFile, input.OverwriteSignedFile, input.EnableSignLog, input.IsActive);
+        var signatureSetting = await _signatureSettingManager.CreateAsync(input.ProviderCode, input.ProviderType, input.ApiEndpoint, input.ApiTimeout, input.DefaultSignType, input.AllowElectronicSign, input.AllowDigitalSign, input.RequireOtp, input.SignWidth, input.SignHeight, input.SignedFileSuffix, input.KeepOriginalFile, input.OverwriteSignedFile, input.EnableSignLog, input.IsActive, input.LayoutImg);
         return ObjectMapper.Map<SignatureSetting, SignatureSettingDto>(signatureSetting);
     }
 
     [Authorize(HCPermissions.MasterDatas.SignatureSettingsEdit)]
     public virtual async Task<SignatureSettingDto> UpdateAsync(Guid id, SignatureSettingUpdateDto input)
     {
-        var signatureSetting = await _signatureSettingManager.UpdateAsync(id, input.ProviderCode, input.ProviderType, input.ApiEndpoint, input.ApiTimeout, input.DefaultSignType, input.AllowElectronicSign, input.AllowDigitalSign, input.RequireOtp, input.SignWidth, input.SignHeight, input.SignedFileSuffix, input.KeepOriginalFile, input.OverwriteSignedFile, input.EnableSignLog, input.IsActive, input.ConcurrencyStamp);
+        var signatureSetting = await _signatureSettingManager.UpdateAsync(id, input.ProviderCode, input.ProviderType, input.ApiEndpoint, input.ApiTimeout, input.DefaultSignType, input.AllowElectronicSign, input.AllowDigitalSign, input.RequireOtp, input.SignWidth, input.SignHeight, input.SignedFileSuffix, input.KeepOriginalFile, input.OverwriteSignedFile, input.EnableSignLog, input.IsActive, input.LayoutImg, input.ConcurrencyStamp);
         return ObjectMapper.Map<SignatureSetting, SignatureSettingDto>(signatureSetting);
     }
 

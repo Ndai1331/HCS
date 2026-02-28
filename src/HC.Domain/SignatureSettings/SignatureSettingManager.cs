@@ -19,18 +19,18 @@ public abstract class SignatureSettingManagerBase : DomainService
         _signatureSettingRepository = signatureSettingRepository;
     }
 
-    public virtual async Task<SignatureSetting> CreateAsync(string providerCode, string providerType, string apiEndpoint, int apiTimeout, string defaultSignType, bool allowElectronicSign, bool allowDigitalSign, bool requireOtp, int signWidth, int signHeight, string signedFileSuffix, bool keepOriginalFile, bool overwriteSignedFile, bool enableSignLog, bool isActive)
+    public virtual async Task<SignatureSetting> CreateAsync(string providerCode, string providerType, string apiEndpoint, int apiTimeout, string defaultSignType, bool allowElectronicSign, bool allowDigitalSign, bool requireOtp, int signWidth, int signHeight, string signedFileSuffix, bool keepOriginalFile, bool overwriteSignedFile, bool enableSignLog, bool isActive, string? layoutImg = null)
     {
         Check.NotNullOrWhiteSpace(providerCode, nameof(providerCode));
         Check.NotNullOrWhiteSpace(providerType, nameof(providerType));
         Check.NotNullOrWhiteSpace(apiEndpoint, nameof(apiEndpoint));
         Check.NotNullOrWhiteSpace(defaultSignType, nameof(defaultSignType));
         Check.NotNullOrWhiteSpace(signedFileSuffix, nameof(signedFileSuffix));
-        var signatureSetting = new SignatureSetting(GuidGenerator.Create(), providerCode, providerType, apiEndpoint, apiTimeout, defaultSignType, allowElectronicSign, allowDigitalSign, requireOtp, signWidth, signHeight, signedFileSuffix, keepOriginalFile, overwriteSignedFile, enableSignLog, isActive);
+        var signatureSetting = new SignatureSetting(GuidGenerator.Create(), providerCode, providerType, apiEndpoint, apiTimeout, defaultSignType, allowElectronicSign, allowDigitalSign, requireOtp, signWidth, signHeight, signedFileSuffix, keepOriginalFile, overwriteSignedFile, enableSignLog, isActive, layoutImg);
         return await _signatureSettingRepository.InsertAsync(signatureSetting);
     }
 
-    public virtual async Task<SignatureSetting> UpdateAsync(Guid id, string providerCode, string providerType, string apiEndpoint, int apiTimeout, string defaultSignType, bool allowElectronicSign, bool allowDigitalSign, bool requireOtp, int signWidth, int signHeight, string signedFileSuffix, bool keepOriginalFile, bool overwriteSignedFile, bool enableSignLog, bool isActive, [CanBeNull] string? concurrencyStamp = null)
+    public virtual async Task<SignatureSetting> UpdateAsync(Guid id, string providerCode, string providerType, string apiEndpoint, int apiTimeout, string defaultSignType, bool allowElectronicSign, bool allowDigitalSign, bool requireOtp, int signWidth, int signHeight, string signedFileSuffix, bool keepOriginalFile, bool overwriteSignedFile, bool enableSignLog, bool isActive, string? layoutImg = null, [CanBeNull] string? concurrencyStamp = null)
     {
         Check.NotNullOrWhiteSpace(providerCode, nameof(providerCode));
         Check.NotNullOrWhiteSpace(providerType, nameof(providerType));
@@ -41,6 +41,7 @@ public abstract class SignatureSettingManagerBase : DomainService
         signatureSetting.ProviderCode = providerCode;
         signatureSetting.ProviderType = providerType;
         signatureSetting.ApiEndpoint = apiEndpoint;
+        signatureSetting.LayoutImg = layoutImg;
         signatureSetting.ApiTimeout = apiTimeout;
         signatureSetting.DefaultSignType = defaultSignType;
         signatureSetting.AllowElectronicSign = allowElectronicSign;

@@ -227,6 +227,7 @@ public class HCTenantDbContext : HCDbContextBase<HCTenantDbContext>
             b.Property(x => x.ProviderCode).HasColumnName(nameof(SignatureSetting.ProviderCode)).IsRequired();
             b.Property(x => x.ProviderType).HasColumnName(nameof(SignatureSetting.ProviderType)).IsRequired();
             b.Property(x => x.ApiEndpoint).HasColumnName(nameof(SignatureSetting.ApiEndpoint)).IsRequired();
+            b.Property(x => x.LayoutImg).HasColumnName(nameof(SignatureSetting.LayoutImg));
             b.Property(x => x.ApiTimeout).HasColumnName(nameof(SignatureSetting.ApiTimeout));
             b.Property(x => x.DefaultSignType).HasColumnName(nameof(SignatureSetting.DefaultSignType)).IsRequired();
             b.Property(x => x.AllowElectronicSign).HasColumnName(nameof(SignatureSetting.AllowElectronicSign));
@@ -248,6 +249,7 @@ public class HCTenantDbContext : HCDbContextBase<HCTenantDbContext>
             b.Property(x => x.ProviderCode).HasColumnName(nameof(UserSignature.ProviderCode)).IsRequired();
             b.Property(x => x.TokenRef).HasColumnName(nameof(UserSignature.TokenRef));
             b.Property(x => x.Secret).HasColumnName(nameof(UserSignature.Secret));
+            b.Property(x => x.SealImg).HasColumnName(nameof(UserSignature.SealImg));
             b.Property(x => x.SignatureImage).HasColumnName(nameof(UserSignature.SignatureImage)).IsRequired();
             b.Property(x => x.ValidFrom).HasColumnName(nameof(UserSignature.ValidFrom));
             b.Property(x => x.ValidTo).HasColumnName(nameof(UserSignature.ValidTo));

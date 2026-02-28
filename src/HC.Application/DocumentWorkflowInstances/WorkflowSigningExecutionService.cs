@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using HC.BnnSoftSigns;
 using HC.DocumentAssignments;
@@ -135,6 +134,11 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             throw new UserFriendlyException(_localizer["DigitalSignatureSecretRequired"]);
         }
 
+        if (string.IsNullOrWhiteSpace(signature.SealImg))
+        {
+            throw new UserFriendlyException(_localizer["DigitalSignatureSealImageRequired"]);
+        }
+
         if (signature.ValidFrom.HasValue && signature.ValidFrom.Value > now)
         {
             throw new UserFriendlyException(_localizer["SignatureNotYetValid"]);
@@ -154,6 +158,11 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             throw new UserFriendlyException(_localizer["DigitalSignatureProviderNotFound"]);
         }
 
+        if (string.IsNullOrWhiteSpace(signatureSetting.LayoutImg))
+        {
+            throw new UserFriendlyException(_localizer["DigitalSignatureLayoutImageRequired"]);
+        }
+
         if (!assignment.DocumentFileResultId.HasValue)
         {
             throw new UserFriendlyException(_localizer["NoFileToSign"]);
@@ -167,6 +176,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         var pdfBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
         var signatureImageBytes = await ResolveSignatureImageBytesAsync(signature.SignatureImage);
+        var sealImageBytes = await ResolveSignatureImageBytesAsync(signature.SealImg!);
+        var layoutImageBytes = await ResolveSignatureImageBytesAsync(signatureSetting.LayoutImg!);
 
         var user = await _identityUserRepository.GetAsync(currentUserId);
         var fullName = $"{user.Surname} {user.Name}".Trim();
@@ -177,7 +188,6 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         var placeholderTag = $"<<Sign{assignment.StepOrder:D2}>>";
         var signer = new SignText(signature.TokenRef, signature.Secret, signatureSetting.ApiEndpoint);
-        var defaultSealBytes = ResolveDefaultSealBytes();
 
         byte[]? signedPdfBytes;
         try
@@ -186,7 +196,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             {
                 datapdf = pdfBytes,
                 chukytuoi = signatureImageBytes,
-                condau = defaultSealBytes,
+                condau = sealImageBytes,
+                anhkhung = layoutImageBytes,
                 signaturename = Guid.NewGuid().ToString("N"),
                 nguoiky = fullName,
                 chucvu = string.Empty,
@@ -203,7 +214,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 imgheight = signatureSetting.SignHeight > 0 ? signatureSetting.SignHeight : 70,
                 borderstyle = 0,
                 bordercolor = "#000000"
-            }, xOffset: 0, yOffset: 42);
+            }, xOffset: 10, yOffset: 42);
         }
         catch (Exception ex)
         {
@@ -659,34 +670,4 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         return outputStream.ToArray();
     }
 
-    private static byte[] ResolveDefaultSealBytes()
-    {
-        try
-        {
-            var assembly = typeof(GraphicCreator).Assembly;
-            var resourceName = assembly.GetManifestResourceNames()
-                .FirstOrDefault(x =>
-                    x.EndsWith(".BnnSoftSigns.condau.png", StringComparison.OrdinalIgnoreCase) ||
-                    x.EndsWith(".condau.png", StringComparison.OrdinalIgnoreCase));
-
-            if (string.IsNullOrWhiteSpace(resourceName))
-            {
-                return Array.Empty<byte>();
-            }
-
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            if (stream == null)
-            {
-                return Array.Empty<byte>();
-            }
-
-            using var ms = new MemoryStream();
-            stream.CopyTo(ms);
-            return ms.ToArray();
-        }
-        catch
-        {
-            return Array.Empty<byte>();
-        }
-    }
 }

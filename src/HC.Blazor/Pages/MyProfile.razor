@@ -347,6 +347,22 @@
                                                     Caption="@L["Secret"]">
                                             </DataGridColumn>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
+                                                    Field="UserSignature.SealImg"
+                                                    Caption="@L["SealImg"]">
+                                                <DisplayTemplate>
+                                                    @if (!string.IsNullOrWhiteSpace(context.UserSignature.SealImg))
+                                                    {
+                                                        <img src="@GetSignatureImageUrl(context.UserSignature.SealImg ?? string.Empty)"
+                                                            alt="@context.UserSignature.SealImg"
+                                                            style="max-width: 100px; max-height: 100px; object-fit: contain; border-radius: 4px;" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">@L["NoImage"]</span>
+                                                    }
+                                                </DisplayTemplate>
+                                            </DataGridColumn>
+                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.ValidFrom"
                                                     Caption="@L["ValidFrom"]">
                                                 <DisplayTemplate>
@@ -502,6 +518,41 @@
                             <TextEdit @bind-Text="@NewUserSignature.Secret" />
                         </Field>
                     </Column>
+                    @if (IsDigitalSignType(NewUserSignature.SignType))
+                    {
+                        <Column ColumnSize="ColumnSize.Is12">
+                            <Field>
+                                <FieldLabel>@L["SealImg"] *</FieldLabel>
+                                <FilePicker @ref="CreateSealImageFilePicker"
+                                            Multiple="false"
+                                            Changed="OnCreateSealImageFileChanged"
+                                            ShowMode="FilePickerShowMode.List"
+                                            MaxFileSize="52428800"
+                                            Accept="image/*">
+                                    <ButtonsTemplate>
+                                        <Buttons>
+                                            <Button Clicked="@context.Clear" Color="Color.Warning">
+                                                <Icon Name="IconName.Clear" /> @L["Clear"]
+                                            </Button>
+                                        </Buttons>
+                                    </ButtonsTemplate>
+                                </FilePicker>
+                                @if (!string.IsNullOrWhiteSpace(NewUserSignature.SealImg))
+                                {
+                                    var imageUrl = GetSignatureImageUrl(NewUserSignature.SealImg ?? string.Empty);
+                                    <div class="mt-2">
+                                        <img src="@imageUrl"
+                                             alt="Seal Preview"
+                                             style="max-width: 300px; max-height: 150px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                                    </div>
+                                }
+                                @if (HasCreateSignatureFieldError("SealImg"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetCreateSignatureFieldError("SealImg")</div>
+                                }
+                            </Field>
+                        </Column>
+                    }
 
                     <Column ColumnSize="ColumnSize.Is12">
                         <Field>
@@ -651,6 +702,41 @@
                             <TextEdit @bind-Text="@EditingUserSignature.Secret" />
                         </Field>
                     </Column>
+                    @if (IsDigitalSignType(EditingUserSignature.SignType))
+                    {
+                        <Column ColumnSize="ColumnSize.Is12">
+                            <Field>
+                                <FieldLabel>@L["SealImg"] *</FieldLabel>
+                                <FilePicker @ref="EditSealImageFilePicker"
+                                            Multiple="false"
+                                            Changed="OnEditSealImageFileChanged"
+                                            ShowMode="FilePickerShowMode.List"
+                                            MaxFileSize="52428800"
+                                            Accept="image/*">
+                                    <ButtonsTemplate>
+                                        <Buttons>
+                                            <Button Clicked="@context.Clear" Color="Color.Warning">
+                                                <Icon Name="IconName.Clear" /> @L["Clear"]
+                                            </Button>
+                                        </Buttons>
+                                    </ButtonsTemplate>
+                                </FilePicker>
+                                @if (!string.IsNullOrWhiteSpace(EditingUserSignature.SealImg))
+                                {
+                                    var imageUrl = GetSignatureImageUrl(EditingUserSignature.SealImg ?? string.Empty);
+                                    <div class="mt-2">
+                                        <img src="@imageUrl"
+                                             alt="Seal Preview"
+                                             style="max-width: 300px; max-height: 150px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                                    </div>
+                                }
+                                @if (HasEditSignatureFieldError("SealImg"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetEditSignatureFieldError("SealImg")</div>
+                                }
+                            </Field>
+                        </Column>
+                    }
                     
                     <Column ColumnSize="ColumnSize.Is12">
                         <Field>

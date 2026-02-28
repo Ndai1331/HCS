@@ -27,6 +27,7 @@ public abstract class UserSignatureManagerBase : DomainService
         bool isActive,
         string? tokenRef = null,
         string? secret = null,
+        string? sealImg = null,
         DateTime? validFrom = null,
         DateTime? validTo = null)
     {
@@ -34,7 +35,7 @@ public abstract class UserSignatureManagerBase : DomainService
         Check.NotNullOrWhiteSpace(signType, nameof(signType));
         Check.NotNullOrWhiteSpace(providerCode, nameof(providerCode));
         Check.NotNullOrWhiteSpace(signatureImage, nameof(signatureImage));
-        var userSignature = new UserSignature(GuidGenerator.Create(), identityUserId, signType, providerCode, signatureImage, isActive, tokenRef, secret, validFrom, validTo);
+        var userSignature = new UserSignature(GuidGenerator.Create(), identityUserId, signType, providerCode, signatureImage, isActive, tokenRef, secret, sealImg, validFrom, validTo);
         return await _userSignatureRepository.InsertAsync(userSignature);
     }
 
@@ -47,6 +48,7 @@ public abstract class UserSignatureManagerBase : DomainService
         bool isActive,
         string? tokenRef = null,
         string? secret = null,
+        string? sealImg = null,
         DateTime? validFrom = null,
         DateTime? validTo = null,
         [CanBeNull] string? concurrencyStamp = null)
@@ -63,6 +65,7 @@ public abstract class UserSignatureManagerBase : DomainService
         userSignature.IsActive = isActive;
         userSignature.TokenRef = tokenRef;
         userSignature.Secret = secret;
+        userSignature.SealImg = sealImg;
         userSignature.ValidFrom = validFrom;
         userSignature.ValidTo = validTo;
         userSignature.SetConcurrencyStampIfNotNull(concurrencyStamp);

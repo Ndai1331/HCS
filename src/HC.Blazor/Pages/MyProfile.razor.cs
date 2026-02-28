@@ -103,6 +103,8 @@ public partial class MyProfile
     // File upload for signature image
     protected FilePicker CreateSignatureImageFilePicker { get; set; } = new();
     protected FilePicker EditSignatureImageFilePicker { get; set; } = new();
+    protected FilePicker CreateSealImageFilePicker { get; set; } = new();
+    protected FilePicker EditSealImageFilePicker { get; set; } = new();
     protected IFileEntry? SelectedSignatureImageFile { get; set; }
     protected string UploadedSignatureImagePath { get; set; } = string.Empty;
     protected bool IsUploadingSignatureImage { get; set; }
@@ -414,6 +416,13 @@ public partial class MyProfile
                 if (isValid) CreateSignatureValidationErrorKey = "SecretRequiredForDigitalSign";
                 isValid = false;
             }
+
+            if (string.IsNullOrWhiteSpace(NewUserSignature?.SealImg))
+            {
+                CreateSignatureFieldErrors["SealImg"] = L["SealImgRequiredForDigitalSign"];
+                if (isValid) CreateSignatureValidationErrorKey = "SealImgRequiredForDigitalSign";
+                isValid = false;
+            }
         }
 
         return isValid;
@@ -530,6 +539,13 @@ public partial class MyProfile
             {
                 EditSignatureFieldErrors["Secret"] = L["SecretRequiredForDigitalSign"];
                 if (isValid) EditSignatureValidationErrorKey = "SecretRequiredForDigitalSign";
+                isValid = false;
+            }
+
+            if (string.IsNullOrWhiteSpace(EditingUserSignature?.SealImg))
+            {
+                EditSignatureFieldErrors["SealImg"] = L["SealImgRequiredForDigitalSign"];
+                if (isValid) EditSignatureValidationErrorKey = "SealImgRequiredForDigitalSign";
                 isValid = false;
             }
         }
@@ -796,6 +812,24 @@ public partial class MyProfile
         }
     }
 
+    protected virtual async Task OnCreateSealImageFileChanged(FileChangedEventArgs e)
+    {
+        if (e.Files != null && e.Files.Any())
+        {
+            var file = e.Files.First();
+            await UploadSealImageFileAsync(file, isEditMode: false);
+        }
+    }
+
+    protected virtual async Task OnEditSealImageFileChanged(FileChangedEventArgs e)
+    {
+        if (e.Files != null && e.Files.Any())
+        {
+            var file = e.Files.First();
+            await UploadSealImageFileAsync(file, isEditMode: true);
+        }
+    }
+
     protected virtual async Task UploadSignatureImageFileAsync(IFileEntry file, bool isEditMode)
     {
         try
@@ -888,6 +922,69 @@ public partial class MyProfile
         UploadedSignatureImagePath = string.Empty;
         SignatureImageFilePickerProgress = 0;
         IsUploadingSignatureImage = false;
+    }
+
+    protected virtual async Task UploadSealImageFileAsync(IFileEntry file, bool isEditMode)
+    {
+        try
+        {
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg" };
+            var fileExtension = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (!allowedExtensions.Contains(fileExtension))
+            {
+                await Message.Error(L["OnlyImageFilesAllowed"]);
+                if (isEditMode)
+                {
+                    await EditSealImageFilePicker.Clear();
+                }
+                else
+                {
+                    await CreateSealImageFilePicker.Clear();
+                }
+                return;
+            }
+
+            if (file.Size > 52428800)
+            {
+                await Message.Error(L["FileSizeTooLarge"]);
+                if (isEditMode)
+                {
+                    await EditSealImageFilePicker.Clear();
+                }
+                else
+                {
+                    await CreateSealImageFilePicker.Clear();
+                }
+                return;
+            }
+
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream(long.MaxValue).CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+            var filePath = $"user-seal-images/{Guid.NewGuid()}_{file.Name}";
+            await BlobContainer.SaveAsync(filePath, memoryStream.ToArray());
+
+            if (isEditMode)
+            {
+                EditingUserSignature.SealImg = filePath;
+                EditSignatureFieldErrors.Remove("SealImg");
+            }
+            else
+            {
+                NewUserSignature.SealImg = filePath;
+                CreateSignatureFieldErrors.Remove("SealImg");
+            }
+
+            await Message.Success(L["FileUploadedSuccessfully"]);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     protected virtual string GetSignatureImageUrl(string imagePath)

@@ -23,6 +23,9 @@ public abstract class SignatureSettingBase : FullAuditedAggregateRoot<Guid>, IMu
     [NotNull]
     public virtual string ApiEndpoint { get; set; }
 
+    [CanBeNull]
+    public virtual string? LayoutImg { get; set; }
+
     public virtual int ApiTimeout { get; set; }
 
     [NotNull]
@@ -53,7 +56,7 @@ public abstract class SignatureSettingBase : FullAuditedAggregateRoot<Guid>, IMu
     {
     }
 
-    public SignatureSettingBase(Guid id, string providerCode, string providerType, string apiEndpoint, int apiTimeout, string defaultSignType, bool allowElectronicSign, bool allowDigitalSign, bool requireOtp, int signWidth, int signHeight, string signedFileSuffix, bool keepOriginalFile, bool overwriteSignedFile, bool enableSignLog, bool isActive)
+    public SignatureSettingBase(Guid id, string providerCode, string providerType, string apiEndpoint, int apiTimeout, string defaultSignType, bool allowElectronicSign, bool allowDigitalSign, bool requireOtp, int signWidth, int signHeight, string signedFileSuffix, bool keepOriginalFile, bool overwriteSignedFile, bool enableSignLog, bool isActive, string? layoutImg = null)
     {
         Id = id;
         Check.NotNull(providerCode, nameof(providerCode));
@@ -64,6 +67,7 @@ public abstract class SignatureSettingBase : FullAuditedAggregateRoot<Guid>, IMu
         ProviderCode = providerCode;
         ProviderType = providerType;
         ApiEndpoint = apiEndpoint;
+        LayoutImg = layoutImg;
         ApiTimeout = apiTimeout;
         DefaultSignType = defaultSignType;
         AllowElectronicSign = allowElectronicSign;
