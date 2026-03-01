@@ -10,6 +10,7 @@
 @using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
 @using Microsoft.AspNetCore.Components.Web
 @using Blazorise
+@using Blazorise.DataGrid
 @using Volo.Abp.BlazoriseUI
 @using Volo.Abp.BlazoriseUI.Components
 @using HC.Permissions
@@ -107,88 +108,171 @@
 }
 else
 {
-    @* ************************* CHARTS ************************* *@
-    <Row>
-        <Column ColumnSize="ColumnSize.Is12">
-            <Card>
-                <CardHeader>
-                    <CardTitle>
-                        <Icon Name="IconName.ChartPie" Class="me-2" />
-                        @L["RatingDistribution"]
-                    </CardTitle>
-                </CardHeader>
-                <CardBody>
-                    <div class="d-flex justify-content-center">
-                        <PieChart ChartId="@pieChartId"
-                            Labels="@RatingDistributionLabels"
-                            Data="@RatingDistributionData"
-                            BackgroundColors="@RatingDistributionColors"
-                            IsDoughnut="true"
-                        />
-                        <div class="stat-block">
-                        <div class="stat-title">@L["RatingDistributionTotal"]</div>
-                        <ul class="stat-list">
-                            <li class="stat-list-item">
-                                <span class="stat-dot dot-primary text-brand"></span>
-                                @L["RatingDistributionTotal"]
-                                <span class="stat-value text-brand">@RatingDistributionData.Sum()</span>
-                            </li>
-                            <li class="stat-list-item">
-                                <span class="stat-dot dot-secondary"></span>
-                                @L["0StarRating"]
-                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[0] : 0)</span>
-                            </li>
-                            <li class="stat-list-item">
-                                <span class="stat-dot dot-secondary"></span>
-                                @L["1StarRating"]
-                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[1] : 0)</span>
-                            </li>
-                            <li class="stat-list-item">
-                                <span class="stat-dot dot-secondary"></span>
-                                @L["2StarRating"]
-                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[2] : 0)</span>
-                            </li>
-                            <li class="stat-list-item">
-                                <span class="stat-dot dot-secondary"></span>
-                                @L["3StarRating"]
-                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[3] : 0)</span>
-                            </li>
-                            <li class="stat-list-item">
-                                <span class="stat-dot dot-secondary"></span>
-                                @L["4StarRating"]
-                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[4] : 0)</span>
-                            </li>
-                            <li class="stat-list-item">
-                                <span class="stat-dot dot-secondary"></span>
-                                @L["5StarRating"]
-                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[5] : 0)</span>
-                            </li>
-                        </ul>
-                        </div>
-                    </div>
-                </CardBody>
-            </Card>
-        </Column>
-    </Row>
+    <Tabs SelectedTab="@SelectedTab" SelectedTabChanged="@OnSelectedTabChanged" Class="mt-3">
+        <Items>
+            <Tab Name="chart-statistics">
+                <Icon Name="IconName.ChartPie" Class="me-2" />
+                Biểu đồ thống kê
+            </Tab>
+            <Tab Name="detail-data">
+                <Icon Name="IconName.List" Class="me-2" />
+                Chi tiết
+            </Tab>
+        </Items>
+        <Content>
+            <TabPanel Name="chart-statistics" Class="mt-3">
+                @* ************************* CHARTS ************************* *@
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>
+                                    <Icon Name="IconName.ChartPie" Class="me-2" />
+                                    @L["RatingDistribution"]
+                                </CardTitle>
+                            </CardHeader>
+                            <CardBody>
+                                <div class="d-flex justify-content-center">
+                                    <PieChart ChartId="@pieChartId"
+                                              Labels="@RatingDistributionLabels"
+                                              Data="@RatingDistributionData"
+                                              BackgroundColors="@RatingDistributionColors"
+                                              IsDoughnut="true" />
+                                    <div class="stat-block">
+                                        <div class="stat-title">@L["RatingDistributionTotal"]</div>
+                                        <ul class="stat-list">
+                                            <li class="stat-list-item">
+                                                <span class="stat-dot dot-primary text-brand"></span>
+                                                @L["RatingDistributionTotal"]
+                                                <span class="stat-value text-brand">@RatingDistributionData.Sum()</span>
+                                            </li>
+                                            <li class="stat-list-item">
+                                                <span class="stat-dot dot-secondary"></span>
+                                                @L["0StarRating"]
+                                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 0 ? RatingDistributionData[0] : 0)</span>
+                                            </li>
+                                            <li class="stat-list-item">
+                                                <span class="stat-dot dot-secondary"></span>
+                                                @L["1StarRating"]
+                                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 1 ? RatingDistributionData[1] : 0)</span>
+                                            </li>
+                                            <li class="stat-list-item">
+                                                <span class="stat-dot dot-secondary"></span>
+                                                @L["2StarRating"]
+                                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 2 ? RatingDistributionData[2] : 0)</span>
+                                            </li>
+                                            <li class="stat-list-item">
+                                                <span class="stat-dot dot-secondary"></span>
+                                                @L["3StarRating"]
+                                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 3 ? RatingDistributionData[3] : 0)</span>
+                                            </li>
+                                            <li class="stat-list-item">
+                                                <span class="stat-dot dot-secondary"></span>
+                                                @L["4StarRating"]
+                                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 4 ? RatingDistributionData[4] : 0)</span>
+                                            </li>
+                                            <li class="stat-list-item">
+                                                <span class="stat-dot dot-secondary"></span>
+                                                @L["5StarRating"]
+                                                <span class="stat-value">@(RatingDistributionData != null  && RatingDistributionData.Count > 5 ? RatingDistributionData[5] : 0)</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </CardBody>
+                        </Card>
+                    </Column>
+                </Row>
 
-    <Row>
-        <Column ColumnSize="ColumnSize.Is12">
-            <Card>
-                <CardHeader>
-                    <CardTitle>
-                        <Icon Name="IconName.ChartBar" Class="me-2" />
-                        @L["CriteriaAverageRating"]
-                    </CardTitle>
-                </CardHeader>
-                <CardBody>
-                   <BarChart ChartId="@barChartId"
-                                    Labels="@CriteriaAverageRatingsLabels"
-                                    Data="@CriteriaAverageRatingsData"
-                                    BackgroundColors="@CriteriaAverageRatingsColors"
-                                    XAxisLabel="@L["Criteria"]"
-                                    YAxisLabel="@L["AverageRating"]" />
-                </CardBody>
-            </Card>
-        </Column>
-    </Row>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is12">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>
+                                    <Icon Name="IconName.ChartBar" Class="me-2" />
+                                    @L["CriteriaAverageRating"]
+                                </CardTitle>
+                            </CardHeader>
+                            <CardBody>
+                                <BarChart ChartId="@barChartId"
+                                          Labels="@CriteriaAverageRatingsLabels"
+                                          Data="@CriteriaAverageRatingsData"
+                                          BackgroundColors="@CriteriaAverageRatingsColors"
+                                          XAxisLabel="@L["Criteria"]"
+                                          YAxisLabel="@L["AverageRating"]" />
+                            </CardBody>
+                        </Card>
+                    </Column>
+                </Row>
+            </TabPanel>
+
+            <TabPanel Name="detail-data" Class="mt-3">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>
+                            <Icon Name="IconName.List" Class="me-2" />
+                            Danh sách kết quả khảo sát
+                        </CardTitle>
+                    </CardHeader>
+                    <CardBody>
+                        <DataGrid TItem="SurveyResultWithNavigationPropertiesDto"
+                                  @ref="SurveyResultDataGridRef"
+                                  Data="SurveyResultDetails"
+                                  ReadData="OnSurveyResultGridReadAsync"
+                                  TotalItems="DetailTotalCount"
+                                  ShowPager="true"
+                                  Responsive="true"
+                                  PageSize="DetailPageSize">
+                            <LoadingTemplate>
+                                <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                    <Column>
+                                        <RadarSpinner />
+                                    </Column>
+                                </Row>
+                            </LoadingTemplate>
+                            <EmptyTemplate>
+                                <Row Class="w-100 align-items-center" Style="height: 120px;">
+                                    <Column>
+                                        <Heading Size="HeadingSize.Is5" TextAlignment="TextAlignment.Center">Không có dữ liệu khảo sát.</Heading>
+                                    </Column>
+                                </Row>
+                            </EmptyTemplate>
+                            <DataGridColumns>
+                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Tiêu chí" Sortable="false">
+                                    <DisplayTemplate>
+                                        @context.SurveyCriteria?.Name
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Điểm" Sortable="false">
+                                    <DisplayTemplate>
+                                        @context.SurveyResult.Rating
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Khách hàng" Sortable="false">
+                                    <DisplayTemplate>
+                                        @context.SurveySession?.FullName
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Số điện thoại" Sortable="false">
+                                    <DisplayTemplate>
+                                        @context.SurveySession?.PhoneNumber
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Mã bệnh nhân" Sortable="false">
+                                    <DisplayTemplate>
+                                        @context.SurveySession?.PatientCode
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Thời gian khảo sát" Sortable="false">
+                                    <DisplayTemplate>
+                                        @context.SurveySession?.SurveyTime.ToString("dd/MM/yyyy HH:mm")
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                            </DataGridColumns>
+                        </DataGrid>
+                    </CardBody>
+                </Card>
+            </TabPanel>
+        </Content>
+    </Tabs>
 }

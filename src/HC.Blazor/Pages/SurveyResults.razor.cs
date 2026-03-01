@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Blazorise;
+using Blazorise.DataGrid;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.SurveyResults;
 using HC.SurveyLocations;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Http.Client;
 using System.Globalization;
+using Volo.Abp.Application.Dtos;
 
 namespace HC.Blazor.Pages;
 
@@ -29,6 +31,13 @@ public partial class SurveyResults
     protected string barChartId { get; set; } = string.Empty;
     protected Dictionary<int, int> RatingDistribution { get; set; } = new();
     protected Dictionary<string, double> CriteriaAverageRatings { get; set; } = new();
+    protected string SelectedTab { get; set; } = "chart-statistics";
+    protected IReadOnlyList<SurveyResultWithNavigationPropertiesDto> SurveyResultDetails { get; set; } = new List<SurveyResultWithNavigationPropertiesDto>();
+    protected DataGrid<SurveyResultWithNavigationPropertiesDto>? SurveyResultDataGridRef { get; set; }
+    protected int DetailPageSize { get; } = LimitedResultRequestDto.DefaultMaxResultCount;
+    protected int DetailCurrentPage { get; set; } = 1;
+    protected string DetailCurrentSorting { get; set; } = $"SurveyResult.CreationTime desc";
+    protected int DetailTotalCount { get; set; }
 
     [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
     [Inject] private ILogger<SurveyResults> _logger { get; set; } = null!;
@@ -78,8 +87,7 @@ public partial class SurveyResults
             await SetToolbarItemsAsync();
             await SetBreadcrumbItemsAsync();
             await LoadSurveyLocationsAsync();
-            IsLoading = false;
-            await InvokeAsync(StateHasChanged);
+            await LoadStatisticsAsync();
         }
     }
 
@@ -118,10 +126,25 @@ public partial class SurveyResults
     protected virtual async Task OnSurveyLocationChanged(Guid? locationId)
     {
         SelectedSurveyLocationId = locationId;
-        await LoadChartsAsync();
+        DetailCurrentPage = 1;
+        await LoadStatisticsAsync();
+        if (SurveyResultDataGridRef != null)
+        {
+            await SurveyResultDataGridRef.Reload();
+        }
+        else
+        {
+            await LoadSurveyResultDetailsAsync();
+        }
     }
 
-    protected virtual async Task LoadChartsAsync()
+    protected virtual Task OnSelectedTabChanged(string selectedTab)
+    {
+        SelectedTab = selectedTab;
+        return Task.CompletedTask;
+    }
+
+    protected virtual async Task LoadStatisticsAsync()
     {
         try
         {
@@ -138,6 +161,33 @@ public partial class SurveyResults
         {
             IsLoading = false;
             await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected virtual async Task OnSurveyResultGridReadAsync(DataGridReadDataEventArgs<SurveyResultWithNavigationPropertiesDto> e)
+    {
+        DetailCurrentPage = e.Page;
+        await LoadSurveyResultDetailsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected virtual async Task LoadSurveyResultDetailsAsync()
+    {
+        try
+        {
+            var detailResult = await SurveyResultsAppService.GetListAsync(new GetSurveyResultsInput
+            {
+                SurveyLocationId = SelectedSurveyLocationId,
+                MaxResultCount = DetailPageSize,
+                SkipCount = (DetailCurrentPage - 1) * DetailPageSize,
+                Sorting = DetailCurrentSorting
+            });
+            SurveyResultDetails = detailResult.Items;
+            DetailTotalCount = (int)detailResult.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
         }
     }
     private async Task DownloadAsExcelAsync()
