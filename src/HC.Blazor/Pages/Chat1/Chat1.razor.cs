@@ -643,7 +643,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             {
                 continue;
             }
-
             if (CanvasElementReferences.TryGetValue(contactDto, out var canvasRef) &&
                 !string.IsNullOrWhiteSpace(canvasRef.Id))
             {

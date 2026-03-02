@@ -661,7 +661,8 @@
                     <Column ColumnSize="ColumnSize.Is12">
                      <Field>
                             <FieldLabel>@L["LayoutImg"]</FieldLabel>
-                            <FilePicker @ref="CreateLayoutImgFilePicker"
+                            <FilePicker @key="CreateLayoutImgPickerKey"
+                                        @ref="CreateLayoutImgFilePicker"
                                         Multiple="false"
                                         Changed="OnCreateLayoutImgFileChanged"
                                         ShowMode="FilePickerShowMode.List"
@@ -849,7 +850,8 @@
                     <Column ColumnSize="ColumnSize.Is12">
                       <Field>
                             <FieldLabel>@L["LayoutImg"]</FieldLabel>
-                            <FilePicker @ref="EditLayoutImgFilePicker"
+                            <FilePicker @key="EditLayoutImgPickerKey"
+                                        @ref="EditLayoutImgFilePicker"
                                         Multiple="false"
                                         Changed="OnEditLayoutImgFileChanged"
                                         ShowMode="FilePickerShowMode.List"

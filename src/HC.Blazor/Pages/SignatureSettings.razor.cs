@@ -50,6 +50,8 @@ public partial class SignatureSettings : HCComponentBase
     private SignatureSettingUpdateDto EditingSignatureSetting { get; set; }
     private FilePicker CreateLayoutImgFilePicker { get; set; } = new();
     private FilePicker EditLayoutImgFilePicker { get; set; } = new();
+    private int CreateLayoutImgPickerKey { get; set; }
+    private int EditLayoutImgPickerKey { get; set; }
     private bool IsUploadingLayoutImg { get; set; }
     private string? _apiBaseUrl;
 
@@ -194,6 +196,7 @@ public partial class SignatureSettings : HCComponentBase
         NewSignatureSetting = new SignatureSettingCreateDto
         {
         };
+        CreateLayoutImgPickerKey++;
         SelectedCreateTab = "signatureSetting-create-tab";
         CreateSignatureSettingValidationErrorKey = null;
         CreateFieldErrors.Clear();
@@ -205,6 +208,7 @@ public partial class SignatureSettings : HCComponentBase
         NewSignatureSetting = new SignatureSettingCreateDto
         {
         };
+        CreateLayoutImgPickerKey++;
         await CreateSignatureSettingModal.Hide();
     }
 
@@ -214,6 +218,7 @@ public partial class SignatureSettings : HCComponentBase
         var signatureSetting = await SignatureSettingsAppService.GetAsync(input.Id);
         EditingSignatureSettingId = signatureSetting.Id;
         EditingSignatureSetting = ObjectMapper.Map<SignatureSettingDto, SignatureSettingUpdateDto>(signatureSetting);
+        EditLayoutImgPickerKey++;
         EditSignatureSettingValidationErrorKey = null;
         EditFieldErrors.Clear();
         await EditSignatureSettingModal.Show();
@@ -347,6 +352,7 @@ public partial class SignatureSettings : HCComponentBase
 
     private async Task CloseEditSignatureSettingModalAsync()
     {
+        EditLayoutImgPickerKey++;
         await EditSignatureSettingModal.Hide();
     }
 
@@ -677,7 +683,11 @@ public partial class SignatureSettings : HCComponentBase
         if (e.Files != null && e.Files.Any())
         {
             await UploadLayoutImgFileAsync(e.Files.First(), false);
+            return;
         }
+
+        NewSignatureSetting.LayoutImg = string.Empty;
+        await InvokeAsync(StateHasChanged);
     }
 
     protected virtual async Task OnEditLayoutImgFileChanged(FileChangedEventArgs e)
@@ -685,7 +695,11 @@ public partial class SignatureSettings : HCComponentBase
         if (e.Files != null && e.Files.Any())
         {
             await UploadLayoutImgFileAsync(e.Files.First(), true);
+            return;
         }
+
+        EditingSignatureSetting.LayoutImg = string.Empty;
+        await InvokeAsync(StateHasChanged);
     }
 
     protected virtual async Task UploadLayoutImgFileAsync(IFileEntry file, bool isEditMode)
