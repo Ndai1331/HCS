@@ -128,8 +128,20 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     {
         await base.OnParametersSetAsync();
 
-        if (CurrentChatContact?.Type != ConversationType.User &&
-            (_previousChatContact?.ConversationId != CurrentChatContact.ConversationId))
+        if (CurrentChatContact is null || CurrentChatContact.Type == ConversationType.User)
+        {
+            return;
+        }
+
+        if (!CurrentChatContact.ConversationId.HasValue)
+        {
+            Members = new();
+            IsCurrentUserAdmin = false;
+            _previousChatContact = CurrentChatContact;
+            return;
+        }
+
+        if (_previousChatContact?.ConversationId != CurrentChatContact.ConversationId)
         {
             await LoadConversationMembersAsync();
             CheckIsCurrentUserAdminAsync();
@@ -176,7 +188,7 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private async Task LoadConversationMembersAsync()
     {
         IsLoadingMembers = true;
-        Members = CurrentChatContact?.Type != ConversationType.User
+        Members = (CurrentChatContact?.Type != ConversationType.User && CurrentChatContact?.ConversationId.HasValue == true)
             ? await ConversationService.GetMembersAsync(CurrentChatContact.ConversationId.Value)
             : new List<ConversationMemberDto>();
 

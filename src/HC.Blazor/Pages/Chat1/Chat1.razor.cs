@@ -639,9 +639,22 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         var contactsSnapshot = ChatContactDtos.ToList();
         foreach (var contactDto in contactsSnapshot)
         {
-            if (CanvasElementReferences.ContainsKey(contactDto))
+            if (contactDto.Type != ConversationType.User)
             {
-                await JsRuntime.SafeInvokeVoidAsync("VoloChatAvatarManager.createCanvasForUser", CanvasElementReferences[contactDto], contactDto.Username, GetName(contactDto));
+                continue;
+            }
+
+            if (CanvasElementReferences.TryGetValue(contactDto, out var canvasRef) &&
+                !string.IsNullOrWhiteSpace(canvasRef.Id))
+            {
+                try
+                {
+                    await JsRuntime.SafeInvokeVoidAsync("VoloChatAvatarManager.createCanvasForUser", canvasRef, contactDto.Username, GetName(contactDto));
+                }
+                catch (JSException)
+                {
+                    // Canvas can be temporarily absent during rerender/search transitions.
+                }
             }
         }
         
@@ -651,12 +664,16 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             _shouldUpdateAvatar = false;
             try
             {
-                // Only call if canvas reference is valid (check if it has been rendered)
-                // Wait a bit more to ensure canvas is in DOM
-                await Task.Delay(100);
-                if (CurrentChatContactCanvas.Id != null)
+                var currentContact = CurrentChatContact;
+                if (currentContact != null)
                 {
-                    await JsRuntime.SafeInvokeVoidAsync("VoloChatAvatarManager.createCanvasForUser", CurrentChatContactCanvas, CurrentChatContact?.Username, GetName(CurrentChatContact));
+                    // Only call if canvas reference is valid (check if it has been rendered)
+                    // Wait a bit more to ensure canvas is in DOM
+                    await Task.Delay(100);
+                    if (CurrentChatContactCanvas.Id != null)
+                    {
+                        await JsRuntime.SafeInvokeVoidAsync("VoloChatAvatarManager.createCanvasForUser", CurrentChatContactCanvas, currentContact.Username, GetName(currentContact));
+                    }
                 }
             }
             catch
@@ -669,21 +686,27 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         if (CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User && ChatConversationDto?.Messages != null)
         {
             await Task.Delay(100); // Wait for DOM to be ready
-            // Create snapshot to avoid "Collection was modified" errors
-            var messagesSnapshot = ChatConversationDto.Messages.Where(m => m.SenderUserId.HasValue && m.Side == ChatMessageSide.Receiver).ToList();
-            foreach (var message in messagesSnapshot)
+            var currentConversationMessages = ChatConversationDto?.Messages;
+            if (currentConversationMessages != null)
             {
-                try
+                // Create snapshot to avoid "Collection was modified" errors
+                var messagesSnapshot = currentConversationMessages
+                    .Where(m => m != null && m.SenderUserId.HasValue && m.Side == ChatMessageSide.Receiver)
+                    .ToList();
+                foreach (var message in messagesSnapshot)
                 {
-                    var canvasId = $"sender-avatar-{message.Id}";
-                    var senderName = !string.IsNullOrEmpty(message.SenderName) || !string.IsNullOrEmpty(message.SenderSurname)
-                        ? $"{message.SenderName} {message.SenderSurname}".Trim()
-                        : message.SenderUsername ?? "";
-                    await JsRuntime.SafeInvokeVoidAsync("VoloChatAvatarManager.createCanvasForUserById", canvasId, message.SenderUsername, senderName);
-                }
-                catch
-                {
-                    // Silently ignore JS errors
+                    try
+                    {
+                        var canvasId = $"sender-avatar-{message.Id}";
+                        var senderName = !string.IsNullOrEmpty(message.SenderName) || !string.IsNullOrEmpty(message.SenderSurname)
+                            ? $"{message.SenderName} {message.SenderSurname}".Trim()
+                            : message.SenderUsername ?? "";
+                        await JsRuntime.SafeInvokeVoidAsync("VoloChatAvatarManager.createCanvasForUserById", canvasId, message.SenderUsername, senderName);
+                    }
+                    catch
+                    {
+                        // Silently ignore JS errors
+                    }
                 }
             }
         }
@@ -797,6 +820,18 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 if (!ChatContactsActive.ContainsKey(contactDto))
                 {
                     ChatContactsActive[contactDto] = "";
+                }
+            }
+
+            if (!isSetActive && CurrentChatContact != null)
+            {
+                var currentContactInList = ChatContactDtos.FirstOrDefault(c =>
+                    (CurrentChatContact.Type == ConversationType.User && c.Type == ConversationType.User && c.UserId == CurrentChatContact.UserId) ||
+                    (CurrentChatContact.Type != ConversationType.User && c.Type != ConversationType.User && c.ConversationId == CurrentChatContact.ConversationId));
+
+                if (currentContactInList != null && ChatContactsActive.ContainsKey(currentContactInList))
+                {
+                    ChatContactsActive[currentContactInList] = "active";
                 }
             }
 
@@ -1082,17 +1117,18 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
             if (CurrentChatContact.ConversationId.HasValue)
             {
+                var conversationId = CurrentChatContact.ConversationId.Value;
                 _messagesSkipCount = 0;
                 _hasMoreMessages = true;
                 
                 ChatConversationDto = await ConversationAppService.GetConversationAsync(new GetConversationInput
                 {
-                    ConversationId = CurrentChatContact.ConversationId.Value,
+                    ConversationId = conversationId,
                     TargetUserId = CurrentChatContact.UserId,
                     SkipCount = 0,
                     MaxResultCount = MessagesPageSize
                 });
-                CurrentConversationId = CurrentChatContact.ConversationId.Value;
+                CurrentConversationId = conversationId;
                 
                 if (ChatConversationDto?.Messages != null && ChatConversationDto.Messages.Count < MessagesPageSize)
                 {
@@ -1193,20 +1229,39 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         finally
         {
-            await BlockUiService.UnBlock();
+            try
+            {
+                await BlockUiService.UnBlock();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Ignore when circuit disconnects while leaving this method.
+            }
+            catch (TaskCanceledException)
+            {
+                // Ignore canceled JS operation during component disposal.
+            }
         }
     }
 
     private async Task OnSearchChangeAsync(string value)
     {
         SearchValue = value;
-        await GetContactsAsync(!SearchValue.IsNullOrEmpty());
+        await GetContactsAsync(
+            includeOtherContacts: !SearchValue.IsNullOrEmpty(),
+            preserveCurrentContact: true,
+            loadMore: false,
+            isSetActive: false);
     }
 
     private async Task OnSearchKeyupAsync(KeyboardEventArgs e)
     {
         await InvokeAsync(StateHasChanged);
-        await GetContactsAsync(!SearchValue.IsNullOrEmpty());
+        await GetContactsAsync(
+            includeOtherContacts: !SearchValue.IsNullOrEmpty(),
+            preserveCurrentContact: true,
+            loadMore: false,
+            isSetActive: false);
     }
 
 
@@ -2189,8 +2244,13 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         if (IsMobileMode)
         {
             CurrentMobileView = MobileViewType.ConversationInfo;
+            ShowInfoBox = true;
         }
-        ShowInfoBox = true;
+        else
+        {
+            ShowInfoBox = !ShowInfoBox;
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 

@@ -36,8 +36,6 @@ public partial class SurveyResults
     protected DataGrid<SurveyResultWithNavigationPropertiesDto>? SurveyResultDataGridRef { get; set; }
     protected int DetailPageSize { get; } = LimitedResultRequestDto.DefaultMaxResultCount;
     protected int DetailCurrentPage { get; set; } = 1;
-
-    
     protected string DetailCurrentSorting { get; set; } = $"SurveyResult.CreationTime desc";
     protected int DetailTotalCount { get; set; }
 

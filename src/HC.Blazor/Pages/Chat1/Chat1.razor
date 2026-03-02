@@ -294,7 +294,7 @@
 
                     case MobileViewType.ChatConversation:
                         <!-- Chat Box (Mobile only) -->
-                        <div id="chatBox" class="col-12 p-0 d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
+                        <div id="chatBox" class="p-1 col-12 p-0 d-flex align-items-stretch" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
                             <div class="card w-100 mb-0" style="height: 100%; display: flex; flex-direction: column;">
                                 <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
                                     <div id="AvatarId" class="px-2 py-1 border mb-2 rounded-2">
@@ -352,7 +352,7 @@
                                     </div>
                                     @if (IsLoadingMessages)
                                     {
-                                        <div id="chatBox" class="card-body pt-12 pb-12 text-center">
+                                        <div id="chatBox" class="card-body p-1 pt-12 pb-12 text-center">
                                             <div class="spinner-border text-primary" role="status">
                                                 <span class="visually-hidden">Loading...</span>
                                             </div>
@@ -459,7 +459,7 @@
                         <!-- Info box (Mobile only) -->
                         @if (ShowInfoBox)
                         {
-                            <div class="col-12 p-0 d-flex align-items-stretch">
+                            <div class="col-12 p-1 d-flex align-items-stretch">
                                 <InfoBox
                                     CurrentChatContact="@CurrentChatContact"
                                     ShowInfoBoxAsync="@ShowConversationInfoAsync"
@@ -487,8 +487,8 @@
             {
                 <!-- DESKTOP: Original 3-column layout -->
                 <!-- Users box-->
-                <div class="col-12 col-md-3  d-flex align-items-stretch">
-                    <div class="card w-100 mb-3 mb-md-0" style="height: 100vh; display: flex; flex-direction: column;">
+                <div class="col-12 col-md-3 p-1 d-flex align-items-stretch">
+                    <div class="card w-100 mb-3 mb-md-0" style="height: 98vh; display: flex; flex-direction: column;">
                         <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden;">
                             <div class=" mb-2 rounded-2" id="SearchBox">
                                 <div class="row">
@@ -633,7 +633,7 @@
                     </div>
                 </div>
                 <!-- Chat Box-->
-                <div id="chatBox" class="col-12 @(ShowInfoBox ? "col-md-6" : "col-md-9") p-0 d-flex align-items-stretch @(IsMobileMode && CurrentMobileView != MobileViewType.ChatConversation ? "mobile-view-hidden" : "")" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
+                <div id="chatBox" class="col-12 @(ShowInfoBox ? "col-md-6" : "col-md-9") p-1 d-flex align-items-stretch @(IsMobileMode && CurrentMobileView != MobileViewType.ChatConversation ? "mobile-view-hidden" : "")" style="@ChatMessagesContainerStyle height: 100vh; display: flex; flex-direction: column;">
                     <div class="card w-100 mb-0" style="height: 100%; display: flex; flex-direction: column;">
                         <div class="card-body p-1" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
                             <div id="AvatarId" class="px-2 py-1 border mb-2 rounded-2">
@@ -694,7 +694,7 @@
                             </div>
                             @if (IsLoadingMessages)
                             {
-                                <div id="chatBox" class="card-body pt-12 pb-12 text-center">
+                                <div id="chatBox" class="p-1 card-body pt-12 pb-12 text-center">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
