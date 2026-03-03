@@ -269,6 +269,13 @@ public partial class Index
     {
         try
         {
+            if (!CurrentUser.Id.HasValue)
+            {
+                CalendarEventsList = new List<CalendarEventDto>();
+                TotalEvents = 0;
+                return;
+            }
+
             var input = new GetCalendarEventsInput
             {
                 MaxResultCount = 1000,
@@ -296,8 +303,24 @@ public partial class Index
 
             var result = await CalendarEventsAppService.GetListAsync(input);
 
-            CalendarEventsList = result.Items.ToList();
-            TotalEvents = (int)result.TotalCount;
+            // Only keep calendar events where current user is an assigned participant.
+            var participantsResult = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
+            {
+                IdentityUserId = CurrentUser.Id,
+                MaxResultCount = 1000,
+                SkipCount = 0,
+                Sorting = "CalendarEventParticipant.CreationTime DESC"
+            });
+
+            var participantEventIds = participantsResult.Items
+                .Where(x => x.CalendarEvent != null)
+                .Select(x => x.CalendarEvent.Id)
+                .ToHashSet();
+
+            CalendarEventsList = result.Items
+                .Where(x => participantEventIds.Contains(x.Id))
+                .ToList();
+            TotalEvents = CalendarEventsList.Count;
         }
         catch (Exception ex)
         {

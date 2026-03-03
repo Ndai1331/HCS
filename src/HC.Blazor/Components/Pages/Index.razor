@@ -107,7 +107,7 @@
         <Card Class="w-100 overflow-hidden">
             <CardHeader>
                 <Heading Size="HeadingSize.Is4">@L["Calendar"]</Heading>
-                <small class="text-muted d-block">@L["Total"] @TotalEvents @L["CalenderEvents"]</small>
+                <small class="text-muted d-block">@L["Total"] @SelectedDayEventsCount @L["CalenderEvents"]</small>
             </CardHeader>
             <CardBody>
                 <Tabs SelectedTab="@SelectedDayTab"
@@ -600,6 +600,10 @@
 @code {
     // Calendar
     private string SelectedDayTab { get; set; } = "";
+    private int SelectedDayEventsCount =>
+        !string.IsNullOrWhiteSpace(SelectedDayTab) && EventsByDay.TryGetValue(SelectedDayTab, out var events)
+            ? events.Count
+            : 0;
 
     private List<CalendarDayTab> DayTabs { get; set; } = new();
     private Dictionary<string, List<CalendarEventDto>> EventsByDay { get; set; } = new();
@@ -850,8 +854,8 @@
 </Modal>
 
 @* ************************* DOCUMENT PDF VIEWER MODAL ************************* *@
-<Modal @ref="DocumentPdfViewerModal" Class="pdf-viewer-modal" Size="ModalSize.ExtraLarge" Centered="true">
-    <ModalContent>
+<Modal @ref="DocumentPdfViewerModal" Class="pdf-viewer-modal">
+    <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
         <ModalHeader>
             <ModalTitle>@L["DocumentPreview"]</ModalTitle>
             <CloseButton Clicked="CloseDocumentPdfViewerModalAsync" />
@@ -900,7 +904,7 @@
                 @if (relatedUrl != "#")
                 {
                     <Button Color="Color.Primary" Clicked="@(() => Navigation.NavigateTo(relatedUrl))">
-                        <Icon Name="IconName.Globe" Class="me-1" />
+                        <Icon Name="IconName.Eye" Class="me-1" />
                         @L["ViewDetail"]
                     </Button>
                 }
@@ -1210,7 +1214,7 @@
         </ModalBody>
         <ModalFooter>
             <Button Color="Color.Primary" Clicked="@(() => Navigation.NavigateTo($"/project-detail/{ViewingProject?.Id}"))">
-                <Icon Name="IconName.Globe" Class="me-1" />
+                <Icon Name="IconName.Eye" Class="me-1" />
                 @L["ViewDetail"]
             </Button>
             <Button Color="Color.Secondary" Clicked="CloseProjectDetailModalAsync">
