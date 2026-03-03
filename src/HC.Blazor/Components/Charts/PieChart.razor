@@ -17,8 +17,6 @@
     [Parameter] public string? Title { get; set; }
     [Parameter] public bool ShowLegend { get; set; } = true;
 
-    private IJSObjectReference? _chartModule;
-    private IJSObjectReference? _chartInstance;
     private bool _chartRendered = false;
     private string _lastDataSignature = string.Empty;
 
@@ -26,7 +24,7 @@
     {
         if (Labels.Count > 0 && Data.Count > 0 && Labels.Count == Data.Count)
         {
-            if (_chartInstance == null && !_chartRendered)
+            if (!_chartRendered)
             {
                 // Wait a bit for the canvas to be rendered in the DOM
                 await Task.Delay(200);
@@ -43,14 +41,14 @@
             var currentSignature = BuildDataSignature();
             var dataChanged = !string.Equals(_lastDataSignature, currentSignature, StringComparison.Ordinal);
 
-            if (_chartInstance != null && dataChanged)
+            if (_chartRendered && dataChanged)
             {
                 // Update existing chart
                 await Task.Delay(200); // Small delay to ensure DOM is ready
                 await UpdateChart();
                 _lastDataSignature = currentSignature;
             }
-            else if (_chartInstance == null && !_chartRendered)
+            else if (!_chartRendered)
             {
                 // Trigger render in OnAfterRenderAsync
                 _chartRendered = false;

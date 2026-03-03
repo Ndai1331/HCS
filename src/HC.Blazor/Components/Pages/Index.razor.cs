@@ -341,6 +341,8 @@ public partial class Index
             var personalInput = new GetDocumentsInput
             {
                 SourceType = DocumentSourceType.Personal,
+                IncommingDateMin = FilterStartDate, 
+                IncommingDateMax = FilterEndDate,
                 MaxResultCount = 10,
                 SkipCount = 0,
                 Sorting = "Document.CreationTime DESC"

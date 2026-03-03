@@ -21,6 +21,7 @@ using Volo.Abp;
 using Volo.Abp.Content;
 using Volo.Abp.AspNetCore.Components.Messages;
 using Volo.Abp.BlobStoring;
+using Microsoft.Extensions.Logging;
 namespace HC.Blazor.Pages;
 
 public partial class SignatureSettings : HCComponentBase
@@ -82,6 +83,9 @@ public partial class SignatureSettings : HCComponentBase
 
     private List<SignatureSettingDto> SelectedSignatureSettings { get; set; } = new();
     private bool AllSignatureSettingsSelected { get; set; }
+
+    [Inject]
+    protected ILogger<SignatureSettings> Logger { get; set; } = default!;
 
     public SignatureSettings()
     {
@@ -254,8 +258,21 @@ public partial class SignatureSettings : HCComponentBase
     {
         try
         {
+            Logger.LogInformation(
+                "Create SignatureSetting requested. ProviderCode={ProviderCode}, AllowDigitalSign={AllowDigitalSign}, LayoutImg={LayoutImg}",
+                NewSignatureSetting.ProviderCode,
+                NewSignatureSetting.AllowDigitalSign,
+                NewSignatureSetting.LayoutImg
+            );
+
             if (!ValidateCreateSignatureSetting())
             {
+                Logger.LogWarning(
+                    "Create SignatureSetting validation failed. ErrorKey={ErrorKey}, LayoutImg={LayoutImg}",
+                    CreateSignatureSettingValidationErrorKey,
+                    NewSignatureSetting.LayoutImg
+                );
+
                 await UiMessageService.Warn(L[CreateSignatureSettingValidationErrorKey ?? "ValidationError"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
@@ -264,11 +281,22 @@ public partial class SignatureSettings : HCComponentBase
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await SignatureSettingsAppService.CreateAsync(NewSignatureSetting);
+            Logger.LogInformation(
+                "Create SignatureSetting completed. ProviderCode={ProviderCode}, LayoutImg={LayoutImg}",
+                NewSignatureSetting.ProviderCode,
+                NewSignatureSetting.LayoutImg
+            );
             await GetSignatureSettingsAsync();
             await CloseCreateSignatureSettingModalAsync();
         }
         catch (Exception ex)
         {
+            Logger.LogError(
+                ex,
+                "Create SignatureSetting failed. ProviderCode={ProviderCode}, LayoutImg={LayoutImg}",
+                NewSignatureSetting.ProviderCode,
+                NewSignatureSetting.LayoutImg
+            );
             await HandleErrorAsync(ex);
         }
         finally
@@ -360,8 +388,23 @@ public partial class SignatureSettings : HCComponentBase
     {
         try
         {
+            Logger.LogInformation(
+                "Update SignatureSetting requested. Id={Id}, ProviderCode={ProviderCode}, AllowDigitalSign={AllowDigitalSign}, LayoutImg={LayoutImg}",
+                EditingSignatureSettingId,
+                EditingSignatureSetting.ProviderCode,
+                EditingSignatureSetting.AllowDigitalSign,
+                EditingSignatureSetting.LayoutImg
+            );
+
             if (!ValidateEditSignatureSetting())
             {
+                Logger.LogWarning(
+                    "Update SignatureSetting validation failed. Id={Id}, ErrorKey={ErrorKey}, LayoutImg={LayoutImg}",
+                    EditingSignatureSettingId,
+                    EditSignatureSettingValidationErrorKey,
+                    EditingSignatureSetting.LayoutImg
+                );
+
                 await UiMessageService.Warn(L[EditSignatureSettingValidationErrorKey ?? "ValidationError"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await InvokeAsync(StateHasChanged);
@@ -370,11 +413,22 @@ public partial class SignatureSettings : HCComponentBase
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             await SignatureSettingsAppService.UpdateAsync(EditingSignatureSettingId, EditingSignatureSetting);
+            Logger.LogInformation(
+                "Update SignatureSetting completed. Id={Id}, LayoutImg={LayoutImg}",
+                EditingSignatureSettingId,
+                EditingSignatureSetting.LayoutImg
+            );
             await GetSignatureSettingsAsync();
             await EditSignatureSettingModal.Hide();
         }
         catch (Exception ex)
         {
+            Logger.LogError(
+                ex,
+                "Update SignatureSetting failed. Id={Id}, LayoutImg={LayoutImg}",
+                EditingSignatureSettingId,
+                EditingSignatureSetting.LayoutImg
+            );
             await HandleErrorAsync(ex);
         }
         finally
@@ -682,10 +736,17 @@ public partial class SignatureSettings : HCComponentBase
     {
         if (e.Files != null && e.Files.Any())
         {
+            var selectedFile = e.Files.First();
+            Logger.LogInformation(
+                "Create layout image selected. FileName={FileName}, Size={Size}",
+                selectedFile.Name,
+                selectedFile.Size
+            );
             await UploadLayoutImgFileAsync(e.Files.First(), false);
             return;
         }
 
+        Logger.LogInformation("Create layout image cleared.");
         NewSignatureSetting.LayoutImg = string.Empty;
         await InvokeAsync(StateHasChanged);
     }
@@ -694,10 +755,18 @@ public partial class SignatureSettings : HCComponentBase
     {
         if (e.Files != null && e.Files.Any())
         {
+            var selectedFile = e.Files.First();
+            Logger.LogInformation(
+                "Edit layout image selected. Id={Id}, FileName={FileName}, Size={Size}",
+                EditingSignatureSettingId,
+                selectedFile.Name,
+                selectedFile.Size
+            );
             await UploadLayoutImgFileAsync(e.Files.First(), true);
             return;
         }
 
+        Logger.LogInformation("Edit layout image cleared. Id={Id}", EditingSignatureSettingId);
         EditingSignatureSetting.LayoutImg = string.Empty;
         await InvokeAsync(StateHasChanged);
     }
@@ -706,10 +775,23 @@ public partial class SignatureSettings : HCComponentBase
     {
         try
         {
+            Logger.LogInformation(
+                "Upload layout image started. Mode={Mode}, FileName={FileName}, Size={Size}",
+                isEditMode ? "Edit" : "Create",
+                file.Name,
+                file.Size
+            );
+
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg" };
             var fileExtension = Path.GetExtension(file.Name).ToLowerInvariant();
             if (!allowedExtensions.Contains(fileExtension))
             {
+                Logger.LogWarning(
+                    "Upload layout image rejected by extension. Mode={Mode}, FileName={FileName}, Extension={Extension}",
+                    isEditMode ? "Edit" : "Create",
+                    file.Name,
+                    fileExtension
+                );
                 await Message.Error(L["OnlyImageFilesAllowed"]);
                 if (isEditMode)
                 {
@@ -724,6 +806,12 @@ public partial class SignatureSettings : HCComponentBase
 
             if (file.Size > 52428800)
             {
+                Logger.LogWarning(
+                    "Upload layout image rejected by size. Mode={Mode}, FileName={FileName}, Size={Size}",
+                    isEditMode ? "Edit" : "Create",
+                    file.Name,
+                    file.Size
+                );
                 await Message.Error(L["FileSizeTooLarge"]);
                 if (isEditMode)
                 {
@@ -741,23 +829,50 @@ public partial class SignatureSettings : HCComponentBase
             await file.OpenReadStream(long.MaxValue).CopyToAsync(memoryStream);
             memoryStream.Position = 0;
             var filePath = $"signature-layout-images/{Guid.NewGuid()}_{file.Name}";
+            Logger.LogInformation(
+                "Saving layout image to blob. Mode={Mode}, BlobPath={BlobPath}, Bytes={Bytes}",
+                isEditMode ? "Edit" : "Create",
+                filePath,
+                memoryStream.Length
+            );
             await BlobContainer.SaveAsync(filePath, memoryStream.ToArray());
+            Logger.LogInformation(
+                "Saved layout image to blob successfully. Mode={Mode}, BlobPath={BlobPath}",
+                isEditMode ? "Edit" : "Create",
+                filePath
+            );
 
             if (isEditMode)
             {
                 EditingSignatureSetting.LayoutImg = filePath;
                 EditFieldErrors.Remove("LayoutImg");
+                Logger.LogInformation(
+                    "Assigned layout image to edit model. Id={Id}, LayoutImg={LayoutImg}",
+                    EditingSignatureSettingId,
+                    EditingSignatureSetting.LayoutImg
+                );
             }
             else
             {
                 NewSignatureSetting.LayoutImg = filePath;
                 CreateFieldErrors.Remove("LayoutImg");
+                Logger.LogInformation(
+                    "Assigned layout image to create model. ProviderCode={ProviderCode}, LayoutImg={LayoutImg}",
+                    NewSignatureSetting.ProviderCode,
+                    NewSignatureSetting.LayoutImg
+                );
             }
 
             await Message.Success(L["FileUploadedSuccessfully"]);
         }
         catch (Exception ex)
         {
+            Logger.LogError(
+                ex,
+                "Upload layout image failed. Mode={Mode}, FileName={FileName}",
+                isEditMode ? "Edit" : "Create",
+                file.Name
+            );
             await HandleErrorAsync(ex);
         }
         finally

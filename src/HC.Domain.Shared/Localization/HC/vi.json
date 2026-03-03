@@ -1227,6 +1227,12 @@
     "OnlyInitiatorCanResubmit": "Chỉ người trình mới có thể trình lại văn bản",
     "ExistingAttachedFiles": "File đính kèm hiện tại",
     "WorkflowResubmitted": "Trình lại văn bản",
-    "WorkflowResubmittedMessage": "Văn bản đã được trình lại"
+    "WorkflowResubmittedMessage": "Văn bản đã được trình lại",
+    "Permission:Searching": "Tìm kiếm",
+    "Permission:SettingManagement" : "Quản lý cài đặt",
+    "Permission:DocumentWorkflowInstanceFiles" : "File quy trình",
+    "Permission:DocumentWorkflowInstanceLogss" : "Log quy trình",
+    "NoProjectsFound" : "Không tìm thấy dự án",
+    "NoTasksFound" : "Không tìm thấy công việc"
   }
 }

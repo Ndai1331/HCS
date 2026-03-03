@@ -19,6 +19,8 @@ public class DocumentWorkflowInstanceLogsController : DocumentWorkflowInstanceLo
     {
     }
 
+
+
     [HttpGet]
     [Route("workflow-chart-statistics")]
     public virtual Task<WorkflowChartStatisticsDto> GetWorkflowChartStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null)

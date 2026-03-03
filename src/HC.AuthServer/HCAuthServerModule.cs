@@ -294,8 +294,20 @@ public class HCAuthServerModule : AbpModule
             {
                 container.UseMinio(minio =>
                 {
-                    // MinIO EndPoint chỉ cần hostname:port (không có http://)
-                    // Protocol được xác định bởi WithSSL
+                    minio.EndPoint = configuration["MinIO:EndPoint"] ?? "minio:9000";
+                    minio.AccessKey = configuration["MinIO:AccessKey"] ?? "hcsadmin";
+                    minio.SecretKey = configuration["MinIO:SecretKey"] ?? "hcsadminpassword";
+                    minio.BucketName = configuration["MinIO:BucketName"] ?? "hcs_bucket";
+                    minio.WithSSL = configuration.GetValue<bool>("MinIO:WithSSL", false);
+                    minio.CreateBucketIfNotExists = configuration.GetValue<bool>("MinIO:CreateBucketIfNotExists", true);
+                });
+            });
+
+            // ABP Account module uses this container for profile pictures.
+            options.Containers.Configure<AccountProfilePictureContainer>(container =>
+            {
+                container.UseMinio(minio =>
+                {
                     minio.EndPoint = configuration["MinIO:EndPoint"] ?? "minio:9000";
                     minio.AccessKey = configuration["MinIO:AccessKey"] ?? "hcsadmin";
                     minio.SecretKey = configuration["MinIO:SecretKey"] ?? "hcsadminpassword";

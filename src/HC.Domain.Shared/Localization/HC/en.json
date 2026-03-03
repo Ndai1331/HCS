@@ -1172,6 +1172,8 @@
     "OnlyInitiatorCanResubmit": "Only the initiator can resubmit the document",
     "ExistingAttachedFiles": "Existing attached files",
     "WorkflowResubmitted": "Document resubmitted",
-    "WorkflowResubmittedMessage": "The document has been resubmitted"
+    "WorkflowResubmittedMessage": "The document has been resubmitted",
+    "NoProjectsFound": "No projects found",
+    "NoTasksFound": "No tasks found"
   }
 }
