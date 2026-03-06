@@ -132,17 +132,19 @@ public partial class ProjectTaskCreateModal
         return ParentTasksCollection.ToList();
     }
 
-    protected void OnNewProjectTaskProjectChanged()
+    protected async Task OnNewProjectTaskProjectChanged()
     {
+        await Task.Yield();
+
         NewProjectTask.ProjectId = SelectedNewProjectTaskProject.FirstOrDefault()?.Id ?? Guid.Empty;
         
-        // Reset ParentTask selection when project changes (parent task must be from the same project)
         SelectedNewProjectTaskParentTask = new List<ParentTaskSelectItem>();
         NewProjectTask.ParentTaskId = null;
         ParentTasksCollection = new List<ParentTaskSelectItem>();
         
-        // Force ParentTask Select2 to re-initialize with new project context
         ParentTaskSelectKey = Guid.NewGuid();
+
+        await InvokeAsync(StateHasChanged);
     }
 
     protected void OnNewProjectTaskParentChanged()

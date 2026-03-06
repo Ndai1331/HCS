@@ -1234,6 +1234,7 @@
     "Permission:DocumentWorkflowInstanceLogss" : "Log quy trình",
     "NoProjectsFound" : "Không tìm thấy dự án",
     "NoTasksFound" : "Không tìm thấy công việc",
-    "CalendarEvent:Detail": "Chi tiết sự kiện"
+    "CalendarEvent:Detail": "Chi tiết sự kiện",
+    "NoMembersFound" : "Không tìm thấy thành viên"
   }
 }

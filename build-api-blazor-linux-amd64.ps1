@@ -1,13 +1,27 @@
 param (
     [string]$version = 'latest1',
     [switch]$BuildBase,
-    [string]$BaseTag = 'libreoffice-v1'
+    [string]$BaseTag = 'libreoffice-v1',
+    [switch]$ClearDockerCache
 )
 
 $currentFolder = $PSScriptRoot
 $slnFolder = $currentFolder
 $blazorBaseImage = "longnguyen1331/hc-blazor-base:$BaseTag"
 $blazorAppImage = "longnguyen1331/hc-blazor"
+
+if ($ClearDockerCache) {
+    Write-Host "Clearing Docker builder cache..." -ForegroundColor Yellow
+    try {
+        docker buildx prune -af
+        if (-not $?) {
+            throw "docker buildx prune failed"
+        }
+    } catch {
+        Write-Host "ERROR: failed to clear Docker builder cache" -ForegroundColor Red
+        exit 1
+    }
+}
 
 
 Write-Host "********* BUILDING AuthServer (HC.AuthServer) *********" -ForegroundColor Green
@@ -16,6 +30,10 @@ Set-Location $authServerFolder
 
 Write-Host "Publishing AuthServer..." -ForegroundColor Yellow
 try {
+    $authPublishDir = Join-Path $authServerFolder "bin/Release/net10.0/publish"
+    if (Test-Path $authPublishDir) {
+        Remove-Item $authPublishDir -Recurse -Force
+    }
     $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
     if (-not $?) {
         throw "dotnet publish failed"
@@ -56,6 +74,10 @@ Set-Location $apiFolder
 
 Write-Host "Publishing API..." -ForegroundColor Yellow
 try {
+    $apiPublishDir = Join-Path $apiFolder "bin/Release/net10.0/publish"
+    if (Test-Path $apiPublishDir) {
+        Remove-Item $apiPublishDir -Recurse -Force
+    }
     $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
     if (-not $?) {
         throw "dotnet publish failed"
@@ -108,6 +130,10 @@ if ($BuildBase) {
 
 Write-Host "Publishing Blazor..." -ForegroundColor Yellow
 try {
+    $blazorPublishDir = Join-Path $blazorFolder "bin/Release/net10.0/publish"
+    if (Test-Path $blazorPublishDir) {
+        Remove-Item $blazorPublishDir -Recurse -Force
+    }
     $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
     if (-not $?) {
         throw "dotnet publish failed"
@@ -130,9 +156,32 @@ if (-not (Test-Path $publishPathFull)) {
 Write-Host "Publish successful. Output: $publishPathFull" -ForegroundColor Green
 Write-Host "Building Docker image for Blazor (linux/amd64)..." -ForegroundColor Yellow
 try {
-    docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t "${blazorAppImage}:$version" -t "${blazorAppImage}:latest" . --push
+    $blazorDll = Join-Path $publishPathFull "HC.Blazor.dll"
+    if (-not (Test-Path $blazorDll)) {
+        Write-Host "ERROR: Blazor publish output is invalid. Missing file: $blazorDll" -ForegroundColor Red
+        exit 1
+    }
+
+    $publishDockerfile = Join-Path $publishPathFull "Dockerfile.publish.local"
+    $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+@"
+FROM $blazorBaseImage
+USER `$APP_UID
+EXPOSE 8080
+EXPOSE 8081
+WORKDIR /app
+COPY . .
+ARG BUILD_DATE
+LABEL org.opencontainers.image.created=`"`$BUILD_DATE`"
+ENTRYPOINT ["dotnet", "HC.Blazor.dll"]
+"@ | Set-Content -Path $publishDockerfile -Encoding UTF8
+
+    docker buildx build --pull --no-cache --platform linux/amd64 -f $publishDockerfile --build-arg BUILD_DATE=$buildDate -t "${blazorAppImage}:$version" -t "${blazorAppImage}:latest" $publishPathFull --push
     if (-not $?) {
         throw "docker build failed"
+    }
+    if (Test-Path $publishDockerfile) {
+        Remove-Item $publishDockerfile -Force
     }
 } catch {
     Write-Host "ERROR: Docker build failed for Blazor" -ForegroundColor Red

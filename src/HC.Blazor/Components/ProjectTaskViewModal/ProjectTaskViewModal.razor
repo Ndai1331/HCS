@@ -143,7 +143,7 @@
                                                         <Icon Name="IconName.File" Class="text-primary" />
                                                         <div>
                                                             <div class="fw-bold" style="font-size: 0.875rem;">@doc.Document?.Title</div>
-                                                            <span class="badge bg-secondary" style="font-size: 0.7rem;">
+                                                            <span class="@($"badge {EnumStatusColorHelper.GetProjectTaskDocumentPurposeBackgroundClass(doc.ProjectTaskDocument.DocumentPurpose)}")" style="font-size: 0.7rem;">
                                                                 @L[$"Enum:ProjectTaskDocumentPurpose.{doc.ProjectTaskDocument.DocumentPurpose}"]
                                                             </span>
                                                         </div>
@@ -187,7 +187,7 @@
                                                     <div class="flex-grow-1" style="min-width: 0;">
                                                         <div class="fw-bold text-truncate d-flex align-items-center justify-content-between" style="font-size: 0.875rem;">
                                                             <span>@GetUserDisplayName(assignment.User)</span>
-                                                             <span class="badge bg-info" style="font-size: 0.7rem;">
+                                                             <span class="@($"badge {EnumStatusColorHelper.GetProjectTaskAssignmentRoleBackgroundClass(assignment.ProjectTaskAssignment.AssignmentRole)}")" style="font-size: 0.7rem;">
                                                                 @L[$"Enum:ProjectTaskAssignmentRole.{assignment.ProjectTaskAssignment.AssignmentRole}"]
                                                             </span>
                                                         </div>

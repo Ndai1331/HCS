@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Blazorise;
 using HC.CalendarEventParticipants;
+using HC.ProjectTaskAssignments;
+using HC.ProjectTaskDocuments;
 using HC.Projects;
 using HC.ProjectTasks;
 namespace HC.Blazor.Shared;
@@ -79,5 +81,66 @@ public class EnumStatusColorHelper
             ParticipantResponse.DECLINED => Color.Danger,
             _ => Color.Primary,
         };
+    }
+
+    public static string GetProjectTaskDocumentPurposeBackgroundColor(string? purpose)
+    {
+        if (!Enum.TryParse<ProjectTaskDocumentPurpose>(purpose, true, out var parsedPurpose))
+        {
+            return "secondary";
+        }
+
+        return GetProjectTaskDocumentPurposeBackgroundColor(parsedPurpose);
+    }
+
+    public static string GetProjectTaskDocumentPurposeBackgroundColor(ProjectTaskDocumentPurpose purpose)
+    {
+        return purpose switch
+        {
+            ProjectTaskDocumentPurpose.REPORT => "primary",
+            ProjectTaskDocumentPurpose.REFERENCE => "secondary",
+            _ => "secondary",
+        };
+    }
+
+    public static string GetProjectTaskDocumentPurposeBackgroundClass(string? purpose)
+    {
+        return $"bg-{GetProjectTaskDocumentPurposeBackgroundColor(purpose)}";
+    }
+
+    public static string GetProjectTaskDocumentPurposeBackgroundClass(ProjectTaskDocumentPurpose purpose)
+    {
+        return $"bg-{GetProjectTaskDocumentPurposeBackgroundColor(purpose)}";
+    }
+
+    public static string GetProjectTaskAssignmentRoleBackgroundColor(string? role)
+    {
+        if (!Enum.TryParse<ProjectTaskAssignmentRole>(role, true, out var parsedRole))
+        {
+            return "secondary";
+        }
+
+        return GetProjectTaskAssignmentRoleBackgroundColor(parsedRole);
+    }
+
+    public static string GetProjectTaskAssignmentRoleBackgroundColor(ProjectTaskAssignmentRole role)
+    {
+        return role switch
+        {
+            ProjectTaskAssignmentRole.MAIN => "danger",
+            ProjectTaskAssignmentRole.SUPPORT => "info",
+            ProjectTaskAssignmentRole.REVIEW => "warning",
+            _ => "secondary",
+        };
+    }
+
+    public static string GetProjectTaskAssignmentRoleBackgroundClass(string? role)
+    {
+        return $"bg-{GetProjectTaskAssignmentRoleBackgroundColor(role)}";
+    }
+
+    public static string GetProjectTaskAssignmentRoleBackgroundClass(ProjectTaskAssignmentRole role)
+    {
+        return $"bg-{GetProjectTaskAssignmentRoleBackgroundColor(role)}";
     }
 }

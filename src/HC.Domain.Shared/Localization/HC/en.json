@@ -1175,6 +1175,7 @@
     "WorkflowResubmittedMessage": "The document has been resubmitted",
     "NoProjectsFound": "No projects found",
     "NoTasksFound": "No tasks found",
-    "CalendarEvent:Detail": "Calendar event detail"
+    "CalendarEvent:Detail": "Calendar event detail",
+    "NoMembersFound" : "No members found"
   }
 }

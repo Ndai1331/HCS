@@ -844,7 +844,7 @@
                         Disabled="@IsCreatingProject">
                     @if (IsCreatingProject)
                     {
-                        <RadarSpinner/>
+                         <span class="spinner-border spinner-border-sm me-1"></span>
                     }
                     @L["Save"]
                 </Button>
@@ -1052,7 +1052,7 @@
 <Modal @ref="ProjectDetailModal" Class="project-detail-modal">
     <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
         <ModalHeader>
-            <ModalTitle>@L["Detail"]</ModalTitle>
+            <ModalTitle>@L["ProjectDetail"]</ModalTitle>
             <CloseButton Clicked="CloseProjectDetailModalAsync" />
         </ModalHeader>
         <ModalBody Style="padding: 5px !important;">
@@ -1062,11 +1062,11 @@
                     @* Column 8: General Information *@
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Style="padding-right: 0px !important;">
                         <Card Class="h-100">
-                            <CardHeader>
+                            @* <CardHeader>
                                 <Heading Size="HeadingSize.Is5" Class="fw-bolder">
                                     <Icon Name="IconName.Info" Class="me-1" /> @L["Tab:GeneralInformation"]
                                 </Heading>
-                            </CardHeader>
+                            </CardHeader> *@
                             <CardBody Style="padding: 1rem !important;">
                                 <Row class="g-2">
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
@@ -1118,7 +1118,7 @@
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                         <label class="form-label fw-bold">@L["Members"]</label>
                                         <div>
-                                            <span class="badge bg-info">@ProjectMembersList.Count @L["Members"]</span>
+                                            <span class="badge bg-success">@ProjectMembersList.Count @L["Members"]</span>
                                         </div>
                                     </Column>
                                 </Row>

@@ -79,7 +79,7 @@
                                                          GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
                                                          Datasource="ProjectsCollection"
                                                          Value="@SelectedNewProjectTaskProject"
-                                                         OnValueChanged="@(() => { OnNewProjectTaskProjectChanged(); CreateFieldErrors.Remove("Project"); })"
+                                                         OnValueChanged="@(async () => { await OnNewProjectTaskProjectChanged(); CreateFieldErrors.Remove("Project"); })"
                                                          Cache="__MemoryCache"
                                                          Multiselect="false" />
                                             </div>
@@ -100,6 +100,7 @@
                                                          Datasource="ParentTasksCollection"
                                                          Value="@SelectedNewProjectTaskParentTask"
                                                          OnValueChanged="OnNewProjectTaskParentChanged"
+                                                         Cache="__MemoryCache"
                                                          Multiselect="false" />
                                             </div>
                                         </Field>
@@ -120,6 +121,7 @@
                                                          Datasource="ParentTasksCollection"
                                                          Value="@SelectedNewProjectTaskParentTask"
                                                          OnValueChanged="OnNewProjectTaskParentChanged"
+                                                         Cache="__MemoryCache"
                                                          Multiselect="false" />
                                             </div>
                                         </Field>
@@ -489,7 +491,7 @@
                             Clicked="SaveGeneralInformationAsync">
                         @if (IsSavingGeneralInformation)
                         {
-                            <RadarSpinner />
+                             <span class="spinner-border spinner-border-sm me-1"></span>
                         }
                         else
                         {
@@ -505,7 +507,7 @@
                             Clicked="@(async () => await OnSelectedCreateTabChanged("documents"))">
                         @if (IsNavigatingTab)
                         {
-                            <RadarSpinner />
+                            <span class="spinner-border spinner-border-sm me-1"></span>
                         }
                         else
                         {
@@ -521,7 +523,7 @@
                             Clicked="FinishCreateWizardAsync">
                         @if (IsFinishingWizard)
                         {
-                            <RadarSpinner />
+                             <span class="spinner-border spinner-border-sm me-1"></span>
                         }
                         else
                         {
