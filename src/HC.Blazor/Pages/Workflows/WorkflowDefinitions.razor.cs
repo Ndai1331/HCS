@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Globalization;
-using System.IO;
 using System.Web;
 using Blazorise;
 using Blazorise.DataGrid;
@@ -13,17 +12,14 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.WorkflowDefinitions;
 using HC.Permissions;
-using HC.Shared;
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
-using Volo.Abp;
-using Volo.Abp.Content;
+using Microsoft.Extensions.Logging;
 
 namespace HC.Blazor.Pages.Workflows;
 
 public partial class WorkflowDefinitions
 {
+    [Inject] private ILogger<WorkflowDefinitions> _logger { get; set; }
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems = new List<Volo.Abp.BlazoriseUI.BreadcrumbItem>();
 
     protected PageToolbar Toolbar { get; } = new PageToolbar();
@@ -305,10 +301,16 @@ public partial class WorkflowDefinitions
         Filter.Description = description;
         await SearchAsync();
     }
-
-    protected virtual async Task OnIsActiveChangedAsync(bool? isActive)
+    private string IsActiveFilterValue { get; set; } = string.Empty;
+    protected virtual async Task OnIsActiveChangedAsync(string? isActive)
     {
-        Filter.IsActive = isActive;
+        Filter.IsActive = isActive switch
+        {
+            "True" or "true" => true,
+            "False" or "false" => false,
+            _ => null
+        };
+        IsActiveFilterValue = isActive ?? string.Empty;
         await SearchAsync();
     }
 

@@ -40,6 +40,10 @@ public abstract class EfCoreWorkflowDefinitionRepositoryBase : EfCoreRepository<
 
     protected virtual IQueryable<WorkflowDefinition> ApplyFilter(IQueryable<WorkflowDefinition> query, string? filterText = null, string? code = null, string? name = null, string? description = null, bool? isActive = null)
     {
-        return query.WhereIf(!string.IsNullOrWhiteSpace(filterText), e => e.Code!.Contains(filterText!) || e.Name!.Contains(filterText!) || e.Description!.Contains(filterText!)).WhereIf(!string.IsNullOrWhiteSpace(code), e => e.Code.Contains(code)).WhereIf(!string.IsNullOrWhiteSpace(name), e => e.Name.Contains(name)).WhereIf(!string.IsNullOrWhiteSpace(description), e => e.Description.Contains(description)).WhereIf(isActive.HasValue, e => e.IsActive == isActive);
+        return query.WhereIf(!string.IsNullOrWhiteSpace(filterText), e => e.Code!.Contains(filterText!) || e.Name!.Contains(filterText!) || e.Description!.Contains(filterText!))
+        .WhereIf(!string.IsNullOrWhiteSpace(code), e => e.Code.Contains(code))
+        .WhereIf(!string.IsNullOrWhiteSpace(name), e => e.Name.Contains(name))
+        .WhereIf(!string.IsNullOrWhiteSpace(description), e => e.Description.Contains(description))
+        .WhereIf(isActive.HasValue, e => e.IsActive == isActive);
     }
 }

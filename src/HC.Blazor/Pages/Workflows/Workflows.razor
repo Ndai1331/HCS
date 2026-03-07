@@ -1,7 +1,6 @@
 @page "/workflow-lists"
 @attribute [Authorize(HCPermissions.Workflows.Default)]
 @using HC.Workflows
-@using HC.Workflows
 @using HC.Localization
 @using HC.Shared
 @using Microsoft.AspNetCore.Authorization
@@ -110,13 +109,13 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["IsActive"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.IsActive"
-		SelectedValueChanged="@OnIsActiveChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
-<SelectItem Value="true">@L["Yes"]</SelectItem>
-<SelectItem Value="false">@L["No"]</SelectItem>
-</Select>                       
+                        <Select TValue="string"
+                                SelectedValue="@IsActiveFilterValue"
+                                SelectedValueChanged="@OnIsActiveChangedAsync">
+                            <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
+                            <SelectItem Value="@string.Format("{0}", true.ToString().ToLower())">@L["Yes"]</SelectItem>
+                            <SelectItem Value="@string.Format("{0}", false.ToString().ToLower())">@L["No"]</SelectItem>
+                        </Select>
                     </Field>
                 </Column>
             </Row>

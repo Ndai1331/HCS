@@ -110,7 +110,7 @@
                                   TextChanged="@((string value) => { CurrentWorkflow.Code = value; WorkflowValidation.RemoveFieldError("Code"); })"
                                   MaxLength="WorkflowConsts.CodeMaxLength" 
                                   Autofocus="true"
-                                  Disabled="@IsWorkflowSaved"
+                                  Disabled="@(IsWorkflowSaved && (IsEditing == false))"
                                   Style="@(WorkflowValidation.HasFieldError("Code") ? "border-color: #dc3545;" : "")" />
                         @if (WorkflowValidation.HasFieldError("Code"))
                         {
@@ -121,7 +121,7 @@
                         <FieldLabel>@L["Name"] *</FieldLabel>
                         <TextEdit Text="@CurrentWorkflow.Name" 
                                   TextChanged="@((string value) => { CurrentWorkflow.Name = value; WorkflowValidation.RemoveFieldError("Name"); })"
-                                  Disabled="@IsWorkflowSaved"
+                                  Disabled="@(IsWorkflowSaved && (IsEditing == false))"
                                   Style="@(WorkflowValidation.HasFieldError("Name") ? "border-color: #dc3545;" : "")" />
                         @if (WorkflowValidation.HasFieldError("Name"))
                         {
@@ -131,12 +131,12 @@
                     <Field>
                         <FieldLabel>@L["Description"]</FieldLabel>
                         <MemoEdit @bind-Text="@CurrentWorkflow.Description" 
-                                  Disabled="@IsWorkflowSaved" />
+                                  Disabled="@(IsWorkflowSaved && (IsEditing == false))" />
                     </Field>
                     <Field>
                         <Check TValue="bool" 
                                @bind-Checked="@CurrentWorkflow.IsActive" 
-                               Disabled="@IsWorkflowSaved">@L["IsActive"]</Check>
+                               Disabled="@(IsWorkflowSaved && (IsEditing == false))">@L["IsActive"]</Check>
                     </Field>
                 </StepPanel>
 
@@ -367,33 +367,34 @@
                                                     <!-- Grid when file exists -->
                                                     <div>
                                                         <Heading Size="HeadingSize.Is6">@L["WordTemplatePath"]</Heading>
-                                                        <Table Hoverable="true" Bordered="true" Striped="true">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>@L["WordTemplatePath"]</th>
-                                                                    <th>@L["Actions"]</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                <tr>
-                                                                    <td>@GetWordTemplatePath()</td>
-                                                                    <td>
-                                                                        <div class="d-flex gap-2 align-items-center">
-                                                                            <FilePicker @ref="WordTemplateFilePicker"
-                                                                                       Multiple="false"
-                                                                                       Filter=".docx,.doc,.pdf"
-                                                                                       DisableProgressReport="true"
-                                                                                       Changed="OnWordTemplateFileChanged"
-                                                                                       ShowMode="FilePickerShowMode.List"
-                                                                                       MaxFileSize="52428800"
-                                                                                       FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer"
-                                                                                       Class="flex-grow-1">
-                                                                            </FilePicker>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </Table>
+                                                        <Row>
+                                                            <Column ColumnSize="ColumnSize.Is12" Class="pb-1">
+                                                                <FilePicker @ref="WordTemplateFilePicker"
+                                                                        Multiple="false"
+                                                                        Filter=".docx,.doc,.pdf"
+                                                                        DisableProgressReport="true"
+                                                                        Changed="OnWordTemplateFileChanged"
+                                                                        ShowMode="FilePickerShowMode.List"
+                                                                        MaxFileSize="52428800"
+                                                                        FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer"
+                                                                        Class="flex-grow-1">
+                                                                </FilePicker>
+                                                            </Column>
+                                                            <Column ColumnSize="ColumnSize.Is12">
+                                                                <Table Hoverable="true" Bordered="true" Striped="true">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>@L["WordTemplatePath"]</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <td>@GetWordTemplatePath()</td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </Table>
+                                                            </Column>
+                                                        </Row>
                                                     </div>
                                                 }
                                             </Column>
@@ -401,15 +402,15 @@
                                     </Column>
                                     
                                     <!-- Right Column: PDF Viewer only (6 columns) -->
-                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="bg-dark">
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="bg-secondary p-1 rounded-1">
                                         @if (IsConvertingToPdf)
                                         {
                                             @* Loading indicator while converting *@
-                                            <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 20rem;">
+                                            <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 100%;">
                                                 <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
                                                     <span class="visually-hidden">Loading...</span>
                                                 </div>
-                                                <p class="text-muted fw-semibold">@L["ConvertingToPdf"]...</p>
+                                                <p class="text-white fw-semibold">@L["ConvertingToPdf"]...</p>
                                             </div>
                                         }
                                         else if (!string.IsNullOrEmpty(WordTemplatePdfUrl))
@@ -423,7 +424,7 @@
                                         else
                                         {
                                             @* Placeholder when no PDF available *@
-                                            <div class="d-flex flex-column align-items-center justify-content-center text-muted" style="min-height: 20rem; border: 2px dashed #dee2e6; border-radius: 8px;">
+                                            <div class="d-flex flex-column align-items-center justify-content-center text-white" style="min-height: 100%; border: 2px dashed #dee2e6; border-radius: 8px;">
                                                 <Icon Name="IconName.FilePdf" Style="font-size: 3rem;" Class="mb-2" />
                                                 <p>@L["UploadWordFileToPreviewPdf"]</p>
                                             </div>
@@ -633,14 +634,20 @@
                     }
                     else
                     {
-                        <Button Color="Color.Primary" Clicked="EnableEditAsync">
+                       
+
+                        if(IsEditing)
+                        {
+                            <Button Color="Color.Success" Clicked="UpdateWorkflowAsync" Class="ms-2">
+                                <Icon Name="IconName.Save" Class="me-1" />
+                                @L["Update"]
+                            </Button>
+                        }else{
+                             <Button Color="Color.Primary" Clicked="EnableEditAsync">
                             <Icon Name="IconName.Edit" Class="me-1" />
                             @L["Edit"]
-                        </Button>
-                        <Button Color="Color.Success" Clicked="UpdateWorkflowAsync" Class="ms-2" Visible="@IsEditing">
-                            <Icon Name="IconName.Save" Class="me-1" />
-                            @L["Update"]
-                        </Button>
+                        </Button>}
+                      
                     }
                 }
                 
