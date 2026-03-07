@@ -208,7 +208,8 @@
                                                                 Changed="@(async (files) => await OnFileChangedAsync(files))"
                                                                 ShowMode="FilePickerShowMode.List"
                                                                 MaxFileSize="52428800"
-                                                                Accept="image/*">
+                                                                Accept="image/*"
+                                                                FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
                                                             <ButtonsTemplate>
                                                                 <Buttons>
                                                                     <Button Clicked="@(() => ClearFiles())"

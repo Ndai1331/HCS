@@ -28,6 +28,7 @@
 @using System.IO
 @using System.Security.Cryptography
 @using System.Text
+@using HC.Blazor.Shared
 @inherits HCComponentBase
 @inject IDocumentsAppService DocumentsAppService
 @inject IDocumentFilesAppService DocumentFilesAppService
@@ -308,8 +309,8 @@
                                                             Disabled="@(CurrentDocument != null && DocumentFilesList.Any())"
                                                             MaxFileSize="52428800"
                                                             DisableProgressReport="true"
-                                                            Accept="application/pdf"
-                                                            FilePickerLocalizer="FilePickerLocalizer">
+                                                            Accept=".docx,.doc,.pdf"
+                                                            FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
                                                     <ButtonsTemplate>
                                                         <Progress Value="@FilePickerProgress" />
                                                         <Buttons>
@@ -651,7 +652,8 @@
                                                     ShowMode="FilePickerShowMode.List"
                                                     Disabled="@(CurrentDocument != null && DocumentFilesList.Any())"
                                                     MaxFileSize="52428800"
-                                                    FilePickerLocalizer="FilePickerLocalizer">
+                                                    Accept=".docx,.doc,.pdf"
+                                                    FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
                                             <ButtonsTemplate>
                                                 @* <Progress Value="@FilePickerProgress" /> *@
                                                 <Buttons>
@@ -718,7 +720,7 @@
                                         Caption="@L["Action"]" 
                                         Width="150px">
                             <DisplayTemplate>
-                                <span class="badge bg-info">@context.DocumentHistory.Action</span>
+                                <span class="badge bg-info">@L[context.DocumentHistory.Action]</span>
                             </DisplayTemplate>
                         </DataGridColumn>
                         

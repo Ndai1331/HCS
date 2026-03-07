@@ -96,10 +96,10 @@
 @* ************************* BODY: 4-8 LAYOUT ************************* *@
 <Row>
     @* LEFT PANEL: Navigation (4 columns) *@
-    <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is12.OnMobile">
+    <Column ColumnSize="ColumnSize.Is12">
         <Card>
             <CardBody Class="p-0">
-                <ListGroup Flush>
+                <ListGroup Flush Style="flex-direction: row !important">
                     <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.All)"
                         Clicked="@(() => OnFilterModeChanged(DocumentSigningFilterMode.All))">
                         <Div Class="d-flex justify-content-between align-items-center">
@@ -133,8 +133,7 @@
         </Card>
     </Column>
 
-    @* RIGHT PANEL: Document List (8 columns) *@
-    <Column ColumnSize="ColumnSize.Is9.OnDesktop.Is12.OnMobile">
+    <Column ColumnSize="ColumnSize.Is12">
         <Card>
             <CardBody>
                 <DataGrid TItem="DocumentSigningItemDto"
@@ -246,7 +245,7 @@
                         <DataGridColumn TItem="DocumentSigningItemDto"
                             Field="WorkflowStatus"
                             Caption="@L["WorkflowStatus"]"
-                            Width="160px">
+                            Width="180px">
                             <DisplayTemplate>
                                 @if (context.WorkflowStatus != null)
                                 {
@@ -280,23 +279,8 @@
                             </DisplayTemplate>
                         </DataGridColumn>
 
-                        @* My Status *@
-                        @* <DataGridColumn TItem="DocumentSigningItemDto"
-                            Field="MyAssignmentStatus"
-                            Caption="@L["MyStatus"]"
-                            Width="140px">
-                            <DisplayTemplate>
-                                @if (context.MyAssignmentStatus != null)
-                                {
-                                    <small class="badge @GetAssignmentStatusBadgeClass(context.MyAssignmentStatus)">
-                                        @L[context.MyAssignmentStatus]
-                                    </small>
-                                }
-                            </DisplayTemplate>
-                        </DataGridColumn> *@
-
                         @* Status *@
-                        <DataGridColumn TItem="DocumentSigningItemDto"
+                        @* <DataGridColumn TItem="DocumentSigningItemDto"
                             Field="StatusName"
                             Caption="@L["Status"]"
                             Width="140px">
@@ -306,7 +290,7 @@
                                     <small class="badge bg-primary">@context.StatusName</small>
                                 }
                             </DisplayTemplate>
-                        </DataGridColumn>
+                        </DataGridColumn> *@
 
                         @* Incoming Date *@
                         <DataGridColumn TItem="DocumentSigningItemDto"
@@ -475,18 +459,7 @@
                     Upload="OnFileUpload"
                     ShowMode="FilePickerShowMode.List"
                     MaxFileSize="52428800"
-                    FilePickerLocalizer="FilePickerLocalizer">
-                    <ButtonsTemplate>
-                        <Progress Value="@WorkflowFilePicker?.GetProgressPercentage()" />
-                        <Buttons>
-                            <Button Clicked="@context.Upload" Color="Color.Primary" Size="Size.Small">
-                                <Icon Name="IconName.FileUpload" /> @L["Upload"]
-                            </Button>
-                            <Button Clicked="@context.Clear" Color="Color.Warning" Size="Size.Small">
-                                <Icon Name="IconName.Clear" /> @L["Clear"]
-                            </Button>
-                        </Buttons>
-                    </ButtonsTemplate>
+                    FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
                 </FilePicker>
                 @if (UploadedFiles.Any())
                 {
@@ -1295,8 +1268,8 @@
                         Upload="OnResubmitFileUpload"
                         ShowMode="FilePickerShowMode.List"
                         MaxFileSize="52428800"
-                        FilePickerLocalizer="FilePickerLocalizer">
-                        <ButtonsTemplate>
+                    FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
+                        @* <ButtonsTemplate>
                             <Progress Value="@ResubmitFilePicker?.GetProgressPercentage()" />
                             <Buttons>
                                 <Button Clicked="@context.Upload" Color="Color.Primary" Size="Size.Small">
@@ -1306,7 +1279,7 @@
                                     <Icon Name="IconName.Clear" /> @L["Clear"]
                                 </Button>
                             </Buttons>
-                        </ButtonsTemplate>
+                        </ButtonsTemplate> *@
                     </FilePicker>
                     @if (ResubmitUploadedFiles.Any())
                     {

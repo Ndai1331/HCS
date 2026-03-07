@@ -70,6 +70,7 @@ using Volo.Abp.Caching.StackExchangeRedis;
 using Volo.Abp.DistributedLocking;
 using Volo.Abp.EventBus.RabbitMq;
 using HC.Blazor.Components.Layout;
+using HC.Blazor.Shared;
 using HC.Blazor.Toolbars;
 using Volo.Abp.AspNetCore.Components.Web.LeptonXTheme;
 using Volo.Abp.AspNetCore.Components.Server.LeptonXTheme;
@@ -165,6 +166,7 @@ namespace HC.Blazor;
 
         // Add global exception handler service
         context.Services.AddScoped<HC.Blazor.Services.GlobalExceptionHandler>();
+        context.Services.AddScoped<FileHelper>();
 
         if (!configuration.GetValue<bool>("App:DisablePII"))
         {
