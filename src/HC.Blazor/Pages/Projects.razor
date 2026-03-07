@@ -185,11 +185,11 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Status"]</FieldLabel>
-                        <Select TValue="ProjectStatus?" SelectedValue="@Filter.Status" SelectedValueChanged="@OnStatusChangedAsync">
-                            <SelectItem>@L["All"]</SelectItem>
+                        <Select TValue="string" SelectedValue="@StatusFilterValue" SelectedValueChanged="@OnStatusChangedAsync">
+                            <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
                             @foreach (var status in Enum.GetValues<ProjectStatus>())
                             {
-                                <SelectItem TValue="ProjectStatus?" Value="@status">
+                                <SelectItem Value="@status.ToString()">
                                     @L[$"Enum:ProjectStatus.{status}"]
                                 </SelectItem>
                             }
@@ -199,13 +199,13 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Department"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.OwnerDepartmentId"
+                        <Select TValue="string"
+		SelectedValue="@OwnerDepartmentFilterValue"
 		SelectedValueChanged="@OnOwnerDepartmentIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 @foreach(var item in DepartmentsCollection)
 {
-	<SelectItem TValue="Guid?" Value="@item.Id">
+	<SelectItem Value="@item.Id.ToString()">
 		@item.DisplayName
 	</SelectItem>
 }

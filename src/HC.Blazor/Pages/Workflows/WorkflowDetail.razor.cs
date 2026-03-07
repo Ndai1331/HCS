@@ -312,6 +312,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     {
         try
         {
+            SyncEditingWorkflowFromCurrentWorkflow();
+
             if (!ValidateWorkflowEdit())
             {
                 await InvokeAsync(StateHasChanged);
@@ -333,6 +335,16 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         {
             await BlockUiService.UnBlock();
         }
+    }
+
+    private void SyncEditingWorkflowFromCurrentWorkflow()
+    {
+        EditingWorkflow.Code = CurrentWorkflow.Code;
+        EditingWorkflow.Name = CurrentWorkflow.Name;
+        EditingWorkflow.Description = CurrentWorkflow.Description;
+        EditingWorkflow.IsActive = CurrentWorkflow.IsActive;
+        EditingWorkflow.WorkflowDefinitionId = SelectedWorkflowDefinition?.FirstOrDefault()?.Id
+                                              ?? CurrentWorkflow.WorkflowDefinitionId;
     }
 
     private async Task CancelEditAsync()

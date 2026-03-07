@@ -85,6 +85,8 @@ public partial class Projects : HCComponentBase
     private Modal CreateProjectModal { get; set; } = new();
     private Modal EditProjectModal { get; set; } = new();
     private GetProjectsInput Filter { get; set; }
+    private string StatusFilterValue { get; set; } = string.Empty;
+    private string OwnerDepartmentFilterValue { get; set; } = string.Empty;
 
     private DataGridEntityActionsColumn<ProjectWithNavigationPropertiesDto> EntityActionsColumn { get; set; } = new();
 
@@ -1227,15 +1229,21 @@ public partial class Projects : HCComponentBase
         await SearchAsync();
     }
 
-    protected virtual async Task OnStatusChangedAsync(ProjectStatus? status)
+    protected virtual async Task OnStatusChangedAsync(string? status)
     {
-        Filter.Status = status;
+        Filter.Status = Enum.TryParse<ProjectStatus>(status, true, out var parsedStatus)
+            ? parsedStatus
+            : null;
+        StatusFilterValue = status ?? string.Empty;
         await SearchAsync();
     }
 
-    protected virtual async Task OnOwnerDepartmentIdChangedAsync(Guid? ownerDepartmentId)
+    protected virtual async Task OnOwnerDepartmentIdChangedAsync(string? ownerDepartmentId)
     {
-        Filter.OwnerDepartmentId = ownerDepartmentId;
+        Filter.OwnerDepartmentId = Guid.TryParse(ownerDepartmentId, out var parsedDepartmentId)
+            ? parsedDepartmentId
+            : null;
+        OwnerDepartmentFilterValue = ownerDepartmentId ?? string.Empty;
         await SearchAsync();
     }
 
