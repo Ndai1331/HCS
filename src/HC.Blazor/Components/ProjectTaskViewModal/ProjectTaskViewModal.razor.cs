@@ -35,7 +35,8 @@ public partial class ProjectTaskViewModal
     
     // Progress update state
     private int EditableProgress { get; set; }
-    private bool IsUpdating { get; set; }
+    private bool IsUpdating { get; set; } = false;
+    private bool IsCompleting { get; set; } = false;
 
     // PDF viewer state
     private Dictionary<Guid, bool> DocumentHasPdfCache { get; set; } = new();
@@ -329,9 +330,9 @@ public partial class ProjectTaskViewModal
     /// </summary>
     private async Task CompleteTaskAsync()
     {
-        if (Task == null || IsUpdating) return;
+        if (Task == null || IsCompleting) return;
 
-        IsUpdating = true;
+        IsCompleting = true;
         try
         {
             EditableProgress = 100;
@@ -374,7 +375,7 @@ public partial class ProjectTaskViewModal
         }
         finally
         {
-            IsUpdating = false;
+            IsCompleting = false;
         }
     }
 }

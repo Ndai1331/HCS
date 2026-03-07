@@ -1118,7 +1118,7 @@
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                         <label class="form-label fw-bold">@L["Members"]</label>
                                         <div>
-                                            <span class="badge bg-success">@ProjectMembersList.Count @L["Members"]</span>
+                                            <span>@ProjectMembersList.Count</span>
                                         </div>
                                     </Column>
                                 </Row>
@@ -1196,7 +1196,7 @@
                                                     <div class="flex-grow-1" style="min-width: 0;">
                                                         <div class="fw-bold text-truncate d-flex align-items-center justify-content-between" style="font-size: 0.875rem;">
                                                             <span>@member.User?.Surname @member.User?.Name</span>
-                                                            <span class="badge bg-info" style="font-size: 0.7rem;">
+                                                            <span class="@($"badge bg-{EnumStatusColorHelper.GetProjectAssignmentRoleBackgroundColor(member.ProjectMember.MemberRole)}")" style="font-size: 0.7rem;">
                                                                 @L[$"Enum:ProjectMemberRole.{member.ProjectMember.MemberRole}"]
                                                             </span>
                                                         </div>

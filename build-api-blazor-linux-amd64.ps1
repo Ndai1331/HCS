@@ -11,14 +11,16 @@ $blazorBaseImage = "longnguyen1331/hc-blazor-base:$BaseTag"
 $blazorAppImage = "longnguyen1331/hc-blazor"
 
 if ($ClearDockerCache) {
-    Write-Host "Clearing Docker builder cache..." -ForegroundColor Yellow
+    Write-Host "Clearing safe Docker cache (preserve buildx cache for base images)..." -ForegroundColor Yellow
     try {
-        docker buildx prune -af
+        # Keep buildx cache to avoid losing the libreoffice-v1 base cache.
+        # docker buildx prune -af
+        docker image prune -f
         if (-not $?) {
-            throw "docker buildx prune failed"
+            throw "docker image prune failed"
         }
     } catch {
-        Write-Host "ERROR: failed to clear Docker builder cache" -ForegroundColor Red
+        Write-Host "ERROR: failed to clear Docker cache" -ForegroundColor Red
         exit 1
     }
 }

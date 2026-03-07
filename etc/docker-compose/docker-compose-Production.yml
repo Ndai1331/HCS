@@ -17,7 +17,7 @@ services:
       - AuthServer__ClientSecret=1q2w3e*
 
       - RemoteServices__AbpAccountPublic__BaseUrl=http://hc-authserver:8080
-      - RemoteServices__Default__BaseUrl=http://hc-api:8080
+      - RemoteServices__Default__BaseUrl=https://api-dev.benhvien199.vn
       - RemoteServices__BlobFiles__BaseUrl=https://api-dev.benhvien199.vn
       - Redis__Configuration=redis
       - App__Cookie__SecurePolicy=Always

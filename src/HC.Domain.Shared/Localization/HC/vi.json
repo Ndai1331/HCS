@@ -91,6 +91,17 @@
     "DocumentPreview": "Xem trước tài liệu",
     "Send": "Gửi",
     "FilePicker:ClearConfirmation": "Bạn có chắc chắn muốn xóa tất cả các file?",
+    "FilePicker:RemoveConfirmation": "Bạn có chắc chắn muốn xóa file này?",
+    "FilePicker:ChooseFile": "Chọn file",
+    "FilePicker:ChooseFiles": "Chọn file",
+    "FilePicker:ChooseFileOrDragAndDrop": "Chọn file hoặc kéo và thả",
+    "FilePicker:ChooseFileOrDragAndDropHere": "Chọn file hoặc kéo và thả vào đây",
+    "FilePicker:ChooseFileOrDragAndDropHereToUpload": "Chọn file hoặc kéo và thả vào đây để tải lên",
+    "FilePicker:NoFileChosen": "Không có file nào được chọn",
+    "FilePicker:NoFileSelected": "Không có file nào được chọn",
+    "FilePicker:OrDropFilesHere": "Hoặc kéo và thả file vào đây",
+    "FilePicker:OrDropFilesHereToUpload": "Hoặc kéo và thả file vào đây để tải lên",
+    "FilePicker:Remove": "Xóa",
     "Confirm": "Xác nhận",
     "Tab:GeneralInformation": "Thông tin chung",
     "Tab:Assignments": "Giao việc",
@@ -1235,6 +1246,10 @@
     "NoProjectsFound" : "Không tìm thấy dự án",
     "NoTasksFound" : "Không tìm thấy công việc",
     "CalendarEvent:Detail": "Chi tiết sự kiện",
-    "NoMembersFound" : "Không tìm thấy thành viên"
+    "NoMembersFound" : "Không tìm thấy thành viên",
+    "ProjectDetail" : "Chi tiết dự án",
+    "Comment" : "Ghi chú",
+    "Action" : "Hành động",
+    "Warning" : "Cảnh báo"
   }
 }

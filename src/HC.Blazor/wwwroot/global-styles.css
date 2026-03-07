@@ -554,3 +554,21 @@
     min-width: 10rem !important;
 }
 /* End of Filepicker styles */
+
+
+
+/* Table */
+.b-table.table thead th, .b-table.table thead td{
+    padding : 0.5rem !important;
+}
+.b-table.table tbody th, .b-table.table tbody td{
+    padding : 0.5rem !important;
+}
+
+/*End Table */
+
+/*Card*/
+.card {
+    margin-bottom : 1rem !important;
+}
+/*End Card*/

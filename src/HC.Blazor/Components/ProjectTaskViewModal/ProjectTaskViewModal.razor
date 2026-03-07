@@ -204,8 +204,8 @@
             }
         </ModalBody>
         <ModalFooter>
-            <Button Color="Color.Success" Clicked="CompleteTaskAsync" Disabled="IsUpdating">
-                @if (IsUpdating)
+            <Button Color="Color.Success" Clicked="CompleteTaskAsync" Disabled="IsCompleting">
+                @if (IsCompleting)
                 {
                     <span class="spinner-border spinner-border-sm me-1"></span>
                 }

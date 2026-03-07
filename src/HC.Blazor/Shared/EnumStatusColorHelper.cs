@@ -7,6 +7,7 @@ using HC.ProjectTaskAssignments;
 using HC.ProjectTaskDocuments;
 using HC.Projects;
 using HC.ProjectTasks;
+using HC.ProjectMembers;
 namespace HC.Blazor.Shared;
 public class EnumStatusColorHelper
 {
@@ -130,6 +131,17 @@ public class EnumStatusColorHelper
             ProjectTaskAssignmentRole.MAIN => "danger",
             ProjectTaskAssignmentRole.SUPPORT => "info",
             ProjectTaskAssignmentRole.REVIEW => "warning",
+            _ => "secondary",
+        };
+    }
+
+     public static string GetProjectAssignmentRoleBackgroundColor(ProjectMemberRole role)
+    {
+        return role switch
+        {
+            ProjectMemberRole.OWNER => "danger",
+            ProjectMemberRole.MEMBER => "info",
+            ProjectMemberRole.VIEWER => "warning",
             _ => "secondary",
         };
     }

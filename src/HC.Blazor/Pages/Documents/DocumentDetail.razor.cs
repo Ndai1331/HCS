@@ -763,7 +763,7 @@ public partial class DocumentDetail : HCComponentBase
             await UiMessageService.Success(L["SuccessfullySaved"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             var sourceTypeParam = SourceType.HasValue ? $"?sourceType={SourceType.Value}" : "";
-            NavigationManager.NavigateTo($"/document-detail/{savedDocument.Id}{sourceTypeParam}");
+            NavigationManager.NavigateTo($"/document-detail/{savedDocument.Id}{sourceTypeParam}", true);
         }
         catch (Exception ex)
         {
@@ -782,20 +782,6 @@ public partial class DocumentDetail : HCComponentBase
         {
             await PdfViewerModal.Hide();
         }
-    }
-
-    private string FilePickerLocalizer(string name, params object[] arguments)
-    {
-        return name switch
-        {
-            "ClearConfirmation" => L["FilePicker:ClearConfirmation"],
-            "Clear" => L["Clear"],
-            "Cancel" => L["Cancel"],
-            "Confirm" => L["Confirm"],
-            "Are you sure you want to clear all files?" => L["FilePicker:ClearConfirmation"],
-            "Are you sure you want to clear the selected files?" => L["FilePicker:ClearConfirmation"],
-            _ => L[name] ?? name 
-        };
     }
 
     private bool ValidateCreateDocument()

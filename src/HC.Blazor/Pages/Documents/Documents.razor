@@ -52,7 +52,7 @@
 @*//<suite-custom-code-block-1>*@
 @*//</suite-custom-code-block-1>*@
         <Row>
-            <div class="col col-md-6 col-lg-8">
+            <div class="col col-md-8 col-lg-10">
                 <div class="mb-3">
                     <Form id="DocumentSearchForm">
                         <Addons>
@@ -120,7 +120,7 @@
                         <TextEdit Text="@Filter.CurrentStatus" TextChanged="@OnCurrentStatusChangedAsync" />                  
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                @* <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["MinCompletedTime"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -139,7 +139,7 @@
             DateChanged="@OnCompletedTimeMaxChangedAsync"
             Placeholder="@string.Empty" />                       
                     </Field>
-                </Column>
+                </Column> *@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["MinIncommingDate"]</FieldLabel>
@@ -256,7 +256,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+               @*  <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Workflow"]</FieldLabel>
                         <Select TValue="Guid?"
@@ -270,8 +270,8 @@
 	</SelectItem>
 }
 </Select>                       
-                    </Field>
-                </Column>
+                    </Field> 
+                </Column>*@
             </Row>
 @*//<suite-custom-code-block-2>*@
 @*//</suite-custom-code-block-2>*@
@@ -386,7 +386,10 @@
                          
                     </DisplayTemplate>
                 </DataGridColumn>
-                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" Caption="@L["SendAndSign"]" Width="150px">
+                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" 
+                Caption="@L["SendAndSign"]" 
+                CellStyle="@((item) => "min-width: 150px")"
+                Width="150px">
                     <DisplayTemplate>
                         <Div Class="d-flex gap-1">
                             @if (CanSendDocument)
@@ -495,12 +498,12 @@
                         <small class="badge bg-danger me-1"> @context.SecrecyLevel?.Name</small>
                     </DisplayTemplate>
                 </DataGridColumn>
-                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
+                @* <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="Workflow.Name"
                         Caption="@L["Workflow"]"
                         CellStyle="@((item) => "min-width: 150px")"
                         Width="150px">
-                </DataGridColumn>
+                </DataGridColumn> *@
             </DataGridColumns>
         </DataGrid>
     </CardBody>

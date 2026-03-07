@@ -81,6 +81,17 @@
     "DocumentPreview": "Document Preview",
     "Send": "Send",
     "FilePicker:ClearConfirmation": "Are you sure you want to clear all files?",
+    "FilePicker:RemoveConfirmation": "Are you sure you want to remove the file?",
+    "FilePicker:ChooseFile": "Choose File",
+    "FilePicker:ChooseFiles": "Choose Files",
+    "FilePicker:ChooseFileOrDragAndDrop": "Choose File or Drag and Drop",
+    "FilePicker:ChooseFileOrDragAndDropHere": "Choose File or Drag and Drop Here",
+    "FilePicker:ChooseFileOrDragAndDropHereToUpload": "Choose File or Drag and Drop Here to Upload",
+    "FilePicker:NoFileChosen": "No file chosen",
+    "FilePicker:NoFileSelected": "No file selected",
+    "FilePicker:OrDropFilesHere": "Or drop files here",
+    "FilePicker:OrDropFilesHereToUpload": "Or drop files here to upload",
+    "FilePicker:Remove": "Remove",
     "Confirm": "Confirm",
     "DepartmentId": "Department",
     "PositionId": "Position",
@@ -1176,6 +1187,7 @@
     "NoProjectsFound": "No projects found",
     "NoTasksFound": "No tasks found",
     "CalendarEvent:Detail": "Calendar event detail",
-    "NoMembersFound" : "No members found"
+    "NoMembersFound" : "No members found",
+    "ProjectDetail": "Project detail"
   }
 }

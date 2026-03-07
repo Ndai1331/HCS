@@ -10,7 +10,7 @@ public abstract class DocumentHistoryCreateDtoBase
 
     [Required]
     [StringLength(DocumentHistoryConsts.ActionMaxLength)]
-    public string Action { get; set; } = "TRINH";
+    public string Action { get; set; } = nameof(DocumentHistoryAction.TRINH);
     public Guid DocumentId { get; set; }
 
     public Guid? FromUser { get; set; }

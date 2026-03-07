@@ -344,7 +344,10 @@ public partial class DocumentToLookupDtoGuidMapper : MapperBase<Document, Lookup
 
     public override void AfterMap(Document source, LookupDto<Guid> destination)
     {
-        destination.DisplayName = source.Title;
+        destination.DisplayName = source.Title +
+        
+         (!string.IsNullOrEmpty(source.StorageNumber) ? " - Storage No: " + source.StorageNumber : "") 
+         + (!string.IsNullOrEmpty(source.No) ? " - No: " + source.No : "");
     }
 }
 

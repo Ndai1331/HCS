@@ -281,7 +281,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                     input.DocumentId,
                     currentUserId,
                     receiverUserId,
-                    "TRINH",
+                    nameof(DocumentHistoryAction.TRINH),
                     $"Document sent from user {CurrentUser.UserName ?? L["System"]}"
                 );
 

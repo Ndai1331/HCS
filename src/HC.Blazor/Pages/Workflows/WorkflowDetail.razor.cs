@@ -1468,30 +1468,6 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     }
 
 
-    // FilePicker Localizer
-    private string FilePickerLocalizer(string name, params object[] arguments)
-    {
-        // Map Blazorise FilePicker localization keys to our localization strings
-        return name switch
-        {
-            "browse" => L["Browse"].Value,
-            "clear" => L["Clear"].Value,
-            "drop files here to upload" => L["DropFilesHereToUpload"].Value,
-            "or" => L["Or"].Value,
-            "upload" => L["Upload"].Value,
-            "file" => L["File"].Value,
-            "files" => L["Files"].Value,
-            "remove" => L["Remove"].Value,
-            "cancel" => L["Cancel"].Value,
-            "close" => L["Close"].Value,
-            "uploaded" => L["Uploaded"].Value,
-            "uploading" => L["Uploading"].Value,
-            "error" => L["Error"].Value,
-            "file too large" => L["FileTooLarge"].Value,
-            "invalid file type" => L["InvalidFileType"].Value,
-            _ => name
-        };
-    }
 
     public void Dispose()
     {
