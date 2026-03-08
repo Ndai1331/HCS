@@ -207,7 +207,7 @@ public partial class IdentityUserToLookupDtoGuidMapper : MapperBase<IdentityUser
 
     public override void AfterMap(IdentityUser source, LookupDto<Guid> destination)
     {
-        destination.DisplayName = source.Name;
+        destination.DisplayName = source.Surname + " " + source.Name;
     }
 }
 

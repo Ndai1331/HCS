@@ -123,6 +123,10 @@ public class HCAuthServerModule : AbpModule
                 var certPassword = configuration["Kestrel:Certificates:Default:Password"];
                 serverBuilder.AddProductionEncryptionAndSigningCertificate(certPath, certPassword);
                 serverBuilder.SetIssuer(new Uri(authority ?? configuration["AuthServer:Authority"]!));
+
+                serverBuilder.AllowClientCredentialsFlow();
+                serverBuilder.AllowPasswordFlow();
+
             });
         }
     }

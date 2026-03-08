@@ -425,7 +425,9 @@ else
                                 </DataGridColumn>
                                 <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.MemberRole" Caption="@L["MemberRole"]">
                                     <DisplayTemplate>
-                                        <Badge Color="Color.Primary">@L[$"Enum:ProjectMemberRole.{context.ProjectMember.MemberRole}"]</Badge>
+                                        <span class="@($"badge bg-{EnumStatusColorHelper.GetProjectAssignmentRoleBackgroundColor(context.ProjectMember.MemberRole)}")">
+                                            @L[$"Enum:ProjectMemberRole.{context.ProjectMember.MemberRole}"]
+                                        </span>
                                     </DisplayTemplate>
                                 </DataGridColumn>
                                 <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.JoinedAt" Caption="@L["JoinedAt"]">

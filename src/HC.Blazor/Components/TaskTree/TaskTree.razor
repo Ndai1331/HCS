@@ -1,4 +1,19 @@
 @using HC.ProjectTasks
+@using HC.Localization
+@using HC.Shared
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.Components.Web
+@using Blazorise
+@using Blazorise.Components
+@using Blazorise.DataGrid
+@using Volo.Abp.AspNetCore.Components.Web
+@using Volo.Abp.BlazoriseUI
+@using Volo.Abp.BlazoriseUI.Components
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
+@inherits HCComponentBase
+@inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject Microsoft.Extensions.Logging.ILogger<TaskTree> Logger
 
 <DataGrid TItem="ProjectTaskWithNavigationPropertiesDto"
@@ -15,6 +30,13 @@
             </Column>
         </Row>
     </LoadingTemplate>
+    <EmptyTemplate>
+        <Row Class="w-100 align-items-center" Style="height: 150px;">
+            <Column>
+                <Heading Size="HeadingSize.Is4" TextAlignment="TextAlignment.Center">@L["NoDataAvailable"]</Heading>
+            </Column>
+        </Row>
+    </EmptyTemplate>  
     <DataGridColumns>
         @if (Level == 0)
         {

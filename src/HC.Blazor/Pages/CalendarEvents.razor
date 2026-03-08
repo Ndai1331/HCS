@@ -1593,7 +1593,9 @@
                                         <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="User.Email" Caption="@L["Email"]" />
                                         <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.MemberRole" Caption="@L["Role"]">
                                             <DisplayTemplate>
-                                                @L[$"Enum:ProjectMemberRole.{context.ProjectMember.MemberRole}"]
+                                                 <span class="@($"badge bg-{EnumStatusColorHelper.GetProjectAssignmentRoleBackgroundColor(context.ProjectMember.MemberRole)}")">
+                                                    @L[$"Enum:ProjectMemberRole.{context.ProjectMember.MemberRole}"]
+                                                </span>
                                             </DisplayTemplate>
                                         </DataGridColumn>
                                     </DataGridColumns>

@@ -572,3 +572,8 @@
     margin-bottom : 1rem !important;
 }
 /*End Card*/
+
+
+.abp-block-area-busy{
+    z-index: 10000 !important;
+}

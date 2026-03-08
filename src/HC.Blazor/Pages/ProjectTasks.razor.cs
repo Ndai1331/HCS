@@ -908,13 +908,13 @@ public partial class ProjectTasks
 
     protected virtual async Task OnPriorityChangedAsync(string? priority)
     {
-        Filter.Priority = priority;
+        Filter.Priority = string.IsNullOrWhiteSpace(priority) ? null : priority;
         await SearchAsync();
     }
 
     protected virtual async Task OnStatusChangedAsync(string? status)
     {
-        Filter.Status = status;
+        Filter.Status = string.IsNullOrWhiteSpace(status) ? null : status;
         await SearchAsync();
     }
 

@@ -23,6 +23,7 @@
 @using HC.ProjectMembers
 @using HC.ProjectTasks
 @using HC.Blazor.Shared
+@using HC.Blazor.Components.TaskTree
 @using Volo.Abp.AspNetCore.Components.BlockUi
 @inherits HCComponentBase
 @inject IMemoryCache __MemoryCache
@@ -600,51 +601,43 @@
                     </Column>
                 </Row>
             </div>
-            <DataGrid TItem="ProjectTaskWithNavigationPropertiesDto"
-                      @ref="ProjectTasksDataGridRef"
-                      Data="ProjectTasksList"
-                      ReadData="OnProjectTasksGridReadAsync"
-                      TotalItems="ProjectTasksTotalCount"
-                      ShowPager="true"
-                      Responsive="true"
-                      PageSize="PageSize">
-                <LoadingTemplate>
-                    <Row Class="w-100 align-items-center" Style="height: 120px;">
-                        <Column>
-                            <RadarSpinner />
-                        </Column>
-                    </Row>
-                </LoadingTemplate>
-                <EmptyTemplate>
-                    <Row Class="w-100 align-items-center" Style="height: 120px;">
-                        <Column>
-                            <Heading Size="HeadingSize.Is5" TextAlignment="TextAlignment.Center">@L["NoDataAvailable"]</Heading>
-                        </Column>
-                    </Row>
-                </EmptyTemplate>
-                <DataGridColumns>
-                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Code" Caption="@L["Code"]" />
-                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Title" Caption="@L["Title"]" />
-                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Status" Caption="@L["Status"]">
-                        <DisplayTemplate>
-                            <Badge Color="Color.Info">@L[$"Enum:ProjectTaskStatus.{context.ProjectTask.Status}"]</Badge>
-                        </DisplayTemplate>
-                    </DataGridColumn>
-                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.Priority" Caption="@L["Priority"]">
-                        <DisplayTemplate>
-                            <Badge Color="Color.Secondary">@L[$"Enum:ProjectTaskPriority.{context.ProjectTask.Priority}"]</Badge>
-                        </DisplayTemplate>
-                    </DataGridColumn>
-                    <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Field="ProjectTask.ProgressPercent" Caption="@L["ProgressPercent"]">
-                        <DisplayTemplate>
-                            <div class="d-flex align-items-center gap-2">
-                                <Progress Value="@context.ProjectTask.ProgressPercent" Max="100" Class="hc-progress" />
-                                <span class="text-muted small">@context.ProjectTask.ProgressPercent%</span>
-                            </div>
-                        </DisplayTemplate>
-                    </DataGridColumn>
-                </DataGridColumns>
-            </DataGrid>
+            <TaskTree Tasks="ProjectTasksList"
+                     Level="0"
+                     ChildTasksByParentCode="ProjectTaskChildTasksByParentCode"
+                     ExpandedTasks="ExpandedProjectTasks"
+                     OnTaskExpanded="HandleProjectTaskExpandedAsync"
+                     GetChildTaskCount="GetProjectTaskChildTaskCount"
+                     GetChildTasksForTask="GetProjectTaskChildrenForTask"
+                     GetTaskCode="GetProjectTaskCode"
+                     GetTaskTitle="GetProjectTaskTitle"
+                     GetTaskStartDate="GetProjectTaskStartDate"
+                     GetTaskDueDate="GetProjectTaskDueDate"
+                     GetTaskStatus="GetProjectTaskStatus"
+                     GetTaskPriority="GetProjectTaskPriority"
+                     GetTaskProgressPercent="GetProjectTaskProgressPercent"
+                     GetTaskDetailUrl="GetProjectTaskDetailUrl"
+                     GetTaskParentTaskId="GetProjectTaskParentTaskId"
+                     GetParentTaskTitle="GetProjectTaskParentTaskTitle"
+                     CodeCaption="@L["Code"]"
+                     TitleCaption="@L["Title"]"
+                     StartDateCaption="@L["StartDate"]"
+                     DueDateCaption="@L["DueDate"]"
+                     StatusCaption="@L["Status"]"
+                     PriorityCaption="@L["Priority"]"
+                     ProgressPercentCaption="@L["ProgressPercent"]"
+                     ParentTaskTitleLabel="@L["ParentTaskTitle"]"
+                     GetStatusBadgeColor="GetProjectTaskStatusBadgeColor"
+                     GetPriorityBadgeColor="GetProjectTaskPriorityBadgeColor"
+                     GetStatusText="GetProjectTaskStatusText"
+                     GetPriorityText="GetProjectTaskPriorityText" />
+
+            <div class="mt-3">
+                <DataPager TItem="ProjectTaskWithNavigationPropertiesDto"
+                           Data="ProjectTasksList"
+                           TotalItems="ProjectTasksTotalCount"
+                           ActivePage="ProjectTasksCurrentPage"
+                           Clicked="@OnProjectTasksGridReadAsync" />
+            </div>
         </ModalBody>
         <ModalFooter>
             <Button Color="Color.Secondary" Size="Size.Small" Clicked="CloseProjectTasksModalAsync">@L["Close"]</Button>
@@ -741,10 +734,16 @@
                     </Row>
                 </EmptyTemplate>
                 <DataGridColumns>
-                    <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="User.UserName" Caption="@L["UserName"]" />
+                    <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="User.UserName" Caption="@L["FullName"]" >
+                        <DisplayTemplate>
+                            @context.User.Surname @context.User.Name
+                        </DisplayTemplate>
+                    </DataGridColumn>
                     <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.MemberRole" Caption="@L["MemberRole"]">
                         <DisplayTemplate>
-                            <Badge Color="Color.Primary">@L[$"Enum:ProjectMemberRole.{context.ProjectMember.MemberRole}"]</Badge>
+                            <span class="@($"badge bg-{EnumStatusColorHelper.GetProjectAssignmentRoleBackgroundColor(context.ProjectMember.MemberRole)}")">
+                                @L[$"Enum:ProjectMemberRole.{context.ProjectMember.MemberRole}"]
+                            </span>
                         </DisplayTemplate>
                     </DataGridColumn>
                     <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto" Field="ProjectMember.JoinedAt" Caption="@L["JoinedAt"]">
@@ -760,6 +759,7 @@
                                     @if (CanEditProjectMember)
                                     {
                                         <Button Color="Color.Primary" Outline Size="Size.Small" Clicked="@(() => ToggleEditProjectMemberRoleAsync(context))">
+                                            <Icon Name="IconName.Edit" Class="me-1" />
                                             @(IsProjectMemberRoleEditMode && EditingProjectMemberIdInModal == context.ProjectMember.Id ? L["Cancel"].Value : L["Edit"].Value)
                                         </Button>
                                     }

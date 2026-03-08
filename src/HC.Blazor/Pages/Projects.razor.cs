@@ -23,6 +23,7 @@ using Microsoft.JSInterop;
 using Volo.Abp;
 using Volo.Abp.Content;
 using HC.Blazor;
+using HC.Blazor.Shared;
 using Microsoft.Extensions.Logging;
 using HC.Chat.Conversations;
 using Volo.Abp.AspNetCore.Components.Messages;
@@ -123,6 +124,8 @@ public partial class Projects : HCComponentBase
     private int ProjectTasksCurrentPage { get; set; } = 1;
     private string? ProjectTasksFilterText { get; set; }
     private string? ProjectTasksProjectDisplayName { get; set; }
+    private Dictionary<string, List<ProjectTaskWithNavigationPropertiesDto>> ProjectTaskChildTasksByParentCode { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> ExpandedProjectTasks { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     // Project Members modal
     private Modal ProjectMembersModal { get; set; } = new();
@@ -530,6 +533,8 @@ public partial class Projects : HCComponentBase
             ProjectTasksCurrentPage = 1;
             ProjectTasksFilterText = null;
             ProjectTasksProjectDisplayName = $"{input.Project.Code} - {input.Project.Name}";
+            ProjectTaskChildTasksByParentCode.Clear();
+            ExpandedProjectTasks.Clear();
             await LoadProjectTasksAsync(page: ProjectTasksCurrentPage);
             await ProjectTasksModal.Show();
         }
@@ -548,10 +553,6 @@ public partial class Projects : HCComponentBase
     {
         try
         {
-            ProjectTasksSorting = e.Columns.Where(c => c.SortDirection != SortDirection.Default)
-                .Select(c => c.Field + (c.SortDirection == SortDirection.Descending ? " DESC" : ""))
-                .JoinAsString(",");
-
             ProjectTasksCurrentPage = e.Page;
             await LoadProjectTasksAsync(page: ProjectTasksCurrentPage);
             await InvokeAsync(StateHasChanged);
@@ -566,17 +567,19 @@ public partial class Projects : HCComponentBase
     {
         try
         {
-            // Validate ProjectId before making API call
             if (ProjectTasksProjectId == Guid.Empty)
             {
                 ProjectTasksList = new List<ProjectTaskWithNavigationPropertiesDto>();
                 ProjectTasksTotalCount = 0;
+                ProjectTaskChildTasksByParentCode = new Dictionary<string, List<ProjectTaskWithNavigationPropertiesDto>>(StringComparer.OrdinalIgnoreCase);
+                ExpandedProjectTasks = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 return;
             }
 
             var input = new GetProjectTasksInput
             {
                 ProjectId = ProjectTasksProjectId,
+                OnlyParentTasks = true,
                 FilterText = ProjectTasksFilterText,
                 MaxResultCount = PageSize,
                 SkipCount = (page - 1) * PageSize,
@@ -586,14 +589,89 @@ public partial class Projects : HCComponentBase
             var result = await ProjectTasksAppService.GetListAsync(input);
             ProjectTasksList = result.Items;
             ProjectTasksTotalCount = (int)result.TotalCount;
+
+            await LoadAllProjectTaskChildrenAsync();
+            ExpandedProjectTasks.Clear();
+            foreach (var task in ProjectTasksList)
+            {
+                if (task.ChildTaskCount > 0)
+                {
+                    ExpandedProjectTasks.Add(task.ProjectTask.Code);
+                }
+            }
+
+            foreach (var task in ProjectTasksList)
+            {
+                ExpandProjectTaskChildrenRecursively(task.ProjectTask.Code);
+            }
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
-            // Set empty list to prevent further errors
             ProjectTasksList = new List<ProjectTaskWithNavigationPropertiesDto>();
             ProjectTasksTotalCount = 0;
+            ProjectTaskChildTasksByParentCode = new Dictionary<string, List<ProjectTaskWithNavigationPropertiesDto>>(StringComparer.OrdinalIgnoreCase);
+            ExpandedProjectTasks = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
+    }
+
+    private async Task LoadAllProjectTaskChildrenAsync()
+    {
+        var allChildTasks = new List<ProjectTaskWithNavigationPropertiesDto>();
+        var skipCount = 0;
+        const int batchSize = 1000;
+        var hasMore = true;
+
+        while (hasMore)
+        {
+            var input = new GetProjectTasksInput
+            {
+                ProjectId = ProjectTasksProjectId,
+                OnlyChildTasks = true,
+                MaxResultCount = batchSize,
+                SkipCount = skipCount,
+                Sorting = "ProjectTask.Title ASC"
+            };
+
+            var result = await ProjectTasksAppService.GetListAsync(input);
+            if (result.Items.Count == 0)
+            {
+                hasMore = false;
+                continue;
+            }
+
+            allChildTasks.AddRange(result.Items);
+            skipCount += result.Items.Count;
+            if (allChildTasks.Count >= result.TotalCount)
+            {
+                hasMore = false;
+            }
+        }
+
+        ProjectTaskChildTasksByParentCode = allChildTasks
+            .Where(t => !string.IsNullOrWhiteSpace(t.ProjectTask.ParentTaskId))
+            .GroupBy(t => t.ProjectTask.ParentTaskId!)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void ExpandProjectTaskChildrenRecursively(string parentCode)
+    {
+        var childTasks = GetProjectTaskChildrenForParent(parentCode);
+        foreach (var childTask in childTasks)
+        {
+            if (childTask.ChildTaskCount > 0)
+            {
+                ExpandedProjectTasks.Add(childTask.ProjectTask.Code);
+                ExpandProjectTaskChildrenRecursively(childTask.ProjectTask.Code);
+            }
+        }
+    }
+
+    private List<ProjectTaskWithNavigationPropertiesDto> GetProjectTaskChildrenForParent(string parentCode)
+    {
+        return ProjectTaskChildTasksByParentCode.TryGetValue(parentCode, out var children)
+            ? children
+            : new List<ProjectTaskWithNavigationPropertiesDto>();
     }
 
     private async Task SearchProjectTasksAsync()
@@ -606,6 +684,81 @@ public partial class Projects : HCComponentBase
     private async Task RefreshProjectTasksAsync()
     {
         await LoadProjectTasksAsync(ProjectTasksCurrentPage);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private ProjectTaskStatus ParseProjectTaskStatus(string? status)
+    {
+        return Enum.TryParse<ProjectTaskStatus>(status ?? string.Empty, true, out var parsed)
+            ? parsed
+            : ProjectTaskStatus.TODO;
+    }
+
+    private ProjectTaskPriority ParseProjectTaskPriority(string? priority)
+    {
+        return Enum.TryParse<ProjectTaskPriority>(priority ?? string.Empty, true, out var parsed)
+            ? parsed
+            : ProjectTaskPriority.LOW;
+    }
+
+    private string GetProjectTaskStatusText(ProjectTaskStatus status) => L[$"Enum:ProjectTaskStatus.{status}"];
+
+    private string GetProjectTaskPriorityText(ProjectTaskPriority priority) => L[$"Enum:ProjectTaskPriority.{priority}"];
+
+    private int GetProjectTaskChildTaskCount(ProjectTaskWithNavigationPropertiesDto task) => task.ChildTaskCount;
+
+    private List<ProjectTaskWithNavigationPropertiesDto> GetProjectTaskChildrenForTask(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return GetProjectTaskChildrenForParent(task.ProjectTask.Code);
+    }
+
+    private string GetProjectTaskCode(ProjectTaskWithNavigationPropertiesDto task) => task.ProjectTask.Code;
+
+    private string GetProjectTaskTitle(ProjectTaskWithNavigationPropertiesDto task) => task.ProjectTask.Title;
+
+    private DateTime GetProjectTaskStartDate(ProjectTaskWithNavigationPropertiesDto task) => task.ProjectTask.StartDate;
+
+    private DateTime GetProjectTaskDueDate(ProjectTaskWithNavigationPropertiesDto task) => task.ProjectTask.DueDate;
+
+    private ProjectTaskStatus GetProjectTaskStatus(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return ParseProjectTaskStatus(task.ProjectTask.Status);
+    }
+
+    private ProjectTaskPriority GetProjectTaskPriority(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        return ParseProjectTaskPriority(task.ProjectTask.Priority);
+    }
+
+    private int GetProjectTaskProgressPercent(ProjectTaskWithNavigationPropertiesDto task) => task.ProjectTask.ProgressPercent;
+
+    private string GetProjectTaskDetailUrl(ProjectTaskWithNavigationPropertiesDto task) => $"/project-task-detail/{task.ProjectTask.Id}";
+
+    private string GetProjectTaskParentTaskId(ProjectTaskWithNavigationPropertiesDto task) => task.ProjectTask.ParentTaskId ?? string.Empty;
+
+    private string GetProjectTaskParentTaskTitle(ProjectTaskWithNavigationPropertiesDto task) => task.ParentTaskTitle ?? string.Empty;
+
+    private Color GetProjectTaskStatusBadgeColor(ProjectTaskStatus status)
+    {
+        return EnumStatusColorHelper.GetProjectTaskStatusBadgeColor(status);
+    }
+
+    private Color GetProjectTaskPriorityBadgeColor(ProjectTaskPriority priority)
+    {
+        return EnumStatusColorHelper.GetProjectTaskPriorityBadgeColor(priority);
+    }
+
+    private async Task HandleProjectTaskExpandedAsync((string TaskCode, bool IsExpanded) eventArgs)
+    {
+        if (eventArgs.IsExpanded)
+        {
+            ExpandedProjectTasks.Add(eventArgs.TaskCode);
+        }
+        else
+        {
+            ExpandedProjectTasks.Remove(eventArgs.TaskCode);
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 
@@ -793,7 +946,7 @@ public partial class Projects : HCComponentBase
         ProjectMembersRoleToAdd = row.ProjectMember.MemberRole;
 
         // Fill select2 value (single-select uses a list)
-        var displayName = row.User?.UserName ?? row.User?.Name ?? string.Empty;
+        var displayName = (row.User?.Surname + " " + row.User?.Name) ?? string.Empty;
         ProjectMembersToAdd = new List<LookupDto<Guid>> { new() { Id = row.ProjectMember.UserId, DisplayName = displayName } };
 
         // Ensure selected user exists in datasource so Select2 can render it
@@ -864,6 +1017,11 @@ public partial class Projects : HCComponentBase
         {
             await BlockUiService.UnBlock();
         }
+    }
+
+    private async Task ShowUIBlockAsync()
+    {
+        await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
     }
 
     private async Task DeleteProjectAsync(ProjectWithNavigationPropertiesDto input)
