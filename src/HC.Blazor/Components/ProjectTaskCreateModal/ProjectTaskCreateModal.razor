@@ -365,7 +365,9 @@
                                             <DisplayTemplate>
                                                 @if (Enum.TryParse<ProjectTaskAssignmentRole>(context.ProjectTaskAssignment.AssignmentRole, ignoreCase: true, out var role))
                                                 {
-                                                    @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
+                                                    <span class="@($"badge bg-{EnumStatusColorHelper.GetProjectTaskAssignmentRoleBackgroundColor(role)}")">
+                                                        @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
+                                                    </span>
                                                 }
                                                 else
                                                 {

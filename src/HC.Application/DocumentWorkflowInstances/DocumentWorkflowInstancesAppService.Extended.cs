@@ -1793,9 +1793,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 GuidGenerator.Create(),
                 titleKey,
                 contentKey,
-                SourceType.DOCUMENT.ToString(),
+                SourceType.WORKFLOW.ToString(),
                 EventType.WORKFLOW_ACTION.ToString(),
-                RelatedType.DOCUMENT.ToString(),
+                RelatedType.WORKFLOW.ToString(),
                 WorkflowConstants.PriorityHigh,
                 document.Id.ToString()
             );

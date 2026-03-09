@@ -53,7 +53,7 @@
 @*//</suite-custom-code-block-1>*@
         <Row>
             <div class="col col-md-8 col-lg-10">
-                <div class="mb-3">
+                <div class="mb-0">
                     <Form id="DocumentSearchForm">
                         <Addons>
                             <Addon AddonType="AddonType.Body">
@@ -87,7 +87,7 @@
                 </div>
             </div> *@
                    <div class="col-md-4 col-lg-2">
-            <div class="mb-3">
+            <div class="mb-0">
                <Button Color="Color.Primary" Outline Style="width:100%" id="AdvancedFilterSectionToggler"
                          Clicked="@(() => ShowAdvancedFilters = !ShowAdvancedFilters)">@L["Filters"]
                          <i aria-hidden="true" class="fa ms-1 @(!ShowAdvancedFilters ? "fa-angle-down" : "fa-angle-up")"></i>
@@ -163,13 +163,13 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Field"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.FieldId"
+                        <Select TValue="string"
+		SelectedValue="@FieldFilterValue"
 		SelectedValueChanged="@OnFieldIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 @foreach(var item in FieldMasterDataCollection)
 {
-	<SelectItem TValue="Guid?" Value="@item.Id">
+	<SelectItem Value="@item.Id.ToString()">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -179,13 +179,13 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Unit"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.UnitId"
+                        <Select TValue="string"
+		SelectedValue="@UnitFilterValue"
 		SelectedValueChanged="@OnUnitIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 @foreach(var item in UnitsCollection)
 {
-	<SelectItem TValue="Guid?" Value="@item.Id">
+	<SelectItem Value="@item.Id.ToString()">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -195,13 +195,13 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Status"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.StatusId"
+                        <Select TValue="string"
+		SelectedValue="@StatusFilterValue"
 		SelectedValueChanged="@OnStatusIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 @foreach(var item in StatusMasterDataCollection)
 {
-	<SelectItem TValue="Guid?" Value="@item.Id">
+	<SelectItem Value="@item.Id.ToString()">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -211,13 +211,13 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Type"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.TypeId"
+                        <Select TValue="string"
+		SelectedValue="@TypeFilterValue"
 		SelectedValueChanged="@OnTypeIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 @foreach(var item in TypeMasterDataCollection)
 {
-	<SelectItem TValue="Guid" Value="@item.Id">
+	<SelectItem Value="@item.Id.ToString()">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -227,13 +227,13 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["UrgencyLevel"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.UrgencyLevelId"
+                        <Select TValue="string"
+		SelectedValue="@UrgencyLevelFilterValue"
 		SelectedValueChanged="@OnUrgencyLevelIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 @foreach(var item in UrgencyLevelMasterDataCollection)
 {
-	<SelectItem TValue="Guid" Value="@item.Id">
+	<SelectItem Value="@item.Id.ToString()">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -243,13 +243,13 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["SecrecyLevel"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.SecrecyLevelId"
+                        <Select TValue="string"
+		SelectedValue="@SecrecyLevelFilterValue"
 		SelectedValueChanged="@OnSecrecyLevelIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 @foreach(var item in SecrecyLevelMasterDataCollection)
 {
-	<SelectItem TValue="Guid" Value="@item.Id">
+	<SelectItem Value="@item.Id.ToString()">
 		@item.DisplayName
 	</SelectItem>
 }
@@ -403,7 +403,7 @@
                                     <Icon Name="IconName.Send" />
                                 </Button>
                             }
-                            @if (CanSubmitForSigning)
+                            @* @if (CanSubmitForSigning)
                             {
                                 <Button
                                     @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
@@ -413,7 +413,7 @@
                                     Class="mb-1">
                                     <Icon Name="IconName.CheckSquare" />
                                 </Button>
-                            }
+                            } *@
                         </Div>
                     </DisplayTemplate>
                 </DataGridColumn>

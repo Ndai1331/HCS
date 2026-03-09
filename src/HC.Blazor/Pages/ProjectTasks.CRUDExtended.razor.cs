@@ -800,11 +800,6 @@ public partial class ProjectTasks
         catch (Exception ex)
         {
             await BlockUiService.UnBlock();
-            
-            // Show error message
-            await UiMessageService.Error(L["DeleteFailed"] + ": " + ex.Message,
-                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                
             await HandleErrorAsync(ex);
         }
     }

@@ -1250,6 +1250,9 @@
     "ProjectDetail" : "Chi tiết dự án",
     "Comment" : "Ghi chú",
     "Action" : "Hành động",
-    "Warning" : "Cảnh báo"
+    "Warning" : "Cảnh báo",
+    "PleaseSelectAssignee" : "Vui lòng chọn người được giao việc",
+    "Forbidden": "Không có quyền thực hiện thao tác này",
+    "Fobidden": "Không có quyền thực hiện thao tác này"
   }
 }

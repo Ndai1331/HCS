@@ -34,7 +34,7 @@
     <CardBody>
         <Row>
             <div class="col col-md-8 col-lg-10">
-                <div class="mb-3">
+                <div class="mb-0">
                     <Form id="MasterDataSearchForm">
                         <Addons>
                             <Addon AddonType="AddonType.Body">
@@ -53,7 +53,7 @@
                 </div>
             </div>
             <div class="col-md-4 col-lg-2">
-                <div class="mb-3">
+                <div class="mb-0">
                     <Button Color="Color.Primary" Outline Style="width:100%" id="AdvancedFilterSectionToggler"
                             Clicked="@(() => ShowAdvancedFilters = !ShowAdvancedFilters)">@L["Filters"]
                         <i aria-hidden="true" class="fa ms-1 @(!ShowAdvancedFilters ? "fa-angle-down" : "fa-angle-up")"></i>

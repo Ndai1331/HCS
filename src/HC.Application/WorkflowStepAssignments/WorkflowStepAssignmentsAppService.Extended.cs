@@ -86,6 +86,7 @@ public class WorkflowStepAssignmentsAppService : WorkflowStepAssignmentsAppServi
         // Try to find a document assignment for this step to get document info
         // This is optional - if no document found, we'll just use step name
         Document? document = null;
+
         if (input.StepId.HasValue)
         {
             var documentAssignmentsQueryable = await _documentAssignmentRepository.GetQueryableAsync();

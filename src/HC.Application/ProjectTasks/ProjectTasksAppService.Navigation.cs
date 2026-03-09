@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using HC.ProjectTaskAssignments;
+using Microsoft.Extensions.Logging;
 using Volo.Abp.Application.Dtos;
 
 namespace HC.ProjectTasks;
@@ -41,15 +42,33 @@ public partial class ProjectTasksAppService
             return;
         }
 
-        var assignments = await _projectTaskAssignmentRepository.GetListWithNavigationPropertiesByProjectTaskIdsAsync(taskIds);
-        var assignmentDtos = ObjectMapper.Map<List<ProjectTaskAssignmentWithNavigationProperties>, List<ProjectTaskAssignmentWithNavigationPropertiesDto>>(assignments);
+        Dictionary<Guid, List<ProjectTaskAssignmentWithNavigationPropertiesDto>> assignmentsByTaskId;
+        try
+        {
+            var assignments = await _projectTaskAssignmentRepository.GetListWithNavigationPropertiesByProjectTaskIdsAsync(taskIds);
+            var assignmentDtos = ObjectMapper.Map<List<ProjectTaskAssignmentWithNavigationProperties>, List<ProjectTaskAssignmentWithNavigationPropertiesDto>>(assignments);
 
-        var assignmentsByTaskId = assignmentDtos
-            .Where(x => x.ProjectTaskAssignment.ProjectTaskId != Guid.Empty)
-            .GroupBy(x => x.ProjectTaskAssignment.ProjectTaskId)
-            .ToDictionary(g => g.Key, g => g.ToList());
+            assignmentsByTaskId = assignmentDtos
+                .Where(x => x.ProjectTaskAssignment.ProjectTaskId != Guid.Empty)
+                .GroupBy(x => x.ProjectTaskAssignment.ProjectTaskId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load project task assignments for enrichment. Returning empty assignments.");
+            assignmentsByTaskId = new Dictionary<Guid, List<ProjectTaskAssignmentWithNavigationPropertiesDto>>();
+        }
 
-        var documentCountByTaskId = await _projectTaskDocumentRepository.GetCountByProjectTaskIdsAsync(taskIds);
+        Dictionary<Guid, int> documentCountByTaskId;
+        try
+        {
+            documentCountByTaskId = await _projectTaskDocumentRepository.GetCountByProjectTaskIdsAsync(taskIds);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load project task documents count for enrichment. Returning zero counts.");
+            documentCountByTaskId = new Dictionary<Guid, int>();
+        }
 
         // Parent/child enrichment (ParentTaskId stores parent task Code as string).
         var parentCodes = tasks
@@ -77,7 +96,13 @@ public partial class ProjectTasksAppService
 
             parentTitleByCode = parents
                 .Where(x => !string.IsNullOrWhiteSpace(x.Code))
-                .ToDictionary(x => x.Code, x => x.Title ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(x => x.Code, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(x => x.Title)
+                          .FirstOrDefault(title => !string.IsNullOrWhiteSpace(title))
+                          ?? string.Empty,
+                    StringComparer.OrdinalIgnoreCase);
         }
 
         if (taskCodes.Count > 0)
@@ -89,7 +114,11 @@ public partial class ProjectTasksAppService
 
             childCountByParentCode = childCounts
                 .Where(x => !string.IsNullOrWhiteSpace(x.ParentCode))
-                .ToDictionary(x => x.ParentCode, x => x.Count, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(x => x.ParentCode, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Sum(x => x.Count),
+                    StringComparer.OrdinalIgnoreCase);
         }
 
         foreach (var task in tasks)

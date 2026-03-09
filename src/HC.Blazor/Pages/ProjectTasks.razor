@@ -250,7 +250,7 @@
     <CardBody>
         <Row>
             <div class="col col-md-8 col-lg-10">
-                <div class="mb-3">
+                <div class="mb-0">
                     <Form id="ProjectTaskSearchFormKanban">
                         <Addons>
                             <Addon AddonType="AddonType.Body">
@@ -261,7 +261,7 @@
                             </Addon>
                             <Addon AddonType="AddonType.End">
                                 <SubmitButton Form="ProjectTaskSearchFormKanban" Clicked="SearchAsync">
-                                    <Icon Name="IconName.Search" Class="me-1"></Icon>@L["Search"]
+                                    <Icon Name="IconName.Search" Class="me-1"></Icon> @L["Search"]
                                 </SubmitButton>
                             </Addon>
                         </Addons>
@@ -269,7 +269,7 @@
                 </div>
             </div>
             <div class="col-md-4 col-lg-2">
-                <div class="mb-3">
+                <div class="mb-0">
                    <Button Color="Color.Primary" Outline Style="width:100%" id="AdvancedFilterSectionTogglerKanban"
                          Clicked="@(() => ShowAdvancedFilters = !ShowAdvancedFilters)">@L["Filters"]
                          <i aria-hidden="true" class="fa ms-1 @(!ShowAdvancedFilters ? "fa-angle-down" : "fa-angle-up")"></i>
@@ -388,11 +388,11 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                          <FieldLabel>@L["Project"]</FieldLabel>
-                         <Select TValue="Guid?" SelectedValue="@Filter.ProjectId" SelectedValueChanged="@OnProjectIdChangedAsync">
-                             <SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
+                         <Select TValue="string" SelectedValue="@ProjectFilterValue" SelectedValueChanged="@OnProjectIdChangedAsync">
+                             <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
                              @foreach (var projectItem in ProjectsCollection)
                              {
-                                 <SelectItem TValue="Guid?" Value="@projectItem.Id">
+                                 <SelectItem Value="@projectItem.Id.ToString()">
                                      @projectItem.DisplayName
                                  </SelectItem>
                              }
@@ -675,7 +675,7 @@ else
 @*//</suite-custom-code-block-1>*@
         <Row>
             <div class="col col-md-8 col-lg-10">
-                <div class="mb-3">
+                <div class="mb-0">
                     <Form id="ProjectTaskSearchForm">
                         <Addons>
                             <Addon AddonType="AddonType.Body">
@@ -694,7 +694,7 @@ else
                 </div>
             </div>
                    <div class="col-md-4 col-lg-2">
-            <div class="mb-3">
+            <div class="mb-0">
                <Button Color="Color.Primary" Outline Style="width:100%" id="AdvancedFilterSectionToggler"
                          Clicked="@(() => ShowAdvancedFilters = !ShowAdvancedFilters)">@L["Filters"]
                          <i aria-hidden="true" class="fa ms-1 @(!ShowAdvancedFilters ? "fa-angle-down" : "fa-angle-up")"></i>
@@ -824,13 +824,13 @@ else
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Project"]</FieldLabel>
-                        <Select TValue="Guid?"
-		SelectedValue="@Filter.ProjectId"
+                        <Select TValue="string"
+		SelectedValue="@ProjectFilterValue"
 		SelectedValueChanged="@OnProjectIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 @foreach(var item in ProjectsCollection)
 {
-	<SelectItem TValue="Guid" Value="@item.Id">
+	<SelectItem Value="@item.Id.ToString()">
 		@item.DisplayName
 	</SelectItem>
 }

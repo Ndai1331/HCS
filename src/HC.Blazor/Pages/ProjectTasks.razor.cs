@@ -203,6 +203,7 @@ public partial class ProjectTasks
     private ProjectTaskWithNavigationPropertiesDto? SelectedProjectTask;
 
     private IReadOnlyList<LookupDto<Guid>> ProjectsCollection { get; set; } = new List<LookupDto<Guid>>();
+    private string ProjectFilterValue { get; set; } = string.Empty;
     private List<ProjectTaskWithNavigationPropertiesDto> SelectedProjectTasks { get; set; } = new();
     private bool AllProjectTasksSelected { get; set; }
     
@@ -385,8 +386,9 @@ public partial class ProjectTasks
     // Check if current user can delete the task (creator or admin)
     protected bool CanDeleteTask(ProjectTaskDto task)
     {
-        return CurrentUser.Id != null && 
-               (CurrentUser.Id.Equals(task.CreatorId) || CurrentUser.IsAdminRole());
+        return CanDeleteProjectTask
+               && CurrentUser.Id != null
+               && (CurrentUser.Id.Equals(task.CreatorId) || CurrentUser.IsAdminRole());
     }
 
     protected string GetPriorityText(ProjectTaskPriority priority)
@@ -930,9 +932,12 @@ public partial class ProjectTasks
         await SearchAsync();
     }
 
-    protected virtual async Task OnProjectIdChangedAsync(Guid? projectId)
+    protected virtual async Task OnProjectIdChangedAsync(string? projectId)
     {
-        Filter.ProjectId = projectId;
+        Filter.ProjectId = Guid.TryParse(projectId, out var parsedProjectId)
+            ? parsedProjectId
+            : null;
+        ProjectFilterValue = projectId ?? string.Empty;
         await SearchAsync();
     }
 

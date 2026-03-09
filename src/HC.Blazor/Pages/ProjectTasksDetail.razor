@@ -302,7 +302,7 @@ else
                                         || CanEditProjectTaskAssignment)
                                         {
                                             <Row Class="g-3 align-items-center">
-                                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is5.OnDesktop">
                                                     <Field>
                                                         <FieldLabel>@L["Assignee"] *</FieldLabel>
                                                         <div class="hc-select2-full">
@@ -318,7 +318,7 @@ else
                                                         </div>
                                                     </Field>
                                                 </Column>
-                                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is5.OnDesktop">
                                                     <Field>
                                                         <FieldLabel>@L["AssignmentRole"] *</FieldLabel>
                                                         <Select TValue="ProjectTaskAssignmentRole" @bind-SelectedValue="EditAssignmentRole" Class="w-100">
@@ -331,7 +331,7 @@ else
                                                         </Select>
                                                     </Field>
                                                 </Column>
-                                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is2.OnDesktop">
                                                     <Button Color="Color.Primary" 
                                                             Class="w-100" 
                                                             Disabled="@IsAddingAssignment"
@@ -343,13 +343,12 @@ else
                                                         else
                                                         {
                                                             <Icon Name="IconName.Add" Class="me-1" />
-                                                            @L["Add"]
                                                         }
                                                     </Button>
                                                 </Column>
                                             </Row>
 
-                                            <Row Class="g-3 mt-1">
+                                            <Row Class="g-3">
                                                 <Column ColumnSize="ColumnSize.Is12">
                                                     <Field>
                                                         <FieldLabel>@L["Note"]</FieldLabel>
@@ -381,7 +380,9 @@ else
                                                     <DisplayTemplate>
                                                         @if (Enum.TryParse<ProjectTaskAssignmentRole>(context.ProjectTaskAssignment.AssignmentRole, ignoreCase: true, out var role))
                                                         {
-                                                            @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
+                                                            <span class="@($"badge bg-{EnumStatusColorHelper.GetProjectTaskAssignmentRoleBackgroundColor(role)}")">
+                                                                @L[$"Enum:ProjectTaskAssignmentRole.{role}"]
+                                                            </span>
                                                         }
                                                         else
                                                         {
@@ -422,7 +423,7 @@ else
                                     else
                                     {
                                         <Row Class="g-3 align-items-center">
-                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is5.OnDesktop">
                                                 <Field>
                                                     <FieldLabel>@L["Document"]</FieldLabel>
                                                     <div class="hc-select2-full">
@@ -438,7 +439,7 @@ else
                                                     </div>
                                                 </Field>
                                             </Column>
-                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is5.OnDesktop">
                                                 <Field>
                                                     <FieldLabel>@L["DocumentPurpose"]</FieldLabel>
                                                     <Select TValue="ProjectTaskDocumentPurpose" @bind-SelectedValue="EditDocumentPurpose" Class="w-100">
@@ -451,7 +452,7 @@ else
                                                     </Select>
                                                 </Field>
                                             </Column>
-                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
+                                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is2.OnDesktop">
                                                 <Button Color="Color.Primary" 
                                                         Class="w-100" 
                                                         Disabled="@IsAddingDocument"
@@ -463,7 +464,6 @@ else
                                                     else
                                                     {
                                                         <Icon Name="IconName.Add" Class="me-1" />
-                                                        @L["Add"]
                                                     }
                                                 </Button>
                                             </Column>

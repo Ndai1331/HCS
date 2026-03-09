@@ -56,6 +56,12 @@ public partial class Documents : IDisposable
     private bool CanSubmitForSigning { get; set; }
 
     private GetDocumentsInput Filter { get; set; } = new GetDocumentsInput();
+    private string FieldFilterValue { get; set; } = string.Empty;
+    private string UnitFilterValue { get; set; } = string.Empty;
+    private string StatusFilterValue { get; set; } = string.Empty;
+    private string TypeFilterValue { get; set; } = string.Empty;
+    private string UrgencyLevelFilterValue { get; set; } = string.Empty;
+    private string SecrecyLevelFilterValue { get; set; } = string.Empty;
     private IReadOnlyList<LookupDto<Guid>> UnitsCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> WorkflowsCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> StatusMasterDataCollection { get; set; } = new List<LookupDto<Guid>>();
@@ -500,15 +506,17 @@ public partial class Documents : IDisposable
         await DebouncedSearchAsync();
     }
 
-    protected virtual async Task OnFieldIdChangedAsync(Guid? fieldId)
+    protected virtual async Task OnFieldIdChangedAsync(string? fieldId)
     {
-        Filter.FieldId = fieldId;
+        Filter.FieldId = Guid.TryParse(fieldId, out var parsedFieldId) ? parsedFieldId : null;
+        FieldFilterValue = fieldId ?? string.Empty;
         await DebouncedSearchAsync();
     }
 
-    protected virtual async Task OnUnitIdChangedAsync(Guid? unitId)
+    protected virtual async Task OnUnitIdChangedAsync(string? unitId)
     {
-        Filter.UnitId = unitId;
+        Filter.UnitId = Guid.TryParse(unitId, out var parsedUnitId) ? parsedUnitId : null;
+        UnitFilterValue = unitId ?? string.Empty;
         await DebouncedSearchAsync();
     }
 
@@ -518,27 +526,31 @@ public partial class Documents : IDisposable
         await DebouncedSearchAsync();
     }
 
-    protected virtual async Task OnStatusIdChangedAsync(Guid? statusId)
+    protected virtual async Task OnStatusIdChangedAsync(string? statusId)
     {
-        Filter.StatusId = statusId;
+        Filter.StatusId = Guid.TryParse(statusId, out var parsedStatusId) ? parsedStatusId : null;
+        StatusFilterValue = statusId ?? string.Empty;
         await DebouncedSearchAsync();
     }
 
-    protected virtual async Task OnTypeIdChangedAsync(Guid? typeId)
+    protected virtual async Task OnTypeIdChangedAsync(string? typeId)
     {
-        Filter.TypeId = typeId;
+        Filter.TypeId = Guid.TryParse(typeId, out var parsedTypeId) ? parsedTypeId : null;
+        TypeFilterValue = typeId ?? string.Empty;
         await DebouncedSearchAsync();
     }
 
-    protected virtual async Task OnUrgencyLevelIdChangedAsync(Guid? urgencyLevelId)
+    protected virtual async Task OnUrgencyLevelIdChangedAsync(string? urgencyLevelId)
     {
-        Filter.UrgencyLevelId = urgencyLevelId;
+        Filter.UrgencyLevelId = Guid.TryParse(urgencyLevelId, out var parsedUrgencyLevelId) ? parsedUrgencyLevelId : null;
+        UrgencyLevelFilterValue = urgencyLevelId ?? string.Empty;
         await DebouncedSearchAsync();
     }
 
-    protected virtual async Task OnSecrecyLevelIdChangedAsync(Guid? secrecyLevelId)
+    protected virtual async Task OnSecrecyLevelIdChangedAsync(string? secrecyLevelId)
     {
-        Filter.SecrecyLevelId = secrecyLevelId;
+        Filter.SecrecyLevelId = Guid.TryParse(secrecyLevelId, out var parsedSecrecyLevelId) ? parsedSecrecyLevelId : null;
+        SecrecyLevelFilterValue = secrecyLevelId ?? string.Empty;
         await DebouncedSearchAsync();
     }
 

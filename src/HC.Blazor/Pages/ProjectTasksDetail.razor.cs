@@ -181,6 +181,9 @@ public partial class ProjectTasksDetail : HCComponentBase
                 EditGeneralValidationErrorKey = null;
                 EditFieldErrors.Clear();
 
+                // Preload parent task lookup to resolve selected display as "Code - Title".
+                await GetParentTaskCollectionLookupAsync(new List<ParentTaskSelectItem>(), "", CancellationToken.None);
+
                 // Initialize Select2 selections
                 SelectedEditProjectTaskProject = new List<LookupDto<Guid>>();
                 if (EditingProjectTask.ProjectId != Guid.Empty)
@@ -198,10 +201,21 @@ public partial class ProjectTasksDetail : HCComponentBase
                 SelectedEditProjectTaskParentTask = new List<ParentTaskSelectItem>();
                 if (!string.IsNullOrWhiteSpace(EditingProjectTask.ParentTaskId))
                 {
+                    var existingParent = ParentTasksCollection.FirstOrDefault(x =>
+                        string.Equals(x.Id, EditingProjectTask.ParentTaskId, StringComparison.OrdinalIgnoreCase));
+
+                    var resolvedDisplayName = existingParent?.DisplayName;
+                    if (string.IsNullOrWhiteSpace(resolvedDisplayName) && !string.IsNullOrWhiteSpace(CurrentProjectTask.ParentTaskTitle))
+                    {
+                        resolvedDisplayName = $"{EditingProjectTask.ParentTaskId} - {CurrentProjectTask.ParentTaskTitle}";
+                    }
+
                     var parent = new ParentTaskSelectItem
                     {
                         Id = EditingProjectTask.ParentTaskId!,
-                        DisplayName = EditingProjectTask.ParentTaskId!
+                        DisplayName = string.IsNullOrWhiteSpace(resolvedDisplayName)
+                            ? EditingProjectTask.ParentTaskId!
+                            : resolvedDisplayName
                     };
                     SelectedEditProjectTaskParentTask.Add(parent);
                     ParentTasksCollection = ParentTasksCollection.Concat(new[] { parent }).DistinctBy(x => x.Id).ToList();
@@ -434,7 +448,7 @@ public partial class ProjectTasksDetail : HCComponentBase
             .Where(x => x.ProjectTask.Id != ProjectTaskId) // Exclude current task
             .Select(x => new ParentTaskSelectItem
             {
-                Id = x.ProjectTask.Id.ToString(),
+                Id = x.ProjectTask.Code,
                 DisplayName = $"{x.ProjectTask.Code} - {x.ProjectTask.Title}"
             })
             .ToList();
@@ -445,14 +459,7 @@ public partial class ProjectTasksDetail : HCComponentBase
 
     private void OnEditProjectTaskParentChanged()
     {
-        if (SelectedEditProjectTaskParentTask.Count > 0 && Guid.TryParse(SelectedEditProjectTaskParentTask[0].Id, out var parentId))
-        {
-            EditingProjectTask.ParentTaskId = parentId.ToString();
-        }
-        else
-        {
-            EditingProjectTask.ParentTaskId = null;
-        }
+        EditingProjectTask.ParentTaskId = SelectedEditProjectTaskParentTask.FirstOrDefault()?.Id;
     }
 
     // Priority/Status changes
@@ -492,7 +499,8 @@ public partial class ProjectTasksDetail : HCComponentBase
 
         if (EditAssignmentsUsersToAdd.Count == 0)
         {
-            await UiMessageService.Warn(L["PleaseSelectAssignee"]);
+            await UiMessageService.Warn(L["PleaseSelectAssignee"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             return;
         }
 
@@ -517,6 +525,7 @@ public partial class ProjectTasksDetail : HCComponentBase
             EditAssignmentsUsersToAdd = new List<LookupDto<Guid>>();
             EditAssignmentNote = null;
             await LoadEditAssignmentsAsync();
+            await RefreshProjectTaskConcurrencyStampAsync();
             await UiMessageService.Success(L["SuccessfullyAdded"]);
         }
         catch (Exception ex)
@@ -543,6 +552,7 @@ public partial class ProjectTasksDetail : HCComponentBase
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             await ProjectTaskAssignmentsAppService.DeleteAsync(row.ProjectTaskAssignment.Id);
             await LoadEditAssignmentsAsync();
+            await RefreshProjectTaskConcurrencyStampAsync();
             await UiMessageService.Success(L["SuccessfullyDeleted"]);
         }
         catch (Exception ex)
@@ -603,6 +613,7 @@ public partial class ProjectTasksDetail : HCComponentBase
 
             EditDocumentsToAdd = new List<LookupDto<Guid>>();
             await LoadEditDocumentsAsync();
+            await RefreshProjectTaskConcurrencyStampAsync();
             
             // Cache PDF info
             if (documentId != Guid.Empty)
@@ -643,6 +654,7 @@ public partial class ProjectTasksDetail : HCComponentBase
             }
             
             await LoadEditDocumentsAsync();
+            await RefreshProjectTaskConcurrencyStampAsync();
             await UiMessageService.Success(L["SuccessfullyDeleted"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }
@@ -679,6 +691,19 @@ public partial class ProjectTasksDetail : HCComponentBase
         {
             await BlockUiService.UnBlock();
             await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RefreshProjectTaskConcurrencyStampAsync()
+    {
+        var latest = await ProjectTasksAppService.GetAsync(ProjectTaskId);
+        if (latest != null && !string.IsNullOrWhiteSpace(latest.ConcurrencyStamp))
+        {
+            EditingProjectTask.ConcurrencyStamp = latest.ConcurrencyStamp;
+            if (CurrentProjectTask?.ProjectTask != null)
+            {
+                CurrentProjectTask.ProjectTask.ConcurrencyStamp = latest.ConcurrencyStamp;
+            }
         }
     }
 

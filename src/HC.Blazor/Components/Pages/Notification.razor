@@ -521,7 +521,7 @@
 
         var url = notification.RelatedType.ToUpper() switch
         {
-            "WORKFLOW" => $"/workflow-detail/{notification.RelatedId}",
+            "WORKFLOW" => $"/document-signing/{notification.RelatedId}",
             "TASK" => $"/project-task-detail/{notification.RelatedId}",
             "PROJECT" => $"/project-detail/{notification.RelatedId}",
             "DOCUMENT" => $"/view-document-detail/{notification.RelatedId}",

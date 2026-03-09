@@ -3,6 +3,7 @@
 public enum RelatedType
 {
     DOCUMENT,
+    WORKFLOW,
     PROJECT,
     TASK,
     CHAT_ROOM,

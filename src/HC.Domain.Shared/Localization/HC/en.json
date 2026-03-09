@@ -1188,6 +1188,10 @@
     "NoTasksFound": "No tasks found",
     "CalendarEvent:Detail": "Calendar event detail",
     "NoMembersFound" : "No members found",
-    "ProjectDetail": "Project detail"
+    "ProjectDetail": "Project detail",
+    "Warning": "Warning",
+    "PleaseSelectAssignee": "Please select an assignee",
+    "Forbidden": "You are not authorized to perform this action",
+    "Fobidden": "You are not authorized to perform this action"
   }
 }

@@ -46,15 +46,6 @@ public abstract class EfCoreProjectTaskRepositoryBase : EfCoreRepository<HCDbCon
         // Allow Project to be null if it's been deleted (soft delete)
         var project = await dbContext.Set<Project>().FirstOrDefaultAsync(c => c.Id == projectTask.ProjectId && !c.IsDeleted, cancellationToken);
         
-        // Get assignments
-        var assignments = await dbContext.Set<ProjectTaskAssignment>()
-            .Where(pta => pta.ProjectTaskId == projectTask.Id)
-            .ToListAsync(cancellationToken);
-        
-        // Get document count
-        var documentCount = await dbContext.Set<ProjectTaskDocument>()
-            .CountAsync(ptd => ptd.ProjectTaskId == projectTask.Id && !ptd.IsDeleted, cancellationToken);
-        
         // Get child task count
         var childTaskCount = await (await GetDbSetAsync())
             .CountAsync(pt => !string.IsNullOrWhiteSpace(pt.ParentTaskId) && pt.ParentTaskId == projectTask.Code && !pt.IsDeleted, cancellationToken);
@@ -63,8 +54,9 @@ public abstract class EfCoreProjectTaskRepositoryBase : EfCoreRepository<HCDbCon
         { 
             ProjectTask = projectTask, 
             Project = project,
-            ProjectTaskAssignments = assignments,
-            ProjectTaskDocumentsCount = documentCount,
+            // Child collections are enriched later in application service (best-effort).
+            ProjectTaskAssignments = new List<ProjectTaskAssignment>(),
+            ProjectTaskDocumentsCount = 0,
             ChildTaskCount = childTaskCount
         };
     }
@@ -171,9 +163,6 @@ public abstract class EfCoreProjectTaskRepositoryBase : EfCoreRepository<HCDbCon
             .WhereIf(projectId.HasValue && projectId != Guid.Empty, pt => pt.ProjectId == projectId)
             .WhereIf(userId.HasValue && userId != Guid.Empty, pt => pt.CreatorId == userId || dbContext.Set<ProjectTaskAssignment>().Any(pta => pta.ProjectTaskId == pt.Id && pta.UserId == userId));
 
-        var projectTaskAssignments = dbContext.Set<ProjectTaskAssignment>();
-        var projectTaskDocuments = dbContext.Set<ProjectTaskDocument>();
-
         return
             from projectTask in projectTasks.Where(pt => !pt.IsDeleted)
             join project in dbContext.Set<Project>().Where(p => !p.IsDeleted) on projectTask.ProjectId equals project.Id into projects
@@ -182,8 +171,8 @@ public abstract class EfCoreProjectTaskRepositoryBase : EfCoreRepository<HCDbCon
             {
                 ProjectTask = projectTask,
                 Project = project,
-                ProjectTaskAssignments = projectTaskAssignments.Where(pta => pta.ProjectTaskId == projectTask.Id).ToList(),
-                ProjectTaskDocumentsCount = projectTaskDocuments.Count(ptd => ptd.ProjectTaskId == projectTask.Id && !ptd.IsDeleted),
+                ProjectTaskAssignments = new List<ProjectTaskAssignment>(),
+                ProjectTaskDocumentsCount = 0,
                 ChildTaskCount = projectTasks.Count(pt => !string.IsNullOrWhiteSpace(pt.ParentTaskId) && pt.ParentTaskId == projectTask.Code && !pt.IsDeleted)
             };
     }
