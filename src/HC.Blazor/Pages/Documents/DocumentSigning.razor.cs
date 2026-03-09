@@ -35,6 +35,7 @@ public partial class DocumentSigning
     [Inject] private IDocumentAssignmentsAppService DocumentAssignmentsAppService { get; set; } = default!;
     [Inject] private IMasterDatasAppService MasterDatasAppService { get; set; } = default!;
     [Inject] private IUserSignaturesAppService UserSignaturesAppService { get; set; } = default!;
+    [Parameter] public Guid? NotificationRelatedId { get; set; }
 
     #region Properties
 
@@ -129,6 +130,9 @@ public partial class DocumentSigning
 
     // Debounce
     private CancellationTokenSource? SearchDebounceCts { get; set; }
+    private bool IsInitialDataLoaded { get; set; }
+    private Guid? LastNotificationRelatedId { get; set; }
+    private bool HasTriedAutoOpenFromNotification { get; set; }
 
     // PDF Viewer Modal
     private Modal DocumentPdfViewerModal { get; set; } = new();
@@ -178,7 +182,23 @@ public partial class DocumentSigning
             await SetToolbarItemsAsync();
             await LoadWorkflowLookupAsync();
             await LoadDocumentSigningListAsync();
+            IsInitialDataLoaded = true;
+            await TryAutoOpenActionModalFromNotificationAsync();
             await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (NotificationRelatedId != LastNotificationRelatedId)
+        {
+            LastNotificationRelatedId = NotificationRelatedId;
+            HasTriedAutoOpenFromNotification = false;
+
+            if (IsInitialDataLoaded)
+            {
+                await TryAutoOpenActionModalFromNotificationAsync();
+            }
         }
     }
 
@@ -220,6 +240,11 @@ public partial class DocumentSigning
             SentToMeCount = result.SentToMeCount;
             SentByMeCount = result.SentByMeCount;
             FollowingCount = result.FollowingCount;
+
+            if (IsInitialDataLoaded)
+            {
+                await TryAutoOpenActionModalFromNotificationAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -704,6 +729,33 @@ public partial class DocumentSigning
     #endregion
 
     #region Workflow Action Modal
+
+    private async Task TryAutoOpenActionModalFromNotificationAsync()
+    {
+        if (HasTriedAutoOpenFromNotification || !NotificationRelatedId.HasValue)
+        {
+            return;
+        }
+
+        HasTriedAutoOpenFromNotification = true;
+
+        var relatedId = NotificationRelatedId.Value;
+        var targetDocument = DocumentSigningList.FirstOrDefault(x =>
+            (x.WorkflowInstanceId.HasValue && x.WorkflowInstanceId.Value == relatedId)
+            || x.DocumentId == relatedId);
+
+        if (targetDocument == null)
+        {
+            Logger.LogInformation("Auto-open workflow modal skipped because related item {RelatedId} is not found in current page.", relatedId);
+            return;
+        }
+
+        var canProcess = targetDocument.CanAct
+            && targetDocument.MyAssignmentId.HasValue
+            && string.Equals(targetDocument.MyAssignmentStatus, nameof(DocumentAssignmentStatus.PENDING), StringComparison.OrdinalIgnoreCase);
+
+        await ShowActionModalAsync(targetDocument, viewOnly: !canProcess);
+    }
 
     private async Task ShowActionModalAsync(DocumentSigningItemDto document, bool viewOnly = false)
     {
