@@ -7,7 +7,6 @@ using System.Web;
 using System.Threading;
 using Blazorise;
 using Blazorise.DataGrid;
-using Blazorise.Scheduler;
 using Volo.Abp.BlazoriseUI.Components;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Application.Dtos;
@@ -34,11 +33,12 @@ using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Pages;
 
 
-public partial class CalendarEvents : HCComponentBase
+public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
 {
     [Inject] private ICalendarEventParticipantsAppService CalendarEventParticipantsAppService { get; set; } = default!;
     [Inject] private IMemoryCache __MemoryCache { get; set; } = default!;
     [Inject] private ILogger<CalendarEvents> Logger { get; set; } = default!;
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems = new List<Volo.Abp.BlazoriseUI.BreadcrumbItem>();
 
@@ -46,14 +46,12 @@ public partial class CalendarEvents : HCComponentBase
     protected bool ShowAdvancedFilters { get; set; }
 
     // View toggle
-    protected bool IsListView { get; set; } = true;
+    protected bool IsListView { get; set; } = false;
 
     public DataGrid<CalendarEventDto> DataGridRef { get; set; }
 
     private IReadOnlyList<CalendarEventDto> CalendarEventList { get; set; }
   
-    private List<Appointment> SchedulerEventList { get; set; } = new List<Appointment>();
-    
     // Track the latest request to avoid race conditions when switching months quickly
     private long _lastUpdateRequestId = 0;
 
@@ -154,16 +152,20 @@ public partial class CalendarEvents : HCComponentBase
     private bool HasEditFieldError(string fieldName) => EditFieldErrors.ContainsKey(fieldName) && !string.IsNullOrWhiteSpace(EditFieldErrors[fieldName]);
 
 
-    // Scheduler properties
-    private DateOnly SelectedSchedulerDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
-    private SchedulerView SelectedSchedulerView { get; set; } = SchedulerView.Month;
-    private TimeOnly SchedulerStartTime { get; set; } = new TimeOnly(00, 00);
-    private TimeOnly SchedulerEndTime { get; set; } = new TimeOnly(23, 59, 59);
-    private TimeOnly SchedulerWorkDayStart { get; set; } = new TimeOnly(00, 00);
-    private TimeOnly SchedulerWorkDayEnd { get; set; } = new TimeOnly(23, 59, 59);
+    private const string FullCalendarMonthView = "dayGridMonth";
+    private const string FullCalendarWeekView = "timeGridWeek";
+    private const string FullCalendarDayView = "timeGridDay";
+    private const string FullCalendarElementId = "hc-calendar-events-fullcalendar";
 
-    // Scheduler Localizers
-    private SchedulerLocalizers SchedulerLocalizers { get; set; } = new();
+    // Calendar properties
+    private DateOnly SelectedSchedulerDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    private string SelectedSchedulerView { get; set; } = FullCalendarMonthView;
+    private DateTime? CalendarRangeStart { get; set; }
+    private DateTime? CalendarRangeEndExclusive { get; set; }
+    private bool CalendarSyncRequired { get; set; }
+    private bool CalendarIsInitialized { get; set; }
+    private DotNetObjectReference<CalendarEvents>? CalendarDotNetRef { get; set; }
+    private List<Appointment> Appointments { get; set; } = new();
 
     // DatePicker refs for StartTime and EndTime
     private DatePicker<DateTime>? NewCalendarEventStartTimeDatePicker { get; set; }
@@ -186,16 +188,8 @@ public partial class CalendarEvents : HCComponentBase
 
     protected override async Task OnInitializedAsync()
     {
-        // Ensure SelectedSchedulerDate is first day of month if in Month view
-        if (SelectedSchedulerView == SchedulerView.Month)
-        {
-            var firstDayOfMonth = new DateOnly(SelectedSchedulerDate.Year, SelectedSchedulerDate.Month, 1);
-            if (SelectedSchedulerDate != firstDayOfMonth)
-            {
-                SelectedSchedulerDate = firstDayOfMonth;
-            }
-        }
-        
+        EnsureSelectedCalendarDate();
+
         // Initialize filter enum values from Filter strings
         if (!string.IsNullOrWhiteSpace(Filter.EventType) && Enum.TryParse<EventType>(Filter.EventType, out var eventType))
         {
@@ -211,7 +205,6 @@ public partial class CalendarEvents : HCComponentBase
         }
         
         await SetPermissionsAsync();
-        InitializeSchedulerLocalizers();
         try
         {
             await GetProjectCollectionLookupAsync();
@@ -222,34 +215,6 @@ public partial class CalendarEvents : HCComponentBase
         {
             await HandleErrorAsync(ex);
         }
-    }
-
-    private void InitializeSchedulerLocalizers()
-    {
-        SchedulerLocalizers = new SchedulerLocalizers
-        {
-            TodayLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["Today"]),
-            DayLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["Day"]),
-            WeekLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["Week"]),
-            WorkWeekLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["WorkWeek"]),
-            MonthLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["Month"]),
-            YearLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["Year"]),
-            OnLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["On"]),
-            WeekOfMonthLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["WeekOfMonth"]),
-            DayOfWeekLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["DayOfWeek"]),
-            MonthOfYearLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["MonthOfYear"]),
-            CountLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["Count"]),
-            NeverLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["Never"]),
-            RepeatEveryLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["RepeatEvery"]),
-            WhatDoYouWantToDoLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["WhatDoYouWantToDo"]),
-            RecurringSeriesWhatDoYouWantToDoLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["RecurringSeriesWhatDoYouWantToDo"]),
-            StartDateHigherValidationLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["StartDateHigherValidation"]),
-            StartDateHigherOrEqualValidationLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["StartDateHigherOrEqualValidation"]),
-            EndDateLowerValidationLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["EndDateLowerValidation"]),
-            EndDateLowerOrEqualValidationLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["EndDateLowerOrEqualValidation"]),
-            EndTimeLowerValidationLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["EndTimeLowerValidation"]),
-            TitleRequiredValidationLocalizer = new Blazorise.Localization.TextLocalizerHandler((name, arguments) => L["TitleRequiredValidation"]),
-        };
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -263,6 +228,21 @@ public partial class CalendarEvents : HCComponentBase
             {
                 await GetCalendarEventsAsync();
             }
+        }
+
+        if (IsListView)
+        {
+            if (CalendarIsInitialized)
+            {
+                await DestroyFullCalendarAsync();
+            }
+
+            return;
+        }
+
+        if (CalendarSyncRequired)
+        {
+            await SyncFullCalendarAsync();
         }
     }
 
@@ -298,6 +278,7 @@ public partial class CalendarEvents : HCComponentBase
     {
         IsListView = !IsListView;
         RebuildToolbar();
+        EnsureSelectedCalendarDate();
         
         await GetCalendarEventsAsync();
     }
@@ -340,26 +321,16 @@ public partial class CalendarEvents : HCComponentBase
             }
             else
             {
-                // Calendar view: Filter by SelectedSchedulerDate based on view type
-                var startDate = DateTime.MinValue;
-                var endDate = DateTime.MaxValue;
+                var (rangeStart, rangeEndExclusive) = GetCalendarVisibleRange();
+                var rangeEndInclusive = rangeEndExclusive.AddTicks(-1);
 
-                if (SelectedSchedulerView == SchedulerView.Month)
-                {
-                    // For Month view, filter by the entire month
-                    var firstDayOfMonth = new DateOnly(SelectedSchedulerDate.Year, SelectedSchedulerDate.Month, 1);
-                    var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
-                    startDate = firstDayOfMonth.ToDateTime(TimeOnly.MinValue);
-                    endDate = lastDayOfMonth.ToDateTime(TimeOnly.MaxValue);
-                }
-               
                 calendarFilter = new GetCalendarEventsInput
                 {
-                    MaxResultCount = 1000, // Load all events for calendar (max limit)
+                    MaxResultCount = 1000,
                     SkipCount = 0,
                     Sorting = CurrentSorting,
-                    StartTimeMin = startDate, 
-                    EndTimeMax = startDate 
+                    StartTimeMax = rangeEndInclusive,
+                    EndTimeMin = rangeStart
                 };
 
                 if (Filter != null)
@@ -373,12 +344,17 @@ public partial class CalendarEvents : HCComponentBase
                     calendarFilter.RelatedType = Filter.RelatedType;
                     calendarFilter.RelatedId = Filter.RelatedId;
                     calendarFilter.Visibility = Filter.Visibility;
-                    calendarFilter.StartTimeMin = startDate;
-                    calendarFilter.EndTimeMax = endDate;
+                    calendarFilter.StartTimeMax = rangeEndInclusive;
+                    calendarFilter.EndTimeMin = rangeStart;
                 }
 
-            Logger.LogInformation("GetCalendarEventsAsync - IsListView: {IsList}, SelectedSchedulerView: {View}, SelectedSchedulerDate: {Date}, StartDate: {StartDate}, EndDate: {EndDate}",
-                IsListView, SelectedSchedulerView, SelectedSchedulerDate, startDate, endDate);
+                Logger.LogInformation(
+                    "GetCalendarEventsAsync - IsListView: {IsList}, SelectedSchedulerView: {View}, SelectedSchedulerDate: {Date}, StartDate: {StartDate}, EndDateExclusive: {EndDateExclusive}",
+                    IsListView,
+                    SelectedSchedulerView,
+                    SelectedSchedulerDate,
+                    rangeStart,
+                    rangeEndExclusive);
             }
             
 
@@ -412,16 +388,7 @@ public partial class CalendarEvents : HCComponentBase
                 });
                 await Task.WhenAll(tasks);
             }
-            
-            if (!IsListView && CalendarEventList.Any())
-            {
-                var firstDayOfMonth = new DateOnly(SelectedSchedulerDate.Year, SelectedSchedulerDate.Month, 1);
-                if (SelectedSchedulerDate != firstDayOfMonth)
-                {
-                    SelectedSchedulerDate = firstDayOfMonth;
-                }
-            }
-            
+
             await ClearSelection();
             
             await UpdateTestAppointmentsFromCalendarEvents();
@@ -430,7 +397,8 @@ public partial class CalendarEvents : HCComponentBase
         {
             await HandleErrorAsync(ex);
             CalendarEventList = new List<CalendarEventDto>();
-            SchedulerEventList.Clear();
+            Appointments.Clear();
+            CalendarSyncRequired = true;
             TotalCount = 0;
         }
     }
@@ -451,108 +419,58 @@ public partial class CalendarEvents : HCComponentBase
             if (CalendarEventList == null || !CalendarEventList.Any())
             {
                 Logger.LogWarning("UpdateTestAppointmentsFromCalendarEvents - CalendarEventList is null or empty");
+                await InvokeAsync(() => UpdateTestAppointments(new List<Appointment>(), requestId));
                 return;
             }
 
-            var testAppointments = new List<Appointment>();
-            var isMonthView = SelectedSchedulerView == SchedulerView.Month;
-
-            if (isMonthView)
-            {
-                var firstDayOfMonth = new DateOnly(SelectedSchedulerDate.Year, SelectedSchedulerDate.Month, 1);
-                var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
-                
-                Logger.LogInformation("UpdateTestAppointmentsFromCalendarEvents - Month View - FirstDay: {FirstDay}, LastDay: {LastDay}, Total Events: {Count}",
-                    firstDayOfMonth, lastDayOfMonth, CalendarEventList.Count);
-
-                foreach (var evt in CalendarEventList)
+            var testAppointments = CalendarEventList
+                .Select(evt =>
                 {
-                    var startDate = evt.StartTime.Date;
-                    var endDate = evt.EndTime.Date;
-                    
-                    var firstDayDateTime = firstDayOfMonth.ToDateTime(TimeOnly.MinValue);
-                    var lastDayDateTime = lastDayOfMonth.ToDateTime(TimeOnly.MaxValue);
+                    var appointmentEnd = evt.AllDay
+                        ? evt.EndTime.Date.AddDays(1)
+                        : evt.EndTime;
 
-                    Logger.LogInformation("UpdateTestAppointmentsFromCalendarEvents - Processing event - Id: {Id}, Title: {Title}, StartDate: {StartDate}, EndDate: {EndDate}, FirstDayOfMonth: {FirstDay}, LastDayOfMonth: {LastDay}",
-                        evt.Id, evt.Title, startDate, endDate, firstDayDateTime, lastDayDateTime);
-
-                    if (endDate < firstDayDateTime || startDate > lastDayDateTime)
-                    {
-                        Logger.LogWarning("UpdateTestAppointmentsFromCalendarEvents - Event skipped (outside month range) - Id: {Id}, Title: {Title}, StartDate: {StartDate}, EndDate: {EndDate}, Condition: endDate < firstDay ({EndBeforeFirst}) OR startDate > lastDay ({StartAfterLast})",
-                            evt.Id, evt.Title, startDate, endDate, endDate < firstDayDateTime, startDate > lastDayDateTime);
-                        continue;
-                    }
-
-                    var eventStartDate = startDate < firstDayOfMonth.ToDateTime(TimeOnly.MinValue) 
-                        ? firstDayOfMonth.ToDateTime(TimeOnly.MinValue) 
-                        : startDate;
-                    var eventEndDate = endDate > lastDayOfMonth.ToDateTime(TimeOnly.MaxValue) 
-                        ? lastDayOfMonth.ToDateTime(TimeOnly.MaxValue) 
-                        : endDate;
-
-                    var numberOfDays = (endDate - startDate).Days + 1;
-                    
-                    var appointmentStart = evt.StartTime;
-                    var appointmentEnd = evt.EndTime;
-                    
-                    if (evt.AllDay)
-                    {
-                        appointmentStart = eventStartDate.Date;
-                        appointmentEnd = new DateTime(endDate.Year, endDate.Month, endDate.Day, 23, 0, 0);
-                    }
-
-                    // Create single appointment with RecurrenceRule for multi-day events
-                    var appointment = new Appointment
+                    return new Appointment
                     {
                         Id = evt.Id.ToString(),
                         CalendarEventId = evt.Id,
                         Title = evt.Title ?? string.Empty,
                         Description = evt.Description ?? string.Empty,
-                        Start = appointmentStart,
+                        Start = evt.StartTime,
                         End = appointmentEnd,
-                        AllDay = evt.AllDay
+                        AllDay = evt.AllDay,
+                        CssClass = GetCalendarEventCssClass(evt)
                     };
+                })
+                .ToList();
 
-                    // Add RecurrenceRule for multi-day events
-                    if (numberOfDays > 1)
-                    {
-                        appointment.RecurrenceRule = $"FREQ=DAILY;INTERVAL=1;COUNT={numberOfDays}";
-                    }
+            Logger.LogInformation(
+                "UpdateTestAppointmentsFromCalendarEvents - Prepared {Count} appointments for FullCalendar",
+                testAppointments.Count);
 
-                    testAppointments.Add(appointment);
-                    
-                    Logger.LogInformation("UpdateTestAppointmentsFromCalendarEvents - Added appointment - Id: {Id}, Title: {Title}, Start: {Start}, End: {End}, Days: {Days}, RecurrenceRule: {Rule}",
-                        appointment.Id, appointment.Title, appointment.Start, appointment.End, numberOfDays, appointment.RecurrenceRule ?? "None");
-                }
-                
-                Logger.LogInformation("UpdateTestAppointmentsFromCalendarEvents - Month View - Total appointments created: {Count}", testAppointments.Count);
-            }
-
-            Logger.LogInformation("UpdateTestAppointmentsFromCalendarEvents - Before Update [RequestId: {RequestId}] - testAppointments Count: {Count}, SelectedSchedulerDate: {Date}", 
-                requestId, testAppointments.Count, currentSelectedDate);
-            
-            // Update Appointments list using the public method from razor file
             await InvokeAsync(() =>
             {
-                // Check if this is still the latest request (avoid race condition)
                 if (requestId < _lastUpdateRequestId)
                 {
-                    Logger.LogWarning("UpdateTestAppointmentsFromCalendarEvents - Skipping update [RequestId: {RequestId}] - Newer request exists: {LatestRequestId}, SelectedSchedulerDate changed from {OldDate} to {NewDate}",
-                        requestId, _lastUpdateRequestId, currentSelectedDate, SelectedSchedulerDate);
+                    Logger.LogWarning(
+                        "UpdateTestAppointmentsFromCalendarEvents - Skipping update [RequestId: {RequestId}] because a newer request exists",
+                        requestId);
                     return;
                 }
-                
-                // Verify SelectedSchedulerDate hasn't changed
+
                 if (currentSelectedDate != SelectedSchedulerDate)
                 {
-                    Logger.LogWarning("UpdateTestAppointmentsFromCalendarEvents - Skipping update [RequestId: {RequestId}] - SelectedSchedulerDate changed from {OldDate} to {NewDate}",
+                    Logger.LogWarning(
+                        "UpdateTestAppointmentsFromCalendarEvents - Skipping update [RequestId: {RequestId}] because SelectedSchedulerDate changed from {OldDate} to {NewDate}",
                         requestId, currentSelectedDate, SelectedSchedulerDate);
                     return;
                 }
                 
                 UpdateTestAppointments(testAppointments, requestId);
-                Logger.LogInformation("UpdateTestAppointmentsFromCalendarEvents - After Update [RequestId: {RequestId}] - Appointments Count: {Count}", 
-                    requestId, Appointments?.Count ?? 0);
+                Logger.LogInformation(
+                    "UpdateTestAppointmentsFromCalendarEvents - After Update [RequestId: {RequestId}] - Appointments Count: {Count}",
+                    requestId,
+                    Appointments.Count);
             });
         }
         catch (Exception ex)
@@ -1552,59 +1470,74 @@ public partial class CalendarEvents : HCComponentBase
         EditFieldErrors.Remove("RelatedId");
     }
 
-    private async Task OnSchedulerItemInserted(SchedulerInsertedItem<Appointment> item)
+    [JSInvokable]
+    public async Task HandleCalendarDateClick(string clickedDate)
     {
         try
         {
-            CalendarEventDto? originalEvent = null;
-            originalEvent = CalendarEventList.FirstOrDefault(e => e.Id == Guid.Parse(item.Item.Id));
+            await OnSchedulerDayClicked(ParseFullCalendarDate(clickedDate));
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+    }
 
-            NewCalendarEvent = new CalendarEventCreateDto
+    [JSInvokable]
+    public async Task HandleCalendarEventClick(string calendarEventId)
+    {
+        if (!Guid.TryParse(calendarEventId, out var parsedId))
+        {
+            return;
+        }
+
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            var calendarEvent = CalendarEventList.FirstOrDefault(e => e.Id == parsedId)
+                ?? await CalendarEventsAppService.GetAsync(parsedId);
+
+            await NavigateToRelatedEntity(calendarEvent);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleCalendarDatesSet(string start, string endExclusive, string currentDate, string viewType)
+    {
+        try
+        {
+            var parsedStart = ParseFullCalendarDate(start);
+            var parsedEndExclusive = ParseFullCalendarDate(endExclusive);
+            var parsedCurrentDate = ParseFullCalendarDate(currentDate);
+            var normalizedView = NormalizeFullCalendarView(viewType);
+            var normalizedDate = DateOnly.FromDateTime(parsedCurrentDate);
+
+            var hasChanged =
+                CalendarRangeStart != parsedStart
+                || CalendarRangeEndExclusive != parsedEndExclusive
+                || !string.Equals(SelectedSchedulerView, normalizedView, StringComparison.Ordinal)
+                || SelectedSchedulerDate != normalizedDate;
+
+            if (!hasChanged)
             {
-                Title = item.Item.Title,
-                Description = item.Item.Description ?? string.Empty,
-                StartTime = item.Item.Start,
-                EndTime = item.Item.End,
-                AllDay = item.Item.AllDay,
-                EventType = originalEvent?.EventType ?? EventType.MEETING.ToString(),
-                RelatedType = originalEvent?.RelatedType ?? RelatedType.NONE.ToString(),
-                Visibility = originalEvent?.Visibility ?? EventVisibility.PRIVATE.ToString()
-            };
-            
-            if (originalEvent != null && Enum.TryParse<EventType>(originalEvent.EventType, out var eventType))
-            {
-                NewCalendarEventEventType = eventType;
+                return;
             }
-            else
-            {
-                NewCalendarEventEventType = EventType.MEETING;
-            }
-            
-            if (originalEvent != null && Enum.TryParse<RelatedType>(originalEvent.RelatedType, out var relatedType))
-            {
-                NewCalendarEventRelatedType = relatedType;
-            }
-            else
-            {
-                NewCalendarEventRelatedType = RelatedType.NONE;
-            }
-            
-            if (originalEvent != null && Enum.TryParse<EventVisibility>(originalEvent.Visibility, out var visibility))
-            {
-                NewCalendarEventVisibility = visibility;
-            }
-            else
-            {
-                NewCalendarEventVisibility = EventVisibility.PRIVATE;
-            }
-            
-            SelectedNewProject = new List<ProjectSelectItem>();
-            SelectedNewProjectTask = new List<ProjectTaskSelectItem>();
-            CreateFieldErrors.Clear();
-            CreateCalendarEventValidationErrorKey = null;
-            
-            await CreateCalendarEventModal.Show();
-            RebuildToolbar();
+
+            CalendarRangeStart = parsedStart;
+            CalendarRangeEndExclusive = parsedEndExclusive;
+            SelectedSchedulerView = normalizedView;
+            SelectedSchedulerDate = normalizedDate;
+
+            await GetCalendarEventsAsync();
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
@@ -1613,29 +1546,182 @@ public partial class CalendarEvents : HCComponentBase
         }
     }
 
-    private async Task OnSchedulerItemClicked(SchedulerItemClickedEventArgs<Appointment> args)
+    private void UpdateTestAppointments(List<Appointment> newAppointments, long requestId = 0)
+    {
+        Logger.LogInformation(
+            "UpdateTestAppointments - Start [RequestId: {RequestId}] - Input appointments count: {Count}, Current Appointments count: {CurrentCount}",
+            requestId,
+            newAppointments?.Count ?? 0,
+            Appointments.Count);
+
+        Appointments = newAppointments ?? new List<Appointment>();
+        CalendarSyncRequired = true;
+        StateHasChanged();
+    }
+
+    private void EnsureSelectedCalendarDate()
+    {
+        if (!string.Equals(SelectedSchedulerView, FullCalendarMonthView, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var firstDayOfMonth = new DateOnly(SelectedSchedulerDate.Year, SelectedSchedulerDate.Month, 1);
+        if (SelectedSchedulerDate != firstDayOfMonth)
+        {
+            SelectedSchedulerDate = firstDayOfMonth;
+        }
+    }
+
+    private (DateTime Start, DateTime EndExclusive) GetCalendarVisibleRange()
+    {
+        if (CalendarRangeStart.HasValue && CalendarRangeEndExclusive.HasValue)
+        {
+            return (CalendarRangeStart.Value, CalendarRangeEndExclusive.Value);
+        }
+
+        var selectedDate = SelectedSchedulerDate.ToDateTime(TimeOnly.MinValue);
+
+        return SelectedSchedulerView switch
+        {
+            FullCalendarWeekView => (GetStartOfWeek(selectedDate), GetStartOfWeek(selectedDate).AddDays(7)),
+            FullCalendarDayView => (selectedDate.Date, selectedDate.Date.AddDays(1)),
+            _ => (new DateTime(selectedDate.Year, selectedDate.Month, 1), new DateTime(selectedDate.Year, selectedDate.Month, 1).AddMonths(1))
+        };
+    }
+
+    private async Task SyncFullCalendarAsync()
+    {
+        CalendarDotNetRef ??= DotNetObjectReference.Create(this);
+
+        await JSRuntime.InvokeVoidAsync(
+            "hcCalendarEvents.render",
+            FullCalendarElementId,
+            new
+            {
+                initialDate = SelectedSchedulerDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                initialView = NormalizeFullCalendarView(SelectedSchedulerView),
+                locale = "vi",
+                buttonText = new
+                {
+                    today = L["Today"].Value,
+                    month = L["Month"].Value,
+                    week = L["Week"].Value,
+                    day = L["Day"].Value
+                },
+                events = Appointments.Select(appointment => new
+                {
+                    id = appointment.Id,
+                    title = appointment.Title,
+                    start = appointment.Start,
+                    end = appointment.End,
+                    allDay = appointment.AllDay,
+                    classNames = new[] { appointment.CssClass },
+                    extendedProps = new
+                    {
+                        calendarEventId = appointment.CalendarEventId.ToString(),
+                        description = appointment.Description
+                    }
+                }).ToList()
+            },
+            CalendarDotNetRef);
+
+        CalendarIsInitialized = true;
+        CalendarSyncRequired = false;
+    }
+
+    private async Task DestroyFullCalendarAsync()
     {
         try
         {
-            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            Logger.LogInformation("OnSchedulerItemClicked - Start - Item Id: {Id}", args.Item.Id);
-            var calendarEvent = CalendarEventList.FirstOrDefault(e => e.Id == args.Item.CalendarEventId);
-            if (calendarEvent == null)
-            {
-                calendarEvent = await CalendarEventsAppService.GetAsync(args.Item.CalendarEventId);
-            }
-            
-            // Navigate to related entity or open detail modal based on RelatedType
-            await NavigateToRelatedEntity(calendarEvent);
-            
-            await BlockUiService.UnBlock();
-            RebuildToolbar();
-            await InvokeAsync(StateHasChanged);
+            await JSRuntime.InvokeVoidAsync("hcCalendarEvents.destroy", FullCalendarElementId);
         }
-        catch (Exception ex)
+        catch (JSDisconnectedException)
         {
-            await HandleErrorAsync(ex);
-            await BlockUiService.UnBlock();
+            // Ignore disconnects while tearing down the circuit.
         }
+
+        CalendarIsInitialized = false;
+        CalendarSyncRequired = false;
+    }
+
+    private static DateTime GetStartOfWeek(DateTime value)
+    {
+        var diff = ((int)value.DayOfWeek + 6) % 7;
+        return value.Date.AddDays(-diff);
+    }
+
+    private static string NormalizeFullCalendarView(string? viewType)
+    {
+        return viewType switch
+        {
+            FullCalendarWeekView => FullCalendarWeekView,
+            FullCalendarDayView => FullCalendarDayView,
+            _ => FullCalendarMonthView
+        };
+    }
+
+    private static DateTime ParseFullCalendarDate(string value)
+    {
+        if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var dateTimeOffset))
+        {
+            return dateTimeOffset.LocalDateTime;
+        }
+
+        return DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal);
+    }
+
+    private static string GetCalendarEventCssClass(CalendarEventDto calendarEvent)
+    {
+        if (string.Equals(calendarEvent.RelatedType, nameof(RelatedType.TASK), StringComparison.OrdinalIgnoreCase))
+        {
+            return "hc-calendar-event-brand";
+        }
+
+        if (string.Equals(calendarEvent.RelatedType, nameof(RelatedType.PROJECT), StringComparison.OrdinalIgnoreCase))
+        {
+            return "hc-calendar-event-primary";
+        }
+
+        if (!Enum.TryParse<EventType>(calendarEvent.EventType, out var eventType))
+        {
+            return string.Equals(calendarEvent.Visibility, EventVisibility.PUBLIC.ToString(), StringComparison.OrdinalIgnoreCase)
+                ? "hc-calendar-event-primary"
+                : "hc-calendar-event-secondary";
+        }
+
+        return eventType switch
+        {
+            EventType.DEADLINE or EventType.TASK_DUE_SOON or EventType.TASK_ASSIGN_REMOVED or EventType.PROJECT_MEMBER_REMOVED => "hc-calendar-event-danger",
+            EventType.REMINDER or EventType.CALENDAR_REMINDER => "hc-calendar-event-warning",
+            EventType.WORKFLOW_COMPLETED => "hc-calendar-event-success",
+            EventType.WORKFLOW_ASSIGNED or EventType.TASK_ASSIGNED or EventType.TASK_ASSIGN_UPDATED or EventType.PROJECT_MEMBER_ADDED or EventType.PROJECT_MEMBER_UPDATED or EventType.CALENDAR_INVITED => "hc-calendar-event-info",
+            _ => string.Equals(calendarEvent.Visibility, EventVisibility.PUBLIC.ToString(), StringComparison.OrdinalIgnoreCase)
+                ? "hc-calendar-event-primary"
+                : "hc-calendar-event-secondary"
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (CalendarIsInitialized)
+        {
+            await DestroyFullCalendarAsync();
+        }
+
+        CalendarDotNetRef?.Dispose();
+        CalendarDotNetRef = null;
+    }
+
+    public sealed class Appointment
+    {
+        public string Id { get; set; } = string.Empty;
+        public Guid CalendarEventId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public DateTime Start { get; set; }
+        public DateTime End { get; set; }
+        public bool AllDay { get; set; }
+        public string CssClass { get; set; } = "hc-calendar-event-secondary";
     }
 }
