@@ -403,6 +403,11 @@ public partial class ProjectTasks
 
     private async Task OnKanbanItemDroppedAsync(DraggableDroppedEventArgs<KanbanItem> args)
     {
+        if (IsKanbanUpdating)
+        {
+            return;
+        }
+
         if (args.Item is null)
         {
             return;
@@ -445,9 +450,12 @@ public partial class ProjectTasks
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             // Store old status to update counts
             var oldStatus = item.Status;
+
+            // Always fetch the latest task snapshot from server to avoid stale ConcurrencyStamp.
+            var latestTask = await ProjectTasksAppService.GetAsync(item.ProjectTask.Id);
             
             // Auto-set ProgressPercent to 100 when task is moved to Done
-            var progressPercent = item.ProjectTask.ProgressPercent;
+            var progressPercent = latestTask.ProgressPercent;
             if (newStatus == ProjectTaskStatus.DONE)
             {
                 progressPercent = 100;
@@ -455,24 +463,25 @@ public partial class ProjectTasks
             
             var input = new ProjectTaskUpdateDto
             {
-                ParentTaskId = item.ProjectTask.ParentTaskId,
-                Code = item.ProjectTask.Code,
-                Title = item.ProjectTask.Title,
-                Description = item.ProjectTask.Description,
-                StartDate = item.ProjectTask.StartDate,
-                DueDate = item.ProjectTask.DueDate,
-                Priority = item.ProjectTask.Priority,
+                ParentTaskId = latestTask.ParentTaskId,
+                Code = latestTask.Code,
+                Title = latestTask.Title,
+                Description = latestTask.Description,
+                StartDate = latestTask.StartDate,
+                DueDate = latestTask.DueDate,
+                Priority = latestTask.Priority,
                 Status = newStatus.ToString(),
                 ProgressPercent = progressPercent,
-                ProjectId = item.ProjectTask.ProjectId,
-                ConcurrencyStamp = item.ProjectTask.ConcurrencyStamp
+                ProjectId = latestTask.ProjectId,
+                ConcurrencyStamp = latestTask.ConcurrencyStamp
             };
 
-            await ProjectTasksAppService.UpdateAsync(item.ProjectTask.Id, input);
+            var updatedTask = await ProjectTasksAppService.UpdateAsync(item.ProjectTask.Id, input);
 
             // Update local state after the server call succeeds.
             item.ProjectTask.Status = input.Status;
             item.ProjectTask.ProgressPercent = input.ProgressPercent;
+            item.ProjectTask.ConcurrencyStamp = updatedTask.ConcurrencyStamp;
             item.Status = newStatus;
             item.ProgressPercent = input.ProgressPercent;
             
@@ -483,7 +492,12 @@ public partial class ProjectTasks
                 allItem.Status = newStatus;
                 allItem.ProjectTask.Status = input.Status;
                 allItem.ProjectTask.ProgressPercent = input.ProgressPercent;
+                allItem.ProjectTask.ConcurrencyStamp = updatedTask.ConcurrencyStamp;
                 allItem.ProgressPercent = input.ProgressPercent;
+                if (allItem.ProjectTaskWithNavigationProperties?.ProjectTask is not null)
+                {
+                    allItem.ProjectTaskWithNavigationProperties.ProjectTask.ConcurrencyStamp = updatedTask.ConcurrencyStamp;
+                }
             }
             
             // Update total counts locally instead of querying API

@@ -24,7 +24,6 @@
 @inject ISurveyResultsAppService SurveyResultsAppService
 @inject ISurveyLocationsAppService SurveyLocationsAppService
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
-@inject IUiMessageService UiMessageService
 @inject NavigationManager NavigationManager
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 
@@ -110,19 +109,24 @@
 }
 else
 {
-    <Tabs SelectedTab="@SelectedTab" SelectedTabChanged="@OnSelectedTabChanged" Class="mt-3">
-        <Items>
-            <Tab Name="chart-statistics">
-                <Icon Name="IconName.ChartPie" Class="me-2" />
-                Biểu đồ thống kê
-            </Tab>
-            <Tab Name="detail-data">
-                <Icon Name="IconName.List" Class="me-2" />
-                Chi tiết
-            </Tab>
-        </Items>
-        <Content>
-            <TabPanel Name="chart-statistics" Class="mt-3">
+    <Card Class="mt-3">
+        <CardHeader Class="pb-0">
+            <Tabs SelectedTab="@SelectedTab" SelectedTabChanged="@OnSelectedTabChanged">
+                <Items>
+                    <Tab Name="chart-statistics">
+                        <Icon Name="IconName.ChartPie" Class="me-2" />
+                        Biểu đồ thống kê
+                    </Tab>
+                    <Tab Name="detail-data">
+                        <Icon Name="IconName.List" Class="me-2" />
+                        Chi tiết
+                    </Tab>
+                </Items>
+            </Tabs>
+        </CardHeader>
+        <CardBody>
+            @if (SelectedTab == "chart-statistics")
+            {
                 @* ************************* CHARTS ************************* *@
                 <Row>
                     <Column ColumnSize="ColumnSize.Is12">
@@ -206,25 +210,17 @@ else
                         </Card>
                     </Column>
                 </Row>
-            </TabPanel>
-
-            <TabPanel Name="detail-data" Class="mt-3">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>
-                            <Icon Name="IconName.List" Class="me-2" />
-                            Danh sách kết quả khảo sát
-                        </CardTitle>
-                    </CardHeader>
-                    <CardBody>
-                        <DataGrid TItem="SurveyResultWithNavigationPropertiesDto"
-                                  @ref="SurveyResultDataGridRef"
-                                  Data="SurveyResultDetails"
-                                  ReadData="OnSurveyResultGridReadAsync"
-                                  TotalItems="DetailTotalCount"
-                                  ShowPager="true"
-                                  Responsive="true"
-                                  PageSize="DetailPageSize">
+            }
+            else if (SelectedTab == "detail-data")
+            {
+                <DataGrid TItem="SurveyResultSessionSummaryDto"
+                          @ref="SurveySessionSummaryGridRef"
+                          Data="SurveySessionSummaries"
+                          ReadData="OnSurveyResultGridReadAsync"
+                          TotalItems="DetailTotalCount"
+                          ShowPager="true"
+                          Responsive="true"
+                          PageSize="DetailPageSize">
                             <LoadingTemplate>
                                 <Row Class="w-100 align-items-center" Style="height: 120px;">
                                     <Column>
@@ -240,41 +236,120 @@ else
                                 </Row>
                             </EmptyTemplate>
                             <DataGridColumns>
-                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Tiêu chí" Sortable="false">
+                                <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Trung bình điểm đánh giá" Sortable="false">
                                     <DisplayTemplate>
-                                        @context.SurveyCriteria?.Name
+                                        @context.AverageRating.ToString("0.##")
                                     </DisplayTemplate>
                                 </DataGridColumn>
-                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Điểm" Sortable="false">
+                                <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Khách hàng" Sortable="false">
                                     <DisplayTemplate>
-                                        @context.SurveyResult.Rating
+                                        @context.FullName
                                     </DisplayTemplate>
                                 </DataGridColumn>
-                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Khách hàng" Sortable="false">
+                                <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Số điện thoại" Sortable="false">
                                     <DisplayTemplate>
-                                        @context.SurveySession?.FullName
+                                        @context.PhoneNumber
                                     </DisplayTemplate>
                                 </DataGridColumn>
-                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Số điện thoại" Sortable="false">
+                                <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Mã bệnh nhân" Sortable="false">
                                     <DisplayTemplate>
-                                        @context.SurveySession?.PhoneNumber
+                                        @context.PatientCode
                                     </DisplayTemplate>
                                 </DataGridColumn>
-                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Mã bệnh nhân" Sortable="false">
+                                <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Ghi chú" Sortable="false">
                                     <DisplayTemplate>
-                                        @context.SurveySession?.PatientCode
+                                        @context.Note
                                     </DisplayTemplate>
                                 </DataGridColumn>
-                                <DataGridColumn TItem="SurveyResultWithNavigationPropertiesDto" Caption="Thời gian khảo sát" Sortable="false">
+                                <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Thời gian khảo sát" Sortable="false">
                                     <DisplayTemplate>
-                                        @context.SurveySession?.SurveyTime.ToString("dd/MM/yyyy HH:mm")
+                                        @context.SurveyTime.ToString("dd/MM/yyyy HH:mm")
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Thao tác" Sortable="false">
+                                    <DisplayTemplate>
+                                        <Button Color="Color.Primary"
+                                                Outline
+                                                Size="Size.Small"
+                                                Clicked="@(() => OpenDetailModalAsync(context))">
+                                            <Icon Name="IconName.Eye"  />
+                                        </Button>
                                     </DisplayTemplate>
                                 </DataGridColumn>
                             </DataGridColumns>
-                        </DataGrid>
-                    </CardBody>
-                </Card>
-            </TabPanel>
-        </Content>
-    </Tabs>
+                </DataGrid>
+            }
+        </CardBody>
+    </Card>
 }
+
+<Modal @ref="SurveyResultDetailModal" Closing="@SurveyResultDetailModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
+        <ModalHeader>
+            <ModalTitle>
+                Chi tiết khảo sát @(!string.IsNullOrWhiteSpace(SelectedSurveySessionSummary?.FullName) ? $"— {SelectedSurveySessionSummary.FullName}" : string.Empty)
+            </ModalTitle>
+            <CloseButton Clicked="CloseDetailModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @if (IsDetailModalLoading)
+            {
+                <Row Class="w-100 align-items-center" Style="height: 120px;">
+                    <Column>
+                        <RadarSpinner />
+                    </Column>
+                </Row>
+            }
+            else
+            {
+                <DataGrid TItem="SurveyResultSessionDetailDto"
+                          Data="SelectedSurveySessionDetails"
+                          ShowPager="false"
+                          Responsive="true">
+                    <EmptyTemplate>
+                        <Row Class="w-100 align-items-center" Style="height: 120px;">
+                            <Column>
+                                <Heading Size="HeadingSize.Is5" TextAlignment="TextAlignment.Center">Không có dữ liệu khảo sát.</Heading>
+                            </Column>
+                        </Row>
+                    </EmptyTemplate>
+                    <DataGridColumns>
+                        <DataGridColumn TItem="SurveyResultSessionDetailDto" Caption="Tiêu chí" Sortable="false">
+                            <DisplayTemplate>
+                                @context.SurveyCriteriaName
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                        <DataGridColumn TItem="SurveyResultSessionDetailDto" Caption="Điểm" Sortable="false">
+                            <DisplayTemplate>
+                                @context.Rating
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                        <DataGridColumn TItem="SurveyResultSessionDetailDto" Caption="Khách hàng" Sortable="false">
+                            <DisplayTemplate>
+                                @context.FullName
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                        <DataGridColumn TItem="SurveyResultSessionDetailDto" Caption="Số điện thoại" Sortable="false">
+                            <DisplayTemplate>
+                                @context.PhoneNumber
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                        <DataGridColumn TItem="SurveyResultSessionDetailDto" Caption="Mã bệnh nhân" Sortable="false">
+                            <DisplayTemplate>
+                                @context.PatientCode
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                        <DataGridColumn TItem="SurveyResultSessionDetailDto" Caption="Thời gian khảo sát" Sortable="false">
+                            <DisplayTemplate>
+                                @context.SurveyTime.ToString("dd/MM/yyyy HH:mm")
+                            </DisplayTemplate>
+                        </DataGridColumn>
+                    </DataGridColumns>
+                </DataGrid>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Size="Size.Small" Clicked="CloseDetailModalAsync">@L["Close"]</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>

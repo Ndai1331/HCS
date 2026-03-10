@@ -32,12 +32,16 @@ public partial class SurveyResults
     protected Dictionary<int, int> RatingDistribution { get; set; } = new();
     protected Dictionary<string, double> CriteriaAverageRatings { get; set; } = new();
     protected string SelectedTab { get; set; } = "chart-statistics";
-    protected IReadOnlyList<SurveyResultWithNavigationPropertiesDto> SurveyResultDetails { get; set; } = new List<SurveyResultWithNavigationPropertiesDto>();
-    protected DataGrid<SurveyResultWithNavigationPropertiesDto>? SurveyResultDataGridRef { get; set; }
+    protected IReadOnlyList<SurveyResultSessionSummaryDto> SurveySessionSummaries { get; set; } = new List<SurveyResultSessionSummaryDto>();
+    protected DataGrid<SurveyResultSessionSummaryDto>? SurveySessionSummaryGridRef { get; set; }
     protected int DetailPageSize { get; } = LimitedResultRequestDto.DefaultMaxResultCount;
     protected int DetailCurrentPage { get; set; } = 1;
-    protected string DetailCurrentSorting { get; set; } = $"SurveyResult.CreationTime desc";
+    protected string DetailCurrentSorting { get; set; } = "SurveySession.SurveyTime desc";
     protected int DetailTotalCount { get; set; }
+    protected Modal SurveyResultDetailModal { get; set; } = new();
+    protected SurveyResultSessionSummaryDto? SelectedSurveySessionSummary { get; set; }
+    protected IReadOnlyList<SurveyResultSessionDetailDto> SelectedSurveySessionDetails { get; set; } = new List<SurveyResultSessionDetailDto>();
+    protected bool IsDetailModalLoading { get; set; }
 
     [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
     [Inject] private ILogger<SurveyResults> _logger { get; set; } = null!;
@@ -128,13 +132,13 @@ public partial class SurveyResults
         SelectedSurveyLocationId = locationId;
         DetailCurrentPage = 1;
         await LoadStatisticsAsync();
-        if (SurveyResultDataGridRef != null)
+        if (SurveySessionSummaryGridRef != null)
         {
-            await SurveyResultDataGridRef.Reload();
+            await SurveySessionSummaryGridRef.Reload();
         }
         else
         {
-            await LoadSurveyResultDetailsAsync();
+            await LoadSurveySessionSummariesAsync();
         }
     }
 
@@ -164,31 +168,65 @@ public partial class SurveyResults
         }
     }
 
-    protected virtual async Task OnSurveyResultGridReadAsync(DataGridReadDataEventArgs<SurveyResultWithNavigationPropertiesDto> e)
+    protected virtual async Task OnSurveyResultGridReadAsync(DataGridReadDataEventArgs<SurveyResultSessionSummaryDto> e)
     {
         DetailCurrentPage = e.Page;
-        await LoadSurveyResultDetailsAsync();
+        await LoadSurveySessionSummariesAsync();
         await InvokeAsync(StateHasChanged);
     }
 
-    protected virtual async Task LoadSurveyResultDetailsAsync()
+    protected virtual async Task LoadSurveySessionSummariesAsync()
     {
         try
         {
-            var detailResult = await SurveyResultsAppService.GetListAsync(new GetSurveyResultsInput
+            var summaryResult = await SurveyResultsAppService.GetSessionSummaryListAsync(new GetSurveyResultSessionSummariesInput
             {
                 SurveyLocationId = SelectedSurveyLocationId,
                 MaxResultCount = DetailPageSize,
                 SkipCount = (DetailCurrentPage - 1) * DetailPageSize,
-                Sorting = DetailCurrentSorting
+                Sorting = "SurveyTime desc"
             });
-            SurveyResultDetails = detailResult.Items;
-            DetailTotalCount = (int)detailResult.TotalCount;
+            SurveySessionSummaries = summaryResult.Items;
+            DetailTotalCount = (int)summaryResult.TotalCount;
         }
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
         }
+    }
+
+    protected virtual async Task OpenDetailModalAsync(SurveyResultSessionSummaryDto summary)
+    {
+        SelectedSurveySessionSummary = summary;
+        IsDetailModalLoading = true;
+        SelectedSurveySessionDetails = new List<SurveyResultSessionDetailDto>();
+
+        await SurveyResultDetailModal.Show();
+
+        try
+        {
+            var result = await SurveyResultsAppService.GetSessionDetailListAsync(new GetSurveyResultSessionDetailsInput
+            {
+                SurveyLocationId = SelectedSurveyLocationId,
+                SurveySessionId = summary.SurveySessionId
+            });
+
+            SelectedSurveySessionDetails = result;
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsDetailModalLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected virtual async Task CloseDetailModalAsync()
+    {
+        await SurveyResultDetailModal.Hide();
     }
     private async Task DownloadAsExcelAsync()
     {

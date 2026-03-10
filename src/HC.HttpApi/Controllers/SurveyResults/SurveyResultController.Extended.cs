@@ -40,4 +40,18 @@ public class SurveyResultController : SurveyResultControllerBase, ISurveyResults
     {
         return _surveyResultsAppService.GetStatisticsByLocationAsync(surveyLocationId);
     }
+
+    [HttpGet]
+    [Route("session-summaries")]
+    public virtual Task<PagedResultDto<SurveyResultSessionSummaryDto>> GetSessionSummaryListAsync([FromQuery] GetSurveyResultSessionSummariesInput input)
+    {
+        return _surveyResultsAppService.GetSessionSummaryListAsync(input);
+    }
+
+    [HttpGet]
+    [Route("session-details")]
+    public virtual Task<List<SurveyResultSessionDetailDto>> GetSessionDetailListAsync([FromQuery] GetSurveyResultSessionDetailsInput input)
+    {
+        return _surveyResultsAppService.GetSessionDetailListAsync(input);
+    }
 }

@@ -132,6 +132,85 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
         }
     }
 
+    public virtual async Task<PagedResultDto<SurveyResultSessionSummaryDto>> GetSessionSummaryListAsync(GetSurveyResultSessionSummariesInput input)
+    {
+        var resultQueryable = await _surveyResultRepository.GetQueryableAsync();
+        var sessionQueryable = await _surveySessionRepository.GetQueryableAsync();
+
+        var query =
+            from session in sessionQueryable
+            join result in resultQueryable on session.Id equals result.SurveySessionId
+            where !input.SurveyLocationId.HasValue || session.SurveyLocationId == input.SurveyLocationId.Value
+            group result by new
+            {
+                session.Id,
+                session.FullName,
+                session.PhoneNumber,
+                session.PatientCode,
+                session.Note,
+                session.SurveyTime
+            }
+            into grouped
+            select new SurveyResultSessionSummaryDto
+            {
+                SurveySessionId = grouped.Key.Id,
+                AverageRating = grouped.Average(x => (double)x.Rating),
+                FullName = grouped.Key.FullName,
+                PhoneNumber = grouped.Key.PhoneNumber,
+                PatientCode = grouped.Key.PatientCode,
+                Note = grouped.Key.Note,
+                SurveyTime = grouped.Key.SurveyTime
+            };
+
+        var sorting = string.IsNullOrWhiteSpace(input.Sorting) ? "SurveyTime desc" : input.Sorting;
+        var totalCount = await AsyncExecuter.LongCountAsync(query);
+        var items = await AsyncExecuter.ToListAsync(
+            query.OrderBy(sorting)
+                .PageBy(input.SkipCount, input.MaxResultCount)
+        );
+
+        foreach (var item in items)
+        {
+            item.AverageRating = Math.Round(item.AverageRating, 2);
+        }
+
+        return new PagedResultDto<SurveyResultSessionSummaryDto>
+        {
+            TotalCount = totalCount,
+            Items = items
+        };
+    }
+
+    public virtual async Task<List<SurveyResultSessionDetailDto>> GetSessionDetailListAsync(GetSurveyResultSessionDetailsInput input)
+    {
+        var resultQueryable = await _surveyResultRepository.GetQueryableAsync();
+        var sessionQueryable = await _surveySessionRepository.GetQueryableAsync();
+        var criteriaQueryable = await _surveyCriteriaRepository.GetQueryableAsync();
+
+        var query =
+            from result in resultQueryable
+            join session in sessionQueryable on result.SurveySessionId equals session.Id
+            join criteria in criteriaQueryable on result.SurveyCriteriaId equals criteria.Id
+            where result.SurveySessionId == input.SurveySessionId
+            where !input.SurveyLocationId.HasValue || session.SurveyLocationId == input.SurveyLocationId.Value
+            orderby criteria.Name
+            select new SurveyResultSessionDetailDto
+            {
+                SurveyResultId = result.Id,
+                SurveySessionId = session.Id,
+                SurveyCriteriaId = criteria.Id,
+                SurveyCriteriaName = criteria.Name,
+                Rating = result.Rating,
+                FullName = session.FullName,
+                PhoneNumber = session.PhoneNumber,
+                PatientCode = session.PatientCode,
+                Note = session.Note,
+                SurveyTime = session.SurveyTime
+            };
+
+        return await AsyncExecuter.ToListAsync(query);
+    }
+
     public virtual async Task<SurveyResultStatisticsDto> GetStatisticsByLocationAsync(Guid? surveyLocationId)
     {
         var statistics = new SurveyResultStatisticsDto();

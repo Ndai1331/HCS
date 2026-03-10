@@ -114,13 +114,13 @@
                         <TextEdit Text="@Filter.StorageNumber" TextChanged="@OnStorageNumberChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                 @* <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["CurrentStatus"]</FieldLabel>
                         <TextEdit Text="@Filter.CurrentStatus" TextChanged="@OnCurrentStatusChangedAsync" />                  
                     </Field>
                 </Column>
-                @* <Column ColumnSize="ColumnSize.Is3">
+               <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["MinCompletedTime"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
