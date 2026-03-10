@@ -96,9 +96,24 @@ public partial class CalendarEvents
         await DayEventsModal.Hide();
     }
 
+    protected void OnDayEventsModalClosed()
+    {
+        SelectedDayEvents = new List<CalendarEventDto>();
+        SelectedDayProjectEvents = new List<CalendarEventDto>();
+        SelectedDayTaskEvents = new List<CalendarEventDto>();
+        SelectedDayTab = "events";
+    }
+
     protected void OnSelectedDayTabChanged(string name)
     {
         SelectedDayTab = name;
+    }
+
+    protected IEnumerable<CalendarEventDto> GetSelectedDayStandaloneEvents()
+    {
+        return SelectedDayEvents.Where(e =>
+            e.RelatedType == RelatedType.NONE.ToString() ||
+            (!Enum.TryParse<RelatedType>(e.RelatedType, out var relatedType) || relatedType == RelatedType.NONE));
     }
 
     // Get display code for RelatedId (extract Code from RelatedId field)
@@ -122,6 +137,65 @@ public partial class CalendarEvents
             }
         }
         return $"📅 {calendarEvent.Title}";
+    }
+
+    protected string GetDayEventTypeLabel(CalendarEventDto calendarEvent)
+    {
+        if (Enum.TryParse<RelatedType>(calendarEvent.RelatedType, out var relatedType))
+        {
+            return relatedType switch
+            {
+                RelatedType.PROJECT => L["Projects"],
+                RelatedType.TASK => L["Tasks"],
+                _ => L["Events"]
+            };
+        }
+
+        return L["Events"];
+    }
+
+    protected string GetDayEventTypeClass(CalendarEventDto calendarEvent)
+    {
+        if (Enum.TryParse<RelatedType>(calendarEvent.RelatedType, out var relatedType))
+        {
+            return relatedType switch
+            {
+                RelatedType.PROJECT => "hc-day-item-tag hc-day-item-tag-project",
+                RelatedType.TASK => "hc-day-item-tag hc-day-item-tag-task",
+                _ => "hc-day-item-tag hc-day-item-tag-event"
+            };
+        }
+
+        return "hc-day-item-tag hc-day-item-tag-event";
+    }
+
+    protected string GetDayEventTimeDisplay(CalendarEventDto calendarEvent)
+    {
+        return calendarEvent.AllDay
+            ? L["AllDay"]
+            : $"{calendarEvent.StartTime:HH:mm} - {calendarEvent.EndTime:HH:mm}";
+    }
+
+    protected string GetDayEventReferenceLabel(CalendarEventDto calendarEvent)
+    {
+        if (Enum.TryParse<RelatedType>(calendarEvent.RelatedType, out var relatedType))
+        {
+            return relatedType switch
+            {
+                RelatedType.PROJECT => $"{L["Projects"]}:",
+                RelatedType.TASK => $"{L["Tasks"]}:",
+                _ => string.Empty
+            };
+        }
+
+        return string.Empty;
+    }
+
+    protected string GetDayEventReferenceValue(CalendarEventDto calendarEvent)
+    {
+        return string.IsNullOrWhiteSpace(calendarEvent.RelatedId)
+            ? calendarEvent.Title ?? string.Empty
+            : calendarEvent.RelatedId;
     }
 
     // Navigate to related entity or open detail modal

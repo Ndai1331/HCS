@@ -1186,6 +1186,8 @@
     "WorkflowResubmittedMessage": "The document has been resubmitted",
     "NoProjectsFound": "No projects found",
     "NoTasksFound": "No tasks found",
+    "NoEventsFound": "No events found",
+    "Events": "Events",
     "CalendarEvent:Detail": "Calendar event detail",
     "NoMembersFound" : "No members found",
     "ProjectDetail": "Project detail",

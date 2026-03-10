@@ -82,6 +82,34 @@
         cursor: pointer;
     }
 
+    .hc-fullcalendar-host .fc-scrollgrid,
+    .hc-fullcalendar-host .fc-theme-standard td,
+    .hc-fullcalendar-host .fc-theme-standard th {
+        border-color: #dee2e6;
+    }
+
+    .hc-fullcalendar-host .fc-col-header-cell {
+        background: #fff;
+    }
+
+    .hc-fullcalendar-host .fc-col-header-cell-cushion,
+    .hc-fullcalendar-host .fc-daygrid-day-number,
+    .hc-fullcalendar-host .fc-timegrid-axis-cushion,
+    .hc-fullcalendar-host .fc-timegrid-slot-label-cushion {
+        color: #495057 !important;
+        text-decoration: none !important;
+        font-weight: 500;
+    }
+
+    .hc-fullcalendar-host .fc-day-other .fc-daygrid-day-number {
+        color: #adb5bd !important;
+    }
+
+    .hc-fullcalendar-host .fc-daygrid-day-top {
+        justify-content: flex-end;
+        padding: .35rem .5rem 0;
+    }
+
     .hc-fullcalendar-host .fc-day-today {
         background: rgba(13, 110, 253, 0.08) !important;
     }
@@ -148,6 +176,109 @@
         --hc-calendar-event-bg: var(--bs-secondary);
         --hc-calendar-event-border: var(--bs-secondary);
         --hc-calendar-event-fg: #fff;
+    }
+
+    .hc-day-events-tabs {
+        margin-bottom: 1rem;
+    }
+
+    .hc-day-events-list {
+        max-height: 430px;
+        overflow-y: auto;
+        padding-right: .25rem;
+    }
+
+    .hc-day-events-empty {
+        min-height: 220px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .hc-day-event-item {
+        padding: 1rem 0;
+        cursor: pointer;
+    }
+
+    .hc-day-event-item + .hc-day-event-item {
+        border-top: 1px solid #e9ecef;
+    }
+
+    .hc-day-event-item-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: .5rem;
+    }
+
+    .hc-day-event-title {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #334e68;
+    }
+
+    .hc-day-event-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .75rem;
+        margin-bottom: .5rem;
+        color: #486581;
+    }
+
+    .hc-day-event-meta-item {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+    }
+
+    .hc-day-event-ref {
+        display: flex;
+        align-items: baseline;
+        gap: .45rem;
+        margin-bottom: .5rem;
+        color: #334e68;
+    }
+
+    .hc-day-event-ref-label {
+        font-weight: 700;
+        color: #486581;
+    }
+
+    .hc-day-event-desc {
+        margin: 0;
+        color: #52606d;
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+
+    .hc-day-item-tag {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: .25rem .7rem;
+        font-size: .8rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .hc-day-item-tag-event {
+        background: rgba(108,117,125,.12);
+        color: #495057;
+    }
+
+    .hc-day-item-tag-project {
+        background: rgba(13,110,253,.12);
+        color: var(--bs-primary);
+    }
+
+    .hc-day-item-tag-task {
+        background: rgba(247,37,133,.12);
+        color: var(--lpx-brand, #f72585);
     }
 </style>
 @* ************************* SEARCH ************************* *@
@@ -1257,69 +1388,59 @@
 </Modal>
 
 <!-- Day Events Modal with 3 Tabs (Events, Projects, Tasks) -->
-<Modal @ref="DayEventsModal" Closing="@(async (args) => await CloseDayEventsModalAsync())">
+<Modal @ref="DayEventsModal" Closed="OnDayEventsModalClosed">
     <ModalContent>
         <ModalHeader>
             <ModalTitle>@SelectedDayDate.ToString("dd/MM/yyyy") - @L["CalendarEvents"]</ModalTitle>
             <CloseButton Clicked="CloseDayEventsModalAsync" />
         </ModalHeader>
         <ModalBody>
-            <Tabs SelectedTab="@SelectedDayTab" TabPosition="TabPosition.Top" Clicked="@OnSelectedDayTabChanged">
+            <Tabs SelectedTab="@SelectedDayTab" SelectedTabChanged="@OnSelectedDayTabChanged" TabPosition="TabPosition.Top" Class="hc-day-events-tabs">
                 <Items>
                     <Tab Name="events">
-                        <TabHeader>@L["Events"] (@SelectedDayEvents.Count(e => e.RelatedType == RelatedType.NONE.ToString() || !Enum.TryParse<RelatedType>(e.RelatedType, out var rt) || rt == RelatedType.NONE))</TabHeader>
+                        @L["Events"] (@GetSelectedDayStandaloneEvents().Count())
                     </Tab>
                     <Tab Name="projects">
-                        <TabHeader>@L["Projects"] (@SelectedDayProjectEvents.Count)</TabHeader>
+                        @L["Projects"] (@SelectedDayProjectEvents.Count)
                     </Tab>
                     <Tab Name="tasks">
-                        <TabHeader>@L["Tasks"] (@SelectedDayTaskEvents.Count)</TabHeader>
+                        @L["Tasks"] (@SelectedDayTaskEvents.Count)
                     </Tab>
                 </Items>
                 <Content>
                     <!-- Events Tab -->
                     <TabPanel Name="events">
-                        @if (SelectedDayEvents.Where(e => e.RelatedType == RelatedType.NONE.ToString() || !Enum.TryParse<RelatedType>(e.RelatedType, out var rt) || rt == RelatedType.NONE).Any())
+                        @if (GetSelectedDayStandaloneEvents().Any())
                         {
-                            <div style="max-height: 400px; overflow-y: auto;">
-                                @foreach (var evt in SelectedDayEvents.Where(e => e.RelatedType == RelatedType.NONE.ToString() || !Enum.TryParse<RelatedType>(e.RelatedType, out var rt) || rt == RelatedType.NONE))
+                            <div class="hc-day-events-list">
+                                @foreach (var evt in GetSelectedDayStandaloneEvents())
                                 {
-                                    <Card Class="mb-3" style="cursor: pointer;" @onclick="@(() => NavigateToRelatedEntity(evt))">
-                                        <CardHeader>
-                                            <Heading Size="HeadingSize.Is6">@GetEventCardTitle(evt)</Heading>
-                                        </CardHeader>
-                                        <CardBody>
-                                            @if (!string.IsNullOrWhiteSpace(evt.Description))
-                                            {
-                                                <Text>@evt.Description</Text>
-                                            }
-                                            else
-                                            {
-                                                <Text>@L["NoDescription"]</Text>
-                                            }
+                                    <div class="hc-day-event-item" @onclick="@(() => NavigateToRelatedEntity(evt))">
+                                        <div class="hc-day-event-item-header">
+                                            <h6 class="hc-day-event-title">@GetEventCardTitle(evt)</h6>
+                                            <span class="@GetDayEventTypeClass(evt)">@GetDayEventTypeLabel(evt)</span>
+                                        </div>
+                                        <div class="hc-day-event-meta">
+                                            <span class="hc-day-event-meta-item">
+                                                <Icon Name="IconName.Clock" />
+                                                @GetDayEventTimeDisplay(evt)
+                                            </span>
                                             @if (!string.IsNullOrWhiteSpace(evt.Location))
                                             {
-                                                <div class="mt-2">
-                                                    <Icon Name="IconName.MapMarker" Class="me-1"></Icon>
-                                                    <Text>@evt.Location</Text>
-                                                </div>
+                                                <span class="hc-day-event-meta-item">
+                                                    <Icon Name="IconName.MapMarker" />
+                                                    @evt.Location
+                                                </span>
                                             }
-                                            <div class="mt-2">
-                                                <Icon Name="IconName.Clock" Class="me-1"></Icon>
-                                                <Text>@evt.StartTime.ToString("HH:mm") - @evt.EndTime.ToString("HH:mm")</Text>
-                                            </div>
-                                        </CardBody>
-                                    </Card>
+                                        </div>
+                                        <p class="hc-day-event-desc">@(string.IsNullOrWhiteSpace(evt.Description) ? L["NoDescription"].Value : evt.Description)</p>
+                                    </div>
                                 }
                             </div>
                         }
                         else
                         {
-                            <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                <Column>
-                                    <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["NoEventsFound"]</Heading>
-                                </Column>
-                            </Row>
+                            <div class="hc-day-events-empty">@L["NoEventsFound"]</div>
                         }
                     </TabPanel>
 
@@ -1327,45 +1448,39 @@
                     <TabPanel Name="projects">
                         @if (SelectedDayProjectEvents.Any())
                         {
-                            <div style="max-height: 400px; overflow-y: auto;">
+                            <div class="hc-day-events-list">
                                 @foreach (var evt in SelectedDayProjectEvents)
                                 {
-                                    <Card Class="mb-3" style="cursor: pointer;" @onclick="@(() => NavigateToRelatedEntity(evt))">
-                                        <CardHeader>
-                                            <Heading Size="HeadingSize.Is6">@GetEventCardTitle(evt)</Heading>
-                                        </CardHeader>
-                                        <CardBody>
-                                            @if (!string.IsNullOrWhiteSpace(evt.Description))
-                                            {
-                                                <Text>@evt.Description</Text>
-                                            }
-                                            else
-                                            {
-                                                <Text>@L["NoDescription"]</Text>
-                                            }
+                                    <div class="hc-day-event-item" @onclick="@(() => NavigateToRelatedEntity(evt))">
+                                        <div class="hc-day-event-item-header">
+                                            <h6 class="hc-day-event-title">@GetEventCardTitle(evt)</h6>
+                                            <span class="@GetDayEventTypeClass(evt)">@GetDayEventTypeLabel(evt)</span>
+                                        </div>
+                                        <div class="hc-day-event-ref">
+                                            <span class="hc-day-event-ref-label">@GetDayEventReferenceLabel(evt)</span>
+                                            <span>@GetDayEventReferenceValue(evt)</span>
+                                        </div>
+                                        <div class="hc-day-event-meta">
+                                            <span class="hc-day-event-meta-item">
+                                                <Icon Name="IconName.Clock" />
+                                                @GetDayEventTimeDisplay(evt)
+                                            </span>
                                             @if (!string.IsNullOrWhiteSpace(evt.Location))
                                             {
-                                                <div class="mt-2">
-                                                    <Icon Name="IconName.MapMarker" Class="me-1"></Icon>
-                                                    <Text>@evt.Location</Text>
-                                                </div>
+                                                <span class="hc-day-event-meta-item">
+                                                    <Icon Name="IconName.MapMarker" />
+                                                    @evt.Location
+                                                </span>
                                             }
-                                            <div class="mt-2">
-                                                <Icon Name="IconName.Clock" Class="me-1"></Icon>
-                                                <Text>@evt.StartTime.ToString("HH:mm") - @evt.EndTime.ToString("HH:mm")</Text>
-                                            </div>
-                                        </CardBody>
-                                    </Card>
+                                        </div>
+                                        <p class="hc-day-event-desc">@(string.IsNullOrWhiteSpace(evt.Description) ? L["NoDescription"].Value : evt.Description)</p>
+                                    </div>
                                 }
                             </div>
                         }
                         else
                         {
-                            <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                <Column>
-                                    <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["NoProjectsFound"]</Heading>
-                                </Column>
-                            </Row>
+                            <div class="hc-day-events-empty">@L["NoProjectsFound"]</div>
                         }
                     </TabPanel>
 
@@ -1373,45 +1488,39 @@
                     <TabPanel Name="tasks">
                         @if (SelectedDayTaskEvents.Any())
                         {
-                            <div style="max-height: 400px; overflow-y: auto;">
+                            <div class="hc-day-events-list">
                                 @foreach (var evt in SelectedDayTaskEvents)
                                 {
-                                    <Card Class="mb-3" style="cursor: pointer;" @onclick="@(() => NavigateToRelatedEntity(evt))">
-                                        <CardHeader>
-                                            <Heading Size="HeadingSize.Is6">@GetEventCardTitle(evt)</Heading>
-                                        </CardHeader>
-                                        <CardBody>
-                                            @if (!string.IsNullOrWhiteSpace(evt.Description))
-                                            {
-                                                <Text>@evt.Description</Text>
-                                            }
-                                            else
-                                            {
-                                                <Text>@L["NoDescription"]</Text>
-                                            }
+                                    <div class="hc-day-event-item" @onclick="@(() => NavigateToRelatedEntity(evt))">
+                                        <div class="hc-day-event-item-header">
+                                            <h6 class="hc-day-event-title">@GetEventCardTitle(evt)</h6>
+                                            <span class="@GetDayEventTypeClass(evt)">@GetDayEventTypeLabel(evt)</span>
+                                        </div>
+                                        <div class="hc-day-event-ref">
+                                            <span class="hc-day-event-ref-label">@GetDayEventReferenceLabel(evt)</span>
+                                            <span>@GetDayEventReferenceValue(evt)</span>
+                                        </div>
+                                        <div class="hc-day-event-meta">
+                                            <span class="hc-day-event-meta-item">
+                                                <Icon Name="IconName.Clock" />
+                                                @GetDayEventTimeDisplay(evt)
+                                            </span>
                                             @if (!string.IsNullOrWhiteSpace(evt.Location))
                                             {
-                                                <div class="mt-2">
-                                                    <Icon Name="IconName.MapMarker" Class="me-1"></Icon>
-                                                    <Text>@evt.Location</Text>
-                                                </div>
+                                                <span class="hc-day-event-meta-item">
+                                                    <Icon Name="IconName.MapMarker" />
+                                                    @evt.Location
+                                                </span>
                                             }
-                                            <div class="mt-2">
-                                                <Icon Name="IconName.Clock" Class="me-1"></Icon>
-                                                <Text>@evt.StartTime.ToString("HH:mm") - @evt.EndTime.ToString("HH:mm")</Text>
-                                            </div>
-                                        </CardBody>
-                                    </Card>
+                                        </div>
+                                        <p class="hc-day-event-desc">@(string.IsNullOrWhiteSpace(evt.Description) ? L["NoDescription"].Value : evt.Description)</p>
+                                    </div>
                                 }
                             </div>
                         }
                         else
                         {
-                            <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                <Column>
-                                    <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["NoTasksFound"]</Heading>
-                                </Column>
-                            </Row>
+                            <div class="hc-day-events-empty">@L["NoTasksFound"]</div>
                         }
                     </TabPanel>
                 </Content>
