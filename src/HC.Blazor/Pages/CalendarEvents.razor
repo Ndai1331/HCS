@@ -11,7 +11,6 @@
 @using Blazorise
 @using Blazorise.Components
 @using Blazorise.DataGrid
-@using Blazorise.Scheduler
 @using Blazorise.Extensions
 @using Microsoft.Extensions.Logging
 @using Volo.Abp.AspNetCore.Components.BlockUi
@@ -59,6 +58,96 @@
 
     .hc-select2-full .select2-container {
         width: 100% !important;
+    }
+
+    .hc-fullcalendar-host {
+        min-height: 780px;
+    }
+
+    .hc-fullcalendar-host .fc {
+        font-family: inherit;
+    }
+
+    .hc-fullcalendar-host .fc-toolbar.fc-header-toolbar {
+        margin-bottom: 1rem;
+    }
+
+    .hc-fullcalendar-host .fc-button {
+        text-transform: capitalize;
+    }
+
+    .hc-fullcalendar-host .fc-daygrid-day,
+    .hc-fullcalendar-host .fc-timegrid-slot,
+    .hc-fullcalendar-host .fc-col-header-cell {
+        cursor: pointer;
+    }
+
+    .hc-fullcalendar-host .fc-day-today {
+        background: rgba(13, 110, 253, 0.08) !important;
+    }
+
+    .hc-fullcalendar-host .fc-event {
+        border-radius: 0.45rem;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .hc-fullcalendar-host .fc-event[class*="hc-calendar-event-"] {
+        background-color: var(--hc-calendar-event-bg) !important;
+        border-color: var(--hc-calendar-event-border, var(--hc-calendar-event-bg)) !important;
+        color: var(--hc-calendar-event-fg, #fff) !important;
+    }
+
+    .hc-fullcalendar-host .fc-event[class*="hc-calendar-event-"] .fc-event-main,
+    .hc-fullcalendar-host .fc-event[class*="hc-calendar-event-"] .fc-event-main-frame,
+    .hc-fullcalendar-host .fc-event[class*="hc-calendar-event-"] .fc-event-time,
+    .hc-fullcalendar-host .fc-event[class*="hc-calendar-event-"] .fc-event-title {
+        color: inherit !important;
+    }
+
+    .hc-fullcalendar-host .fc-daygrid-dot-event[class*="hc-calendar-event-"] .fc-daygrid-event-dot {
+        border-color: var(--hc-calendar-event-bg) !important;
+    }
+
+    .hc-fullcalendar-host .hc-calendar-event-brand {
+        --hc-calendar-event-bg: var(--lpx-brand, #f72585);
+        --hc-calendar-event-border: var(--lpx-brand, #f72585);
+        --hc-calendar-event-fg: #fff;
+    }
+
+    .hc-fullcalendar-host .hc-calendar-event-primary {
+        --hc-calendar-event-bg: var(--bs-primary);
+        --hc-calendar-event-border: var(--bs-primary);
+        --hc-calendar-event-fg: #fff;
+    }
+
+    .hc-fullcalendar-host .hc-calendar-event-success {
+        --hc-calendar-event-bg: var(--bs-success);
+        --hc-calendar-event-border: var(--bs-success);
+        --hc-calendar-event-fg: #fff;
+    }
+
+    .hc-fullcalendar-host .hc-calendar-event-info {
+        --hc-calendar-event-bg: var(--bs-info);
+        --hc-calendar-event-border: var(--bs-info);
+        --hc-calendar-event-fg: #fff;
+    }
+
+    .hc-fullcalendar-host .hc-calendar-event-warning {
+        --hc-calendar-event-bg: var(--bs-warning);
+        --hc-calendar-event-border: var(--bs-warning);
+        --hc-calendar-event-fg: #212529;
+    }
+
+    .hc-fullcalendar-host .hc-calendar-event-danger {
+        --hc-calendar-event-bg: var(--bs-danger);
+        --hc-calendar-event-border: var(--bs-danger);
+        --hc-calendar-event-fg: #fff;
+    }
+
+    .hc-fullcalendar-host .hc-calendar-event-secondary {
+        --hc-calendar-event-bg: var(--bs-secondary);
+        --hc-calendar-event-border: var(--bs-secondary);
+        --hc-calendar-event-fg: #fff;
     }
 </style>
 @* ************************* SEARCH ************************* *@
@@ -490,34 +579,7 @@
 {
 <Card>
     <CardBody>
-     <Scheduler TItem="Appointment"
-                   Date="@SelectedSchedulerDate"
-                   DateChanged="@(async (DateOnly value) => {
-                        SelectedSchedulerDate = value;
-                        RebuildToolbar();
-                        await GetCalendarEventsAsync();
-                     })"
-                   Data="@Appointments"
-                   SelectedView="@SelectedSchedulerView"
-                   ShowToolbar="false"
-                   Localizers="@SchedulerLocalizers"
-                   EditItemClicked="@(async (SchedulerItemClickedEventArgs<Appointment> args) => await OnSchedulerItemClicked(args))"
-                   DayClicked="@(async (DateTime clickedDate) => await OnSchedulerDayClicked(clickedDate))"
-                   IdField="Id"
-                   StartField="Start"
-                   EndField="End"
-                   TitleField="Title"
-                   DescriptionField="Description"
-                   AllDayField="AllDay">
-            <SchedulerToolbar />
-            <SchedulerViews>
-                <SchedulerMonthView StartTime="@SchedulerStartTime" 
-                                    EndTime="@SchedulerEndTime" 
-                                    WorkDayStart="@SchedulerWorkDayStart" 
-                                    WorkDayEnd="@SchedulerWorkDayEnd" />
-            </SchedulerViews>
-        </Scheduler> 
-
+        <div id="hc-calendar-events-fullcalendar" class="hc-fullcalendar-host"></div>
     </CardBody>
 </Card>
 }
@@ -1373,7 +1435,7 @@
         <ModalBody>
             @if (ViewingCalendarEvent != null)
             {
-                <Tabs SelectedTab="event-view-tab" Clicked="@OnSelectedDayTabChanged">
+                <Tabs SelectedTab="@SelectedEventViewTab" SelectedTabChanged="@OnSelectedEventViewTabChanged">
                     <Items>
                         <Tab Name="general">
                             <Icon Name="IconName.Info" Class="me-1" />
@@ -1692,104 +1754,3 @@
     </ModalContent>
 </Modal>
 
-
-@code {
-    private DateOnly selectedDate = DateOnly.FromDateTime( DateTime.Today );
-    private SchedulerView selectedView = SchedulerView.Month;
-    private static DateTime today10AM = DateTime.Today.AddHours( 1 );
-    private static DateTime today10PM = DateTime.Today.AddHours( 13 );
-    private TimeOnly startTime = new TimeOnly(00, 00);
-    private TimeOnly endTime = new TimeOnly(23, 59, 59);
-    private TimeOnly workDayStart = new TimeOnly(00, 00);
-    private TimeOnly workDayEnd = new TimeOnly(23, 59, 59);
-
-    public class Appointment
-    {
-        public Appointment()
-        {
-        }
-        public Appointment(string id, Guid calendarEventId, string title, string description, DateTime start, DateTime end, bool allDay = false )
-        {
-            Id = id;
-            CalendarEventId = calendarEventId;
-            Title = title;
-            Description = description;
-            Start = start;
-            End = end;
-            AllDay = allDay;
-        }
-
-        public string Id { get; set; }
-        public Guid CalendarEventId { get; set; }
-
-        public string Title { get; set; }
-
-        public string Description { get; set; }
-
-        public DateTime Start { get; set; }
-
-        public DateTime End { get; set; }
-
-        public bool AllDay { get; set; }
-
-        public string RecurrenceRule { get; set; }
-    }
-
-    List<Appointment> Appointments = new List<Appointment>();
-    public void UpdateTestAppointments(List<Appointment> newAppointments, long requestId = 0)
-    {
-        Logger.LogInformation("UpdateTestAppointments - Start [RequestId: {RequestId}] - Input appointments count: {Count}, Current Appointments count: {CurrentCount}", 
-            requestId, newAppointments?.Count ?? 0, Appointments.Count);
-        
-        Appointments.Clear();
-        if (newAppointments == null || !newAppointments.Any())
-        {
-            Logger.LogWarning("UpdateTestAppointments - No appointments to update");
-            return;
-        }
-        foreach (var appointment in newAppointments)
-        {
-            // Calculate number of days from original dates before any modification
-            var startDate = appointment.Start.Date;
-            var endDate = appointment.End.Date;
-            int numOfDays = (endDate - startDate).Days + 1;
-            
-            var recurrenceRule = appointment.RecurrenceRule;
-            if (string.IsNullOrEmpty(recurrenceRule) && numOfDays > 1)
-            {
-                recurrenceRule = $"FREQ=DAILY;INTERVAL=1;COUNT={numOfDays}";
-            }
-            
-            DateTime displayEnd;
-            if (!string.IsNullOrEmpty(recurrenceRule) && numOfDays > 1)
-            {
-                // For recurring events, set End to same day as Start with End time for display
-                displayEnd = appointment.Start.Date.AddHours(appointment.End.Hour);
-            }
-            else
-            {
-                // For single day events, keep original End
-                displayEnd = appointment.End;
-            }
-            
-            var newAppt = new Appointment(
-                appointment.Id,
-                appointment.CalendarEventId,
-                appointment.Title,
-                appointment.Description, 
-                appointment.Start, 
-                displayEnd)
-                {
-                    RecurrenceRule = recurrenceRule
-                };
-            
-            Appointments.Add(newAppt);
-            
-            Logger.LogInformation("UpdateTestAppointments - Added appointment - Id: {Id}, Title: {Title}, Start: {Start}, End: {End}, OriginalEndDate: {OriginalEnd}, CalculatedDays: {Days}, RecurrenceRule: {Rule}",
-                newAppt.Id, newAppt.Title, newAppt.Start, newAppt.End, appointment.End, numOfDays, newAppt.RecurrenceRule ?? "None");
-        }
-
-        Logger.LogInformation("UpdateTestAppointments - End - Final Appointments count: {Count}", Appointments.Count);
-        StateHasChanged();
-    }
-}

@@ -40,6 +40,7 @@ public partial class CalendarEvents
     protected Modal EventViewModal { get; set; } = new();
     protected CalendarEventDto? ViewingCalendarEvent { get; set; }
     protected IReadOnlyList<CalendarEventParticipantWithNavigationPropertiesDto> ViewingEventParticipants { get; set; } = new List<CalendarEventParticipantWithNavigationPropertiesDto>();
+    protected string SelectedEventViewTab = "general";
 
     // Project Detail Modal
     protected Modal ProjectDetailModal { get; set; } = new();
@@ -175,6 +176,7 @@ public partial class CalendarEvents
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             ViewingCalendarEvent = await CalendarEventsAppService.GetAsync(calendarEvent.Id);
+            SelectedEventViewTab = "general";
 
             // Load participants
             var participantsResult = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
@@ -199,8 +201,14 @@ public partial class CalendarEvents
 
     protected void CloseEventViewModalAsync()
     {
+        SelectedEventViewTab = "general";
         ViewingCalendarEvent = null;
         ViewingEventParticipants = new List<CalendarEventParticipantWithNavigationPropertiesDto>();
+    }
+
+    protected void OnSelectedEventViewTabChanged(string name)
+    {
+        SelectedEventViewTab = name;
     }
 
     // Event handler for when EventViewModal is closed
