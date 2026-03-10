@@ -805,7 +805,7 @@
     "SuccessfullyStopped": "Đã dừng thành công",
     "Menu:Chat": "Chat",
     "Menu:Chat:Chat": "Chat",
-    "Menu:ArchiveDocuments": "Tài liệu lưu trữ",
+    "Menu:ArchiveDocuments": "Quản lý tài liệu",
     "Menu:PersonalDocuments": "Tài liệu của tôi",
     "DocumentSource": "Phân hệ",
     "ArchiveDocuments": "Tài liệu lưu trữ",
@@ -1085,7 +1085,7 @@
     "Workflow:ReturnedOrRejected": "Từ chối/Trả về",
     "Workflow:Cancelled": "Đã hủy",
 
-    "Menu:DocumentSigning": "Trình ký",
+    "Menu:DocumentSigning": "Ký duyệt",
     "DocumentSigning": "Trình ký văn bản",
     "FromDate": "Từ ngày",
     "ToDate": "Đến ngày",

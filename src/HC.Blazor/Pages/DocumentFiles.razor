@@ -105,6 +105,8 @@
                         <DatePicker TValue="DateTime?"
             InputMode="DateInputMode.Date"
             Date="@Filter.UploadedAtMin"
+            DisplayFormat="dd/MM/yyyy"
+            InputFormat="dd/MM/yyyy"
             DateChanged="@OnUploadedAtMinChangedAsync"
             Placeholder="@string.Empty" />                       
                     </Field>
@@ -115,6 +117,8 @@
                         <DatePicker TValue="DateTime?"
             InputMode="DateInputMode.Date"
             Date="@Filter.UploadedAtMax"
+            DisplayFormat="dd/MM/yyyy"
+            InputFormat="dd/MM/yyyy"
             DateChanged="@OnUploadedAtMaxChangedAsync"
             Placeholder="@string.Empty" />                       
                     </Field>

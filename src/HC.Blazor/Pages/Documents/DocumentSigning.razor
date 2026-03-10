@@ -96,11 +96,10 @@
 
 @* ************************* BODY: 4-8 LAYOUT ************************* *@
 <Row>
-    @* LEFT PANEL: Navigation (4 columns) *@
     <Column ColumnSize="ColumnSize.Is12">
         <Card>
-            <CardBody Class="p-0">
-                <ListGroup Flush Style="flex-direction: row !important">
+            <CardBody>
+                <ListGroup Flush Style="flex-direction: row !important" Class="mb-3">
                     <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.All)"
                         Clicked="@(() => OnFilterModeChanged(DocumentSigningFilterMode.All))">
                         <Div Class="d-flex justify-content-between align-items-center">
@@ -122,21 +121,15 @@
                             <Badge Color="Color.Info" Pill>@SentByMeCount</Badge>
                         </Div>
                     </ListGroupItem>
-                    <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.Following)"
+                    @* <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.Following)"
                         Clicked="@(() => OnFilterModeChanged(DocumentSigningFilterMode.Following))">
                         <Div Class="d-flex justify-content-between align-items-center">
                             <span><Icon Name="IconName.Star" Class="me-2" />@L["Following"]</span>
                             <Badge Color="Color.Secondary" Pill>@FollowingCount</Badge>
                         </Div>
-                    </ListGroupItem>
+                    </ListGroupItem> *@
                 </ListGroup>
-            </CardBody>
-        </Card>
-    </Column>
 
-    <Column ColumnSize="ColumnSize.Is12">
-        <Card>
-            <CardBody>
                 <DataGrid TItem="DocumentSigningItemDto"
                     Data="DocumentSigningList"
                     Loading="@IsLoading"
@@ -693,42 +686,41 @@
                                 <fieldset disabled="@IsOverdue">
                                     <Field>
                                         <FieldLabel class="fw-bold">@L["SelectAction"] <span class="text-danger">*</span></FieldLabel>
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="radio" name="workflowAction" id="approveAction"
-                                                @onchange="@(() => SelectedAction = "APPROVE")"
-                                                checked="@(SelectedAction == "APPROVE")">
-                                            <label class="form-check-label" for="approveAction">
-                                                <strong class="text-success">
-                                                    <i class="bi bi-check-circle me-1"></i>@L["Approve"]
-                                                </strong>
-                                                <small class="d-block text-muted">@L["ApproveDescription"]</small>
-                                            </label>
-                                        </div>
+                                        <div class="d-flex flex-wrap align-items-center gap-3">
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="radio" name="workflowAction" id="approveAction"
+                                                       @onchange="@(() => SelectedAction = nameof(WorkflowInstanceLogAction.APPROVE))"
+                                                       checked="@(SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE))">
+                                                <label class="form-check-label" for="approveAction">
+                                                    <strong class="text-success">
+                                                        <i class="bi bi-check-circle me-1"></i>@L["Approve"]
+                                                    </strong>
+                                                </label>
+                                            </div>
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="radio" name="workflowAction" id="rejectAction"
+                                                    @onchange="@(() => SelectedAction = nameof(WorkflowInstanceLogAction.REJECT))"
+                                                    checked="@(SelectedAction == nameof(WorkflowInstanceLogAction.REJECT))">
+                                                <label class="form-check-label" for="rejectAction">
+                                                    <strong class="text-danger">
+                                                        <i class="bi bi-x-circle me-1"></i>@L["Reject"]
+                                                    </strong>
+                                                </label>
+                                            </div>
                                         @* Return action - only shown when current step allows return *@
                                         @if (AllowReturnAction)
                                         {
-                                            <div class="form-check mb-2">
+                                            <div class="form-check mb-0">
                                                 <input class="form-check-input" type="radio" name="workflowAction" id="returnAction"
-                                                    @onchange="@(() => SelectedAction = "RETURN")"
-                                                    checked="@(SelectedAction == "RETURN")">
+                                                    @onchange="@(() => SelectedAction = nameof(WorkflowInstanceLogAction.RETURN))"
+                                                    checked="@(SelectedAction == nameof(WorkflowInstanceLogAction.RETURN))">
                                                 <label class="form-check-label" for="returnAction">
                                                     <strong class="text-warning">
                                                         <i class="bi bi-arrow-return-left me-1"></i>@L["Return"]
                                                     </strong>
-                                                    <small class="d-block text-muted">@L["ReturnDescription"]</small>
                                                 </label>
                                             </div>
                                         }
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="radio" name="workflowAction" id="rejectAction"
-                                                @onchange="@(() => SelectedAction = "REJECT")"
-                                                checked="@(SelectedAction == "REJECT")">
-                                            <label class="form-check-label" for="rejectAction">
-                                                <strong class="text-danger">
-                                                    <i class="bi bi-x-circle me-1"></i>@L["Reject"]
-                                                </strong>
-                                                <small class="d-block text-muted">@L["RejectDescription"]</small>
-                                            </label>
                                         </div>
                                     </Field>
 
@@ -737,15 +729,23 @@
                                     {
                                         <Field>
                                             <FieldLabel class="fw-bold">@L["SelectSigningMethod"] <span class="text-danger">*</span></FieldLabel>
-                                            <Select TValue="Guid?"
-                                                SelectedValue="@SelectedSigningMethodId"
-                                                SelectedValueChanged="@OnSigningMethodChangedAsync">
-                                                <SelectItem TValue="Guid?" Value="@null">-- @L["SelectSigningMethod"] --</SelectItem>
+                                            <div class="d-flex flex-wrap align-items-center gap-3">
                                                 @foreach (var sm in SigningMethods)
                                                 {
-                                                    <SelectItem TValue="Guid?" Value="@sm.Id">@sm.Name</SelectItem>
+                                                    var radioId = $"signingMethod_{sm.Id}";
+                                                    <div class="form-check mb-0">
+                                                        <input class="form-check-input"
+                                                               type="radio"
+                                                               name="signingMethod"
+                                                               id="@radioId"
+                                                               @onchange="async () => await OnSigningMethodChangedAsync(sm.Id)"
+                                                               checked="@(SelectedSigningMethodId == sm.Id)">
+                                                        <label class="form-check-label" for="@radioId">
+                                                            @sm.Name
+                                                        </label>
+                                                    </div>
                                                 }
-                                            </Select>
+                                            </div>
                                         </Field>
 
                                         @if (AvailableUserSignaturesForMethod.Count > 1)

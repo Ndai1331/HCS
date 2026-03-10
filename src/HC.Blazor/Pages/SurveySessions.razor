@@ -93,6 +93,8 @@
                         <DatePicker TValue="DateTime?"
             InputMode="DateInputMode.Date"
             Date="@Filter.SurveyTimeMin"
+            DisplayFormat="dd/MM/yyyy"
+            InputFormat="dd/MM/yyyy"
             DateChanged="@OnSurveyTimeMinChangedAsync"
             Placeholder="@string.Empty" />                       
                     </Field>
@@ -103,6 +105,8 @@
                         <DatePicker TValue="DateTime?"
             InputMode="DateInputMode.Date"
             Date="@Filter.SurveyTimeMax"
+            DisplayFormat="dd/MM/yyyy"
+            InputFormat="dd/MM/yyyy"
             DateChanged="@OnSurveyTimeMaxChangedAsync"
             Placeholder="@string.Empty" />                       
                     </Field>

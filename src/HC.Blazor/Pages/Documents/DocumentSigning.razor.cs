@@ -797,6 +797,13 @@ public partial class DocumentSigning
 
             await Task.WhenAll(tasks);
 
+            // Default signing method to ELECTRONIC when available.
+            var defaultSigningMethod = SigningMethods.FirstOrDefault(m => m.Code == nameof(SignType.ELECTRONIC));
+            if (defaultSigningMethod != null)
+            {
+                await OnSigningMethodChangedAsync(defaultSigningMethod.Id);
+            }
+
             // Check overdue and get AllowReturn for current step
             if (document.WorkflowInstanceId.HasValue)
             {
@@ -1184,42 +1191,52 @@ public partial class DocumentSigning
 
     private async Task OnSigningMethodChangedAsync(Guid? signingMethodId)
     {
-        SelectedSigningMethodId = signingMethodId;
-        SelectedUserSignatureId = null;
-        AvailableUserSignaturesForMethod = new();
-
-        if (!signingMethodId.HasValue || !CurrentUser.Id.HasValue)
+        try
         {
-            return;
+            SelectedSigningMethodId = signingMethodId;
+            SelectedUserSignatureId = null;
+            AvailableUserSignaturesForMethod = new();
+
+            if (!signingMethodId.HasValue || !CurrentUser.Id.HasValue)
+            {
+                return;
+            }
+
+            var selectedMethod = SigningMethods.FirstOrDefault(m => m.Id == signingMethodId.Value);
+            if (selectedMethod == null
+                || (selectedMethod.Code != nameof(SignType.ELECTRONIC) && selectedMethod.Code != nameof(SignType.DIGITAL)))
+            {
+                return;
+            }
+
+            var result = await UserSignaturesAppService.GetListAsync(new GetUserSignaturesInput
+            {
+                IdentityUserId = CurrentUser.Id.Value,
+                SignType = selectedMethod.Code,
+                IsActive = true,
+                MaxResultCount = 100,
+                SkipCount = 0,
+            Sorting = "UserSignature.ValidTo desc"
+            });
+
+            var now = Clock.Now;
+            AvailableUserSignaturesForMethod = result.Items
+                .Where(x =>
+                    (!x.UserSignature.ValidFrom.HasValue || x.UserSignature.ValidFrom.Value <= now)
+                    && (!x.UserSignature.ValidTo.HasValue || x.UserSignature.ValidTo.Value >= now))
+                .ToList();
+
+            if (AvailableUserSignaturesForMethod.Count == 1)
+            {
+                SelectedUserSignatureId = AvailableUserSignaturesForMethod[0].UserSignature.Id;
+            }
         }
-
-        var selectedMethod = SigningMethods.FirstOrDefault(m => m.Id == signingMethodId.Value);
-        if (selectedMethod == null
-            || (selectedMethod.Code != nameof(SignType.ELECTRONIC) && selectedMethod.Code != nameof(SignType.DIGITAL)))
+        catch (Exception ex)
         {
-            return;
-        }
-
-        var result = await UserSignaturesAppService.GetListAsync(new GetUserSignaturesInput
-        {
-            IdentityUserId = CurrentUser.Id.Value,
-            SignType = selectedMethod.Code,
-            IsActive = true,
-            MaxResultCount = 100,
-            SkipCount = 0,
-            Sorting = "ValidTo desc"
-        });
-
-        var now = Clock.Now;
-        AvailableUserSignaturesForMethod = result.Items
-            .Where(x =>
-                (!x.UserSignature.ValidFrom.HasValue || x.UserSignature.ValidFrom.Value <= now)
-                && (!x.UserSignature.ValidTo.HasValue || x.UserSignature.ValidTo.Value >= now))
-            .ToList();
-
-        if (AvailableUserSignaturesForMethod.Count == 1)
-        {
-            SelectedUserSignatureId = AvailableUserSignaturesForMethod[0].UserSignature.Id;
+            Logger.LogError(ex, "Error loading user signatures for signing method: {SigningMethodId}", signingMethodId);
+            AvailableUserSignaturesForMethod = new();
+            SelectedUserSignatureId = null;
+            await HandleErrorAsync(ex);
         }
     }
 
