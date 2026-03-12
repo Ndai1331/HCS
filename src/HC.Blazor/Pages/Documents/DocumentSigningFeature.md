@@ -196,7 +196,10 @@ public class WorkflowSubmitInfoDto
     public Guid WorkflowTemplateId { get; set; }
     public string WorkflowTemplateName { get; set; }
     public string? WordTemplatePath { get; set; }       // File path mẫu quy trình
-    public bool HasTemplateFile { get; set; }           // = !IsNullOrWhiteSpace(WordTemplatePath)
+    public string? PdfTemplatePath { get; set; }
+    public bool HasTemplateFile { get; set; }           // = !IsNullOrWhiteSpace(WordTemplatePath) || PdfTemplatePath
+    public bool IsTemplateFileWordFormat { get; set; }   // true khi template là .doc/.docx → SigningContent bắt buộc
+    public string? SignMode { get; set; }                // SEQUENTIAL | PARALLEL
     public List<WorkflowStepDetailDto> Steps { get; set; }
 }
 ```
@@ -265,7 +268,8 @@ public class DocumentSigningPageResultDto
 ### IDocumentWorkflowInstancesAppService
 | Method | Mô tả |
 |--------|-------|
-| `GetWorkflowSubmitInfoAsync(Guid workflowId)` | Lấy thông tin workflow + steps + assigned users cho modal |
+| `GetWorkflowSubmitInfoAsync(Guid workflowId)` | Lấy thông tin workflow + steps + assigned users + IsTemplateFileWordFormat cho modal |
+| `IsDocumentSourceFileWordFormatAsync(Guid documentId)` | Kiểm tra file đầu tiên của document có phải .doc/.docx không (dùng khi chọn văn bản của tôi) |
 | `SubmitToWorkflowAsync(SubmitToWorkflowInput)` | Gửi trình ký (tạo instance, assignments, history, files, notification) |
 | `ProcessWorkflowActionAsync(WorkflowActionInput)` | Xử lý hành động: Approve/Return/Reject |
 | `GetDocumentSigningListAsync(GetDocumentSigningListInput)` | Lấy danh sách trình ký với filter |
@@ -275,6 +279,29 @@ public class DocumentSigningPageResultDto
 
 ## 6. Logic nghiệp vụ chi tiết
 
+### 6.0 Flow trình ký mới (doc/docx vs PDF) - 12/03/2026
+
+**Quy tắc:** Nếu file nguồn là **.doc hoặc .docx** (từ template quy trình hoặc văn bản của tôi) → thực hiện bước 2, 3, 4. Nếu không phải doc/docx → đi thẳng bước 5.
+
+| Bước | Mô tả | Chỉ khi doc/docx |
+|------|-------|------------------|
+| **1** | Người dùng tạo mới trình ký, chọn quy trình, chọn file (template hoặc văn bản của tôi) | - |
+| **2** | **Nội dung trình ký** (RichText/HTML editor) nhập ở modal – bắt buộc khi doc/docx | ✓ |
+| **3** | Tạo bản sao từ file doc, **replace** các placeholder **trong Word** (trước convert): | ✓ |
+| | - `<<DD>>` → ngày hiện tại | |
+| | - `<<MM>>` → tháng hiện tại | |
+| | - `<<YYYY>>` → năm hiện tại | |
+| | - `<<ContentToBeApproved>>` → nội dung trình ký (bước 2) | |
+| | - `<<PreparedBySign>>` → ảnh chữ ký điện tử của user | |
+| | - `<<PreparedFullName>>` → Surname + Name của user trình ký | |
+| **4** | Convert file doc/docx vừa replace ở bước 3 qua PDF (LibreOffice) | ✓ |
+| **5** | Gửi file PDF tới các user theo quy trình hiện tại | - |
+
+**Lưu ý kỹ thuật:** Replace diễn ra **trong file Word** (trước convert) để giữ layout, đặc biệt cho `<<ContentToBeApproved>>` (nội dung dài). Dùng DocumentFormat.OpenXml. File .doc được convert sang .docx (LibreOffice) trước khi replace. Sau replace, convert Word → PDF.
+
+**WorkflowSubmitInfoDto.IsTemplateFileWordFormat:** true khi template path có extension .doc/.docx.  
+**IsDocumentSourceFileWordFormatAsync(documentId):** API kiểm tra file đầu tiên của document có phải .doc/.docx không.
+
 ### 6.1 Gửi trình ký (`SubmitToWorkflowAsync`)
 
 **Flow:**
@@ -283,24 +310,25 @@ public class DocumentSigningPageResultDto
 2. **Lấy workflow info** (steps, template, assigned users)
 3. **Xử lý Document:**
    - **Nếu `UseWorkflowTemplateFile = true`:**
-     - Kiểm tra WorkflowTemplate có `WordTemplatePath`
+     - Kiểm tra WorkflowTemplate có `WordTemplatePath` hoặc `PdfTemplatePath`
      - Lấy default MasterData (DocumentType, UrgencyLevel, SecrecyLevel)
      - Tạo **Document mới** với `SourceType = Workflow (3)`, title = tên template, storageNumber = `WF-yyyyMMddHHmmss`
-     - Tạo **DocumentFile** từ `WordTemplatePath`
+     - Tạo **DocumentFile** từ template path
    - **Nếu `UseWorkflowTemplateFile = false`:**
      - `DocumentId` bắt buộc (chọn từ văn bản của tôi, SourceType=Personal)
 4. **Kiểm tra** không có workflow instance đang hoạt động cho document
-5. **Tạo `DocumentWorkflowInstance`** (status = IN_PROGRESS, currentStep = step 1)
-6. **Tạo `DocumentAssignment`** cho mỗi user ở step 1 (status = PENDING)
-7. **Tạo `DocumentHistory`** cho mỗi assignment:
+5. **PrepareSubmissionPlaceholdersAsync** (nếu doc/docx): convert Word→PDF, replace `<<DD>>`, `<<MM>>`, `<<YYYY>>`, `<<ContentToBeApproved>>`, `<<PreparedBySign>>`, `<<PreparedFullName>>`
+6. **Tạo `DocumentWorkflowInstance`** (status = IN_PROGRESS, currentStep = step 1)
+7. **Tạo `DocumentAssignment`** cho mỗi user ở step 1 (status = PENDING)
+8. **Tạo `DocumentHistory`** cho mỗi assignment:
    - `FromUser` = current user (người gửi trình)
    - `ToUser` = assignment.ReceiverUserId (người nhận)
    - `Action` = "SUBMIT_SIGNING"
    - `Comment` = input.SigningContent (nội dung trình ký)
-8. **Tạo log** (DocumentWorkflowInstanceLogs: START_WORKFLOW)
-9. **Tạo `DocumentWorkflowInstanceFile`** cho các file đính kèm (AttachedFileIds)
-10. **Attach template file** nếu tạo từ template
-11. **Gửi notification** cho users ở step 1
+9. **Tạo log** (DocumentWorkflowInstanceLogs: START_WORKFLOW)
+10. **Tạo `DocumentWorkflowInstanceFile`** cho các file đính kèm (AttachedFileIds)
+11. **Attach template file** nếu tạo từ template
+12. **Gửi notification** cho users ở step 1
 
 ### 6.2 Xử lý trình ký (`ProcessWorkflowActionAsync`)
 
@@ -381,13 +409,15 @@ public class DocumentSigningPageResultDto
    [1] Bước 1 (Xử lý) - User A ⭐, User B
    [2] Bước 2 (Ký) - User C ⭐
       ↓
-5. Nội dung trình ký (textarea)
+5. Nội dung trình ký (RichText - HTML editor) - CHỈ HIỆN khi file nguồn là .doc/.docx
+   - Template file: dùng WorkflowSubmitInfo.IsTemplateFileWordFormat
+   - Văn bản của tôi: gọi IsDocumentSourceFileWordFormatAsync khi chọn document
       ↓
 6. Đính kèm file (FilePicker multiple, Upload button)
    ✅ file1.pdf
    ✅ file2.docx
       ↓
-7. [Hủy]  [Trình]
+7. [Hủy]  [Trình]  (validate: SigningContent bắt buộc nếu RequireSigningContent)
 ```
 
 **Button "Trình" disabled khi:**
@@ -867,4 +897,33 @@ Logic ký tuần tự (WorkflowTemplate.SignMode = SEQUENTIAL)
 Khi đang ở bất kỳ bước nào mà chọn option trả về:
 - Nếu ký song song => update status CANCLE hêt các file gửi đến các người khác  => trở về bước đầu tiên 
 - Nếu ký tuần tự => trở về bước đầu tiên 
-- Nếu file có status là TRA_VE, người trình được phép chỉnh sửa nội dung modal trình ký , cho phép đính kèm lại file, có thể xoá file đính kèm, chọn lại file từ văn bản của tôi hoặc chọn lại file từ workflow template 
+- Nếu file có status là TRA_VE, người trình được phép chỉnh sửa nội dung modal trình ký , cho phép đính kèm lại file, có thể xoá file đính kèm, chọn lại file từ văn bản của tôi hoặc chọn lại file từ workflow template
+
+======= WORKFLOW REDESIGN 12/03/2026 =======
+
+## Flow mới: doc/docx vs PDF
+
+**Yêu cầu:** Khi file nguồn là .doc/.docx (template hoặc văn bản của tôi) → bước 2, 3, 4. Khi không phải → bước 5.
+
+### Thay đổi đã triển khai:
+
+| File | Thay đổi |
+|------|----------|
+| `WorkflowStepDetailDto.cs` | Thêm `IsTemplateFileWordFormat` |
+| `DocumentWorkflowInstancesAppService.Extended.cs` | `GetWorkflowSubmitInfoAsync` set IsTemplateFileWordFormat; thêm `IsDocumentSourceFileWordFormatAsync`, `IsWordFormatPath` |
+| `IDocumentWorkflowInstancesAppService.Extended.cs` | Thêm `IsDocumentSourceFileWordFormatAsync` |
+| `DocumentWorkflowInstanceController.Extended.cs` | Thêm endpoint `document-source-file-word-format/{documentId}` |
+| `DocumentSigning.razor` | SigningContent chỉ hiện khi `RequireSigningContent` (doc/docx) |
+| `DocumentSigning.razor.cs` | `OnDocumentSelectedAsync` gọi API kiểm tra format; `RequireSigningContent`; validate SigningContent khi submit |
+| `WorkflowSigningExecutionService.cs` | Flow mới: replace trong Word trước, rồi convert sang PDF (giữ layout) |
+| `WordPlaceholderReplacer.cs` | Mới: replace placeholders trong .docx bằng DocumentFormat.OpenXml |
+| `HC.Application.csproj` | Thêm package DocumentFormat.OpenXml 2.20.0 |
+
+### Placeholders trong template Word/PDF:
+
+- `<<DD>>` - Ngày hiện tại (dd)
+- `<<MM>>` - Tháng hiện tại (MM)
+- `<<YYYY>>` - Năm hiện tại (yyyy)
+- `<<ContentToBeApproved>>` - Nội dung trình ký (RichText từ modal)
+- `<<PreparedBySign>>` - Ảnh chữ ký điện tử của user trình ký
+- `<<PreparedFullName>>` - Surname + Name của user trình ký

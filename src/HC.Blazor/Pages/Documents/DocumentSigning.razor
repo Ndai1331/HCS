@@ -371,7 +371,7 @@
                         TextField="@(item => $"{item.Document.StorageNumber} - {item.Document.Title}")"
                         ValueField="@(item => (Guid?)item.Document.Id)"
                         SelectedValue="@SelectedDocumentId"
-                        SelectedValueChanged="@OnDocumentSelected"
+                        SelectedValueChanged="@OnDocumentSelectedAsync"
                         Placeholder="@L["SearchByTitleOrNumber"]"
                         FreeTyping
                         MinLength="0"
@@ -439,10 +439,13 @@
                 </Card>
             }
 
-            @* Step 3: Signing Content *@
+            @* Step 2-3: Signing Content (required only when source file is .doc/.docx) *@
+            @if (RequireSigningContent)
+            {
             <Field>
-                <FieldLabel>@L["SigningContent"]</FieldLabel>
-                <RichTextEdit @key="ModalResetKey"
+                <FieldLabel>@L["SigningContent"] <span class="text-danger">*</span></FieldLabel>
+                <RichTextEdit @ref="SigningContentEditorRef"
+                              @key="ModalResetKey"
                               @bind-Value="@SigningContent"
                               Theme="RichTextEditTheme.Snow"
                               PlaceHolder="@L["EnterSigningContent"]"
@@ -463,6 +466,7 @@
                     </Toolbar>
                 </RichTextEdit>
             </Field>
+            }
 
             @* Step 4: Attach Files - uses Blazorise Upload event (official pattern for Blazor Server) *@
             <Field Class="mt-2">
@@ -1250,7 +1254,8 @@
                 @* Signing Content (editable, pre-populated) *@
                 <Field Class="mt-2">
                     <FieldLabel>@L["SigningContent"]</FieldLabel>
-                    <RichTextEdit @bind-Value="@ResubmitSigningContent"
+                    <RichTextEdit @ref="ResubmitSigningContentEditorRef"
+                                  @bind-Value="@ResubmitSigningContent"
                                   Theme="RichTextEditTheme.Snow"
                                   PlaceHolder="@L["EnterSigningContent"]"
                                   ToolbarPosition="Placement.Bottom">

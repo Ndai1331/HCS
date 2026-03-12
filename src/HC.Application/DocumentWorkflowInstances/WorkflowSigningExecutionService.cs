@@ -331,39 +331,48 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             throw new UserFriendlyException(_localizer["The {0} field is required.", _localizer["SigningContent"]]);
         }
 
-        byte[] pdfBytes = sourceExtension == ".pdf"
-            ? fileBytes
-            : await ConvertWordToPdfAsync(fileBytes, sourceExtension);
-
-        byte[] preparedPdfBytes;
-        try
+        byte[] pdfBytes;
+        if (sourceExtension == ".pdf")
         {
-            preparedPdfBytes = ReplacePreparedPlaceholders(
-                pdfBytes,
+            // PDF: replace placeholders directly in PDF
+            pdfBytes = ReplacePreparedPlaceholders(
+                fileBytes,
                 signatureImageBytes,
                 fullName,
                 htmlContent ?? string.Empty,
                 _clock.Now);
         }
-        catch (UserFriendlyException)
+        else
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SUBMIT_PREPARE] Error preparing PDF placeholders. SourceFileId={SourceFileId}", sourceFileId.Value);
-            throw new UserFriendlyException(_localizer["ErrorProcessingPdf", ex.Message]);
+            // Word: replace in Word first (preserves layout for <<ContentToBeApproved>>), then convert to PDF
+            byte[] wordBytesToConvert = fileBytes;
+            if (sourceExtension == ".doc")
+            {
+                wordBytesToConvert = await ConvertWordToDocxAsync(fileBytes);
+            }
+
+            var replacedWordBytes = WordPlaceholderReplacer.ReplacePlaceholders(
+                wordBytesToConvert,
+                signatureImageBytes,
+                fullName,
+                htmlContent ?? string.Empty,
+                _clock.Now);
+
+            pdfBytes = await ConvertWordToPdfAsync(replacedWordBytes, ".docx");
         }
 
         var extension = ".pdf";
         var newBlobPath = $"{WorkflowConstants.BlobPathSigningSteps}{Guid.NewGuid()}{extension}";
-        await _blobContainer.SaveAsync(newBlobPath, preparedPdfBytes);
+        await _blobContainer.SaveAsync(newBlobPath, pdfBytes);
 
-        var hash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(preparedPdfBytes));
+        var hash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(pdfBytes));
+        var outputFileName = sourceExtension != ".pdf"
+            ? Path.ChangeExtension(sourceFile.Name, ".pdf") ?? sourceFile.Name
+            : sourceFile.Name;
         var preparedFile = new DocumentFile(
             _guidGenerator.Create(),
             documentId,
-            sourceFile.Name,
+            outputFileName,
             false,
             _clock.Now,
             newBlobPath,
@@ -595,7 +604,28 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         return string.IsNullOrWhiteSpace(extension) ? string.Empty : extension.ToLowerInvariant();
     }
 
+    /// <summary>
+    /// Strips HTML tags for plain-text display in PDF (RichText editor outputs HTML).
+    /// </summary>
+    private static string StripHtmlTags(string html)
+    {
+        if (string.IsNullOrWhiteSpace(html)) return string.Empty;
+        var stripped = Regex.Replace(html, @"<[^>]*>", " ");
+        stripped = Regex.Replace(stripped, @"\s+", " ");
+        return stripped.Trim();
+    }
+
+    private async Task<byte[]> ConvertWordToDocxAsync(byte[] sourceBytes)
+    {
+        return await ConvertWordWithLibreOfficeAsync(sourceBytes, ".doc", "docx");
+    }
+
     private async Task<byte[]> ConvertWordToPdfAsync(byte[] sourceBytes, string sourceExtension)
+    {
+        return await ConvertWordWithLibreOfficeAsync(sourceBytes, sourceExtension, "pdf");
+    }
+
+    private async Task<byte[]> ConvertWordWithLibreOfficeAsync(byte[] sourceBytes, string sourceExtension, string outputFormat)
     {
         var sofficePath = _configuration["LibreOffice:SofficePath"];
         if (string.IsNullOrWhiteSpace(sofficePath))
@@ -614,7 +644,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             var psi = new ProcessStartInfo
             {
                 FileName = sofficePath,
-                Arguments = $"--headless --convert-to pdf --outdir \"{tempDir}\" \"{inputPath}\"",
+                Arguments = $"--headless --convert-to {outputFormat} --outdir \"{tempDir}\" \"{inputPath}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -627,17 +657,18 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             if (process.ExitCode != 0)
             {
                 var error = await process.StandardError.ReadToEndAsync();
-                _logger.LogError("[SUBMIT_PREPARE] Word to PDF conversion failed. ExitCode={ExitCode}, Error={Error}", process.ExitCode, error);
+                _logger.LogError("[SUBMIT_PREPARE] Word conversion failed. Format={Format}, ExitCode={ExitCode}, Error={Error}", outputFormat, process.ExitCode, error);
                 throw new UserFriendlyException(_localizer["WordToPdfConversionFailed"]);
             }
 
-            var outputPdfPath = Path.Combine(tempDir, $"source.pdf");
-            if (!File.Exists(outputPdfPath))
+            var outputExt = outputFormat == "pdf" ? ".pdf" : ".docx";
+            var outputPath = Path.Combine(tempDir, $"source{outputExt}");
+            if (!File.Exists(outputPath))
             {
                 throw new UserFriendlyException(_localizer["WordToPdfConversionFailed"]);
             }
 
-            return await File.ReadAllBytesAsync(outputPdfPath);
+            return await File.ReadAllBytesAsync(outputPath);
         }
         catch (UserFriendlyException)
         {
@@ -645,7 +676,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[SUBMIT_PREPARE] Unexpected error when converting Word to PDF.");
+            _logger.LogError(ex, "[SUBMIT_PREPARE] Unexpected error when converting Word to {Format}.", outputFormat);
             throw new UserFriendlyException(_localizer["WordToPdfConversionFailed"]);
         }
         finally
@@ -799,7 +830,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
                     case "HTML_CONTENT":
                         var preparedContentFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8));
-                        gfx.DrawString(htmlContent ?? string.Empty, preparedContentFont, PdfSharpDrawing.XBrushes.Black,
+                        var plainText = StripHtmlTags(htmlContent ?? string.Empty);
+                        gfx.DrawString(plainText, preparedContentFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 

@@ -16,6 +16,13 @@ public partial interface IDocumentWorkflowInstancesAppService
     Task<WorkflowSubmitInfoDto> GetWorkflowSubmitInfoAsync(Guid workflowId);
 
     /// <summary>
+    /// Returns true if the document's first file is .doc or .docx.
+    /// Used to determine if SigningContent is required when submitting with "my document".
+    /// </summary>
+    Task<bool> IsDocumentSourceFileWordFormatAsync(Guid documentId);
+
+
+    /// <summary>
     /// Submit a document to a workflow - creates workflow instance, first step assignments, and logs
     /// </summary>
     Task<DocumentWorkflowInstanceDto> SubmitToWorkflowAsync(SubmitToWorkflowInput input);

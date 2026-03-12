@@ -115,6 +115,20 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     #region GetWorkflowSubmitInfoAsync
 
     /// <summary>
+    /// Returns true if the document's first file is .doc or .docx.
+    /// Used when submitting with "my document" to determine if SigningContent is required.
+    /// </summary>
+    [Authorize(HCPermissions.Documents.SubmitForSigning)]
+    public async Task<bool> IsDocumentSourceFileWordFormatAsync(Guid documentId)
+    {
+        var files = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
+        var firstFile = files.OrderBy(f => f.UploadedAt).FirstOrDefault();
+        if (firstFile == null) return false;
+        var path = firstFile.Path ?? firstFile.Name ?? "";
+        return IsWordFormatPath(path);
+    }
+
+    /// <summary>
     /// Get workflow info (steps, assignments, template) for the submit modal
     /// </summary>
     [Authorize(HCPermissions.Documents.SubmitForSigning)]
@@ -166,6 +180,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             HasTemplateFile = !string.IsNullOrWhiteSpace(activeTemplate.WordTemplatePath)
                 || !string.IsNullOrWhiteSpace(activeTemplate.PdfTemplatePath),
             SignMode = activeTemplate.SignMode,
+            IsTemplateFileWordFormat = IsWordFormatPath(activeTemplate.WordTemplatePath ?? activeTemplate.PdfTemplatePath),
             Steps = stepTemplates.Select(step => new WorkflowStepDetailDto
             {
                 StepId = step.Id,
@@ -2211,6 +2226,22 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 statusCode.GetCode(), documentId);
             // Don't throw - we don't want to fail the workflow action if status update fails
         }
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Returns true if the file path has .doc or .docx extension.
+    /// Used to determine if SigningContent (RichText) is required and if placeholder replacement should run.
+    /// </summary>
+    private static bool IsWordFormatPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var ext = Path.GetExtension(path);
+        return string.Equals(ext, ".doc", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(ext, ".docx", StringComparison.OrdinalIgnoreCase);
     }
 
     #endregion

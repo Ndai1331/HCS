@@ -47,6 +47,11 @@ public class WorkflowSubmitInfoDto
     /// PARALLEL: all steps are created at once, all users can sign simultaneously.
     /// </summary>
     public string? SignMode { get; set; }
+    /// <summary>
+    /// True when template file is .doc or .docx. When true, SigningContent (RichText) is required
+    /// and the flow will replace placeholders then convert to PDF before sending to workflow.
+    /// </summary>
+    public bool IsTemplateFileWordFormat { get; set; }
     public List<WorkflowStepDetailDto> Steps { get; set; } = new();
 }
 

@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Blazorise;
 using Blazorise.DataGrid;
+using Blazorise.RichTextEdit;
 using Volo.Abp.BlazoriseUI.Components;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Application.Dtos;
@@ -84,8 +85,22 @@ public partial class DocumentSigning
     private DocumentWithNavigationPropertiesDto? SelectedDocumentDto { get; set; }
     private int ModalResetKey { get; set; } // Used to force re-render Autocomplete via @key
 
-    // Signing content
+    // Signing content (required when source file is .doc/.docx)
     private string? SigningContent { get; set; }
+    private RichTextEdit? SigningContentEditorRef { get; set; }
+    /// <summary>
+    /// True when selected document's first file is .doc/.docx (used when not using template file).
+    /// </summary>
+    private bool IsSelectedDocumentWordFormat { get; set; }
+
+    /// <summary>
+    /// True when SigningContent (RichText) is required - i.e. source file is .doc or .docx.
+    /// When true, flow runs steps 2-4: input content, replace placeholders, convert to PDF.
+    /// When false, flow goes directly to step 5 (send PDF to workflow).
+    /// </summary>
+    private bool RequireSigningContent =>
+        (UseWorkflowTemplateFile && WorkflowSubmitInfo?.IsTemplateFileWordFormat == true)
+        || (!UseWorkflowTemplateFile && SelectedDocumentId.HasValue && IsSelectedDocumentWordFormat);
 
     // File upload in submit modal
     private FilePicker? WorkflowFilePicker { get; set; }
@@ -145,6 +160,7 @@ public partial class DocumentSigning
     private Modal ResubmitWorkflowModal { get; set; } = new();
     private ReturnedWorkflowInfoDto? ReturnedWorkflowInfo { get; set; }
     private string? ResubmitSigningContent { get; set; }
+    private RichTextEdit? ResubmitSigningContentEditorRef { get; set; }
     private bool ResubmitUseWorkflowTemplateFile { get; set; }
     private Guid? ResubmitSelectedDocumentId { get; set; }
     private DocumentWithNavigationPropertiesDto? ResubmitSelectedDocumentDto { get; set; }
@@ -564,12 +580,25 @@ public partial class DocumentSigning
         }
     }
 
-    private void OnDocumentSelected(Guid? documentId)
+    private async Task OnDocumentSelectedAsync(Guid? documentId)
     {
         SelectedDocumentId = documentId;
         SelectedDocumentDto = documentId.HasValue
             ? MyDocumentsList.FirstOrDefault(d => d.Document.Id == documentId.Value)
             : null;
+        IsSelectedDocumentWordFormat = false;
+        if (documentId.HasValue)
+        {
+            try
+            {
+                IsSelectedDocumentWordFormat = await DocumentWorkflowInstancesAppService.IsDocumentSourceFileWordFormatAsync(documentId.Value);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to check document source file format for {DocumentId}", documentId);
+            }
+        }
+        await InvokeAsync(StateHasChanged);
     }
 
     private void OnUseWorkflowTemplateFileChanged(bool value)
@@ -580,6 +609,7 @@ public partial class DocumentSigning
             // When using template file, clear document selection
             SelectedDocumentId = null;
             SelectedDocumentDto = null;
+            IsSelectedDocumentWordFormat = false;
         }
     }
 
@@ -698,13 +728,34 @@ public partial class DocumentSigning
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
 
+            // Blazor binding updates on blur; if user clicks Submit without blurring the RichTextEdit,
+            // SigningContent may still be null. Get value directly from editor to ensure we have latest content.
+            var signingContent = SigningContent?.Trim();
+            if (SigningContentEditorRef != null)
+            {
+                var editorHtml = await SigningContentEditorRef.GetHtmlAsync();
+                if (!string.IsNullOrWhiteSpace(editorHtml))
+                {
+                    signingContent = editorHtml.Trim();
+                }
+            }
+
+            // Validate SigningContent when source file is .doc/.docx (required for placeholder <<ContentToBeApproved>>)
+            if (RequireSigningContent && string.IsNullOrWhiteSpace(signingContent))
+            {
+                await UiMessageService.Error(L["The {0} field is required.", L["SigningContent"]],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                await BlockUiService.UnBlock();
+                return;
+            }
+
             var input = new SubmitToWorkflowInput
             {
                 DocumentId = UseWorkflowTemplateFile ? null : SelectedDocumentId,
                 WorkflowId = SelectedWorkflowId.Value,
                 UseWorkflowTemplateFile = UseWorkflowTemplateFile,
                 UseTemplateFile = UseTemplateFile,
-                SigningContent = SigningContent?.Trim(),
+                SigningContent = signingContent,
                 AttachedFileIds = UploadedFiles.Any()
                     ? UploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null
@@ -1101,13 +1152,24 @@ public partial class DocumentSigning
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
 
+            // Blazor binding updates on blur; get value directly from editor to ensure we have latest content.
+            var resubmitSigningContent = ResubmitSigningContent?.Trim();
+            if (ResubmitSigningContentEditorRef != null)
+            {
+                var editorHtml = await ResubmitSigningContentEditorRef.GetHtmlAsync();
+                if (!string.IsNullOrWhiteSpace(editorHtml))
+                {
+                    resubmitSigningContent = editorHtml.Trim();
+                }
+            }
+
             var input = new ResubmitReturnedWorkflowInput
             {
                 ReturnedWorkflowInstanceId = ReturnedWorkflowInfo.WorkflowInstanceId,
                 UseWorkflowTemplateFile = ResubmitUseWorkflowTemplateFile,
                 DocumentFileId = null, // Will be resolved from new document
                 NewDocumentId = ResubmitUseWorkflowTemplateFile ? null : ResubmitSelectedDocumentId,
-                SigningContent = ResubmitSigningContent?.Trim(),
+                SigningContent = resubmitSigningContent,
                 AttachedFileIds = ResubmitUploadedFiles.Any()
                     ? ResubmitUploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null,

@@ -31,6 +31,13 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
         return _documentWorkflowInstancesAppService.GetWorkflowSubmitInfoAsync(workflowId);
     }
 
+    [HttpGet]
+    [Route("document-source-file-word-format/{documentId}")]
+    public Task<bool> IsDocumentSourceFileWordFormatAsync(Guid documentId)
+    {
+        return _documentWorkflowInstancesAppService.IsDocumentSourceFileWordFormatAsync(documentId);
+    }
+
     [HttpPost]
     [Route("submit-to-workflow")]
     public Task<DocumentWorkflowInstanceDto> SubmitToWorkflowAsync(SubmitToWorkflowInput input)
