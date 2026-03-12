@@ -704,7 +704,7 @@ public partial class DocumentSigning
                 WorkflowId = SelectedWorkflowId.Value,
                 UseWorkflowTemplateFile = UseWorkflowTemplateFile,
                 UseTemplateFile = UseTemplateFile,
-                SigningContent = NormalizeRichTextHtml(SigningContent),
+                SigningContent = SigningContent?.Trim(),
                 AttachedFileIds = UploadedFiles.Any()
                     ? UploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null
@@ -1107,7 +1107,7 @@ public partial class DocumentSigning
                 UseWorkflowTemplateFile = ResubmitUseWorkflowTemplateFile,
                 DocumentFileId = null, // Will be resolved from new document
                 NewDocumentId = ResubmitUseWorkflowTemplateFile ? null : ResubmitSelectedDocumentId,
-                SigningContent = NormalizeRichTextHtml(ResubmitSigningContent),
+                SigningContent = ResubmitSigningContent?.Trim(),
                 AttachedFileIds = ResubmitUploadedFiles.Any()
                     ? ResubmitUploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null,
