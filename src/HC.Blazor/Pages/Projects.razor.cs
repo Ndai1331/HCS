@@ -281,6 +281,12 @@ public partial class Projects : HCComponentBase
         return true;
     }
 
+    protected bool CanManageProject(ProjectDto project)
+    {
+        return CurrentUser.IsAdminRole()
+               || (CurrentUser.Id.HasValue && project.CreatorId == CurrentUser.Id.Value);
+    }
+
     private async Task SetPermissionsAsync()
     {
         CanCreateProject = await AuthorizationService.IsGrantedAsync(HCPermissions.Projects.Create);
