@@ -704,7 +704,7 @@ public partial class DocumentSigning
                 WorkflowId = SelectedWorkflowId.Value,
                 UseWorkflowTemplateFile = UseWorkflowTemplateFile,
                 UseTemplateFile = UseTemplateFile,
-                SigningContent = NormalizeRichTextHtml(SigningContent),
+                SigningContent = SigningContent?.Trim(),
                 AttachedFileIds = UploadedFiles.Any()
                     ? UploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null
@@ -1107,7 +1107,7 @@ public partial class DocumentSigning
                 UseWorkflowTemplateFile = ResubmitUseWorkflowTemplateFile,
                 DocumentFileId = null, // Will be resolved from new document
                 NewDocumentId = ResubmitUseWorkflowTemplateFile ? null : ResubmitSelectedDocumentId,
-                SigningContent = NormalizeRichTextHtml(ResubmitSigningContent),
+                SigningContent = ResubmitSigningContent?.Trim(),
                 AttachedFileIds = ResubmitUploadedFiles.Any()
                     ? ResubmitUploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null,
@@ -1247,6 +1247,21 @@ public partial class DocumentSigning
         var providerCode = item.UserSignature.ProviderCode;
         var validTo = item.UserSignature.ValidTo?.ToString("dd/MM/yyyy") ?? "--";
         return $"{providerCode} (ValidTo: {validTo})";
+    }
+
+    private static string? GetWorkflowTemplateFilePath(WorkflowSubmitInfoDto? workflowInfo)
+    {
+        return !string.IsNullOrWhiteSpace(workflowInfo?.WordTemplatePath)
+            ? workflowInfo.WordTemplatePath
+            : workflowInfo?.PdfTemplatePath;
+    }
+
+    private static string GetWorkflowTemplateFileName(WorkflowSubmitInfoDto? workflowInfo)
+    {
+        var path = GetWorkflowTemplateFilePath(workflowInfo);
+        return string.IsNullOrWhiteSpace(path)
+            ? string.Empty
+            : Path.GetFileName(path);
     }
 
     private static string? NormalizeRichTextHtml(string? html)

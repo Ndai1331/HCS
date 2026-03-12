@@ -161,8 +161,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             WorkflowName = workflow.Name,
             WorkflowTemplateId = activeTemplate.Id,
             WorkflowTemplateName = activeTemplate.Name,
+            WordTemplatePath = activeTemplate.WordTemplatePath,
             PdfTemplatePath = activeTemplate.PdfTemplatePath,
-            HasTemplateFile = !string.IsNullOrWhiteSpace(activeTemplate.PdfTemplatePath),
+            HasTemplateFile = !string.IsNullOrWhiteSpace(activeTemplate.WordTemplatePath)
+                || !string.IsNullOrWhiteSpace(activeTemplate.PdfTemplatePath),
             SignMode = activeTemplate.SignMode,
             Steps = stepTemplates.Select(step => new WorkflowStepDetailDto
             {
@@ -223,7 +225,11 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             //Workflow tạm 
             //Chính là nếu file doc docx thì convert sang pdf trước khi tạo document
             
-            if (!workflowInfo.HasTemplateFile || string.IsNullOrWhiteSpace(workflowInfo.PdfTemplatePath))
+            var workflowTemplatePath = !string.IsNullOrWhiteSpace(workflowInfo.WordTemplatePath)
+                ? workflowInfo.WordTemplatePath
+                : workflowInfo.PdfTemplatePath;
+
+            if (!workflowInfo.HasTemplateFile || string.IsNullOrWhiteSpace(workflowTemplatePath))
             {
                 throw new UserFriendlyException(L["WorkflowTemplateHasNoFile"]);
             }
@@ -256,14 +262,14 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             // Create a DocumentFile for the template file path
             // IMPORTANT: autoSave=true so the file record is flushed to DB before
             // CopyDocumentFileForNextStepAsync queries it for PARALLEL mode step 2+ copies.
-            var templateFileName = System.IO.Path.GetFileName(workflowInfo.PdfTemplatePath);
+            var templateFileName = System.IO.Path.GetFileName(workflowTemplatePath);
             var documentFile = new DocumentFile(
                 GuidGenerator.Create(),
                 createdDocument.Id,
                 templateFileName,
                 false,
                 now,
-                workflowInfo.PdfTemplatePath,
+                workflowTemplatePath,
                 null
             );
             documentFile.TenantId = CurrentTenant.Id;
@@ -1021,14 +1027,18 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             var existingDocFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
             var workflowInfo = await GetWorkflowSubmitInfoAsync(returnedInstance.WorkflowId);
 
-            if (!workflowInfo.HasTemplateFile || string.IsNullOrWhiteSpace(workflowInfo.PdfTemplatePath))
+            var workflowTemplatePath = !string.IsNullOrWhiteSpace(workflowInfo.WordTemplatePath)
+                ? workflowInfo.WordTemplatePath
+                : workflowInfo.PdfTemplatePath;
+
+            if (!workflowInfo.HasTemplateFile || string.IsNullOrWhiteSpace(workflowTemplatePath))
             {
                 throw new UserFriendlyException(L["WorkflowTemplateHasNoFile"]);
             }
 
             // Try to find existing file that matches the template path
             var existingTemplateFile = existingDocFiles
-                .Where(f => f.Path == workflowInfo.PdfTemplatePath && !f.IsSigned)
+                .Where(f => f.Path == workflowTemplatePath && !f.IsSigned)
                 .OrderByDescending(f => f.UploadedAt)
                 .FirstOrDefault();
 
@@ -1040,14 +1050,14 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             else
             {
                 // Template file not found on document (edge case) - create new one
-                var templateFileName = Path.GetFileName(workflowInfo.PdfTemplatePath);
+                var templateFileName = Path.GetFileName(workflowTemplatePath);
                 var documentFile = new DocumentFile(
                     GuidGenerator.Create(),
                     documentId,
                     templateFileName,
                     false,
                     Clock.Now,
-                    workflowInfo.PdfTemplatePath,
+                    workflowTemplatePath,
                     null
                 );
                 documentFile.TenantId = CurrentTenant.Id;
