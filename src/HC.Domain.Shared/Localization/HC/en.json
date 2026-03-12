@@ -1194,6 +1194,9 @@
     "Warning": "Warning",
     "PleaseSelectAssignee": "Please select an assignee",
     "Forbidden": "You are not authorized to perform this action",
-    "Fobidden": "You are not authorized to perform this action"
+    "Fobidden": "You are not authorized to perform this action",
+    "SetAdmin": "Set admin",
+    "RemoveMember": "Remove member",
+    "MustTransferAdminBeforeLeaving": "Must transfer admin before leaving"
   }
 }

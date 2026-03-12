@@ -59,6 +59,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     private readonly IDocumentHistoryRepository _documentHistoryRepository;
     private readonly IBlobContainer _blobContainer;
     private readonly IParallelSigningMergeService _parallelSigningMergeService;
+    private readonly IWorkflowSigningExecutionService _workflowSigningExecutionService;
     private readonly IReadOnlyList<IWorkflowSigningStrategy> _workflowSigningStrategies;
 
     public DocumentWorkflowInstancesAppService(
@@ -86,6 +87,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         IDocumentHistoryRepository documentHistoryRepository,
         IBlobContainer blobContainer,
         IParallelSigningMergeService parallelSigningMergeService,
+        IWorkflowSigningExecutionService workflowSigningExecutionService,
         IEnumerable<IWorkflowSigningStrategy> workflowSigningStrategies
     ) : base(documentWorkflowInstanceRepository, documentWorkflowInstanceManager, downloadTokenCache, documentRepository, workflowRepository, workflowTemplateRepository, workflowStepTemplateRepository)
     {
@@ -106,6 +108,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         _documentHistoryRepository = documentHistoryRepository;
         _blobContainer = blobContainer;
         _parallelSigningMergeService = parallelSigningMergeService;
+        _workflowSigningExecutionService = workflowSigningExecutionService;
         _workflowSigningStrategies = workflowSigningStrategies.ToList();
     }
 
@@ -376,6 +379,11 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             var documentFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
             signingFileId = documentFiles.OrderBy(f => f.UploadedAt).FirstOrDefault()?.Id ?? input.DocumentFileId;
         }
+
+        signingFileId = await _workflowSigningExecutionService.PrepareSubmissionPlaceholdersAsync(
+            signingFileId,
+            documentId,
+            input.SigningContent);
 
         // 3. Create DocumentAssignments
         // SEQUENTIAL: only step 1 assignments (IsCurrent = true)
@@ -1129,6 +1137,11 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             var documentFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
             signingFileId = documentFiles.OrderByDescending(f => f.UploadedAt).FirstOrDefault()?.Id;
         }
+
+        signingFileId = await _workflowSigningExecutionService.PrepareSubmissionPlaceholdersAsync(
+            signingFileId,
+            documentId,
+            input.SigningContent);
 
         // 10. Create DocumentAssignments for step 1 (or all steps if PARALLEL)
         var stepsToAssign = isParallel ? allStepsOrdered : new List<WorkflowStepDetailDto> { firstStep };

@@ -442,7 +442,26 @@
             @* Step 3: Signing Content *@
             <Field>
                 <FieldLabel>@L["SigningContent"]</FieldLabel>
-                <MemoEdit Rows="3" @bind-Text="@SigningContent" Placeholder="@L["EnterSigningContent"]" />
+                <RichTextEdit @key="ModalResetKey"
+                              @bind-Value="@SigningContent"
+                              Theme="RichTextEditTheme.Snow"
+                              PlaceHolder="@L["EnterSigningContent"]"
+                              ToolbarPosition="Placement.Bottom">
+                    <Toolbar>
+                        <RichTextEditToolbarGroup>
+                            <RichTextEditToolbarButton Action="RichTextEditAction.Bold" />
+                            <RichTextEditToolbarButton Action="RichTextEditAction.Italic" />
+                            <RichTextEditToolbarButton Action="RichTextEditAction.Underline" />
+                            <RichTextEditToolbarButton Action="RichTextEditAction.Strike" />
+                        </RichTextEditToolbarGroup>
+                        <RichTextEditToolbarGroup>
+                            <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="ordered" />
+                            <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="bullet" />
+                            <RichTextEditToolbarButton Action="RichTextEditAction.Link" />
+                            <RichTextEditToolbarButton Action="RichTextEditAction.Clean" />
+                        </RichTextEditToolbarGroup>
+                    </Toolbar>
+                </RichTextEdit>
             </Field>
 
             @* Step 4: Attach Files - uses Blazorise Upload event (official pattern for Blazor Server) *@
@@ -770,7 +789,25 @@
                                     @* Note *@
                                     <Field>
                                         <FieldLabel class="fw-bold">@L["Note"]</FieldLabel>
-                                        <MemoEdit Rows="3" @bind-Text="@ActionNote" Placeholder="@L["EnterNoteOptional"]" />
+                                        <RichTextEdit @bind-Value="@ActionNote"
+                                                      Theme="RichTextEditTheme.Snow"
+                                                      PlaceHolder="@L["EnterNoteOptional"]"
+                                                      ToolbarPosition="Placement.Bottom">
+                                            <Toolbar>
+                                                <RichTextEditToolbarGroup>
+                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Bold" />
+                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Italic" />
+                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Underline" />
+                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Strike" />
+                                                </RichTextEditToolbarGroup>
+                                                <RichTextEditToolbarGroup>
+                                                    <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="ordered" />
+                                                    <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="bullet" />
+                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Link" />
+                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Clean" />
+                                                </RichTextEditToolbarGroup>
+                                            </Toolbar>
+                                        </RichTextEdit>
                                     </Field>
                                 </fieldset>
                             }
@@ -847,7 +884,7 @@
                                                         @if (!string.IsNullOrWhiteSpace(log.DocumentWorkflowInstanceLogs.Note))
                                                         {
                                                             <div class="mt-1 p-1 bg-light rounded" style="font-size: 0.8rem;">
-                                                                <small>@log.DocumentWorkflowInstanceLogs.Note</small>
+                                                                <div class="small rich-text-preview">@ToMarkupString(log.DocumentWorkflowInstanceLogs.Note)</div>
                                                             </div>
                                                         }
                                                     </div>
@@ -1029,7 +1066,7 @@
                                                         @if (!string.IsNullOrWhiteSpace(history.DocumentHistory.Comment))
                                                         {
                                                             <div class="mt-1 p-1 bg-light rounded" style="font-size: 0.8rem;">
-                                                                <small>@history.DocumentHistory.Comment</small>
+                                                                <div class="small rich-text-preview">@ToMarkupString(history.DocumentHistory.Comment)</div>
                                                             </div>
                                                         }
                                                     </div>
@@ -1213,7 +1250,25 @@
                 @* Signing Content (editable, pre-populated) *@
                 <Field Class="mt-2">
                     <FieldLabel>@L["SigningContent"]</FieldLabel>
-                    <MemoEdit Rows="3" @bind-Text="@ResubmitSigningContent" Placeholder="@L["EnterSigningContent"]" />
+                    <RichTextEdit @bind-Value="@ResubmitSigningContent"
+                                  Theme="RichTextEditTheme.Snow"
+                                  PlaceHolder="@L["EnterSigningContent"]"
+                                  ToolbarPosition="Placement.Bottom">
+                        <Toolbar>
+                            <RichTextEditToolbarGroup>
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Bold" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Italic" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Underline" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Strike" />
+                            </RichTextEditToolbarGroup>
+                            <RichTextEditToolbarGroup>
+                                <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="ordered" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="bullet" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Link" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Clean" />
+                            </RichTextEditToolbarGroup>
+                        </Toolbar>
+                    </RichTextEdit>
                 </Field>
 
                 @* Document Files (read-only - signing PDF, template files) *@

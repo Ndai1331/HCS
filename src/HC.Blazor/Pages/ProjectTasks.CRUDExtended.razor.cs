@@ -489,6 +489,7 @@ public partial class ProjectTasks
             EditAssignmentsUsersToAdd = new List<LookupDto<Guid>>();
             EditAssignmentNote = null;
             await LoadEditAssignmentsAsync();
+            await RefreshEditingProjectTaskConcurrencyStampAsync();
             await RefreshKanbanAsync();
             await InvokeAsync(StateHasChanged);
         }
@@ -518,6 +519,7 @@ public partial class ProjectTasks
         {
             await ProjectTaskAssignmentsAppService.DeleteAsync(row.ProjectTaskAssignment.Id);
             await LoadEditAssignmentsAsync();
+            await RefreshEditingProjectTaskConcurrencyStampAsync();
             await RefreshKanbanAsync();
             await InvokeAsync(StateHasChanged);
         }
@@ -622,6 +624,7 @@ public partial class ProjectTasks
                 DocumentHasPdfCache[documentId] = hasPdf;
             }
             
+            await RefreshEditingProjectTaskConcurrencyStampAsync();
             await RefreshKanbanAsync();
             await InvokeAsync(StateHasChanged);
         }
@@ -665,6 +668,7 @@ public partial class ProjectTasks
             }
             
             await LoadEditDocumentsAsync();
+            await RefreshEditingProjectTaskConcurrencyStampAsync();
             await RefreshKanbanAsync();
             await InvokeAsync(StateHasChanged);
         }
@@ -704,16 +708,21 @@ public partial class ProjectTasks
         }
 
         SelectedEditProjectTaskParentTask = new List<ParentTaskSelectItem>();
+        EditParentTasksCollection = new List<ParentTaskSelectItem>();
         if (!string.IsNullOrWhiteSpace(EditingProjectTask.ParentTaskId))
         {
+            var parentDisplayName = string.IsNullOrWhiteSpace(projectTask.ParentTaskTitle)
+                ? EditingProjectTask.ParentTaskId!
+                : $"{EditingProjectTask.ParentTaskId} - {projectTask.ParentTaskTitle}";
             var parent = new ParentTaskSelectItem
             {
                 Id = EditingProjectTask.ParentTaskId!,
-                DisplayName = EditingProjectTask.ParentTaskId!
+                DisplayName = parentDisplayName
             };
             SelectedEditProjectTaskParentTask.Add(parent);
-            ParentTasksCollection = ParentTasksCollection.Concat(new[] { parent }).DistinctBy(x => x.Id).ToList();
+            EditParentTasksCollection = EditParentTasksCollection.Concat(new[] { parent }).DistinctBy(x => x.Id).ToList();
         }
+        EditParentTaskSelectKey = Guid.NewGuid();
 
         // Initialize enum selects from DTO strings.
         if (Enum.TryParse<ProjectTaskPriority>(EditingProjectTask.Priority, ignoreCase: true, out var priority))
@@ -742,14 +751,36 @@ public partial class ProjectTasks
         await OpenEditProjectTaskModalAsync(input, "documents");
     }
 
-    protected void OnEditProjectTaskProjectChanged()
+    protected async Task OnEditProjectTaskProjectChanged()
     {
+        await Task.Yield();
         EditingProjectTask.ProjectId = SelectedEditProjectTaskProject.FirstOrDefault()?.Id ?? Guid.Empty;
+        SelectedEditProjectTaskParentTask = new List<ParentTaskSelectItem>();
+        EditingProjectTask.ParentTaskId = null;
+        EditParentTasksCollection = new List<ParentTaskSelectItem>();
+        EditParentTaskSelectKey = Guid.NewGuid();
+        EditFieldErrors.Remove("Project");
+        EditFieldErrors.Remove("ParentTaskId");
+
+        // Preload parent tasks for the selected project.
+        await GetEditParentTaskCollectionLookupAsync(EditParentTasksCollection, string.Empty, CancellationToken.None);
+        await InvokeAsync(StateHasChanged);
     }
 
     protected void OnEditProjectTaskParentChanged()
     {
         EditingProjectTask.ParentTaskId = SelectedEditProjectTaskParentTask.FirstOrDefault()?.Id;
+    }
+
+    private async Task RefreshEditingProjectTaskConcurrencyStampAsync()
+    {
+        if (EditingProjectTaskId == Guid.Empty)
+        {
+            return;
+        }
+
+        var latestTask = await ProjectTasksAppService.GetWithNavigationPropertiesAsync(EditingProjectTaskId);
+        EditingProjectTask.ConcurrencyStamp = latestTask.ProjectTask.ConcurrencyStamp;
     }
 
     protected void OnEditingProjectTaskPriorityChanged(ProjectTaskPriority priority)
@@ -787,6 +818,7 @@ public partial class ProjectTasks
             }
             
             UpdateDisplayedKanbanItems();
+            KanbanRenderKey++;
             await GetProjectTasksAsync();
             
             await BlockUiService.UnBlock();

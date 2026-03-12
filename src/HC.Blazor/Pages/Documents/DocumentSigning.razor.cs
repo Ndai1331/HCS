@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Blazorise;
@@ -702,7 +704,7 @@ public partial class DocumentSigning
                 WorkflowId = SelectedWorkflowId.Value,
                 UseWorkflowTemplateFile = UseWorkflowTemplateFile,
                 UseTemplateFile = UseTemplateFile,
-                SigningContent = SigningContent,
+                SigningContent = NormalizeRichTextHtml(SigningContent),
                 AttachedFileIds = UploadedFiles.Any()
                     ? UploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null
@@ -903,7 +905,7 @@ public partial class DocumentSigning
                 DocumentWorkflowInstanceId = SelectedDocumentForAction.WorkflowInstanceId.Value,
                 DocumentAssignmentId = SelectedDocumentForAction.MyAssignmentId.Value,
                 Action = SelectedAction,
-                Note = ActionNote,
+                Note = NormalizeRichTextHtml(ActionNote),
                 SigningMethodId = SelectedSigningMethodId,
                 UserSignatureId = SelectedUserSignatureId
             };
@@ -1105,7 +1107,7 @@ public partial class DocumentSigning
                 UseWorkflowTemplateFile = ResubmitUseWorkflowTemplateFile,
                 DocumentFileId = null, // Will be resolved from new document
                 NewDocumentId = ResubmitUseWorkflowTemplateFile ? null : ResubmitSelectedDocumentId,
-                SigningContent = ResubmitSigningContent,
+                SigningContent = NormalizeRichTextHtml(ResubmitSigningContent),
                 AttachedFileIds = ResubmitUploadedFiles.Any()
                     ? ResubmitUploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null,
@@ -1245,6 +1247,27 @@ public partial class DocumentSigning
         var providerCode = item.UserSignature.ProviderCode;
         var validTo = item.UserSignature.ValidTo?.ToString("dd/MM/yyyy") ?? "--";
         return $"{providerCode} (ValidTo: {validTo})";
+    }
+
+    private static string? NormalizeRichTextHtml(string? html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return null;
+        }
+
+        var normalized = html.Trim();
+        var plainText = Regex.Replace(normalized, "<[^>]+>", string.Empty);
+        plainText = WebUtility.HtmlDecode(plainText)
+            .Replace('\u00A0', ' ')
+            .Trim();
+
+        return string.IsNullOrWhiteSpace(plainText) ? null : normalized;
+    }
+
+    private static MarkupString ToMarkupString(string? html)
+    {
+        return new MarkupString(NormalizeRichTextHtml(html) ?? string.Empty);
     }
 
     private void NavigateToDocumentDetail(Guid documentId)

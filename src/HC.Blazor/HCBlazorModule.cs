@@ -4,6 +4,7 @@ using System.Linq;
 using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
+using Blazorise.RichTextEdit;
 using Medallion.Threading;
 using Medallion.Threading.Redis;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -532,6 +533,10 @@ namespace HC.Blazor;
             {
                 // TODO (IMPORTANT): To use Blazorise, you need a license key. Get your license key directly from Blazorise, follow  the instructions at https://abp.io/faq#how-to-get-blazorise-license-key
                 //options.ProductToken = "Your Product Token";
+            })
+            .AddBlazoriseRichTextEdit(options =>
+            {
+                options.UseTables = false;
             })
             .AddBootstrap5Providers()
             .AddFontAwesomeIcons();

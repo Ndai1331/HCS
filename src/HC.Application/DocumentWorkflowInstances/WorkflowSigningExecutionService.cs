@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HC.BnnSoftSigns;
 using HC.DocumentAssignments;
@@ -32,6 +34,8 @@ public interface IWorkflowSigningExecutionService
     Task ApplyElectronicSignatureAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent, Guid? selectedUserSignatureId = null);
 
     Task ApplyDigitalSignatureAsync(DocumentAssignment assignment, DocumentWorkflowInstance instance, string? noteContent, Guid? selectedUserSignatureId = null);
+
+    Task<Guid?> PrepareSubmissionPlaceholdersAsync(Guid? sourceFileId, Guid documentId, string? htmlContent);
 
     Task<byte[]> ResolveSignatureImageBytesAsync(string signatureImage);
 
@@ -279,6 +283,84 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         await _documentAssignmentRepository.UpdateAsync(assignment, autoSave: true);
     }
 
+    public async Task<Guid?> PrepareSubmissionPlaceholdersAsync(Guid? sourceFileId, Guid documentId, string? htmlContent)
+    {
+        if (!sourceFileId.HasValue)
+        {
+            return sourceFileId;
+        }
+
+        var currentUserId = _currentUser.Id ?? throw new UserFriendlyException(_localizer["NotAuthorizedForThisAction"]);
+        var sourceFile = await _documentFileRepository.GetAsync(sourceFileId.Value);
+        if (string.IsNullOrWhiteSpace(sourceFile.Path))
+        {
+            throw new UserFriendlyException(_localizer["NoFileToSign"]);
+        }
+
+        var (signature, _, fullName) = await GetValidatedElectronicSignatureAsync(currentUserId);
+
+        byte[] pdfBytes;
+        byte[] signatureImageBytes;
+        try
+        {
+            pdfBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
+            signatureImageBytes = await ResolveSignatureImageBytesAsync(signature.SignatureImage);
+        }
+        catch (UserFriendlyException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SUBMIT_PREPARE] Error loading source PDF or signature image. SourceFileId={SourceFileId}", sourceFileId.Value);
+            throw new UserFriendlyException(_localizer["ErrorProcessingPdf", ex.Message]);
+        }
+
+        byte[] preparedPdfBytes;
+        try
+        {
+            preparedPdfBytes = ReplacePreparedPlaceholders(
+                pdfBytes,
+                signatureImageBytes,
+                fullName,
+                htmlContent ?? string.Empty,
+                _clock.Now);
+        }
+        catch (UserFriendlyException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SUBMIT_PREPARE] Error preparing PDF placeholders. SourceFileId={SourceFileId}", sourceFileId.Value);
+            throw new UserFriendlyException(_localizer["ErrorProcessingPdf", ex.Message]);
+        }
+
+        var extension = Path.GetExtension(sourceFile.Name);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = ".pdf";
+        }
+
+        var newBlobPath = $"{WorkflowConstants.BlobPathSigningSteps}{Guid.NewGuid()}{extension}";
+        await _blobContainer.SaveAsync(newBlobPath, preparedPdfBytes);
+
+        var hash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(preparedPdfBytes));
+        var preparedFile = new DocumentFile(
+            _guidGenerator.Create(),
+            documentId,
+            sourceFile.Name,
+            false,
+            _clock.Now,
+            newBlobPath,
+            hash
+        );
+        preparedFile.TenantId = _currentTenant.Id;
+        await _documentFileRepository.InsertAsync(preparedFile, autoSave: true);
+
+        return preparedFile.Id;
+    }
+
     public async Task ApplyElectronicSignatureAsync(
         DocumentAssignment assignment,
         DocumentWorkflowInstance instance,
@@ -286,63 +368,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         Guid? selectedUserSignatureId = null)
     {
         var currentUserId = _currentUser.Id ?? throw new UserFriendlyException(_localizer["NotAuthorizedForThisAction"]);
-        UserSignature? signature;
-        try
-        {
-            var sigQueryable = await _userSignatureRepository.GetQueryableAsync();
-            var signatureQuery = sigQueryable.Where(s => s.IdentityUserId == currentUserId
-                && s.SignType == nameof(SignType.ELECTRONIC)
-                && s.IsActive);
-            if (selectedUserSignatureId.HasValue)
-            {
-                signatureQuery = signatureQuery.Where(s => s.Id == selectedUserSignatureId.Value);
-            }
-
-            signature = await _asyncExecuter.FirstOrDefaultAsync(signatureQuery);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[ELECTRONIC_SIGN] Error querying user signatures for user {UserId}", currentUserId);
-            throw new UserFriendlyException(_localizer["ElectronicSigningFailed", ex.Message]);
-        }
-
-        if (signature == null)
-        {
-            if (selectedUserSignatureId.HasValue)
-            {
-                throw new UserFriendlyException(_localizer["SelectedUserSignatureNotFound"]);
-            }
-
-            throw new UserFriendlyException(_localizer["UserHasNoElectronicSignature"]);
-        }
-
-        if (!signature.IsActive)
-        {
-            throw new UserFriendlyException(_localizer["SignatureNotActivated"]);
-        }
-
-        if (string.IsNullOrWhiteSpace(signature.SignatureImage))
-        {
-            throw new UserFriendlyException(_localizer["SignatureImageNotConfigured"]);
-        }
-
         var now = _clock.Now;
-        if (signature.ValidFrom.HasValue && signature.ValidFrom.Value > now)
-        {
-            throw new UserFriendlyException(_localizer["SignatureNotYetValid"]);
-        }
-
-        if (signature.ValidTo.HasValue && signature.ValidTo.Value < now)
-        {
-            throw new UserFriendlyException(_localizer["SignatureExpired"]);
-        }
-
-        var user = await _identityUserRepository.GetAsync(currentUserId);
-        var fullName = $"{user.Surname} {user.Name}".Trim();
-        if (string.IsNullOrWhiteSpace(fullName))
-        {
-            fullName = user.UserName ?? "Unknown";
-        }
+        var (signature, _, fullName) = await GetValidatedElectronicSignatureAsync(currentUserId, selectedUserSignatureId);
 
         if (!assignment.DocumentFileResultId.HasValue)
         {
@@ -478,6 +505,71 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
     }
 
+    private async Task<(UserSignature Signature, IdentityUser User, string FullName)> GetValidatedElectronicSignatureAsync(
+        Guid currentUserId,
+        Guid? selectedUserSignatureId = null)
+    {
+        UserSignature? signature;
+        try
+        {
+            var sigQueryable = await _userSignatureRepository.GetQueryableAsync();
+            var signatureQuery = sigQueryable.Where(s => s.IdentityUserId == currentUserId
+                && s.SignType == nameof(SignType.ELECTRONIC)
+                && s.IsActive);
+            if (selectedUserSignatureId.HasValue)
+            {
+                signatureQuery = signatureQuery.Where(s => s.Id == selectedUserSignatureId.Value);
+            }
+
+            signature = await _asyncExecuter.FirstOrDefaultAsync(signatureQuery);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[ELECTRONIC_SIGN] Error querying user signatures for user {UserId}", currentUserId);
+            throw new UserFriendlyException(_localizer["ElectronicSigningFailed", ex.Message]);
+        }
+
+        if (signature == null)
+        {
+            if (selectedUserSignatureId.HasValue)
+            {
+                throw new UserFriendlyException(_localizer["SelectedUserSignatureNotFound"]);
+            }
+
+            throw new UserFriendlyException(_localizer["UserHasNoElectronicSignature"]);
+        }
+
+        if (!signature.IsActive)
+        {
+            throw new UserFriendlyException(_localizer["SignatureNotActivated"]);
+        }
+
+        if (string.IsNullOrWhiteSpace(signature.SignatureImage))
+        {
+            throw new UserFriendlyException(_localizer["SignatureImageNotConfigured"]);
+        }
+
+        var now = _clock.Now;
+        if (signature.ValidFrom.HasValue && signature.ValidFrom.Value > now)
+        {
+            throw new UserFriendlyException(_localizer["SignatureNotYetValid"]);
+        }
+
+        if (signature.ValidTo.HasValue && signature.ValidTo.Value < now)
+        {
+            throw new UserFriendlyException(_localizer["SignatureExpired"]);
+        }
+
+        var user = await _identityUserRepository.GetAsync(currentUserId);
+        var fullName = $"{user.Surname} {user.Name}".Trim();
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            fullName = user.UserName ?? "Unknown";
+        }
+
+        return (signature, user, fullName);
+    }
+
     private sealed class PlaceholderPosition
     {
         public int PageIndex { get; set; }
@@ -489,6 +581,13 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         public string Type { get; set; } = string.Empty;
     }
 
+    private sealed class PlaceholderSearchItem
+    {
+        public string Tag { get; set; } = string.Empty;
+
+        public string Type { get; set; } = string.Empty;
+    }
+
     public byte[] ReplacePdfPlaceholders(
         byte[] pdfBytes,
         int stepOrder,
@@ -496,15 +595,18 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         string fullName,
         string noteContent)
     {
+        var suffix = stepOrder.ToString("D2");
         return ReplacePdfPlaceholdersInternal(
             pdfBytes,
-            stepOrder,
+            new List<PlaceholderSearchItem>
+            {
+                new() { Tag = $"<<Sign{suffix}>>", Type = "SIGN" },
+                new() { Tag = $"<<FullName{suffix}>>", Type = "FULLNAME" },
+                new() { Tag = $"<<NoteContent{suffix}>>", Type = "NOTE" },
+            },
             signatureImageBytes,
             fullName,
-            noteContent,
-            includeSign: true,
-            includeFullName: true,
-            includeNote: true);
+            noteContent);
     }
 
     private byte[] ReplacePdfNameAndNotePlaceholders(
@@ -513,104 +615,117 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         string fullName,
         string noteContent)
     {
+        var suffix = stepOrder.ToString("D2");
         return ReplacePdfPlaceholdersInternal(
             pdfBytes,
-            stepOrder,
+            new List<PlaceholderSearchItem>
+            {
+                new() { Tag = $"<<FullName{suffix}>>", Type = "FULLNAME" },
+                new() { Tag = $"<<NoteContent{suffix}>>", Type = "NOTE" },
+            },
             signatureImageBytes: null,
             fullName,
-            noteContent,
-            includeSign: false,
-            includeFullName: true,
-            includeNote: true);
+            noteContent);
+    }
+
+    private byte[] ReplacePreparedPlaceholders(
+        byte[] pdfBytes,
+        byte[] signatureImageBytes,
+        string fullName,
+        string htmlContent,
+        DateTime currentDate)
+    {
+        var searchPairs = new List<PlaceholderSearchItem>
+        {
+            new() { Tag = "<<DD>>", Type = "CURRENT_DAY" },
+            new() { Tag = "<<MM>>", Type = "CURRENT_MONTH" },
+            new() { Tag = "<<YYYY>>", Type = "CURRENT_YEAR" },
+            new() { Tag = "<<ContentToBeApproved>>", Type = "HTML_CONTENT" },
+            new() { Tag = "<<PreparedBySign>>", Type = "PREPARED_SIGN" },
+            new() { Tag = "<<PreparedFullName>>", Type = "PREPARED_FULLNAME" },
+        };
+
+        var (positions, pageHeights) = FindPlaceholderPositions(pdfBytes, searchPairs);
+        if (!positions.Any())
+        {
+            return pdfBytes;
+        }
+
+        using var inputStream = new MemoryStream(pdfBytes);
+        var document = PdfSharpIO.PdfReader.Open(inputStream, PdfSharpIO.PdfDocumentOpenMode.Modify);
+
+        foreach (var pos in positions)
+        {
+            if (pos.PageIndex >= document.PageCount)
+            {
+                continue;
+            }
+
+            var page = document.Pages[pos.PageIndex];
+            var gfx = PdfSharpDrawing.XGraphics.FromPdfPage(page, PdfSharpDrawing.XGraphicsPdfPageOptions.Append);
+
+            try
+            {
+                var pgHeight = pageHeights[pos.PageIndex];
+                double x = pos.X;
+                double y = pgHeight - pos.YTop;
+                double w = pos.Width;
+                double h = pos.Height;
+
+                var drawRect = BuildDrawRect(page, x, y, w, h, pos.Type);
+                gfx.DrawRectangle(PdfSharpDrawing.XBrushes.White, drawRect);
+
+                switch (pos.Type)
+                {
+                    case "PREPARED_SIGN":
+                        DrawImage(signatureImageBytes, gfx, drawRect);
+                        break;
+
+                    case "PREPARED_FULLNAME":
+                        DrawSimpleText(gfx, fullName, pos.FontSize, drawRect);
+                        break;
+
+                    case "HTML_CONTENT":
+                        DrawWrappedText(
+                            gfx,
+                            ConvertHtmlToPdfText(htmlContent),
+                            new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8)),
+                            drawRect);
+                        break;
+
+                    case "CURRENT_DAY":
+                        DrawSimpleText(gfx, currentDate.ToString("dd"), pos.FontSize, drawRect);
+                        break;
+
+                    case "CURRENT_MONTH":
+                        DrawSimpleText(gfx, currentDate.ToString("MM"), pos.FontSize, drawRect);
+                        break;
+
+                    case "CURRENT_YEAR":
+                        DrawSimpleText(gfx, currentDate.ToString("yyyy"), pos.FontSize, drawRect);
+                        break;
+                }
+            }
+            finally
+            {
+                gfx.Dispose();
+            }
+        }
+
+        using var outputStream = new MemoryStream();
+        document.Save(outputStream);
+        return outputStream.ToArray();
     }
 
     private byte[] ReplacePdfPlaceholdersInternal(
         byte[] pdfBytes,
-        int stepOrder,
+        IReadOnlyList<PlaceholderSearchItem> searchPairs,
         byte[]? signatureImageBytes,
         string fullName,
         string noteContent,
-        bool includeSign,
-        bool includeFullName,
-        bool includeNote)
+        DateTime? currentDate = null)
     {
-        var suffix = stepOrder.ToString("D2");
-        var signTag = $"<<Sign{suffix}>>";
-        var nameTag = $"<<FullName{suffix}>>";
-        var noteTag = $"<<NoteContent{suffix}>>";
-
-        var positions = new List<PlaceholderPosition>();
-        double[] pageHeights;
-
-        using (var pdfPigDoc = PdfDocument.Open(pdfBytes))
-        {
-            pageHeights = new double[pdfPigDoc.NumberOfPages];
-
-            for (int p = 0; p < pdfPigDoc.NumberOfPages; p++)
-            {
-                var page = pdfPigDoc.GetPage(p + 1);
-                pageHeights[p] = page.Height;
-
-                var letters = page.Letters.ToList();
-                if (!letters.Any())
-                {
-                    continue;
-                }
-
-                var fullText = string.Concat(letters.Select(l => l.Value));
-                var searchPairs = new List<(string Tag, string Type)>();
-                if (includeSign)
-                {
-                    searchPairs.Add((signTag, "SIGN"));
-                }
-
-                if (includeFullName)
-                {
-                    searchPairs.Add((nameTag, "FULLNAME"));
-                }
-
-                if (includeNote)
-                {
-                    searchPairs.Add((noteTag, "NOTE"));
-                }
-
-                foreach (var (tag, type) in searchPairs)
-                {
-                    var index = fullText.IndexOf(tag, StringComparison.Ordinal);
-                    if (index < 0)
-                    {
-                        index = fullText.IndexOf(tag, StringComparison.OrdinalIgnoreCase);
-                        if (index < 0)
-                        {
-                            continue;
-                        }
-                    }
-
-                    var placeholderLetters = letters.Skip(index).Take(tag.Length).ToList();
-                    if (placeholderLetters.Count < tag.Length)
-                    {
-                        continue;
-                    }
-
-                    var minX = placeholderLetters.Min(l => l.GlyphRectangle.Left);
-                    var minY = placeholderLetters.Min(l => l.GlyphRectangle.Bottom);
-                    var maxX = placeholderLetters.Max(l => l.GlyphRectangle.Right);
-                    var maxY = placeholderLetters.Max(l => l.GlyphRectangle.Top);
-                    var fontSize = (double)placeholderLetters.First().FontSize;
-
-                    positions.Add(new PlaceholderPosition
-                    {
-                        PageIndex = p,
-                        X = minX,
-                        YTop = maxY,
-                        Width = maxX - minX,
-                        Height = maxY - minY,
-                        FontSize = fontSize > 0 ? fontSize : 10,
-                        Type = type
-                    });
-                }
-            }
-        }
+        var (positions, pageHeights) = FindPlaceholderPositions(pdfBytes, searchPairs);
 
         if (!positions.Any())
         {
@@ -636,41 +751,49 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             double w = pos.Width;
             double h = pos.Height;
 
-            var whiteRect = new PdfSharpDrawing.XRect(x, y, w, h);
-            gfx.DrawRectangle(PdfSharpDrawing.XBrushes.White, whiteRect);
+            var drawRect = BuildDrawRect(page, x, y, w, h, pos.Type);
+            gfx.DrawRectangle(PdfSharpDrawing.XBrushes.White, drawRect);
 
             switch (pos.Type)
             {
                 case "SIGN":
-                    if (signatureImageBytes != null && signatureImageBytes.Length > 0)
-                    {
-                        using var imgStream = new MemoryStream(signatureImageBytes);
-                        var img = PdfSharpDrawing.XImage.FromStream(imgStream);
-                        var imgAspect = (double)img.PixelWidth / img.PixelHeight;
-                        var fitWidth = w;
-                        var fitHeight = w / imgAspect;
-                        if (fitHeight > h * 3)
-                        {
-                            fitHeight = h * 3;
-                            fitWidth = fitHeight * imgAspect;
-                        }
-
-                        var imgX = x;
-                        var imgY = y - (fitHeight - h) / 2;
-                        gfx.DrawImage(img, imgX, imgY, fitWidth, fitHeight);
-                    }
+                case "PREPARED_SIGN":
+                    DrawImage(signatureImageBytes, gfx, drawRect);
                     break;
 
                 case "FULLNAME":
+                case "PREPARED_FULLNAME":
                     var nameFont = new PdfSharpDrawing.XFont("Helvetica", pos.FontSize);
                     gfx.DrawString(fullName, nameFont, PdfSharpDrawing.XBrushes.Black,
-                        whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
+                        drawRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "NOTE":
-                    var noteFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8));
-                    gfx.DrawString(noteContent, noteFont, PdfSharpDrawing.XBrushes.Black,
-                        whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
+                    DrawWrappedText(
+                        gfx,
+                        ConvertHtmlToPdfText(noteContent),
+                        new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8)),
+                        drawRect);
+                    break;
+
+                case "HTML_CONTENT":
+                    DrawWrappedText(
+                        gfx,
+                        ConvertHtmlToPdfText(noteContent),
+                        new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8)),
+                        drawRect);
+                    break;
+
+                case "CURRENT_DAY":
+                    DrawSimpleText(gfx, currentDate?.ToString("dd") ?? string.Empty, pos.FontSize, drawRect);
+                    break;
+
+                case "CURRENT_MONTH":
+                    DrawSimpleText(gfx, currentDate?.ToString("MM") ?? string.Empty, pos.FontSize, drawRect);
+                    break;
+
+                case "CURRENT_YEAR":
+                    DrawSimpleText(gfx, currentDate?.ToString("yyyy") ?? string.Empty, pos.FontSize, drawRect);
                     break;
             }
 
@@ -680,6 +803,220 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         using var outputStream = new MemoryStream();
         document.Save(outputStream);
         return outputStream.ToArray();
+    }
+
+    private static (List<PlaceholderPosition> Positions, double[] PageHeights) FindPlaceholderPositions(
+        byte[] pdfBytes,
+        IReadOnlyList<PlaceholderSearchItem> searchPairs)
+    {
+        var positions = new List<PlaceholderPosition>();
+        double[] pageHeights;
+
+        using var pdfPigDoc = PdfDocument.Open(pdfBytes);
+        pageHeights = new double[pdfPigDoc.NumberOfPages];
+
+        for (int p = 0; p < pdfPigDoc.NumberOfPages; p++)
+        {
+            var page = pdfPigDoc.GetPage(p + 1);
+            pageHeights[p] = page.Height;
+
+            var letters = page.Letters.ToList();
+            if (!letters.Any())
+            {
+                continue;
+            }
+
+            var fullText = string.Concat(letters.Select(l => l.Value));
+            foreach (var searchItem in searchPairs)
+            {
+                var searchFromIndex = 0;
+                while (searchFromIndex < fullText.Length)
+                {
+                    var index = fullText.IndexOf(searchItem.Tag, searchFromIndex, StringComparison.Ordinal);
+                    if (index < 0)
+                    {
+                        index = fullText.IndexOf(searchItem.Tag, searchFromIndex, StringComparison.OrdinalIgnoreCase);
+                        if (index < 0)
+                        {
+                            break;
+                        }
+                    }
+
+                    var placeholderLetters = letters.Skip(index).Take(searchItem.Tag.Length).ToList();
+                    if (placeholderLetters.Count < searchItem.Tag.Length)
+                    {
+                        break;
+                    }
+
+                    var minX = placeholderLetters.Min(l => l.GlyphRectangle.Left);
+                    var minY = placeholderLetters.Min(l => l.GlyphRectangle.Bottom);
+                    var maxX = placeholderLetters.Max(l => l.GlyphRectangle.Right);
+                    var maxY = placeholderLetters.Max(l => l.GlyphRectangle.Top);
+                    var fontSize = (double)placeholderLetters.First().FontSize;
+
+                    positions.Add(new PlaceholderPosition
+                    {
+                        PageIndex = p,
+                        X = minX,
+                        YTop = maxY,
+                        Width = maxX - minX,
+                        Height = maxY - minY,
+                        FontSize = fontSize > 0 ? fontSize : 10,
+                        Type = searchItem.Type
+                    });
+
+                    searchFromIndex = index + searchItem.Tag.Length;
+                }
+            }
+        }
+
+        return (positions, pageHeights);
+    }
+
+    private static PdfSharpDrawing.XRect BuildDrawRect(
+        PdfSharp.Pdf.PdfPage page,
+        double x,
+        double y,
+        double width,
+        double height,
+        string type)
+    {
+        var pageWidth = page.Width.Point;
+        var maxWidth = Math.Max(40, pageWidth - x - 24);
+
+        return type switch
+        {
+            "NOTE" => new PdfSharpDrawing.XRect(x, y, Math.Max(width, Math.Min(maxWidth, 260)), Math.Max(height * 3, 48)),
+            "HTML_CONTENT" => new PdfSharpDrawing.XRect(x, y, Math.Max(width, maxWidth), Math.Max(height * 8, 140)),
+            _ => new PdfSharpDrawing.XRect(x, y, Math.Max(width, 20), Math.Max(height, 14))
+        };
+    }
+
+    private static void DrawImage(
+        byte[]? imageBytes,
+        PdfSharpDrawing.XGraphics graphics,
+        PdfSharpDrawing.XRect drawRect)
+    {
+        if (imageBytes == null || imageBytes.Length == 0)
+        {
+            return;
+        }
+
+        using var imgStream = new MemoryStream(imageBytes);
+        var img = PdfSharpDrawing.XImage.FromStream(imgStream);
+        var imgAspect = (double)img.PixelWidth / img.PixelHeight;
+        var fitWidth = drawRect.Width;
+        var fitHeight = drawRect.Width / imgAspect;
+        if (fitHeight > drawRect.Height)
+        {
+            fitHeight = drawRect.Height;
+            fitWidth = fitHeight * imgAspect;
+        }
+
+        var imgX = drawRect.Left;
+        var imgY = drawRect.Top + Math.Max((drawRect.Height - fitHeight) / 2, 0);
+        graphics.DrawImage(img, imgX, imgY, fitWidth, fitHeight);
+    }
+
+    private static void DrawSimpleText(
+        PdfSharpDrawing.XGraphics graphics,
+        string text,
+        double fontSize,
+        PdfSharpDrawing.XRect rect)
+    {
+        var font = new PdfSharpDrawing.XFont("Helvetica", Math.Max(fontSize, 8));
+        graphics.DrawString(text ?? string.Empty, font, PdfSharpDrawing.XBrushes.Black, rect, PdfSharpDrawing.XStringFormats.CenterLeft);
+    }
+
+    private static void DrawWrappedText(
+        PdfSharpDrawing.XGraphics graphics,
+        string text,
+        PdfSharpDrawing.XFont font,
+        PdfSharpDrawing.XRect rect)
+    {
+        var lines = WrapText(graphics, text, font, rect.Width);
+        var lineHeight = font.GetHeight() * 1.2;
+        var currentY = rect.Top;
+
+        foreach (var line in lines)
+        {
+            if (currentY + lineHeight > rect.Bottom)
+            {
+                break;
+            }
+
+            var lineRect = new PdfSharpDrawing.XRect(rect.Left, currentY, rect.Width, lineHeight);
+            graphics.DrawString(line, font, PdfSharpDrawing.XBrushes.Black, lineRect, PdfSharpDrawing.XStringFormats.TopLeft);
+            currentY += lineHeight;
+        }
+    }
+
+    private static List<string> WrapText(
+        PdfSharpDrawing.XGraphics graphics,
+        string text,
+        PdfSharpDrawing.XFont font,
+        double maxWidth)
+    {
+        var lines = new List<string>();
+        var paragraphs = (text ?? string.Empty)
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Split('\n');
+
+        foreach (var paragraph in paragraphs)
+        {
+            if (string.IsNullOrWhiteSpace(paragraph))
+            {
+                lines.Add(string.Empty);
+                continue;
+            }
+
+            var words = paragraph.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var currentLine = string.Empty;
+
+            foreach (var word in words)
+            {
+                var nextLine = string.IsNullOrWhiteSpace(currentLine) ? word : $"{currentLine} {word}";
+                if (graphics.MeasureString(nextLine, font).Width <= maxWidth)
+                {
+                    currentLine = nextLine;
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(currentLine))
+                {
+                    lines.Add(currentLine);
+                }
+
+                currentLine = word;
+            }
+
+            if (!string.IsNullOrWhiteSpace(currentLine))
+            {
+                lines.Add(currentLine);
+            }
+        }
+
+        return lines.Any() ? lines : new List<string> { string.Empty };
+    }
+
+    private static string ConvertHtmlToPdfText(string? html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return string.Empty;
+        }
+
+        var normalized = html;
+        normalized = Regex.Replace(normalized, @"<\s*br\s*/?\s*>", "\n", RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(normalized, @"<\s*/\s*(p|div|h[1-6])\s*>", "\n", RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(normalized, @"<\s*li[^>]*>", "\n- ", RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(normalized, @"<[^>]+>", string.Empty, RegexOptions.IgnoreCase);
+        normalized = WebUtility.HtmlDecode(normalized);
+        normalized = normalized.Replace('\u00A0', ' ');
+        normalized = Regex.Replace(normalized, @"\n{3,}", "\n\n");
+
+        return normalized.Trim();
     }
 
 }

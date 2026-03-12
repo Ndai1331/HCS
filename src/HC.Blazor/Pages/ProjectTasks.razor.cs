@@ -101,6 +101,8 @@ public partial class ProjectTasks
     private IReadOnlyList<ParentTaskSelectItem> ParentTasksCollection { get; set; } = new List<ParentTaskSelectItem>();
     private List<ParentTaskSelectItem> SelectedFilterParentTask { get; set; } = new();
     private List<ParentTaskSelectItem> SelectedNewProjectTaskParentTask { get; set; } = new();
+    private IReadOnlyList<ParentTaskSelectItem> EditParentTasksCollection { get; set; } = new List<ParentTaskSelectItem>();
+    private Guid EditParentTaskSelectKey { get; set; } = Guid.NewGuid();
 
     private ProjectTaskPriority NewProjectTaskPriority { get; set; } = ProjectTaskPriority.LOW;
     private ProjectTaskStatus NewProjectTaskStatus { get; set; } = ProjectTaskStatus.TODO;
@@ -118,6 +120,7 @@ public partial class ProjectTasks
     private bool IsFinishingWizard { get; set; }
     private bool IsUpdatingProjectTask { get; set; }
     private bool IsNavigatingTab { get; set; }
+    private CancellationTokenSource? ProgressFilterSearchCts { get; set; }
     
     // Field-level validation errors
     private Dictionary<string, string?> CreateFieldErrors { get; set; } = new();
@@ -164,7 +167,7 @@ public partial class ProjectTasks
 
     private int PageSize { get; } = 10;//LimitedResultRequestDto.DefaultMaxResultCount;
     private int CurrentPage { get; set; } = 1;
-    private string CurrentSorting { get; set; } = string.Empty;
+    private string CurrentSorting { get; set; } = "ProjectTask.CreationTime DESC";
     private int TotalCount { get; set; }
 
     private bool CanCreateProjectTask { get; set; }
@@ -593,7 +596,6 @@ public partial class ProjectTasks
     {
         try
         {
-            // Get current page and page size for this status
         var currentPage = KanbanPages.GetValueOrDefault(status, 1);
         var pageSize = KanbanPageSizes.GetValueOrDefault(status, KanbanItemsPerColumn);
         var skipCount = (currentPage - 1) * pageSize;
@@ -617,7 +619,7 @@ public partial class ProjectTasks
             ProjectId = Filter.ProjectId,
             SkipCount = skipCount,
             MaxResultCount = pageSize,
-            Sorting = string.Empty
+            Sorting = "ProjectTask.CreationTime DESC"
         };
 
         var result = await ProjectTasksAppService.GetListAsync(input);
@@ -664,29 +666,24 @@ public partial class ProjectTasks
     
     private void UpdateDisplayedKanbanItems()
     {
-        // Filter to show only loaded items (up to current page * pageSize per status)
-        // Group by status and take only the first N items (where N = Page * PageSize for that status)
-        // Use GroupBy to prevent duplicates by Id, and ensure we only take unique items
         var result = new List<KanbanItem>();
         foreach (var status in Enum.GetValues<ProjectTaskStatus>())
         {
-            // First, get distinct items by Id for this status
-            // Group by Id first to remove duplicates, then filter by status
             var distinctStatusItems = AllKanbanItems
                 .GroupBy(item => item.Id)
                 .Select(group => group.First()) // Take first item from each group (by Id) - this ensures no duplicates
                 .Where(item => item.Status == status) // Then filter by status
-                .OrderBy(item => item.Id) // Ensure consistent ordering
+                .OrderByDescending(item => item.ProjectTask.CreationTime)
+                .ThenByDescending(item => item.Code)
+                .ThenByDescending(item => item.Id)
                 .ToList();
             
-            // Calculate how many items to show based on current page and page size
             var currentPage = KanbanPages.GetValueOrDefault(status, 1);
             var pageSize = KanbanPageSizes.GetValueOrDefault(status, KanbanItemsPerColumn);
             var itemsToShow = currentPage * pageSize;
             
             result.AddRange(distinctStatusItems.Take(itemsToShow));
             
-            // Update loaded count to reflect what we're actually showing
             KanbanLoadedCounts[status] = Math.Min(itemsToShow, distinctStatusItems.Count);
         }
         KanbanItems = result;
@@ -791,6 +788,9 @@ public partial class ProjectTasks
         // Convert AllKanbanItems to ProjectTaskWithNavigationPropertiesDto for DataGrid
         var allItems = AllKanbanItems
             .Select(item => item.ProjectTaskWithNavigationProperties)
+            .OrderByDescending(item => item.ProjectTask.CreationTime)
+            .ThenByDescending(item => item.ProjectTask.Code)
+            .ThenByDescending(item => item.ProjectTask.Id)
             .ToList();
         
         TotalCount = allItems.Count;
@@ -937,13 +937,32 @@ public partial class ProjectTasks
     protected virtual async Task OnProgressPercentMinChangedAsync(int? progressPercentMin)
     {
         Filter.ProgressPercentMin = progressPercentMin;
-        await SearchAsync();
+        await DebounceProgressFilterSearchAsync();
     }
 
     protected virtual async Task OnProgressPercentMaxChangedAsync(int? progressPercentMax)
     {
         Filter.ProgressPercentMax = progressPercentMax;
-        await SearchAsync();
+        await DebounceProgressFilterSearchAsync();
+    }
+
+    private async Task DebounceProgressFilterSearchAsync()
+    {
+        ProgressFilterSearchCts?.Cancel();
+        ProgressFilterSearchCts?.Dispose();
+        ProgressFilterSearchCts = new CancellationTokenSource();
+        var cancellationToken = ProgressFilterSearchCts.Token;
+
+        try
+        {
+            // Avoid searching on every keystroke while user is still typing numeric filters.
+            await Task.Delay(350, cancellationToken);
+            await SearchAsync();
+        }
+        catch (TaskCanceledException)
+        {
+            // Expected when user keeps typing and a newer search replaces this one.
+        }
     }
 
     protected virtual async Task OnProjectIdChangedAsync(string? projectId)
@@ -990,6 +1009,43 @@ public partial class ProjectTasks
             .ToList();
 
         return ParentTasksCollection.ToList();
+    }
+
+    private async Task<List<ParentTaskSelectItem>> GetEditParentTaskCollectionLookupAsync(IReadOnlyList<ParentTaskSelectItem> dbset, string filter, CancellationToken token)
+    {
+        var currentProjectId = EditingProjectTask.ProjectId;
+        if (currentProjectId == Guid.Empty && SelectedEditProjectTaskProject.Any())
+        {
+            currentProjectId = SelectedEditProjectTaskProject.First().Id;
+        }
+
+        if (currentProjectId == Guid.Empty)
+        {
+            EditParentTasksCollection = new List<ParentTaskSelectItem>();
+            return new List<ParentTaskSelectItem>();
+        }
+
+        var input = new GetProjectTasksInput
+        {
+            FilterText = filter,
+            MaxResultCount = 20,
+            SkipCount = 0,
+            ProjectId = currentProjectId
+        };
+
+        var result = await ProjectTasksAppService.GetListAsync(input);
+        EditParentTasksCollection = result.Items
+            .Where(x => EditingProjectTaskId == Guid.Empty
+                || (x.ProjectTask.Id != EditingProjectTaskId
+                    && !string.Equals(x.ProjectTask.Code, EditingProjectTask.Code, StringComparison.OrdinalIgnoreCase)))
+            .Select(x => new ParentTaskSelectItem
+            {
+                Id = x.ProjectTask.Code,
+                DisplayName = $"{x.ProjectTask.Code} - {x.ProjectTask.Title}",
+            })
+            .ToList();
+
+        return EditParentTasksCollection.ToList();
     }
 
     protected void OnNewProjectTaskProjectChanged()
@@ -1071,6 +1127,7 @@ public partial class ProjectTasks
             // Reload kanban after deletion
             await RefreshKanbanAsync();
             await GetProjectTasksAsync();
+            await InvokeAsync(StateHasChanged);
         }
     }
     
