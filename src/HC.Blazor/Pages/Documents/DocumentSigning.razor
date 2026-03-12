@@ -325,7 +325,7 @@
             </Field>
 
             @* Step 2: Template file option (shown when workflow has a template file) *@
-            @if (WorkflowSubmitInfo != null && WorkflowSubmitInfo.HasTemplateFile && !string.IsNullOrWhiteSpace(WorkflowSubmitInfo.PdfTemplatePath))
+            @if (WorkflowSubmitInfo != null && WorkflowSubmitInfo.HasTemplateFile && !string.IsNullOrWhiteSpace(GetWorkflowTemplateFilePath(WorkflowSubmitInfo)))
             {
                 <Card Class="mt-2 mb-2 border-info">
                     <CardBody>
@@ -341,9 +341,9 @@
                             <small class="text-muted">@L["WorkflowTemplateFile"]:</small>
                             <div class="d-flex align-items-center mt-1">
                                 <Icon Name="IconName.File" Class="me-2 text-primary" />
-                                <span class="fw-bold">@System.IO.Path.GetFileName(WorkflowSubmitInfo.PdfTemplatePath)</span>
+                                <span class="fw-bold">@GetWorkflowTemplateFileName(WorkflowSubmitInfo)</span>
                             </div>
-                            <small class="text-muted d-block mt-1">@WorkflowSubmitInfo.PdfTemplatePath</small>
+                            <small class="text-muted d-block mt-1">@GetWorkflowTemplateFilePath(WorkflowSubmitInfo)</small>
                         </div>
                     </CardBody>
                 </Card>
@@ -1146,7 +1146,7 @@
                 </Alert>
 
                 @* Template file option *@
-                @if (ReturnedWorkflowInfo.WorkflowInfo.HasTemplateFile && !string.IsNullOrWhiteSpace(ReturnedWorkflowInfo.WorkflowInfo.PdfTemplatePath))
+                @if (ReturnedWorkflowInfo.WorkflowInfo.HasTemplateFile && !string.IsNullOrWhiteSpace(GetWorkflowTemplateFilePath(ReturnedWorkflowInfo.WorkflowInfo)))
                 {
                     <Card Class="mt-2 mb-2 border-info">
                         <CardBody>
@@ -1162,7 +1162,7 @@
                                 <small class="text-muted">@L["WorkflowTemplateFile"]:</small>
                                 <div class="d-flex align-items-center mt-1">
                                     <Icon Name="IconName.File" Class="me-2 text-primary" />
-                                    <span class="fw-bold">@System.IO.Path.GetFileName(ReturnedWorkflowInfo.WorkflowInfo.PdfTemplatePath)</span>
+                                    <span class="fw-bold">@GetWorkflowTemplateFileName(ReturnedWorkflowInfo.WorkflowInfo)</span>
                                 </div>
                             </div>
                         </CardBody>
