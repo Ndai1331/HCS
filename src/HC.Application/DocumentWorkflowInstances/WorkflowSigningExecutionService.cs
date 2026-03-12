@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HC.BnnSoftSigns;
 using HC.DocumentAssignments;
@@ -672,37 +670,59 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 double w = pos.Width;
                 double h = pos.Height;
 
-                var drawRect = BuildDrawRect(page, x, y, w, h, pos.Type);
-                gfx.DrawRectangle(PdfSharpDrawing.XBrushes.White, drawRect);
+                var whiteRect = new PdfSharpDrawing.XRect(x, y, w, h);
+                gfx.DrawRectangle(PdfSharpDrawing.XBrushes.White, whiteRect);
 
                 switch (pos.Type)
                 {
                     case "PREPARED_SIGN":
-                        DrawImage(signatureImageBytes, gfx, drawRect);
+                        if (signatureImageBytes != null && signatureImageBytes.Length > 0)
+                        {
+                            using var imgStream = new MemoryStream(signatureImageBytes);
+                            var img = PdfSharpDrawing.XImage.FromStream(imgStream);
+                            var imgAspect = (double)img.PixelWidth / img.PixelHeight;
+                            var fitWidth = w;
+                            var fitHeight = w / imgAspect;
+                            if (fitHeight > h * 3)
+                            {
+                                fitHeight = h * 3;
+                                fitWidth = fitHeight * imgAspect;
+                            }
+
+                            var imgX = x;
+                            var imgY = y - (fitHeight - h) / 2;
+                            gfx.DrawImage(img, imgX, imgY, fitWidth, fitHeight);
+                        }
                         break;
 
                     case "PREPARED_FULLNAME":
-                        DrawSimpleText(gfx, fullName, pos.FontSize, drawRect);
+                        var preparedNameFont = new PdfSharpDrawing.XFont("Helvetica", pos.FontSize);
+                        gfx.DrawString(fullName, preparedNameFont, PdfSharpDrawing.XBrushes.Black,
+                            whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "HTML_CONTENT":
-                        DrawWrappedText(
-                            gfx,
-                            ConvertHtmlToPdfText(htmlContent),
-                            new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8)),
-                            drawRect);
+                        var preparedContentFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8));
+                        gfx.DrawString(htmlContent ?? string.Empty, preparedContentFont, PdfSharpDrawing.XBrushes.Black,
+                            whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "CURRENT_DAY":
-                        DrawSimpleText(gfx, currentDate.ToString("dd"), pos.FontSize, drawRect);
+                        var dayFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                        gfx.DrawString(currentDate.ToString("dd"), dayFont, PdfSharpDrawing.XBrushes.Black,
+                            whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "CURRENT_MONTH":
-                        DrawSimpleText(gfx, currentDate.ToString("MM"), pos.FontSize, drawRect);
+                        var monthFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                        gfx.DrawString(currentDate.ToString("MM"), monthFont, PdfSharpDrawing.XBrushes.Black,
+                            whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "CURRENT_YEAR":
-                        DrawSimpleText(gfx, currentDate.ToString("yyyy"), pos.FontSize, drawRect);
+                        var yearFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                        gfx.DrawString(currentDate.ToString("yyyy"), yearFont, PdfSharpDrawing.XBrushes.Black,
+                            whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
                 }
             }
@@ -751,49 +771,67 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             double w = pos.Width;
             double h = pos.Height;
 
-            var drawRect = BuildDrawRect(page, x, y, w, h, pos.Type);
-            gfx.DrawRectangle(PdfSharpDrawing.XBrushes.White, drawRect);
+            var whiteRect = new PdfSharpDrawing.XRect(x, y, w, h);
+            gfx.DrawRectangle(PdfSharpDrawing.XBrushes.White, whiteRect);
 
             switch (pos.Type)
             {
                 case "SIGN":
                 case "PREPARED_SIGN":
-                    DrawImage(signatureImageBytes, gfx, drawRect);
+                    if (signatureImageBytes != null && signatureImageBytes.Length > 0)
+                    {
+                        using var imgStream = new MemoryStream(signatureImageBytes);
+                        var img = PdfSharpDrawing.XImage.FromStream(imgStream);
+                        var imgAspect = (double)img.PixelWidth / img.PixelHeight;
+                        var fitWidth = w;
+                        var fitHeight = w / imgAspect;
+                        if (fitHeight > h * 3)
+                        {
+                            fitHeight = h * 3;
+                            fitWidth = fitHeight * imgAspect;
+                        }
+
+                        var imgX = x;
+                        var imgY = y - (fitHeight - h) / 2;
+                        gfx.DrawImage(img, imgX, imgY, fitWidth, fitHeight);
+                    }
                     break;
 
                 case "FULLNAME":
                 case "PREPARED_FULLNAME":
                     var nameFont = new PdfSharpDrawing.XFont("Helvetica", pos.FontSize);
                     gfx.DrawString(fullName, nameFont, PdfSharpDrawing.XBrushes.Black,
-                        drawRect, PdfSharpDrawing.XStringFormats.CenterLeft);
+                        whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "NOTE":
-                    DrawWrappedText(
-                        gfx,
-                        ConvertHtmlToPdfText(noteContent),
-                        new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8)),
-                        drawRect);
+                    var noteFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8));
+                    gfx.DrawString(noteContent, noteFont, PdfSharpDrawing.XBrushes.Black,
+                        whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "HTML_CONTENT":
-                    DrawWrappedText(
-                        gfx,
-                        ConvertHtmlToPdfText(noteContent),
-                        new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8)),
-                        drawRect);
+                    var htmlContentFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8));
+                    gfx.DrawString(noteContent, htmlContentFont, PdfSharpDrawing.XBrushes.Black,
+                        whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "CURRENT_DAY":
-                    DrawSimpleText(gfx, currentDate?.ToString("dd") ?? string.Empty, pos.FontSize, drawRect);
+                    var dayFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                    gfx.DrawString(currentDate?.ToString("dd") ?? string.Empty, dayFont, PdfSharpDrawing.XBrushes.Black,
+                        whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "CURRENT_MONTH":
-                    DrawSimpleText(gfx, currentDate?.ToString("MM") ?? string.Empty, pos.FontSize, drawRect);
+                    var monthFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                    gfx.DrawString(currentDate?.ToString("MM") ?? string.Empty, monthFont, PdfSharpDrawing.XBrushes.Black,
+                        whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "CURRENT_YEAR":
-                    DrawSimpleText(gfx, currentDate?.ToString("yyyy") ?? string.Empty, pos.FontSize, drawRect);
+                    var yearFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                    gfx.DrawString(currentDate?.ToString("yyyy") ?? string.Empty, yearFont, PdfSharpDrawing.XBrushes.Black,
+                        whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
             }
 
@@ -871,152 +909,6 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
 
         return (positions, pageHeights);
-    }
-
-    private static PdfSharpDrawing.XRect BuildDrawRect(
-        PdfSharp.Pdf.PdfPage page,
-        double x,
-        double y,
-        double width,
-        double height,
-        string type)
-    {
-        var pageWidth = page.Width.Point;
-        var maxWidth = Math.Max(40, pageWidth - x - 24);
-
-        return type switch
-        {
-            "NOTE" => new PdfSharpDrawing.XRect(x, y, Math.Max(width, Math.Min(maxWidth, 260)), Math.Max(height * 3, 48)),
-            "HTML_CONTENT" => new PdfSharpDrawing.XRect(x, y, Math.Max(width, maxWidth), Math.Max(height * 8, 140)),
-            _ => new PdfSharpDrawing.XRect(x, y, Math.Max(width, 20), Math.Max(height, 14))
-        };
-    }
-
-    private static void DrawImage(
-        byte[]? imageBytes,
-        PdfSharpDrawing.XGraphics graphics,
-        PdfSharpDrawing.XRect drawRect)
-    {
-        if (imageBytes == null || imageBytes.Length == 0)
-        {
-            return;
-        }
-
-        using var imgStream = new MemoryStream(imageBytes);
-        var img = PdfSharpDrawing.XImage.FromStream(imgStream);
-        var imgAspect = (double)img.PixelWidth / img.PixelHeight;
-        var fitWidth = drawRect.Width;
-        var fitHeight = drawRect.Width / imgAspect;
-        if (fitHeight > drawRect.Height)
-        {
-            fitHeight = drawRect.Height;
-            fitWidth = fitHeight * imgAspect;
-        }
-
-        var imgX = drawRect.Left;
-        var imgY = drawRect.Top + Math.Max((drawRect.Height - fitHeight) / 2, 0);
-        graphics.DrawImage(img, imgX, imgY, fitWidth, fitHeight);
-    }
-
-    private static void DrawSimpleText(
-        PdfSharpDrawing.XGraphics graphics,
-        string text,
-        double fontSize,
-        PdfSharpDrawing.XRect rect)
-    {
-        var font = new PdfSharpDrawing.XFont("Helvetica", Math.Max(fontSize, 8));
-        graphics.DrawString(text ?? string.Empty, font, PdfSharpDrawing.XBrushes.Black, rect, PdfSharpDrawing.XStringFormats.CenterLeft);
-    }
-
-    private static void DrawWrappedText(
-        PdfSharpDrawing.XGraphics graphics,
-        string text,
-        PdfSharpDrawing.XFont font,
-        PdfSharpDrawing.XRect rect)
-    {
-        var lines = WrapText(graphics, text, font, rect.Width);
-        var lineHeight = font.GetHeight() * 1.2;
-        var currentY = rect.Top;
-
-        foreach (var line in lines)
-        {
-            if (currentY + lineHeight > rect.Bottom)
-            {
-                break;
-            }
-
-            var lineRect = new PdfSharpDrawing.XRect(rect.Left, currentY, rect.Width, lineHeight);
-            graphics.DrawString(line, font, PdfSharpDrawing.XBrushes.Black, lineRect, PdfSharpDrawing.XStringFormats.TopLeft);
-            currentY += lineHeight;
-        }
-    }
-
-    private static List<string> WrapText(
-        PdfSharpDrawing.XGraphics graphics,
-        string text,
-        PdfSharpDrawing.XFont font,
-        double maxWidth)
-    {
-        var lines = new List<string>();
-        var paragraphs = (text ?? string.Empty)
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace('\r', '\n')
-            .Split('\n');
-
-        foreach (var paragraph in paragraphs)
-        {
-            if (string.IsNullOrWhiteSpace(paragraph))
-            {
-                lines.Add(string.Empty);
-                continue;
-            }
-
-            var words = paragraph.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var currentLine = string.Empty;
-
-            foreach (var word in words)
-            {
-                var nextLine = string.IsNullOrWhiteSpace(currentLine) ? word : $"{currentLine} {word}";
-                if (graphics.MeasureString(nextLine, font).Width <= maxWidth)
-                {
-                    currentLine = nextLine;
-                    continue;
-                }
-
-                if (!string.IsNullOrWhiteSpace(currentLine))
-                {
-                    lines.Add(currentLine);
-                }
-
-                currentLine = word;
-            }
-
-            if (!string.IsNullOrWhiteSpace(currentLine))
-            {
-                lines.Add(currentLine);
-            }
-        }
-
-        return lines.Any() ? lines : new List<string> { string.Empty };
-    }
-
-    private static string ConvertHtmlToPdfText(string? html)
-    {
-        if (string.IsNullOrWhiteSpace(html))
-        {
-            return string.Empty;
-        }
-
-        var normalized = html;
-        normalized = Regex.Replace(normalized, @"<\s*br\s*/?\s*>", "\n", RegexOptions.IgnoreCase);
-        normalized = Regex.Replace(normalized, @"<\s*/\s*(p|div|h[1-6])\s*>", "\n", RegexOptions.IgnoreCase);
-        normalized = Regex.Replace(normalized, @"<\s*li[^>]*>", "\n- ", RegexOptions.IgnoreCase);
-        normalized = Regex.Replace(normalized, @"<[^>]+>", string.Empty, RegexOptions.IgnoreCase);
-        normalized = WebUtility.HtmlDecode(normalized);
-        normalized = normalized.Replace('\u00A0', ' ');
-        normalized = Regex.Replace(normalized, @"\n{3,}", "\n\n");
-
-        return normalized.Trim();
     }
 
 }
