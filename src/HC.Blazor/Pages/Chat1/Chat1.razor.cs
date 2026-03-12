@@ -1093,6 +1093,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 return; // Skip full reload
             }
 
+            ShowInfoBox = false;
+
             // Show loading spinner
             IsLoadingMessages = true;
             ChatConversationDto = null; // Clear previous messages

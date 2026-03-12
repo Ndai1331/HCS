@@ -95,31 +95,17 @@ window.chatHub = {
         });
 
         // Register ConversationCreated handler
+        // Only ChatHubConnectionService has OnConversationCreated - Notification component does not
         window.baseHub.registerEventHandler("chat", "ConversationCreated", async (helper, conversationData) => {
             window.hcLogger.log("Chat Hub: ConversationCreated event received", conversationData);
-            
-            // Only call OnConversationCreated if this is NOT the notification helper
-            if (helper !== window._chatNotificationHelper) {
-                await helper.invokeMethodAsync("OnConversationCreated", conversationData)
-                    .catch(err => {
-                        window.hcLogger.error("Chat Hub: Error calling OnConversationCreated:", err);
-                        // Disposal handled by baseHub
-                    });
+
+            if (helper === window._chatNotificationHelper) {
+                return;
             }
-            
-            // Only call NotificationToast helper if this IS the notification helper
-            if (window._chatNotificationHelper && helper === window._chatNotificationHelper) {
-                window.hcLogger.log("Chat Hub: Calling OnConversationCreated for NotificationToast helper");
-                const conversationJson = JSON.stringify(conversationData);
-                await helper.invokeMethodAsync("OnConversationCreated", conversationJson)
-                    .then(() => window.hcLogger.log("Chat Hub: OnConversationCreated for NotificationToast completed"))
-                    .catch(err => {
-                        window.hcLogger.error("Chat Hub: Error calling OnConversationCreated for NotificationToast:", err);
-                        if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
-                            window.hcLogger.log("Chat Hub: Notification helper was disposed, cleaning up...");
-                            window._chatNotificationHelper = null;
-                        }
-                    });
+            try {
+                await helper.invokeMethodAsync("OnConversationCreated", conversationData);
+            } catch (err) {
+                window.hcLogger.error("Chat Hub: Error calling OnConversationCreated:", err);
             }
         });
 

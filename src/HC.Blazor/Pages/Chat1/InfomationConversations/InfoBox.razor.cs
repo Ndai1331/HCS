@@ -125,6 +125,13 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private string SelectedTabMediaFiles { get; set; } = "images";
     private bool IsCurrentUserAdmin { get; set; }
     private bool ShowFindMessage { get; set; }
+
+    private void ResetAccordionToDefault()
+    {
+        AccordionChatInfoVisible = false;
+        AccordionChatMembersVisible = false;
+        AccordionMediaFilesVisible = false;
+    }
     private string SearchMessageValue { get; set; } = "";
     private List<ChatMessageDto> PinnedMessages { get; set; } = new();
 
@@ -148,12 +155,13 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         if (_previousChatContact?.ConversationId != CurrentChatContact.ConversationId
             || !ReferenceEquals(_previousChatContact, CurrentChatContact))
         {
-            await LoadConversationMembersAsync();
-            CheckIsCurrentUserAdminAsync();
             if (_previousChatContact?.ConversationId != CurrentChatContact.ConversationId)
             {
+                ResetAccordionToDefault();
                 await CloseFindMessageAsync();
             }
+            await LoadConversationMembersAsync();
+            CheckIsCurrentUserAdminAsync();
             _previousChatContact = CurrentChatContact;
         }
     }
