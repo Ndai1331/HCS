@@ -56,6 +56,8 @@
     "Finish": "Finish",
     "Assignee": "Assignee",
     "NotificationError": "Error",
+    "SessionExpired": "Session expired",
+    "RedirectingToLogin": "Redirecting to login...",
     "ValidationError": "Validation Error",
     "ProjectRequired": "Please choose a project.",
     "PleaseSelectAProject": "Please select a project",

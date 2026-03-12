@@ -66,6 +66,8 @@
     "AssignedAt": "Thời gian giao",
     "DocumentPurpose": "Mục đích tài liệu",
     "NotificationError": "Lỗi",
+    "SessionExpired": "Phiên đăng nhập đã hết hạn",
+    "RedirectingToLogin": "Đang chuyển hướng đến trang đăng nhập...",
     "ValidationError": "Lỗi xác thực",
     "ProjectRequired": "Vui lòng chọn dự án.",
     "PleaseSelectAProject": "Vui lòng chọn dự án",

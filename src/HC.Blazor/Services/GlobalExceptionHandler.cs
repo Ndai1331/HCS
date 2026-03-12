@@ -62,7 +62,15 @@ public class GlobalExceptionHandler
         catch
         {
             // If logout fails, still redirect
-            _navigationManager.NavigateTo("/Account/Logout", forceLoad: true);
+            RedirectToLogin();
         }
+    }
+
+    /// <summary>
+    /// Redirect to login page. Use when session expired or auth fails.
+    /// </summary>
+    public void RedirectToLogin()
+    {
+        _navigationManager.NavigateTo("/Account/Login", forceLoad: true);
     }
 }
