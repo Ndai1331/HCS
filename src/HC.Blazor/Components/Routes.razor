@@ -1,6 +1,7 @@
 @using Microsoft.Extensions.Options
 @using Microsoft.Extensions.Localization
 @using global::Localization.Resources.AbpUi
+@using HC.Localization
 @using Volo.Abp.AspNetCore.Components.Web.LeptonXTheme
 @using Volo.Abp.AspNetCore.Components.Web.LeptonXTheme.Components
 @using Volo.Abp.AspNetCore.Components.Web.LeptonXTheme.Components.ApplicationLayout
@@ -9,47 +10,46 @@
 @inject IOptions<AbpRouterOptions> RouterOptions
 @inject IOptions<LeptonXThemeBlazorOptions> LayoutOptions
 @inject IStringLocalizer<AbpUiResource> UiLocalizer
+@inject IStringLocalizer<HCResource> L
 
 <CascadingAuthenticationState>
-    @* <ErrorBoundary @ref="_errorBoundary">
+    <ErrorBoundary @ref="_errorBoundary">
         <ChildContent>
-           
+            <Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="RouterOptions.Value.AdditionalAssemblies">
+                <Found Context="routeData">
+                    <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@LayoutOptions.Value.Layout">
+                        <Authorizing>
+                            @UiLocalizer["Authorizing"]
+                        </Authorizing>
+                        <NotAuthorized>
+                            @if (context.User?.Identity?.IsAuthenticated != true)
+                            {
+                                <RedirectToLogin/>
+                            }
+                            else
+                            {
+                                <ErrorView
+                                    Title="@UiLocalizer["403Message"]"
+                                    HttpStatusCode="403"
+                                    Message="@UiLocalizer["403MessageDetail"]"/>
+                            }
+                        </NotAuthorized>
+                    </AuthorizeRouteView>
+                </Found>
+                <NotFound>
+                    <LayoutView Layout="@LayoutOptions.Value.Layout">
+                        <ErrorView
+                            Title="@UiLocalizer["404Message"]"
+                            HttpStatusCode="404"
+                            Message="@UiLocalizer["404MessageDetail"]"/>
+                    </LayoutView>
+                </NotFound>
+            </Router>
         </ChildContent>
         <ErrorContent Context="exception">
             @HandleGlobalException(exception)
         </ErrorContent>
-    </ErrorBoundary> *@
-
-     <Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="RouterOptions.Value.AdditionalAssemblies">
-        <Found Context="routeData">
-            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@LayoutOptions.Value.Layout">
-                <Authorizing>
-                    @UiLocalizer["Authorizing"]
-                </Authorizing>
-                <NotAuthorized>
-                    @if (context.User?.Identity?.IsAuthenticated != true)
-                    {
-                        <RedirectToLogin/>
-                    }
-                    else
-                    {
-                        <ErrorView
-                            Title="@UiLocalizer["403Message"]"
-                            HttpStatusCode="403"
-                            Message="@UiLocalizer["403MessageDetail"]"/>
-                    }
-                </NotAuthorized>
-            </AuthorizeRouteView>
-        </Found>
-        <NotFound>
-            <LayoutView Layout="@LayoutOptions.Value.Layout">
-                <ErrorView
-                    Title="@UiLocalizer["404Message"]"
-                    HttpStatusCode="404"
-                    Message="@UiLocalizer["404MessageDetail"]"/>
-            </LayoutView>
-        </NotFound>
-    </Router>
+    </ErrorBoundary>
 </CascadingAuthenticationState>
 
 @code {
@@ -63,18 +63,26 @@
 
     private RenderFragment HandleGlobalException(Exception exception)
     {
-        // Handle global exceptions
-        _ = Task.Run(async () =>
+        // Redirect to login when session expired (Unauthorized)
+        if (IsUnauthorizedException(exception))
         {
-            try
+            _ = InvokeAsync(async () =>
             {
-                await GlobalExceptionHandler.HandleAuthErrorExceptionAsync(exception);
-            }
-            catch(Exception ex)
-            {
-                // lỗi khác
-            }
-        });
+                try
+                {
+                    await GlobalExceptionHandler.HandleAuthErrorExceptionAsync(exception);
+                }
+                catch
+                {
+                    // Fallback: redirect to login
+                    GlobalExceptionHandler.RedirectToLogin();
+                }
+            });
+            return @<div class="alert alert-info m-3">
+                <h4>@L["SessionExpired"]</h4>
+                <p>@L["RedirectingToLogin"]</p>
+            </div>;
+        }
 
         return @<div class="alert alert-danger m-3">
             <h4>@UiLocalizer["Error"]</h4>
@@ -83,6 +91,19 @@
             @onclick="RecoverFromError">@UiLocalizer["Retry"]
             </button>
         </div>;
+    }
+
+    private static bool IsUnauthorizedException(Exception exception)
+    {
+        if (exception is Volo.Abp.Http.Client.AbpRemoteCallException remoteEx)
+        {
+            var msg = remoteEx.Message ?? string.Empty;
+            return msg.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase)
+                   || msg.Contains("401", StringComparison.Ordinal)
+                   || msg.Contains("Token", StringComparison.OrdinalIgnoreCase)
+                   || msg.Contains("Authentication", StringComparison.OrdinalIgnoreCase);
+        }
+        return exception.InnerException != null && IsUnauthorizedException(exception.InnerException);
     }
 
     private void RecoverFromError()

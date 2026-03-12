@@ -326,7 +326,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             return sourceFileId;
         }
 
-        if ((sourceExtension == ".doc" || sourceExtension == ".docx") && !HasMeaningfulRichTextContent(htmlContent))
+        if ((sourceExtension == ".doc" || sourceExtension == ".docx") && string.IsNullOrWhiteSpace(htmlContent))
         {
             throw new UserFriendlyException(_localizer["The {0} field is required.", _localizer["SigningContent"]]);
         }
@@ -582,35 +582,6 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
 
         return (signature, user, fullName);
-    }
-
-    private static bool HasMeaningfulRichTextContent(string? html)
-    {
-        if (string.IsNullOrWhiteSpace(html))
-        {
-            return false;
-        }
-
-        var normalized = html.Trim();
-        if (string.IsNullOrWhiteSpace(normalized))
-        {
-            return false;
-        }
-
-        if (normalized.Contains("<img", StringComparison.OrdinalIgnoreCase)
-            || normalized.Contains("<table", StringComparison.OrdinalIgnoreCase)
-            || normalized.Contains("<iframe", StringComparison.OrdinalIgnoreCase)
-            || normalized.Contains("<video", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        var plainText = Regex.Replace(normalized, "<[^>]+>", string.Empty);
-        plainText = System.Net.WebUtility.HtmlDecode(plainText)
-            .Replace(' ', ' ')
-            .Trim();
-
-        return !string.IsNullOrWhiteSpace(plainText);
     }
 
     private static string ResolveFileExtension(DocumentFile sourceFile)
