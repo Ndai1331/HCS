@@ -236,6 +236,23 @@
     }
 
     [JSInvokable]
+    public async Task OnNotificationReceived(string notificationId)
+    {
+        try
+        {
+            // Keep notification bell data in sync when a new notification arrives via SignalR.
+            await LoadUnreadCountAsync();
+            await LoadNotificationsAsync();
+            await LoadChatUnreadCountAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            // Log error if needed
+        }
+    }
+
+    [JSInvokable]
     public async Task OnChatUnreadCountChanged()
     {
         try
