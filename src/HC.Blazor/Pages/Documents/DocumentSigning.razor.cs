@@ -1249,6 +1249,21 @@ public partial class DocumentSigning
         return $"{providerCode} (ValidTo: {validTo})";
     }
 
+    private static string? GetWorkflowTemplateFilePath(WorkflowSubmitInfoDto? workflowInfo)
+    {
+        return !string.IsNullOrWhiteSpace(workflowInfo?.WordTemplatePath)
+            ? workflowInfo.WordTemplatePath
+            : workflowInfo?.PdfTemplatePath;
+    }
+
+    private static string GetWorkflowTemplateFileName(WorkflowSubmitInfoDto? workflowInfo)
+    {
+        var path = GetWorkflowTemplateFilePath(workflowInfo);
+        return string.IsNullOrWhiteSpace(path)
+            ? string.Empty
+            : Path.GetFileName(path);
+    }
+
     private static string? NormalizeRichTextHtml(string? html)
     {
         if (string.IsNullOrWhiteSpace(html))

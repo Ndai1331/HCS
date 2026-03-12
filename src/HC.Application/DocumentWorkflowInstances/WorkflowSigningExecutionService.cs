@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using HC.DocumentFiles;
 using HC.Localization;
 using HC.SignatureSettings;
 using HC.UserSignatures;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using PdfSharpDrawing = PdfSharp.Drawing;
@@ -60,6 +62,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
     private readonly IAsyncQueryableExecuter _asyncExecuter;
     private readonly IStringLocalizer<HCResource> _localizer;
     private readonly ILogger<WorkflowSigningExecutionService> _logger;
+    private readonly IConfiguration _configuration;
 
     public WorkflowSigningExecutionService(
         IDocumentAssignmentRepository documentAssignmentRepository,
@@ -74,7 +77,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         IGuidGenerator guidGenerator,
         IAsyncQueryableExecuter asyncExecuter,
         IStringLocalizer<HCResource> localizer,
-        ILogger<WorkflowSigningExecutionService> logger)
+        ILogger<WorkflowSigningExecutionService> logger,
+        IConfiguration configuration)
     {
         _documentAssignmentRepository = documentAssignmentRepository;
         _documentFileRepository = documentFileRepository;
@@ -89,6 +93,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         _asyncExecuter = asyncExecuter;
         _localizer = localizer;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task ApplyDigitalSignatureAsync(
@@ -297,11 +302,11 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         var (signature, _, fullName) = await GetValidatedElectronicSignatureAsync(currentUserId);
 
-        byte[] pdfBytes;
+        byte[] fileBytes;
         byte[] signatureImageBytes;
         try
         {
-            pdfBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
+            fileBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
             signatureImageBytes = await ResolveSignatureImageBytesAsync(signature.SignatureImage);
         }
         catch (UserFriendlyException)
@@ -313,6 +318,21 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             _logger.LogError(ex, "[SUBMIT_PREPARE] Error loading source PDF or signature image. SourceFileId={SourceFileId}", sourceFileId.Value);
             throw new UserFriendlyException(_localizer["ErrorProcessingPdf", ex.Message]);
         }
+
+        var sourceExtension = ResolveFileExtension(sourceFile);
+        if (sourceExtension != ".pdf" && sourceExtension != ".doc" && sourceExtension != ".docx")
+        {
+            return sourceFileId;
+        }
+
+        if ((sourceExtension == ".doc" || sourceExtension == ".docx") && string.IsNullOrWhiteSpace(htmlContent))
+        {
+            throw new UserFriendlyException(_localizer["The {0} field is required.", _localizer["SigningContent"]]);
+        }
+
+        byte[] pdfBytes = sourceExtension == ".pdf"
+            ? fileBytes
+            : await ConvertWordToPdfAsync(fileBytes, sourceExtension);
 
         byte[] preparedPdfBytes;
         try
@@ -334,12 +354,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             throw new UserFriendlyException(_localizer["ErrorProcessingPdf", ex.Message]);
         }
 
-        var extension = Path.GetExtension(sourceFile.Name);
-        if (string.IsNullOrWhiteSpace(extension))
-        {
-            extension = ".pdf";
-        }
-
+        var extension = ".pdf";
         var newBlobPath = $"{WorkflowConstants.BlobPathSigningSteps}{Guid.NewGuid()}{extension}";
         await _blobContainer.SaveAsync(newBlobPath, preparedPdfBytes);
 
@@ -566,6 +581,86 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
 
         return (signature, user, fullName);
+    }
+
+    private static string ResolveFileExtension(DocumentFile sourceFile)
+    {
+        var extension = Path.GetExtension(sourceFile.Name);
+        if (string.IsNullOrWhiteSpace(extension) && !string.IsNullOrWhiteSpace(sourceFile.Path))
+        {
+            extension = Path.GetExtension(sourceFile.Path);
+        }
+
+        return string.IsNullOrWhiteSpace(extension) ? string.Empty : extension.ToLowerInvariant();
+    }
+
+    private async Task<byte[]> ConvertWordToPdfAsync(byte[] sourceBytes, string sourceExtension)
+    {
+        var sofficePath = _configuration["LibreOffice:SofficePath"];
+        if (string.IsNullOrWhiteSpace(sofficePath))
+        {
+            sofficePath = "soffice";
+        }
+
+        var tempDir = Path.Combine(Path.GetTempPath(), $"hc-sign-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        var inputPath = Path.Combine(tempDir, $"source{sourceExtension}");
+        await File.WriteAllBytesAsync(inputPath, sourceBytes);
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = sofficePath,
+                Arguments = $"--headless --convert-to pdf --outdir \"{tempDir}\" \"{inputPath}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(psi) ?? throw new UserFriendlyException(_localizer["WordToPdfConversionFailed"]);
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
+            {
+                var error = await process.StandardError.ReadToEndAsync();
+                _logger.LogError("[SUBMIT_PREPARE] Word to PDF conversion failed. ExitCode={ExitCode}, Error={Error}", process.ExitCode, error);
+                throw new UserFriendlyException(_localizer["WordToPdfConversionFailed"]);
+            }
+
+            var outputPdfPath = Path.Combine(tempDir, $"source.pdf");
+            if (!File.Exists(outputPdfPath))
+            {
+                throw new UserFriendlyException(_localizer["WordToPdfConversionFailed"]);
+            }
+
+            return await File.ReadAllBytesAsync(outputPdfPath);
+        }
+        catch (UserFriendlyException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SUBMIT_PREPARE] Unexpected error when converting Word to PDF.");
+            throw new UserFriendlyException(_localizer["WordToPdfConversionFailed"]);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[SUBMIT_PREPARE] Failed to cleanup temp word conversion directory: {TempDir}", tempDir);
+            }
+        }
     }
 
     private sealed class PlaceholderPosition
