@@ -1,3 +1,4 @@
+using HC.Chat.Helpers;
 using HC.Shared;
 using HC.Projects;
 using System;

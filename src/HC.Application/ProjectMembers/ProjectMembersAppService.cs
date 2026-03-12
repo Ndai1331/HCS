@@ -1,3 +1,4 @@
+using HC.Chat.Helpers;
 using HC.Shared;
 using Volo.Abp.Identity;
 using HC.Projects;
