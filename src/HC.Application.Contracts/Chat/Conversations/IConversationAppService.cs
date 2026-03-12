@@ -38,6 +38,14 @@ public interface IConversationAppService : IApplicationService
     
     Task RemoveMemberAsync(RemoveMemberInput input);
     
+    Task SetMemberRoleAsync(SetMemberRoleInput input);
+    
+    Task LeaveConversationAsync(LeaveConversationInput input);
+    
+    Task TransferAdminAndLeaveAsync(TransferAdminAndLeaveInput input);
+    
+    Task<ConversationPermissionDto> GetMyPermissionsAsync(Guid conversationId);
+    
     Task<List<ConversationMemberDto>> GetMembersAsync(Guid conversationId);
     
     Task<List<ConversationDto>> GetPinnedConversationsAsync();

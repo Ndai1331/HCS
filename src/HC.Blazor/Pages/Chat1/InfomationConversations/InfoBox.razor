@@ -172,7 +172,7 @@
                 </Div>
 
                 <Div Class="mb-2  d-flex justify-content-center align-items-center">
-                    @if(CurrentChatContact.Type != ConversationType.User)
+                    @if(CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User)
                     {
                         <Div Class="mx-2 mb-2 text-center">
                             <div class="d-inline-block bg-light px-1 rounded-4 text-black-50
@@ -208,7 +208,7 @@
                             </Button>
                         </AccordionBody>
                     </AccordionItem>
-                    @if(CurrentChatContact.Type != ConversationType.User)
+                    @if(CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User)
                     {
                         <AccordionItem @bind-Visible="@AccordionChatMembersVisible">
                             <AccordionHeader>
@@ -231,40 +231,74 @@
                                             <Div Class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                                 <div class="d-flex align-items-center gap-2">
                                                     <canvas id="member-avatar-@member.UserId" class="canvas-avatar rounded-circle" Width="30" Height="30"></canvas>
-                                                    <span>@member.UserInfo?.Surname @member.UserInfo?.Name</span>
+                                                    <div class="d-flex flex-column">
+                                                        <span class="@(member.Role == "ADMIN" ? "fw-bold text-brand" : "")">
+                                                            @member.UserInfo?.Surname @member.UserInfo?.Name
+                                                        </span>
+                                                        @if(member.Role == "ADMIN")
+                                                        {
+                                                            <small class="text-muted" style="font-size: 0.7rem;">@L["Admin"]</small>
+                                                        }
+                                                    </div>
                                                 </div>
                                                 <div class="dropdown d-flex align-items-center gap-2">
                                                     <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                                         <i class="lpx-caret bi-three-dots" aria-hidden="true"></i>
                                                     </button>
                                                     <ul class="dropdown-menu">
-                                                    @if(member.UserId != CurrentUserId)
-                                                    {
+                                                        @if(member.UserId != CurrentUserId)
+                                                        {
                                                             <li>
                                                                 <a class="dropdown-item"
-                                                                @onclick="async () => await SendMessageToMemberAsync( new ConversationMemberDto { UserId = member.UserId, ConversationId = CurrentChatContact.ConversationId.Value })">
-                                                                    <i class="bi bi-chat-left-text"></i> @L["SendMessage"]
-                                                                </a>
-                                                            </li>
-                                                    }
-
-                                                        @if(member.UserId == CurrentUserId)
-                                                        {   
-                                    
-                                                            <li>
-                                                                <a class="dropdown-item" @onclick="async () => await LeaveConversationFromInfoBoxAsync(new RemoveMemberInput { ConversationId = CurrentChatContact.ConversationId.Value, UserId = member.UserId })">
-                                                                    <i class="bi bi-arrow-bar-left"></i> @L["LeaveConversation"]
+                                                                @onclick="async () => await SendMessageToMemberAsync(member)">
+                                                                    <i class="bi bi-chat-left-text me-1"></i> @L["SendMessage"]
                                                                 </a>
                                                             </li>
                                                         }
 
                                                         @if(IsCurrentUserAdmin && member.UserId != CurrentUserId)
                                                         {
+                                                            @if(member.Role != "ADMIN")
+                                                            {
+                                                                <li>
+                                                                    <a class="dropdown-item" @onclick="() => SetMemberRoleFromInfoBoxAsync(member.UserId, RoleAdmin)">
+                                                                        <i class="bi bi-shield-check text-success me-1"></i> @L["SetAdmin"]
+                                                                    </a>
+                                                                </li>
+                                                            }
+                                                            else
+                                                            {
+                                                                <li>
+                                                                    <a class="dropdown-item" @onclick="() => SetMemberRoleFromInfoBoxAsync(member.UserId, RoleMember)">
+                                                                        <i class="bi bi-shield-x text-warning me-1"></i> @L["RemoveAdmin"]
+                                                                    </a>
+                                                                </li>
+                                                            }
                                                             <li>
-                                                                <a class="dropdown-item" @onclick="async () => await RemoveMemberFromInfoBoxAsync(new RemoveMemberInput { ConversationId = CurrentChatContact.ConversationId.Value, UserId = member.UserId })">
-                                                                    <i class="bi bi-trash"></i> @L["Delete"]
+                                                                <a class="dropdown-item text-danger" @onclick="async () => await RemoveMemberFromInfoBoxAsync(new RemoveMemberInput { ConversationId = CurrentChatContact.ConversationId.Value, UserId = member.UserId })">
+                                                                    <i class="bi bi-person-x me-1"></i> @L["RemoveMember"]
                                                                 </a>
                                                             </li>
+                                                        }
+
+                                                        @if(member.UserId == CurrentUserId)
+                                                        {
+                                                            @if(!IsOnlyAdmin)
+                                                            {
+                                                                <li>
+                                                                    <a class="dropdown-item text-danger" @onclick="async () => await LeaveConversationFromInfoBoxAsync(new RemoveMemberInput { ConversationId = CurrentChatContact.ConversationId.Value, UserId = member.UserId })">
+                                                                        <i class="bi bi-box-arrow-left me-1"></i> @L["LeaveConversation"]
+                                                                    </a>
+                                                                </li>
+                                                            }
+                                                            else
+                                                            {
+                                                                <li>
+                                                                    <a class="dropdown-item text-muted disabled">
+                                                                        <i class="bi bi-exclamation-triangle me-1"></i> @L["MustTransferAdminBeforeLeaving"]
+                                                                    </a>
+                                                                </li>
+                                                            }
                                                         }
                                                     </ul>
                                                 </div>

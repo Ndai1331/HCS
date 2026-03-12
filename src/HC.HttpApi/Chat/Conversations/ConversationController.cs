@@ -129,6 +129,52 @@ public class ConversationController : ChatController, IConversationAppService
         return _conversationAppService.RemoveMemberAsync(input);
     }
     
+    [HttpPut]
+    [Route("{id}/members/{userId}/role")]
+    public Task SetMemberRoleAsync(Guid id, Guid userId, [FromBody] SetMemberRoleInput input)
+    {
+        input.ConversationId = id;
+        input.UserId = userId;
+        return ((IConversationAppService)this).SetMemberRoleAsync(input);
+    }
+    
+    Task IConversationAppService.SetMemberRoleAsync(SetMemberRoleInput input)
+    {
+        return _conversationAppService.SetMemberRoleAsync(input);
+    }
+    
+    [HttpPost]
+    [Route("{id}/leave")]
+    public Task LeaveConversationAsync(Guid id)
+    {
+        return ((IConversationAppService)this).LeaveConversationAsync(new LeaveConversationInput { ConversationId = id });
+    }
+    
+    Task IConversationAppService.LeaveConversationAsync(LeaveConversationInput input)
+    {
+        return _conversationAppService.LeaveConversationAsync(input);
+    }
+    
+    [HttpPost]
+    [Route("{id}/transfer-admin-and-leave")]
+    public Task TransferAdminAndLeaveAsync(Guid id, [FromBody] TransferAdminAndLeaveInput input)
+    {
+        input.ConversationId = id;
+        return ((IConversationAppService)this).TransferAdminAndLeaveAsync(input);
+    }
+    
+    Task IConversationAppService.TransferAdminAndLeaveAsync(TransferAdminAndLeaveInput input)
+    {
+        return _conversationAppService.TransferAdminAndLeaveAsync(input);
+    }
+    
+    [HttpGet]
+    [Route("{id}/my-permissions")]
+    public Task<ConversationPermissionDto> GetMyPermissionsAsync(Guid id)
+    {
+        return _conversationAppService.GetMyPermissionsAsync(id);
+    }
+    
     [HttpGet]
     [Route("{id}/members")]
     public Task<List<ConversationMemberDto>> GetMembersAsync(Guid id)

@@ -14,12 +14,16 @@ using HC.Blazor.Extensions;
 using Blazorise;
 using HC.Chat.Users;
 using HC.DocumentFiles;
+using Volo.Abp.AspNetCore.Components.Messages;
 
 
 namespace HC.Blazor.Pages.Chat1.InfomationConversations;
 
 public partial class InfoBox : HCComponentBase, IAsyncDisposable
 {
+    private const string RoleAdmin = "ADMIN";
+    private const string RoleMember = "MEMBER";
+
     [Inject]
     public IJSRuntime JsRuntime { get; set; }
 
@@ -141,11 +145,15 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
             return;
         }
 
-        if (_previousChatContact?.ConversationId != CurrentChatContact.ConversationId)
+        if (_previousChatContact?.ConversationId != CurrentChatContact.ConversationId
+            || !ReferenceEquals(_previousChatContact, CurrentChatContact))
         {
             await LoadConversationMembersAsync();
             CheckIsCurrentUserAdminAsync();
-            await CloseFindMessageAsync();
+            if (_previousChatContact?.ConversationId != CurrentChatContact.ConversationId)
+            {
+                await CloseFindMessageAsync();
+            }
             _previousChatContact = CurrentChatContact;
         }
     }
@@ -262,8 +270,46 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private async Task RemoveMemberFromInfoBoxAsync(RemoveMemberInput input) =>
         await ExecuteMemberActionAsync(() => RemoveMemberAsync?.Invoke(input));
 
-    private async Task LeaveConversationFromInfoBoxAsync(RemoveMemberInput input) =>
-        await ExecuteMemberActionAsync(() => LeaveConversationAsync?.Invoke(input));
+    private async Task LeaveConversationFromInfoBoxAsync(RemoveMemberInput input)
+    {
+        if (LeaveConversationAsync != null)
+        {
+            await LeaveConversationAsync.Invoke(input);
+        }
+    }
+
+    private async Task SetMemberRoleFromInfoBoxAsync(Guid userId, string role)
+    {
+        if (CurrentChatContact?.ConversationId == null) return;
+        try
+        {
+            await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
+            try
+            {
+                await ConversationService.SetMemberRoleAsync(new SetMemberRoleInput
+                {
+                    ConversationId = CurrentChatContact.ConversationId.Value,
+                    UserId = userId,
+                    Role = role
+                });
+                await LoadConversationMembersAsync();
+                CheckIsCurrentUserAdminAsync();
+            }
+            finally
+            {
+                await BlockUiService.UnBlock();
+            }
+        }
+        catch (Exception ex)
+        {
+            try { await BlockUiService.UnBlock(); } catch { }
+            await UiMessageService.Error(ex.Message,
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+        }
+    }
+
+    private bool IsOnlyAdmin => Members.Count(m => m.Role == "ADMIN") <= 1 
+                                && Members.Any(m => m.UserId == CurrentUserId && m.Role == "ADMIN");
 
     private async Task AddMembersToInfoBoxAsync()
     {

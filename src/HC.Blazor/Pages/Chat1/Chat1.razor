@@ -190,7 +190,7 @@
                                                         <div class="media" @onclick="async () => await SetActiveAsync(chatContact)" >
                                                             @if (chatContact.Type == ConversationType.User)
                                                             {
-                                                                <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="24" Height="24"></canvas>
+                                                                <canvas id="contact-avatar-@chatContact.UserId" @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="24" Height="24"></canvas>
                                                             }
                                                             else if (chatContact.Type == ConversationType.Group)
                                                             {
@@ -249,17 +249,14 @@
                                                                             }
                                                                         </a>
                                                                     </li>
-                                                                    @if (chatContact.MemberRole == "MEMBER")
-                                                                    {
-                                                                        <li>
-                                                                            <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(new RemoveMemberInput { ConversationId = chatContact.ConversationId.Value, UserId = CurrentUser.Id.Value })">
-                                                                                <i class="bi bi-arrow-bar-left text-danger me-1"></i> @L["LeaveConversation"]
-                                                                            </a>
-                                                                        </li>
-                                                                    }
+                                                                    <li>
+                                                                        <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(new RemoveMemberInput { ConversationId = chatContact.ConversationId.Value, UserId = CurrentUser.Id.Value })">
+                                                                            <i class="bi bi-box-arrow-left text-danger me-1"></i> @L["LeaveConversation"]
+                                                                        </a>
+                                                                    </li>
 
                                                                 }
-                                                                @if (IsDeletingConversationEnabled() && chatContact.MemberRole == "ADMIN")
+                                                                @if (IsDeletingConversationEnabled(chatContact))
                                                                 {
                                                                     <li>
                                                                         <a class="dropdown-item delete-conversation-btn" @onclick="async () => await DeleteConversationAsync()">
@@ -533,7 +530,7 @@
                                                 <div class="media" @onclick="async () => await SetActiveAsync(chatContact)" >
                                                     @if (chatContact.Type == ConversationType.User)
                                                     {
-                                                        <canvas @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="24" Height="24"></canvas>
+                                                        <canvas id="contact-avatar-@chatContact.UserId" @ref="CanvasElementReferences[chatContact]" class="canvas-avatar mx-auto rounded-circle" Width="24" Height="24"></canvas>
                                                     }
                                                     else if (chatContact.Type == ConversationType.Group)
                                                     {
@@ -592,17 +589,14 @@
                                                                     }
                                                                 </a>
                                                             </li>
-                                                            @if (chatContact.MemberRole == "MEMBER")
-                                                            {
-                                                                <li>
-                                                                    <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(new RemoveMemberInput { ConversationId = chatContact.ConversationId.Value, UserId = CurrentUser.Id.Value })">
-                                                                        <i class="bi bi-arrow-bar-left text-danger me-1"></i> @L["LeaveConversation"]
-                                                                    </a>
-                                                                </li>
-                                                            }
+                                                            <li>
+                                                                <a class="dropdown-item" @onclick="async () => await LeaveConversationAsync(new RemoveMemberInput { ConversationId = chatContact.ConversationId.Value, UserId = CurrentUser.Id.Value })">
+                                                                    <i class="bi bi-box-arrow-left text-danger me-1"></i> @L["LeaveConversation"]
+                                                                </a>
+                                                            </li>
 
                                                         }
-                                                        @if (IsDeletingConversationEnabled() && chatContact.MemberRole == "ADMIN")
+                                                        @if (IsDeletingConversationEnabled(chatContact))
                                                         {
                                                             <li>
                                                                 <a class="dropdown-item delete-conversation-btn" @onclick="async () => await DeleteConversationAsync()">

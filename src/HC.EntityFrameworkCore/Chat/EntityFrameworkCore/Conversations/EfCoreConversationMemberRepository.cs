@@ -32,9 +32,26 @@ public class EfCoreConversationMemberRepository : EfCoreRepository<IChatDbContex
 
     public virtual async Task<List<ConversationMember>> GetByUserIdsAsync(List<Guid> userIds, ConversationType type, CancellationToken cancellationToken = default)
     {
-        return await (await GetDbSetAsync())
+        var dbSet = await GetDbSetAsync();
+        var requiredCount = userIds.Count;
+
+        // Find conversations where ALL provided users are active members
+        var matchingConversationIds = await dbSet
             .Include(x => x.Conversation)
             .Where(x => userIds.Contains(x.UserId) && x.IsActive && x.Conversation.Type == type)
+            .GroupBy(x => x.ConversationId)
+            .Where(g => g.Select(m => m.UserId).Distinct().Count() >= requiredCount)
+            .Select(g => g.Key)
+            .ToListAsync(GetCancellationToken(cancellationToken));
+
+        if (!matchingConversationIds.Any())
+        {
+            return new List<ConversationMember>();
+        }
+
+        return await dbSet
+            .Include(x => x.Conversation)
+            .Where(x => matchingConversationIds.Contains(x.ConversationId) && x.IsActive)
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
     public virtual async Task<List<ConversationMember>> GetPinnedByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)

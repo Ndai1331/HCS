@@ -258,12 +258,33 @@ public class ConversationAppService : ChatAppService, IConversationAppService
     
     public async Task DeleteConversationAsync(DeleteConversationInput input)
     {
-        await _messagingManager.DeleteConversationAsync(CurrentUser.GetId(), input.TargetUserId);
-        
-        await _realTimeChatMessageSender.DeleteConversationAsync(
-            input.TargetUserId,
-            CurrentUser.GetId()
-        );
+        if (input.ConversationId.HasValue)
+        {
+            var currentUserId = CurrentUser.GetId();
+            var conversation = await _conversationRepository.GetWithMembersAsync(input.ConversationId.Value);
+            if (conversation == null)
+            {
+                throw new BusinessException("HC.Chat:ConversationNotFound");
+            }
+
+            var activeMembers = conversation.Members.Where(m => m.IsActive).ToList();
+            var currentMember = activeMembers.FirstOrDefault(m => m.UserId == currentUserId);
+            if (currentMember == null || currentMember.Role != "ADMIN")
+            {
+                throw new BusinessException("HC.Chat:OnlyAdminCanDeleteConversation");
+            }
+
+            await _conversationRepository.DeleteAsync(conversation);
+        }
+        else
+        {
+            await _messagingManager.DeleteConversationAsync(CurrentUser.GetId(), input.TargetUserId);
+
+            await _realTimeChatMessageSender.DeleteConversationAsync(
+                input.TargetUserId,
+                CurrentUser.GetId()
+            );
+        }
     }
     
     // New methods for expanded features
@@ -283,9 +304,14 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             throw new BusinessException("HC.Chat:CannotChatWithYourself");
         }
         
-        // TODO: Check if conversation already exists between these 2 users
-        // For now, we'll create a new conversation
-        // The UI should handle duplicate prevention
+        // Check if a User conversation already exists between these 2 users
+        var existingMembers = await _conversationMemberRepository.GetByUserIdsAsync(
+            new List<Guid> { currentUserId, input.TargetUserId },
+            ConversationType.User);
+        if (existingMembers.Count > 0)
+        {
+            return await MapToConversationDtoAsync(existingMembers.First().Conversation, input.TargetUserId);
+        }
         
         Conversation conversation;
         using (var uow = UnitOfWorkManager.Begin(requiresNew: true))
@@ -742,31 +768,166 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         }
         
         var currentUserId = CurrentUser.GetId();
+        var activeMembers = conversation.Members.Where(m => m.IsActive).ToList();
         
-        // Check if current user is ADMIN or removing themselves
-        var currentMember = conversation.Members.FirstOrDefault(m => m.UserId == currentUserId && m.IsActive);
+        var currentMember = activeMembers.FirstOrDefault(m => m.UserId == currentUserId);
         if (currentMember == null)
         {
             throw new BusinessException("HC.Chat:UserNotMember");
         }
 
-
-        _logger.LogInformation($"InputUserId: {input.UserId} CurrentUserId: {currentUserId} CurrentMember: {currentMember.UserId} {currentMember.Role} {currentMember.IsActive}");
+        var isSelfLeave = input.UserId == currentUserId;
         
-        if (input.UserId != currentUserId && currentMember.Role != "ADMIN")
+        if (!isSelfLeave && currentMember.Role != "ADMIN")
         {
             throw new BusinessException("HC.Chat:OnlyAdminCanRemoveMembers");
         }
         
-        var memberToRemove = await _conversationMemberRepository.GetByConversationAndUserAsync(input.ConversationId, input.UserId);
+        var memberToRemove = activeMembers.FirstOrDefault(m => m.UserId == input.UserId);
         if (memberToRemove == null)
         {
             throw new BusinessException("HC.Chat:MemberNotFound");
         }
-        
-        // Deactivate member instead of deleting
+
+        if (memberToRemove.Role == "ADMIN")
+        {
+            var adminCount = activeMembers.Count(m => m.Role == "ADMIN");
+            if (adminCount <= 1)
+            {
+                var otherActiveMembers = activeMembers.Where(m => m.UserId != input.UserId).ToList();
+                if (otherActiveMembers.Any())
+                {
+                    throw new BusinessException("HC.Chat:MustTransferAdminBeforeLeaving");
+                }
+            }
+        }
+
         memberToRemove.Deactivate();
         await _conversationMemberRepository.UpdateAsync(memberToRemove);
+    }
+    
+    public virtual async Task SetMemberRoleAsync(SetMemberRoleInput input)
+    {
+        var conversation = await _conversationRepository.GetWithMembersAsync(input.ConversationId);
+        if (conversation == null)
+        {
+            throw new BusinessException("HC.Chat:ConversationNotFound");
+        }
+        
+        var currentUserId = CurrentUser.GetId();
+        var activeMembers = conversation.Members.Where(m => m.IsActive).ToList();
+        
+        var currentMember = activeMembers.FirstOrDefault(m => m.UserId == currentUserId);
+        if (currentMember == null || currentMember.Role != "ADMIN")
+        {
+            throw new BusinessException("HC.Chat:OnlyAdminCanChangeRoles");
+        }
+        
+        var targetMember = activeMembers.FirstOrDefault(m => m.UserId == input.UserId);
+        if (targetMember == null)
+        {
+            throw new BusinessException("HC.Chat:MemberNotFound");
+        }
+        
+        targetMember.SetRole(input.Role);
+        await _conversationMemberRepository.UpdateAsync(targetMember);
+    }
+
+    public virtual async Task LeaveConversationAsync(LeaveConversationInput input)
+    {
+        var conversation = await _conversationRepository.GetWithMembersAsync(input.ConversationId);
+        if (conversation == null)
+        {
+            throw new BusinessException("HC.Chat:ConversationNotFound");
+        }
+
+        var currentUserId = CurrentUser.GetId();
+        var activeMembers = conversation.Members.Where(m => m.IsActive).ToList();
+
+        var currentMember = activeMembers.FirstOrDefault(m => m.UserId == currentUserId);
+        if (currentMember == null)
+        {
+            throw new BusinessException("HC.Chat:UserNotMember");
+        }
+
+        if (currentMember.Role == "ADMIN")
+        {
+            var adminCount = activeMembers.Count(m => m.Role == "ADMIN");
+            var otherActiveMembers = activeMembers.Where(m => m.UserId != currentUserId).ToList();
+            if (adminCount <= 1 && otherActiveMembers.Any())
+            {
+                throw new BusinessException("HC.Chat:MustTransferAdminBeforeLeaving");
+            }
+        }
+
+        currentMember.Deactivate();
+        await _conversationMemberRepository.UpdateAsync(currentMember);
+    }
+
+    public virtual async Task TransferAdminAndLeaveAsync(TransferAdminAndLeaveInput input)
+    {
+        var conversation = await _conversationRepository.GetWithMembersAsync(input.ConversationId);
+        if (conversation == null)
+        {
+            throw new BusinessException("HC.Chat:ConversationNotFound");
+        }
+
+        var currentUserId = CurrentUser.GetId();
+        var activeMembers = conversation.Members.Where(m => m.IsActive).ToList();
+
+        var currentMember = activeMembers.FirstOrDefault(m => m.UserId == currentUserId);
+        if (currentMember == null || currentMember.Role != "ADMIN")
+        {
+            throw new BusinessException("HC.Chat:OnlyAdminCanTransferRole");
+        }
+
+        var newAdmin = activeMembers.FirstOrDefault(m => m.UserId == input.NewAdminUserId);
+        if (newAdmin == null)
+        {
+            throw new BusinessException("HC.Chat:MemberNotFound");
+        }
+
+        newAdmin.SetRole("ADMIN");
+        await _conversationMemberRepository.UpdateAsync(newAdmin);
+
+        currentMember.Deactivate();
+        await _conversationMemberRepository.UpdateAsync(currentMember);
+    }
+
+    public virtual async Task<ConversationPermissionDto> GetMyPermissionsAsync(Guid conversationId)
+    {
+        var conversation = await _conversationRepository.GetWithMembersAsync(conversationId);
+        if (conversation == null)
+        {
+            throw new BusinessException("HC.Chat:ConversationNotFound");
+        }
+
+        var currentUserId = CurrentUser.GetId();
+        var activeMembers = conversation.Members.Where(m => m.IsActive).ToList();
+
+        var currentMember = activeMembers.FirstOrDefault(m => m.UserId == currentUserId);
+        if (currentMember == null)
+        {
+            throw new BusinessException("HC.Chat:UserNotMember");
+        }
+
+        var isAdmin = currentMember.Role == "ADMIN";
+        var adminCount = activeMembers.Count(m => m.Role == "ADMIN");
+        var isOnlyAdmin = isAdmin && adminCount <= 1;
+        var hasOtherMembers = activeMembers.Count > 1;
+
+        return new ConversationPermissionDto
+        {
+            MyRole = currentMember.Role,
+            CanLeave = !isOnlyAdmin || !hasOtherMembers,
+            CanDelete = isAdmin,
+            CanAddMembers = isAdmin,
+            CanRemoveMembers = isAdmin,
+            CanChangeRoles = isAdmin,
+            IsOnlyAdmin = isOnlyAdmin,
+            AdminCount = adminCount,
+            MemberCount = activeMembers.Count
+        };
     }
     
     public virtual async Task<List<ConversationMemberDto>> GetMembersAsync(Guid conversationId)
@@ -1066,28 +1227,27 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         {
             var currentUserId = CurrentUser.GetId();
             
+            // When sending files without text, use a file attachment placeholder
+            var messageText = !string.IsNullOrWhiteSpace(input.Message)
+                ? input.Message
+                : "📎";
+
             if (input.ConversationId.HasValue)
             {
-                // For group conversations, create message without updating Direct conversation
-                var messageText = input.Message ?? string.Empty;
-                Check.NotNullOrWhiteSpace(messageText, nameof(input.Message));
-                
                 message = new Message(
                     GuidGenerator.Create(),
                     messageText,
                     CurrentTenant.Id,
-                    input.ConversationId.Value // Set ConversationId for group conversations
+                    input.ConversationId.Value
                 );
                 await _messageRepository.InsertAsync(message);
                 
-                // Create UserMessage for all active members
                 var conversation = await _conversationRepository.GetWithMembersAsync(input.ConversationId.Value);
                 var activeMembers = conversation.Members.Where(m => m.IsActive).ToList();
                 
                 foreach (var member in activeMembers)
                 {
                     var side = member.UserId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver;
-                    // Use first other member as target, or current user if alone
                     var targetId = activeMembers.FirstOrDefault(m => m.UserId != currentUserId)?.UserId ?? currentUserId;
                     
                     await _userMessageRepository.InsertAsync(
@@ -1095,24 +1255,20 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                     );
                 }
                 
-                // Update LastMessage for the group conversation
-                // Now there's only ONE conversation shared by all members
                 var now = Clock.Now;
                 var mainConversation = await _conversationRepository.GetAsync(input.ConversationId.Value);
                 if (mainConversation != null)
                 {
-                    // Update the single conversation (shared by all members)
                     mainConversation.SetLastMessage(messageText, now);
                     await _conversationRepository.UpdateAsync(mainConversation);
                 }
             }
             else
             {
-                // Direct conversation - use existing logic
                 message = await _messagingManager.CreateNewMessage(
                     currentUserId,
                     targetUserId,
-                    input.Message ?? string.Empty
+                    messageText
                 );
             }
             
@@ -1319,13 +1475,11 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             throw new BusinessException("HC.Chat:UserNotMember");
         }
         
-        var forwardedText = originalMessage.Text;
-        
-        // Add additional comment if provided
-        if (!string.IsNullOrWhiteSpace(input.AdditionalComment))
-        {
-            forwardedText = $"{input.AdditionalComment}\n\n{forwardedText}";
-        }
+        // Use only the additional comment as the message body;
+        // the original text is preserved via the ForwardedFrom reference shown in the UI header.
+        var forwardedText = !string.IsNullOrWhiteSpace(input.AdditionalComment)
+            ? input.AdditionalComment
+            : originalMessage.Text;
         
         Message newMessage;
         List<Guid> memberUserIds;
@@ -1396,12 +1550,20 @@ public class ConversationAppService : ChatAppService, IConversationAppService
 
     public virtual async Task<ConversationDto> FindConversationAsync(FindConversationInput input)
     {
-        var conversations = await _conversationMemberRepository.GetByUserIdsAsync(input.UserIds, input.Type);
-        if (conversations.Count == 0)
+        var members = await _conversationMemberRepository.GetByUserIdsAsync(input.UserIds, input.Type);
+        if (members.Count == 0)
         {
             return null;
         }
-        return await MapToConversationDtoAsync(conversations.First().Conversation, conversations.First().UserId);
+
+        var currentUserId = CurrentUser.GetId();
+        var targetUserId = input.UserIds.FirstOrDefault(id => id != currentUserId);
+        if (targetUserId == Guid.Empty)
+        {
+            targetUserId = currentUserId;
+        }
+
+        return await MapToConversationDtoAsync(members.First().Conversation, targetUserId);
     }
 
 
