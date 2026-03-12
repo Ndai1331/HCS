@@ -1047,7 +1047,7 @@ else
             <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Caption="@L["Actions"]">
                     <DisplayTemplate>
                         <div class="d-flex gap-1">
-                            @if (CanEditProjectTask)
+                            @if (CanEditTask(context))
                             {
                                 <Button Outline Color="Color.Primary"
                                  Size="Size.Small" 

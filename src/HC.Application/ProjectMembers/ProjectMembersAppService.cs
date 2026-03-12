@@ -87,9 +87,21 @@ public abstract class ProjectMembersAppServiceBase : HCAppService
         };
     }
 
+    protected virtual async Task EnsureCanManageProjectMembersAsync(Guid projectId)
+    {
+        var project = await _projectRepository.GetAsync(projectId);
+
+        if (!CurrentUser.IsAdminRole() && (!CurrentUser.Id.HasValue || project.CreatorId != CurrentUser.Id.Value))
+        {
+            throw new UserFriendlyException("Only project creator can manage project members.");
+        }
+    }
+
     [Authorize(HCPermissions.ProjectMembers.Delete)]
     public virtual async Task DeleteAsync(Guid id)
     {
+        var projectMember = await _projectMemberRepository.GetAsync(id);
+        await EnsureCanManageProjectMembersAsync(projectMember.ProjectId);
         await _projectMemberRepository.DeleteAsync(id);
     }
 
@@ -105,6 +117,8 @@ public abstract class ProjectMembersAppServiceBase : HCAppService
         {
             throw new UserFriendlyException(L["The {0} field is required.", L["IdentityUser"]]);
         }
+
+        await EnsureCanManageProjectMembersAsync(input.ProjectId);
 
         // Store enum as string in database
         var memberRoleString = input.MemberRole.ToString();
@@ -124,6 +138,8 @@ public abstract class ProjectMembersAppServiceBase : HCAppService
         {
             throw new UserFriendlyException(L["The {0} field is required.", L["IdentityUser"]]);
         }
+
+        await EnsureCanManageProjectMembersAsync(input.ProjectId);
 
         // Store enum as string in database
         var memberRoleString = input.MemberRole.ToString();

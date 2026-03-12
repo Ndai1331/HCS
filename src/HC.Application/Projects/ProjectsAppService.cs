@@ -89,6 +89,12 @@ public abstract class ProjectsAppServiceBase : HCAppService
     [Authorize(HCPermissions.Projects.Delete)]
     public virtual async Task DeleteAsync(Guid id)
     {
+        var project = await _projectRepository.GetAsync(id);
+        if (!CurrentUser.IsAdminRole() && (!CurrentUser.Id.HasValue || project.CreatorId != CurrentUser.Id.Value))
+        {
+            throw new UserFriendlyException("Only project creator can delete this project.");
+        }
+
         try
         {
             _logger.LogInformation($"Deleting project {id}");
@@ -113,10 +119,16 @@ public abstract class ProjectsAppServiceBase : HCAppService
     [Authorize(HCPermissions.Projects.Edit)]
     public virtual async Task<ProjectDto> UpdateAsync(Guid id, ProjectUpdateDto input)
     {
+        var project = await _projectRepository.GetAsync(id);
+        if (!CurrentUser.IsAdminRole() && (!CurrentUser.Id.HasValue || project.CreatorId != CurrentUser.Id.Value))
+        {
+            throw new UserFriendlyException("Only project creator can update this project.");
+        }
+
         // Convert enum to string for repository
         var statusString = input.Status.ToString();
-        var project = await _projectManager.UpdateAsync(id, input.OwnerDepartmentId, input.Code, input.Name, input.StartDate, input.EndDate, statusString, input.Description, input.ConcurrencyStamp);
-        return ObjectMapper.Map<Project, ProjectDto>(project);
+        var updatedProject = await _projectManager.UpdateAsync(id, input.OwnerDepartmentId, input.Code, input.Name, input.StartDate, input.EndDate, statusString, input.Description, input.ConcurrencyStamp);
+        return ObjectMapper.Map<Project, ProjectDto>(updatedProject);
     }
 
     [AllowAnonymous]

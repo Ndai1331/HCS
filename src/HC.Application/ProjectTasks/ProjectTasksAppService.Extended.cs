@@ -74,4 +74,30 @@ public partial class ProjectTasksAppService : ProjectTasksAppServiceBase, IProje
 
         return result;
     }
+
+    public override async Task<ProjectTaskDto> UpdateAsync(Guid id, ProjectTaskUpdateDto input)
+    {
+        var task = await _projectTaskRepository.GetAsync(id);
+
+        if (!CurrentUser.IsAdminRole())
+        {
+            var currentUserId = CurrentUser.Id;
+            if (!currentUserId.HasValue)
+            {
+                throw new UserFriendlyException("You are not allowed to update this task.");
+            }
+
+            var assignmentQuery = await _projectTaskAssignmentRepository.GetQueryableAsync();
+            var isAssigned = await AsyncExecuter.AnyAsync(
+                assignmentQuery.Where(x => x.ProjectTaskId == id && x.UserId == currentUserId.Value)
+            );
+
+            if (task.CreatorId != currentUserId.Value && !isAssigned)
+            {
+                throw new UserFriendlyException("Only task participants can update this task.");
+            }
+        }
+
+        return await base.UpdateAsync(id, input);
+    }
 }

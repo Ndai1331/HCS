@@ -386,6 +386,31 @@ public partial class ProjectTasks
         };
     }
 
+    protected bool CanEditTask(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        if (!CanEditProjectTask)
+        {
+            return false;
+        }
+
+        if (CurrentUser.IsAdminRole())
+        {
+            return true;
+        }
+
+        if (!CurrentUser.Id.HasValue)
+        {
+            return false;
+        }
+
+        if (task.ProjectTask.CreatorId == CurrentUser.Id.Value)
+        {
+            return true;
+        }
+
+        return task.ProjectTaskAssignments.Any(x => x.ProjectTaskAssignment.UserId == CurrentUser.Id.Value);
+    }
+
     // Check if current user can delete the task (creator or admin)
     protected bool CanDeleteTask(ProjectTaskDto task)
     {
