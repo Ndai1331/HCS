@@ -60,7 +60,6 @@ public partial class Units
 
     protected string SelectedCreateTab = "unit-create-tab";
     protected string SelectedEditTab = "unit-edit-tab";
-    private UnitDto? SelectedUnit;
 
     private List<UnitDto> SelectedUnits { get; set; } = new();
     private bool AllUnitsSelected { get; set; }

@@ -45,6 +45,7 @@ public partial class CalendarEvents
     // Project Detail Modal
     protected Modal ProjectDetailModal { get; set; } = new();
     protected ProjectDto? ViewingProject { get; set; }
+    protected string? ViewingProjectDepartmentName { get; set; }
     protected IReadOnlyList<ProjectMemberWithNavigationPropertiesDto> ProjectMembersList { get; set; } = new List<ProjectMemberWithNavigationPropertiesDto>();
     protected IReadOnlyList<ProjectTaskWithNavigationPropertiesDto> ProjectTasksList { get; set; } = new List<ProjectTaskWithNavigationPropertiesDto>();
     protected string SelectedProjectDetailTab = "general";
@@ -291,31 +292,33 @@ public partial class CalendarEvents
         CloseEventViewModalAsync();
     }
 
-    // Open Project Detail Modal
+    // Open Project Detail Modal (same as workspace Index page)
     protected async Task OpenProjectDetailModalAsync(Guid projectId)
     {
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            ViewingProject = await ProjectsAppService.GetAsync(projectId);
+            var projectNav = await ProjectsAppService.GetWithNavigationPropertiesAsync(projectId);
+            ViewingProject = projectNav.Project;
+            ViewingProjectDepartmentName = projectNav.OwnerDepartment?.Name;
 
-            // Load project members
-            var membersResult = await ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
+            // Load project members and tasks in parallel
+            var membersTask = ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
             {
                 ProjectId = projectId,
                 MaxResultCount = 1000,
                 SkipCount = 0
             });
-            ProjectMembersList = membersResult.Items;
-
-            // Load project tasks
-            var tasksResult = await ProjectTasksAppService.GetListAsync(new GetProjectTasksInput
+            var tasksTask = ProjectTasksAppService.GetListAsync(new GetProjectTasksInput
             {
                 ProjectId = projectId,
                 MaxResultCount = 1000,
                 SkipCount = 0
             });
-            ProjectTasksList = tasksResult.Items;
+
+            await Task.WhenAll(membersTask, tasksTask);
+            ProjectMembersList = membersTask.Result.Items;
+            ProjectTasksList = tasksTask.Result.Items;
 
             SelectedProjectDetailTab = "general";
             await ProjectDetailModal.Show();
@@ -332,7 +335,9 @@ public partial class CalendarEvents
 
     protected async Task CloseProjectDetailModalAsync()
     {
+        await ProjectDetailModal.Hide();
         ViewingProject = null;
+        ViewingProjectDepartmentName = null;
         ProjectMembersList = new List<ProjectMemberWithNavigationPropertiesDto>();
         ProjectTasksList = new List<ProjectTaskWithNavigationPropertiesDto>();
     }
@@ -365,6 +370,81 @@ public partial class CalendarEvents
         {
             await BlockUiService.UnBlock();
         }
+    }
+
+    /// <summary>
+    /// Open task detail modal from within the project detail modal (same as workspace)
+    /// </summary>
+    protected async Task OpenTaskDetailFromProjectModalAsync(ProjectTaskWithNavigationPropertiesDto task)
+    {
+        await ProjectDetailModal.Hide();
+        await OpenTaskDetailModalAsync(task.ProjectTask.Id);
+    }
+
+    /// <summary>
+    /// Get member initial letter for avatar circle (same as workspace)
+    /// </summary>
+    protected string GetMemberInitial(ProjectMemberWithNavigationPropertiesDto member)
+    {
+        var name = (member.User?.Name ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            return name.Substring(0, 1).ToUpperInvariant();
+        }
+
+        var userName = (member.User?.UserName ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(userName))
+        {
+            return userName.Substring(0, 1).ToUpperInvariant();
+        }
+
+        return "?";
+    }
+
+    /// <summary>
+    /// Get badge Color enum for task status (same as workspace)
+    /// </summary>
+    protected Color GetStatusBadgeColorEnum(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status)) return Color.Secondary;
+        if (Enum.TryParse<ProjectTaskStatus>(status, out var parsed))
+        {
+            return HC.Blazor.Shared.EnumStatusColorHelper.GetProjectTaskStatusBadgeColor(parsed);
+        }
+        return Color.Secondary;
+    }
+
+    /// <summary>
+    /// Get participant initial letter for avatar circle (same as workspace)
+    /// </summary>
+    protected string GetParticipantInitial(CalendarEventParticipantWithNavigationPropertiesDto participant)
+    {
+        var name = (participant.IdentityUser?.Name ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            return name.Substring(0, 1).ToUpperInvariant();
+        }
+
+        var userName = (participant.IdentityUser?.UserName ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(userName))
+        {
+            return userName.Substring(0, 1).ToUpperInvariant();
+        }
+
+        return "?";
+    }
+
+    /// <summary>
+    /// Get badge color for participant response status (same as workspace)
+    /// </summary>
+    protected Color GetParticipantResponseColor(string? responseStatus)
+    {
+        if (string.IsNullOrWhiteSpace(responseStatus)) return Color.Secondary;
+        if (Enum.TryParse<ParticipantResponse>(responseStatus, out var parsed))
+        {
+            return HC.Blazor.Shared.EnumStatusColorHelper.GetCalendarEventParticipantResponseBadgeColor(parsed);
+        }
+        return Color.Secondary;
     }
 
     // Event handler for when TaskDetailModal is closed - removed as it's handled by component

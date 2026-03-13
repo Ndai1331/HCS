@@ -60,7 +60,6 @@ public partial class UserDepartments
 
     protected string SelectedCreateTab = "userDepartment-create-tab";
     protected string SelectedEditTab = "userDepartment-edit-tab";
-    private UserDepartmentWithNavigationPropertiesDto? SelectedUserDepartment;
 
     private IReadOnlyList<LookupDto<Guid>> DepartmentsCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> IdentityUsersCollection { get; set; } = new List<LookupDto<Guid>>();

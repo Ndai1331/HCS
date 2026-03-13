@@ -1200,6 +1200,7 @@
     "SetAdmin": "Set admin",
     "RemoveMember": "Remove member",
     "MustTransferAdminBeforeLeaving": "Must transfer admin before leaving",
-    "OnlyAdminCanDeleteConversation": "Only admin can delete conversation"
+    "OnlyAdminCanDeleteConversation": "Only admin can delete conversation",
+    "EndTimeMustBeAfterStartTime": "End time must be after start time"
   }
 }

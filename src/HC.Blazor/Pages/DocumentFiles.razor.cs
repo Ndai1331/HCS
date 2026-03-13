@@ -60,7 +60,6 @@ public partial class DocumentFiles
 
     protected string SelectedCreateTab = "documentFile-create-tab";
     protected string SelectedEditTab = "documentFile-edit-tab";
-    private DocumentFileWithNavigationPropertiesDto? SelectedDocumentFile;
 
     private IReadOnlyList<LookupDto<Guid>> DocumentsCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<DocumentFileWithNavigationPropertiesDto> SelectedDocumentFiles { get; set; } = new();

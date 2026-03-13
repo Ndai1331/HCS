@@ -56,7 +56,6 @@ public partial class WorkflowDefinitions
 
     protected string SelectedCreateTab = "workflowDefinition-create-tab";
     protected string SelectedEditTab = "workflowDefinition-edit-tab";
-    private WorkflowDefinitionDto? SelectedWorkflowDefinition;
 
     private List<WorkflowDefinitionDto> SelectedWorkflowDefinitions { get; set; } = new();
     private bool AllWorkflowDefinitionsSelected { get; set; }

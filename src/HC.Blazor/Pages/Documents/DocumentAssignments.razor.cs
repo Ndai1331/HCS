@@ -61,7 +61,6 @@ public partial class DocumentAssignments
 
     protected string SelectedCreateTab = "documentAssignment-create-tab";
     protected string SelectedEditTab = "documentAssignment-edit-tab";
-    private DocumentAssignmentWithNavigationPropertiesDto? SelectedDocumentAssignment;
 
     private IReadOnlyList<LookupDto<Guid>> DocumentsCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> WorkflowStepTemplatesCollection { get; set; } = new List<LookupDto<Guid>>();

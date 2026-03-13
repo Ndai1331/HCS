@@ -94,7 +94,6 @@ public partial class Projects : HCComponentBase
 
     protected string SelectedCreateTab = "project-create-tab";
     protected string SelectedEditTab = "project-edit-tab";
-    private ProjectWithNavigationPropertiesDto? SelectedProject;
 
     private IReadOnlyList<LookupDto<Guid>> DepartmentsCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<LookupDto<Guid>> SelectedDepartment { get; set; } = new();

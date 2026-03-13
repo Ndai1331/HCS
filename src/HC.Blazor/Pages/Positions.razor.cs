@@ -60,7 +60,6 @@ public partial class Positions
 
     protected string SelectedCreateTab = "position-create-tab";
     protected string SelectedEditTab = "position-edit-tab";
-    private PositionDto? SelectedPosition;
 
     private List<PositionDto> SelectedPositions { get; set; } = new();
     private bool AllPositionsSelected { get; set; }

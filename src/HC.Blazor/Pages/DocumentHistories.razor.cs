@@ -60,7 +60,6 @@ public partial class DocumentHistories
 
     protected string SelectedCreateTab = "documentHistory-create-tab";
     protected string SelectedEditTab = "documentHistory-edit-tab";
-    private DocumentHistoryWithNavigationPropertiesDto? SelectedDocumentHistory;
 
     private IReadOnlyList<LookupDto<Guid>> DocumentsCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> IdentityUsersCollection { get; set; } = new List<LookupDto<Guid>>();

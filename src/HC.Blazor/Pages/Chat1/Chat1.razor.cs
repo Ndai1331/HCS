@@ -2286,7 +2286,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     }
 
     // Mobile view management methods
-    private DotNetObjectReference<Chat1> _dotNetRef;
 
     private void CheckMobileMode()
     {

@@ -64,7 +64,6 @@ public partial class Workflows
 
     protected string SelectedCreateTab = "workflow-create-tab";
     protected string SelectedEditTab = "workflow-edit-tab";
-    private WorkflowWithNavigationPropertiesDto? SelectedWorkflow;
 
     private IReadOnlyList<LookupDto<Guid>> WorkflowDefinitionsCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<LookupDto<Guid>> SelectedFilterWorkflowDefinition { get; set; } = new();

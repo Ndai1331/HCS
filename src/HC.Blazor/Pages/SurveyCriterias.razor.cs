@@ -64,7 +64,6 @@ public partial class SurveyCriterias
 
     protected string SelectedCreateTab = "surveyCriteria-create-tab";
     protected string SelectedEditTab = "surveyCriteria-edit-tab";
-    private SurveyCriteriaWithNavigationPropertiesDto? SelectedSurveyCriteria;
 
     private IReadOnlyList<LookupDto<Guid>> SurveyLocationsCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<SurveyCriteriaWithNavigationPropertiesDto> SelectedSurveyCriterias { get; set; } = new();

@@ -353,7 +353,7 @@ public partial class ViewDocumentDetail
             PdfFileUrl = $"data:application/pdf;base64,{base64}";
             IsPdfAvailable = true;
         }
-        catch (Exception ex)
+        catch
         {
             // File not found or other error - hide PDF viewer
             IsPdfAvailable = false;

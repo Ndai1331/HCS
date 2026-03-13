@@ -1261,6 +1261,7 @@
     "SetAdmin" : "Cấp quyền admin",
     "RemoveMember": "Xoá thành viên",
     "MustTransferAdminBeforeLeaving" : "Cần chuyển quyền admin trước khi rời nhóm",
-    "OnlyAdminCanDeleteConversation" : "Chỉ admin mới có quyền xóa nhóm"
+    "OnlyAdminCanDeleteConversation" : "Chỉ admin mới có quyền xóa nhóm",
+    "EndTimeMustBeAfterStartTime": "Thời gian kết thúc phải lớn hơn thời gian bắt đầu"
   }
 }

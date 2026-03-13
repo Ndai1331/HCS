@@ -58,7 +58,6 @@ public partial class SurveyLocations
 
     protected string SelectedCreateTab = "surveyLocation-create-tab";
     protected string SelectedEditTab = "surveyLocation-edit-tab";
-    private SurveyLocationDto? SelectedSurveyLocation;
 
     private List<SurveyLocationDto> SelectedSurveyLocations { get; set; } = new();
     private bool AllSurveyLocationsSelected { get; set; }

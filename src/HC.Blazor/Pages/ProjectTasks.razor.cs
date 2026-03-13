@@ -203,7 +203,6 @@ public partial class ProjectTasks
 
     protected string SelectedCreateTab = "general";
     protected string SelectedEditTab = "general";
-    private ProjectTaskWithNavigationPropertiesDto? SelectedProjectTask;
 
     private IReadOnlyList<LookupDto<Guid>> ProjectsCollection { get; set; } = new List<LookupDto<Guid>>();
     private string ProjectFilterValue { get; set; } = string.Empty;

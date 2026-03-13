@@ -60,7 +60,6 @@ public partial class SurveySessions
 
     protected string SelectedCreateTab = "surveySession-create-tab";
     protected string SelectedEditTab = "surveySession-edit-tab";
-    private SurveySessionWithNavigationPropertiesDto? SelectedSurveySession;
 
     private IReadOnlyList<LookupDto<Guid>> SurveyLocationsCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<SurveySessionWithNavigationPropertiesDto> SelectedSurveySessions { get; set; } = new();

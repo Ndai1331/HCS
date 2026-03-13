@@ -29,6 +29,7 @@
 @using HC.ProjectTaskDocuments
 @using HC.ProjectMembers
 @using HC.Blazor.Components.ProjectTaskViewModal
+@using HC.Blazor.Shared
 @inherits HCComponentBase
 @inject ICalendarEventsAppService CalendarEventsAppService
 @inject IUiMessageService UiMessageService
@@ -280,6 +281,56 @@
         background: rgba(247,37,133,.12);
         color: var(--lpx-brand, #f72585);
     }
+    
+    /* Calendar Event Detail Modal */
+    .calendar-event-detail-modal .modal-body {
+        background-color: var(--lpx-content-bg);
+    }
+    
+    .calendar-event-detail-modal .card {
+        background-color: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.125);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .calendar-event-detail-modal .card-body {
+        padding: 1rem !important;
+    }
+
+    .calendar-event-detail-modal .h-100 {
+        height: 100%;
+    }
+
+    /* Project Detail Modal */
+    .project-detail-modal .modal-body {
+        background-color: var(--lpx-content-bg);
+    }
+    
+    .project-detail-modal .card {
+        background-color: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.125);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .project-detail-modal .card-body {
+        padding: 1rem !important;
+    }
+
+    .project-detail-modal .h-100 {
+        height: 100%;
+    }
+
+    /* PDF Viewer Modal */
+    .pdf-viewer-modal .modal-content {
+        position: relative;
+        max-height: 90vh;
+        overflow: hidden;
+    }
+    
+    .pdf-viewer-modal .modal-body {
+        max-height: calc(90vh - 120px);
+        overflow: auto;
+    }
 </style>
 @* ************************* SEARCH ************************* *@
 <Card>
@@ -379,25 +430,21 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["AllDay"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.AllDay"
-		SelectedValueChanged="@OnAllDayChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
-<SelectItem Value="true">@L["Yes"]</SelectItem>
-<SelectItem Value="false">@L["No"]</SelectItem>
-</Select>                       
+                        <Select TValue="string" SelectedValue="@FilterAllDayValue" SelectedValueChanged="@OnAllDayChangedAsync">
+                            <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
+                            <SelectItem Value="true">@L["Yes"]</SelectItem>
+                            <SelectItem Value="false">@L["No"]</SelectItem>
+                        </Select>                       
                     </Field>
                 </Column>
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["EventType"]</FieldLabel>
-                        <Select TValue="EventType?" 
-                                SelectedValue="@FilterEventType"
-                                SelectedValueChanged="@OnFilterEventTypeChangedAsync">
-                            <SelectItem>@L["All"]</SelectItem>
+                        <Select TValue="string" SelectedValue="@FilterEventTypeValue" SelectedValueChanged="@OnFilterEventTypeChangedAsync">
+                            <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
                             @foreach (var eventType in Enum.GetValues<EventType>())
                             {
-                                <SelectItem TValue="EventType?" Value="@eventType">
+                                <SelectItem Value="@eventType.ToString()">
                                     @L[$"Enum:EventType.{eventType}"]
                                 </SelectItem>
                             }
@@ -413,13 +460,11 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["RelatedType"]</FieldLabel>
-                        <Select TValue="RelatedType?" 
-                                SelectedValue="@FilterRelatedType"
-                                SelectedValueChanged="@OnFilterRelatedTypeChangedAsync">
-                            <SelectItem>@L["All"]</SelectItem>
+                        <Select TValue="string" SelectedValue="@FilterRelatedTypeValue" SelectedValueChanged="@OnFilterRelatedTypeChangedAsync">
+                            <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
                             @foreach (var relatedType in Enum.GetValues<RelatedType>())
                             {
-                                <SelectItem TValue="RelatedType?" Value="@relatedType">
+                                <SelectItem Value="@relatedType.ToString()">
                                     @L[$"Enum:RelatedType.{relatedType}"]
                                 </SelectItem>
                             }
@@ -429,7 +474,7 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["RelatedId"]</FieldLabel>
-                       @if (FilterRelatedType == RelatedType.PROJECT)
+                       @if (FilterRelatedTypeValue == RelatedType.PROJECT.ToString())
                         {
                             <div class="hc-select2-full">
                                 <Select2 IdSelector="c => c.Id.ToString()"
@@ -443,7 +488,7 @@
                                          Multiselect="false" />
                             </div>                     
                         }
-                        else if (FilterRelatedType == RelatedType.TASK)
+                        else if (FilterRelatedTypeValue == RelatedType.TASK.ToString())
                         {
                             <div class="hc-select2-full">
                                 <Select2 IdSelector="c => c.Id"
@@ -462,13 +507,11 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["Visibility"]</FieldLabel>
-                        <Select TValue="EventVisibility?" 
-                                SelectedValue="@FilterVisibility"
-                                SelectedValueChanged="@OnFilterVisibilityChangedAsync">
-                            <SelectItem>@L["All"]</SelectItem>
+                        <Select TValue="string" SelectedValue="@FilterVisibilityValue" SelectedValueChanged="@OnFilterVisibilityChangedAsync">
+                            <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
                             @foreach (var visibility in Enum.GetValues<EventVisibility>())
                             {
-                                <SelectItem TValue="EventVisibility?" Value="@visibility">
+                                <SelectItem Value="@visibility.ToString()">
                                     @L[$"Enum:EventVisibility.{visibility}"]
                                 </SelectItem>
                             }
@@ -1534,147 +1577,122 @@
     </ModalContent>
 </Modal>
 
-<!-- Event View Modal (Read-only) -->
-<Modal @ref="EventViewModal" Closed="OnEventViewModalClosed">
-    <ModalContent Centered="true" Size="ModalSize.Large">
+<!-- Event View Modal (Read-only) - same layout as workspace -->
+<Modal @ref="EventViewModal" Class="calendar-event-detail-modal" Closed="OnEventViewModalClosed">
+    <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
         <ModalHeader>
-            <ModalTitle>@L["Detail"] - @ViewingCalendarEvent?.Title</ModalTitle>
+            <ModalTitle>@L["CalendarEvent:Detail"]</ModalTitle>
             <CloseButton Clicked="@(async () => await EventViewModal.Hide())" />
         </ModalHeader>
-        <ModalBody>
+        <ModalBody Style="padding: 5px !important;">
             @if (ViewingCalendarEvent != null)
             {
-                <Tabs SelectedTab="@SelectedEventViewTab" SelectedTabChanged="@OnSelectedEventViewTabChanged">
-                    <Items>
-                        <Tab Name="general">
-                            <Icon Name="IconName.Info" Class="me-1" />
-                            @L["Tab:GeneralInformation"]
-                        </Tab>
-                        <Tab Name="participants">
-                            <Icon Name="IconName.Users" Class="me-1" />
-                            @L["Tab:Participants"] (@ViewingEventParticipants.Count)
-                        </Tab>
-                    </Items>
-                    <Content>
-                        <TabPanel Name="general">
-                            <Row>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["Title"]</FieldLabel>
-                                        <Text>@ViewingCalendarEvent.Title</Text>
-                                    </Field>
-                                </Column>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["EventType"]</FieldLabel>
-                                        @if (Enum.TryParse<EventType>(ViewingCalendarEvent.EventType, out var eventType))
-                                        {
-                                            <Text>@L[$"Enum:EventType.{eventType}"]</Text>
-                                        }
-                                    </Field>
-                                </Column>
-                            </Row>
-                            <Row>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["StartTime"]</FieldLabel>
-                                        <Text>@ViewingCalendarEvent.StartTime.ToString("dd/MM/yyyy HH:mm")</Text>
-                                    </Field>
-                                </Column>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["EndTime"]</FieldLabel>
-                                        <Text>@ViewingCalendarEvent.EndTime.ToString("dd/MM/yyyy HH:mm")</Text>
-                                    </Field>
-                                </Column>
-                            </Row>
-                            @if (!string.IsNullOrWhiteSpace(ViewingCalendarEvent.Description))
-                            {
-                                <Row>
+                <Row>
+                    @* Column 8: General Information *@
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Style="padding-right: 0px !important;">
+                        <Card>
+                            <CardBody Style="padding: 1rem !important;">
+                                <Row class="g-2">
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <div>
+                                            <label class="form-label fw-bold">@L["Title"]</label>
+                                            <div>
+                                                <i class="bi bi-calendar-event text-primary"></i> @(ViewingCalendarEvent.Title ?? "-")
+                                            </div>
+                                        </div>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <div>
+                                            <label class="form-label fw-bold">@L["EventType"]</label>
+                                            <div>
+                                                <i class="bi bi-tag text-info"></i> @L[$"Enum:EventType.{ViewingCalendarEvent.EventType}"]
+                                            </div>
+                                        </div>
+                                    </Column>
+
                                     <Column ColumnSize="ColumnSize.Is12">
-                                        <Field>
-                                            <FieldLabel>@L["Description"]</FieldLabel>
-                                            <Text>@ViewingCalendarEvent.Description</Text>
-                                        </Field>
+                                        <label class="form-label fw-bold">@L["Description"]</label>
+                                        <div>@(ViewingCalendarEvent.Description ?? "-")</div>
                                     </Column>
-                                </Row>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(ViewingCalendarEvent.Location))
-                            {
-                                <Row>
-                                    <Column ColumnSize="ColumnSize.Is12">
-                                        <Field>
-                                            <FieldLabel>@L["Location"]</FieldLabel>
-                                            <Text>@ViewingCalendarEvent.Location</Text>
-                                        </Field>
+
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <label class="form-label fw-bold">@L["StartDate"]</label>
+                                        <div>
+                                            <i class="bi bi-calendar text-success"></i> @ViewingCalendarEvent.StartTime.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
                                     </Column>
-                                </Row>
-                            }
-                            <Row>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["Visibility"]</FieldLabel>
-                                        @if (Enum.TryParse<EventVisibility>(ViewingCalendarEvent.Visibility, out var visibility))
-                                        {
-                                            <Text>@L[$"Enum:EventVisibility.{visibility}"]</Text>
-                                        }
-                                    </Field>
-                                </Column>
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                                    <Field>
-                                        <FieldLabel>@L["AllDay"]</FieldLabel>
-                                        <Text>@(ViewingCalendarEvent.AllDay ? L["Yes"] : L["No"])</Text>
-                                    </Field>
-                                </Column>
-                            </Row>
-                        </TabPanel>
-                        <TabPanel Name="participants">
-                            @if (ViewingEventParticipants.Any())
-                            {
-                                <DataGrid TItem="CalendarEventParticipantWithNavigationPropertiesDto"
-                                          Data="ViewingEventParticipants"
-                                          Responsive="true"
-                                          ShowPager="false">
-                                    <DataGridColumns>
-                                        <DataGridColumn TItem="CalendarEventParticipantWithNavigationPropertiesDto" Field="IdentityUser.UserName" Caption="@L["UserName"]" />
-                                        <DataGridColumn TItem="CalendarEventParticipantWithNavigationPropertiesDto" Field="CalendarEventParticipant.ResponseStatus" Caption="@L["ResponseStatus"]">
-                                            <DisplayTemplate>
-                                                @if (Enum.TryParse<ParticipantResponse>(context.CalendarEventParticipant.ResponseStatus, ignoreCase: true, out var status))
-                                                {
-                                                    @L[$"Enum:ParticipantResponse.{status}"]
-                                                }
-                                                else
-                                                {
-                                                    @context.CalendarEventParticipant.ResponseStatus
-                                                }
-                                            </DisplayTemplate>
-                                        </DataGridColumn>
-                                        <DataGridColumn TItem="CalendarEventParticipantWithNavigationPropertiesDto" Field="CalendarEventParticipant.Notified" Caption="@L["Notified"]">
-                                            <DisplayTemplate>
-                                                @if (context.CalendarEventParticipant.Notified)
-                                                {
-                                                    <Icon Name="IconName.Check" Color="Color.Success" />
-                                                }
-                                                else
-                                                {
-                                                    <Icon Name="IconName.Times" Color="Color.Danger" />
-                                                }
-                                            </DisplayTemplate>
-                                        </DataGridColumn>
-                                    </DataGridColumns>
-                                </DataGrid>
-                            }
-                            else
-                            {
-                                <Row Class="w-100 align-items-center" Style="height: 120px;">
-                                    <Column>
-                                        <Heading Size="HeadingSize.Is6" TextAlignment="TextAlignment.Center">@L["CreateWizard:NoParticipants"]</Heading>
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                        <label class="form-label fw-bold">@L["DueDate"]</label>
+                                        <div>
+                                            <i class="bi bi-calendar-check text-brand me-1"></i>@ViewingCalendarEvent.EndTime.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
                                     </Column>
+
+                                    @if (!string.IsNullOrEmpty(ViewingCalendarEvent.Location))
+                                    {
+                                        <Column ColumnSize="ColumnSize.Is12">
+                                            <label class="form-label fw-bold">@L["Location"]</label>
+                                            <div>
+                                                <i class="bi bi-geo-alt text-danger"></i> @ViewingCalendarEvent.Location
+                                            </div>
+                                        </Column>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(ViewingCalendarEvent.RelatedType))
+                                    {
+                                        <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                            <label class="form-label fw-bold">@L["RelatedType"]</label>
+                                            <div>
+                                                <Badge Color="Color.Info" TextColor="TextColor.White">
+                                                    @L[$"Enum:RelatedType.{ViewingCalendarEvent.RelatedType}"]
+                                                </Badge>
+                                            </div>
+                                        </Column>
+                                    }
                                 </Row>
-                            }
-                        </TabPanel>
-                    </Content>
-                </Tabs>
+                            </CardBody>
+                        </Card>
+                    </Column>
+
+                    @* Column 4: Participants *@
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                        <Card Class="h-100">
+                            <CardHeader>
+                                <Heading Size="HeadingSize.Is6" Class="fw-bolder">
+                                    <Icon Name="IconName.Users" Class="me-1" /> @L["Member"] (@ViewingEventParticipants.Count)
+                                </Heading>
+                            </CardHeader>
+                            <CardBody Style="padding: 1rem !important; max-height: 350px; overflow-y: auto;">
+                                @if (!ViewingEventParticipants.Any())
+                                {
+                                    <div class="text-center text-muted py-3">
+                                        <small>@L["NoMembersFound"]</small>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @foreach (var participant in ViewingEventParticipants)
+                                    {
+                                        <div class="d-flex align-items-center gap-2 mb-2 p-2 border rounded">
+                                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                                                 style="width: 32px; height: 32px; flex-shrink: 0;">
+                                                <span style="font-size: 0.75rem;">@GetParticipantInitial(participant)</span>
+                                            </div>
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <div class="fw-bold text-truncate d-flex align-items-center justify-content-between" style="font-size: 0.875rem;">
+                                                    <span>@participant.IdentityUser?.Surname @participant.IdentityUser?.Name</span>
+                                                    <Badge Color="@GetParticipantResponseColor(participant.CalendarEventParticipant.ResponseStatus)" TextColor="TextColor.White" style="font-size: 0.7rem;">
+                                                        @L[$"Enum:ParticipantResponse.{participant.CalendarEventParticipant.ResponseStatus}"]
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </CardBody>
+                        </Card>
+                    </Column>
+                </Row>
             }
         </ModalBody>
         <ModalFooter>
@@ -1685,14 +1703,14 @@
     </ModalContent>
 </Modal>
 
-<!-- Project Detail Modal -->
-<Modal @ref="ProjectDetailModal" Closed="OnProjectDetailModalClosed">
-    <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
+<!-- Project Detail Modal (same layout as workspace) -->
+<Modal @ref="ProjectDetailModal" Class="project-detail-modal" Closed="OnProjectDetailModalClosed">
+    <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
         <ModalHeader>
-            <ModalTitle>@L["Details"] - @ViewingProject?.Name</ModalTitle>
-            <CloseButton Clicked="@(async () => await ProjectDetailModal.Hide())" />
+            <ModalTitle>@L["ProjectDetail"]</ModalTitle>
+            <CloseButton Clicked="CloseProjectDetailModalAsync" />
         </ModalHeader>
-        <ModalBody Style="max-height: 70vh; overflow-y: auto;">
+        <ModalBody Style="padding: 5px !important;">
             @if (ViewingProject != null)
             {
                 <Tabs SelectedTab="@SelectedProjectDetailTab" SelectedTabChanged="OnSelectedProjectDetailTabChanged">
@@ -1723,6 +1741,12 @@
                                     <Field>
                                         <FieldLabel>@L["Name"]</FieldLabel>
                                         <Text>@ViewingProject.Name</Text>
+                                    </Field>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>@L["Department"]</FieldLabel>
+                                        <Text>@(ViewingProjectDepartmentName ?? "-")</Text>
                                     </Field>
                                 </Column>
                             </Row>
@@ -1814,6 +1838,14 @@
                                                 @(context.ProjectTask.DueDate.ToString("dd/MM/yyyy") ?? "-")
                                             </DisplayTemplate>
                                         </DataGridColumn>
+                                        <DataGridColumn TItem="ProjectTaskWithNavigationPropertiesDto" Caption="@L["Actions"]">
+                                            <DisplayTemplate>
+                                                <Button Color="Color.Primary" Size="Size.Small"
+                                                    Clicked="@(() => OpenTaskDetailFromProjectModalAsync(context))">
+                                                    <Icon Name="IconName.Eye" />
+                                                </Button>
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
                                     </DataGridColumns>
                                 </DataGrid>
                             }
@@ -1831,10 +1863,11 @@
             }
         </ModalBody>
         <ModalFooter>
-            <Button Color="Color.Primary" Clicked="@( () =>  NavigationManager.NavigateTo($"/project-detail/{ViewingProject?.Id}"))">
-                <Icon Name="IconName.Globe" Class="me-1" /> @L["ViewDetail"]
+            <Button Color="Color.Primary" Clicked="@(() => NavigationManager.NavigateTo($"/project-detail/{ViewingProject?.Id}"))">
+                <Icon Name="IconName.Eye" Class="me-1" />
+                @L["ViewDetail"]
             </Button>
-            <Button Color="Color.Secondary" Clicked="@(async () => await ProjectDetailModal.Hide())">
+            <Button Color="Color.Secondary" Clicked="CloseProjectDetailModalAsync">
                 @L["Close"]
             </Button>
         </ModalFooter>

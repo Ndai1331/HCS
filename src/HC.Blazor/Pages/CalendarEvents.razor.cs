@@ -78,7 +78,6 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
     private DataGridEntityActionsColumn<CalendarEventDto> EntityActionsColumn { get; set; } = new();
 
     protected string SelectedEditTab = "calendarEvent-edit-tab";
-    private CalendarEventDto? SelectedCalendarEvent;
 
     private List<CalendarEventDto> SelectedCalendarEvents { get; set; } = new();
     private bool AllCalendarEventsSelected { get; set; }
@@ -93,10 +92,11 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
     private RelatedType EditingCalendarEventRelatedType { get; set; } = RelatedType.NONE;
     private EventVisibility EditingCalendarEventVisibility { get; set; } = EventVisibility.PRIVATE;
 
-    // Enum properties for Filter
-    private EventType? FilterEventType { get; set; }
-    private RelatedType? FilterRelatedType { get; set; }
-    private EventVisibility? FilterVisibility { get; set; }
+    // Filter Select values (string for reliable "All" selection - same pattern as Projects)
+    private string FilterEventTypeValue { get; set; } = string.Empty;
+    private string FilterRelatedTypeValue { get; set; } = string.Empty;
+    private string FilterVisibilityValue { get; set; } = string.Empty;
+    private string FilterAllDayValue { get; set; } = string.Empty;
 
     // Select2 for Projects
     protected sealed class ProjectSelectItem
@@ -190,19 +190,11 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
     {
         EnsureSelectedCalendarDate();
 
-        // Initialize filter enum values from Filter strings
-        if (!string.IsNullOrWhiteSpace(Filter.EventType) && Enum.TryParse<EventType>(Filter.EventType, out var eventType))
-        {
-            FilterEventType = eventType;
-        }
-        if (!string.IsNullOrWhiteSpace(Filter.RelatedType) && Enum.TryParse<RelatedType>(Filter.RelatedType, out var relatedType))
-        {
-            FilterRelatedType = relatedType;
-        }
-        if (!string.IsNullOrWhiteSpace(Filter.Visibility) && Enum.TryParse<EventVisibility>(Filter.Visibility, out var visibility))
-        {
-            FilterVisibility = visibility;
-        }
+        // Initialize filter Select values from Filter (same pattern as Projects)
+        FilterEventTypeValue = Filter.EventType ?? string.Empty;
+        FilterRelatedTypeValue = Filter.RelatedType ?? string.Empty;
+        FilterVisibilityValue = Filter.Visibility ?? string.Empty;
+        FilterAllDayValue = Filter.AllDay.HasValue ? Filter.AllDay.Value.ToString() : string.Empty;
         
         await SetPermissionsAsync();
         try
@@ -344,8 +336,15 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
                     calendarFilter.RelatedType = Filter.RelatedType;
                     calendarFilter.RelatedId = Filter.RelatedId;
                     calendarFilter.Visibility = Filter.Visibility;
-                    calendarFilter.StartTimeMax = rangeEndInclusive;
-                    calendarFilter.EndTimeMin = rangeStart;
+                    // Apply date filters: intersect user's date range with calendar visible range
+                    calendarFilter.StartTimeMin = Filter.StartTimeMin;
+                    calendarFilter.EndTimeMax = Filter.EndTimeMax;
+                    calendarFilter.StartTimeMax = Filter.StartTimeMax.HasValue && Filter.StartTimeMax.Value < rangeEndInclusive
+                        ? Filter.StartTimeMax.Value
+                        : rangeEndInclusive;
+                    calendarFilter.EndTimeMin = Filter.EndTimeMin.HasValue && Filter.EndTimeMin.Value > rangeStart
+                        ? Filter.EndTimeMin.Value
+                        : rangeStart;
                 }
 
                 Logger.LogInformation(
@@ -1158,16 +1157,17 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
         await SearchAsync();
     }
 
-    protected virtual async Task OnAllDayChangedAsync(bool? allDay)
+    protected virtual async Task OnAllDayChangedAsync(string? allDayValue)
     {
-        Filter.AllDay = allDay;
+        FilterAllDayValue = allDayValue ?? string.Empty;
+        Filter.AllDay = bool.TryParse(allDayValue, out var parsed) ? parsed : null;
         await SearchAsync();
     }
 
-    protected virtual async Task OnFilterEventTypeChangedAsync(EventType? eventType)
+    protected virtual async Task OnFilterEventTypeChangedAsync(string? eventTypeValue)
     {
-        FilterEventType = eventType;
-        Filter.EventType = eventType?.ToString();
+        FilterEventTypeValue = eventTypeValue ?? string.Empty;
+        Filter.EventType = Enum.TryParse<EventType>(eventTypeValue, true, out var parsed) ? parsed.ToString() : null;
         await SearchAsync();
     }
 
@@ -1177,31 +1177,38 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
         await SearchAsync();
     }
 
-    protected virtual async Task OnFilterRelatedTypeChangedAsync(RelatedType? relatedType)
+    protected virtual async Task OnFilterRelatedTypeChangedAsync(string? relatedTypeValue)
     {
-        //clear Filter.RelatedId nếu relatedType khác với Filter.RelatedType
-        if (relatedType.ToString() != Filter.RelatedType)
+        // Clear Filter.RelatedId when relatedType differs from Filter.RelatedType
+        if (relatedTypeValue != Filter.RelatedType)
         {
             Filter.RelatedId = null;
             SelectedFilterProject.Clear();
             SelectedFilterProjectTask.Clear();
         }
 
-        FilterRelatedType = relatedType;
-        Filter.RelatedType = relatedType?.ToString();
+        FilterRelatedTypeValue = relatedTypeValue ?? string.Empty;
+        Filter.RelatedType = Enum.TryParse<RelatedType>(relatedTypeValue, true, out var parsed) ? parsed.ToString() : null;
 
         await SearchAsync();
     }
 
     protected virtual async Task OnFilterRelatedIdChangedAsync()
     {
-        if (FilterRelatedType == RelatedType.PROJECT)
+        if (Enum.TryParse<RelatedType>(FilterRelatedTypeValue, true, out var parsedRelatedType))
         {
-            Filter.RelatedId = SelectedFilterProject?.FirstOrDefault()?.Id;
-        }
-        else if (FilterRelatedType == RelatedType.TASK)
-        {
-            Filter.RelatedId = SelectedFilterProjectTask?.FirstOrDefault()?.Id;
+            if (parsedRelatedType == RelatedType.PROJECT)
+            {
+                Filter.RelatedId = SelectedFilterProject?.FirstOrDefault()?.Id;
+            }
+            else if (parsedRelatedType == RelatedType.TASK)
+            {
+                Filter.RelatedId = SelectedFilterProjectTask?.FirstOrDefault()?.Id;
+            }
+            else
+            {
+                Filter.RelatedId = null;
+            }
         }
         else
         {
@@ -1216,10 +1223,10 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
         await SearchAsync();
     }
 
-    protected virtual async Task OnFilterVisibilityChangedAsync(EventVisibility? visibility)
+    protected virtual async Task OnFilterVisibilityChangedAsync(string? visibilityValue)
     {
-        FilterVisibility = visibility;
-        Filter.Visibility = visibility?.ToString();
+        FilterVisibilityValue = visibilityValue ?? string.Empty;
+        Filter.Visibility = Enum.TryParse<EventVisibility>(visibilityValue, true, out var parsed) ? parsed.ToString() : null;
         await SearchAsync();
     }
 

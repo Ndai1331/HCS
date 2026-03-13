@@ -74,7 +74,6 @@ public partial class UserSignatures
 
     protected string SelectedCreateTab = "userSignature-create-tab";
     protected string SelectedEditTab = "userSignature-edit-tab";
-    private UserSignatureWithNavigationPropertiesDto? SelectedUserSignature;
 
     private IReadOnlyList<LookupDto<Guid>> IdentityUsersCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> SignatureSettingsCollection { get; set; } = new List<LookupDto<Guid>>();

@@ -79,7 +79,6 @@ public partial class SignatureSettings : HCComponentBase
 
     protected string SelectedCreateTab = "signatureSetting-create-tab";
     protected string SelectedEditTab = "signatureSetting-edit-tab";
-    private SignatureSettingDto? SelectedSignatureSetting;
 
     private List<SignatureSettingDto> SelectedSignatureSettings { get; set; } = new();
     private bool AllSignatureSettingsSelected { get; set; }

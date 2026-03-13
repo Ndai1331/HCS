@@ -177,6 +177,15 @@ public partial class DocumentWorkflowInstances
 
     private void ToggleDetails(DocumentWorkflowInstanceWithNavigationPropertiesDto documentWorkflowInstance)
     {
+        // Toggle expanded row tracking for chevron icon display
+        if (SelectedDocumentWorkflowInstance?.DocumentWorkflowInstance.Id == documentWorkflowInstance.DocumentWorkflowInstance.Id)
+        {
+            SelectedDocumentWorkflowInstance = null;
+        }
+        else
+        {
+            SelectedDocumentWorkflowInstance = documentWorkflowInstance;
+        }
         DataGridRef.ToggleDetailRow(documentWorkflowInstance, true);
     }
 

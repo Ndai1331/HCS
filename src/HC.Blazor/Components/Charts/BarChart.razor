@@ -16,8 +16,12 @@
     [Parameter] public string? XAxisLabel { get; set; }
     [Parameter] public string? YAxisLabel { get; set; }
 
+#pragma warning disable CS0169 // Field is never used - reserved for future JS module reference
     private IJSObjectReference? _chartModule;
+#pragma warning restore CS0169
+#pragma warning disable CS0649 // Field is never assigned - set by JS interop when chart is created
     private IJSObjectReference? _chartInstance;
+#pragma warning restore CS0649
     private bool _chartRendered = false;
     private int _lastLabelsCount = 0;
     private int _lastDataCount = 0;

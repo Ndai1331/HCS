@@ -30,7 +30,6 @@ public partial class ProjectTaskCreateModal
     private bool IsSavingGeneralInformation { get; set; } = false;
     private bool IsFinishingWizard { get; set; } = false;
 
-    private ProjectTaskWithNavigationPropertiesDto? SelectedProjectTask;
     protected Guid CreateWizardProjectTaskId { get; set; }
     private Guid EditingProjectTaskId { get; set; }
     private ProjectTaskDto NewProjectTask { get; set; } = new();
@@ -315,7 +314,7 @@ public partial class ProjectTaskCreateModal
             // Generate next code: T + (maxNumber + 1) with 6 digits padding
             return $"T{(maxNumber + 1):D7}";
         }
-        catch (Exception ex)
+        catch
         {
             return "T000001";
         }

@@ -60,7 +60,6 @@ public partial class MasterDatas
 
     protected string SelectedCreateTab = "masterData-create-tab";
     protected string SelectedEditTab = "masterData-edit-tab";
-    private MasterDataDto? SelectedMasterData;
 
     private List<MasterDataDto> SelectedMasterDatas { get; set; } = new();
     private bool AllMasterDatasSelected { get; set; }
