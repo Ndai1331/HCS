@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using HC.Localization;
 using HC.Blazor.Services;
 using Volo.Abp.AspNetCore.Components.Messages;
@@ -11,6 +12,11 @@ namespace HC.Blazor;
 public abstract class HCComponentBase : AbpComponentBase
 {
     private const string ForbiddenErrorCode = "Volo.Authorization:010001";
+    private static readonly Dictionary<string, string> BusinessErrorLocalizationMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["HC.Chat:MustTransferAdminBeforeLeaving"] = "MustTransferAdminBeforeLeaving",
+        ["HC.Chat:OnlyAdminCanDeleteConversation"] = "OnlyAdminCanDeleteConversation"
+    };
 
     [Microsoft.AspNetCore.Components.Inject]
     protected IUiMessageService UiMessageService { get; set; } = default!;
@@ -32,6 +38,11 @@ public abstract class HCComponentBase : AbpComponentBase
         }
 
         if (await TryHandleForbiddenErrorAsync(exception))
+        {
+            return;
+        }
+
+        if (await TryHandleBusinessErrorAsync(exception))
         {
             return;
         }
@@ -98,5 +109,35 @@ public abstract class HCComponentBase : AbpComponentBase
         }
 
         return exception.InnerException != null && IsForbiddenError(exception.InnerException);
+    }
+
+    private async System.Threading.Tasks.Task<bool> TryHandleBusinessErrorAsync(Exception exception)
+    {
+        if (!TryGetBusinessLocalizationKey(exception, out var localizationKey))
+        {
+            return false;
+        }
+
+        await UiMessageService.Error(L[localizationKey],
+            options: new System.Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+        return true;
+    }
+
+    private static bool TryGetBusinessLocalizationKey(Exception exception, out string localizationKey)
+    {
+        if (exception is AbpRemoteCallException remoteException
+            && !string.IsNullOrWhiteSpace(remoteException.Error?.Code)
+            && BusinessErrorLocalizationMap.TryGetValue(remoteException.Error.Code, out localizationKey))
+        {
+            return true;
+        }
+
+        if (exception.InnerException != null)
+        {
+            return TryGetBusinessLocalizationKey(exception.InnerException, out localizationKey);
+        }
+
+        localizationKey = string.Empty;
+        return false;
     }
 }

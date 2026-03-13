@@ -1199,6 +1199,7 @@
     "Fobidden": "You are not authorized to perform this action",
     "SetAdmin": "Set admin",
     "RemoveMember": "Remove member",
-    "MustTransferAdminBeforeLeaving": "Must transfer admin before leaving"
+    "MustTransferAdminBeforeLeaving": "Must transfer admin before leaving",
+    "OnlyAdminCanDeleteConversation": "Only admin can delete conversation"
   }
 }
