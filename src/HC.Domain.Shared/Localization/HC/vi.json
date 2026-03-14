@@ -357,7 +357,7 @@
     "Enum:EventType.CALENDAR_INVITED": "Lịch đã được mời",
     "Enum:EventType.CALENDAR_REMINDER": "Lịch nhắc nhở",
     "Enum:EventType.PROJECT_MEMBER_ADDED": "Đã thêm thành viên dự án",
-    "ProjectMemberAdded": "Đã thêm thành viên dự án: {0}",
+    "ProjectMemberAdded": "Đã thêm thành viên dự án",
     "ProjectMemberAddedMessage": "Bạn đã được thêm vào dự án '{0}: {1}' bởi {2}",
     "WorkflowAssigned": "Workflow đã được giao",
     "WorkflowAssignedMessage": "Bạn đã được giao workflow cho văn bản '{0}: {1}' - Bước: {2} bởi {3}",

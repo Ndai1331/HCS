@@ -61,11 +61,11 @@
             position: relative;
         }
 
-        .hc-kanban-columns {
+        @* .hc-kanban-columns {
             display: flex;
             gap: 1rem;
             align-items: stretch;
-        }
+        } *@
 
         /* Show loading overlay while updating via drag-drop */
         .hc-kanban-loading {
@@ -82,17 +82,18 @@
         .hc-kanban-column {
             min-width: 280px;
             max-width: 320px;
-            display: flex;
+            @* display: flex;
             flex-direction: column;
-            min-height: 0;
+            min-height: 0; *@
         }
 
         .hc-kanban-zone {
-            min-height: clamp(420px, calc(100vh - 360px), 760px);
+            @* min-height: clamp(420px, calc(100vh - 360px), 760px);
             max-height: clamp(420px, calc(100vh - 360px), 760px);
             overflow-y: auto;
             overflow-x: hidden;
-            flex: 1 1 auto;
+            flex: 1 1 auto; *@
+            height : 100%;
             background: #f7f9fc;
             border: 1px solid rgba(0,0,0,.08);
             border-radius: .75rem;
@@ -441,7 +442,8 @@
                                ItemDropped="@OnKanbanItemDropped"
                                Flex="Flex.Wrap.Grow.Is1">
                     <ChildContent>
-                        <Div class="hc-kanban-columns">
+                        @* <Div class="hc-kanban-columns"> *@
+                        <Div class="d-flex gap-3">
                             <Div class="hc-kanban-column">
                                 <Div class="d-flex justify-content-between align-items-center mb-2">
                                     <Heading Size="HeadingSize.Is6" class="mb-0">@GetStatusText(ProjectTaskStatus.TODO)</Heading>

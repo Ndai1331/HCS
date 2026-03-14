@@ -488,7 +488,7 @@
     "Enum:EventType.CALENDAR_INVITED": "Calendar invited",
     "Enum:EventType.CALENDAR_REMINDER": "Calendar reminder",
     "Enum:EventType.PROJECT_MEMBER_ADDED": "Project member added",
-    "ProjectMemberAdded": "Project member added: {0}",
+    "ProjectMemberAdded": "Project member added",
     "ProjectMemberAddedMessage": "You have been added to project '{0}: {1}' by {2}",
     "WorkflowAssigned": "Workflow assigned",
     "WorkflowAssignedMessage": "You have been assigned workflow for document '{0}: {1}' - Step: {2} by {3}",
