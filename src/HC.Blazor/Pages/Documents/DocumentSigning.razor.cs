@@ -111,6 +111,7 @@ public partial class DocumentSigning
     private DocumentSigningItemDto? SelectedDocumentForAction { get; set; }
     private string SelectedAction { get; set; } = nameof(WorkflowInstanceLogAction.APPROVE);
     private string? ActionNote { get; set; }
+    private RichTextEdit? ActionNoteEditorRef { get; set; }
 
     // Action Modal - Tabs, Logs, Files, DocumentHistory
     private string ActionModalActiveTab { get; set; } = "general"; // "general" | "workflowHistory"
@@ -951,12 +952,23 @@ public partial class DocumentSigning
                 }
             }
 
+            // Blazor binding updates on blur; get note from editor to ensure we have latest content for <<NoteContentXX>>
+            var actionNote = ActionNote?.Trim();
+            if (ActionNoteEditorRef != null)
+            {
+                var editorHtml = await ActionNoteEditorRef.GetHtmlAsync();
+                if (!string.IsNullOrWhiteSpace(editorHtml))
+                {
+                    actionNote = editorHtml.Trim();
+                }
+            }
+
             var input = new WorkflowActionInput
             {
                 DocumentWorkflowInstanceId = SelectedDocumentForAction.WorkflowInstanceId.Value,
                 DocumentAssignmentId = SelectedDocumentForAction.MyAssignmentId.Value,
                 Action = SelectedAction,
-                Note = NormalizeRichTextHtml(ActionNote),
+                Note = NormalizeRichTextHtml(actionNote),
                 SigningMethodId = SelectedSigningMethodId,
                 UserSignatureId = SelectedUserSignatureId
             };

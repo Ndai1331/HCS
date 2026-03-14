@@ -790,10 +790,11 @@
                                         }
                                     }
 
-                                    @* Note *@
+                                    @* Note - content is used for <<NoteContentXX>> placeholder when signing *@
                                     <Field>
                                         <FieldLabel class="fw-bold">@L["Note"]</FieldLabel>
-                                        <RichTextEdit @bind-Value="@ActionNote"
+                                        <RichTextEdit @ref="ActionNoteEditorRef"
+                                                      @bind-Value="@ActionNote"
                                                       Theme="RichTextEditTheme.Snow"
                                                       PlaceHolder="@L["EnterNoteOptional"]"
                                                       ToolbarPosition="Placement.Bottom">

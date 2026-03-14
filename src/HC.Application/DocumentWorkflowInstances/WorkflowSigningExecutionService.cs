@@ -63,6 +63,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
     private readonly IAsyncQueryableExecuter _asyncExecuter;
     private readonly IStringLocalizer<HCResource> _localizer;
     private readonly ILogger<WorkflowSigningExecutionService> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly IConfiguration _configuration;
 
     public WorkflowSigningExecutionService(
@@ -79,6 +80,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         IAsyncQueryableExecuter asyncExecuter,
         IStringLocalizer<HCResource> localizer,
         ILogger<WorkflowSigningExecutionService> logger,
+        ILoggerFactory loggerFactory,
         IConfiguration configuration)
     {
         _documentAssignmentRepository = documentAssignmentRepository;
@@ -94,6 +96,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         _asyncExecuter = asyncExecuter;
         _localizer = localizer;
         _logger = logger;
+        _loggerFactory = loggerFactory;
         _configuration = configuration;
     }
 
@@ -207,14 +210,21 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
 
         var placeholderTag = $"<<Sign{assignment.StepOrder:D2}>>";
-        var signer = new SignText(signature.TokenRef, signature.Secret, signatureSetting.ApiEndpoint);
+        var signTextLogger = _loggerFactory.CreateLogger<SignText>();
+        var signer = new SignText(signature.TokenRef, signature.Secret, signatureSetting.ApiEndpoint, signTextLogger);
+
+        var pdfForSigning = ReplacePdfNameAndNotePlaceholders(
+            pdfBytes,
+            assignment.StepOrder,
+            fullName,
+            noteContent ?? string.Empty);
 
         byte[]? signedPdfBytes;
         try
         {
             signedPdfBytes = signer.SignTextLocationCustomizeV2(new SignPdfInput
             {
-                datapdf = pdfBytes,
+                datapdf = pdfForSigning,
                 chukytuoi = signatureImageBytes,
                 condau = sealImageBytes,
                 anhkhung = layoutImageBytes,
@@ -249,16 +259,11 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         try
         {
-            signedPdfBytes = ReplacePdfNameAndNotePlaceholders(
-                signedPdfBytes,
-                assignment.StepOrder,
-                fullName,
-                noteContent ?? string.Empty);
+            signedPdfBytes = ReplacePdfSignPlaceholderWhiteout(signedPdfBytes, assignment.StepOrder);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[DIGITAL_SIGN] Error replacing name/note placeholders. StepOrder={StepOrder}", assignment.StepOrder);
-            throw new UserFriendlyException(_localizer["ErrorProcessingPdf", ex.Message]);
+            _logger.LogWarning(ex, "[DIGITAL_SIGN] Could not white-out Sign placeholder. StepOrder={StepOrder}", assignment.StepOrder);
         }
 
         var extension = Path.GetExtension(sourceFile.Name);
@@ -615,6 +620,22 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         return stripped.Trim();
     }
 
+    /// <summary>
+    /// Converts HTML to plain text preserving line breaks (br, p). Matches WordPlaceholderReplacer for ContentToBeApproved.
+    /// </summary>
+    private static string HtmlToPlainWithLineBreaks(string html)
+    {
+        if (string.IsNullOrWhiteSpace(html)) return string.Empty;
+        var opt = RegexOptions.IgnoreCase;
+        var text = Regex.Replace(html, @"<br\s*/?>", "\n", opt);
+        text = Regex.Replace(text, @"</p>\s*<p[^>]*>", "\n", opt);
+        text = Regex.Replace(text, @"<p[^>]*>", "\n", opt);
+        text = Regex.Replace(text, @"</p>", "\n", opt);
+        text = Regex.Replace(text, @"<[^>]*>", " ", opt);
+        text = Regex.Replace(text, @"[^\S\n]+", " ", opt);
+        return text.Trim();
+    }
+
     private async Task<byte[]> ConvertWordToDocxAsync(byte[] sourceBytes)
     {
         return await ConvertWordWithLibreOfficeAsync(sourceBytes, ".doc", "docx");
@@ -713,6 +734,11 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         public string Type { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// Replaces placeholders for electronic signing. Uses same logic as PrepareSubmissionPlaceholders:
+    /// - Step-based: &lt;&lt;SignXX&gt;&gt;, &lt;&lt;FullNameXX&gt;&gt;, &lt;&lt;NoteContentXX&gt;&gt;
+    /// - Prepared (trình ký style): &lt;&lt;PreparedBySign&gt;&gt;, &lt;&lt;PreparedFullName&gt;&gt; - replaced with signer's image/name
+    /// </summary>
     public byte[] ReplacePdfPlaceholders(
         byte[] pdfBytes,
         int stepOrder,
@@ -721,19 +747,27 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         string noteContent)
     {
         var suffix = stepOrder.ToString("D2");
+        var searchItems = new List<PlaceholderSearchItem>
+        {
+            new() { Tag = $"<<Sign{suffix}>>", Type = "SIGN" },
+            new() { Tag = $"<<FullName{suffix}>>", Type = "FULLNAME" },
+            new() { Tag = $"<<NoteContent{suffix}>>", Type = "NOTE" },
+            // Same as trình ký (prepare): replace Prepared placeholders with signer's image/name
+            new() { Tag = "<<PreparedBySign>>", Type = "PREPARED_SIGN" },
+            new() { Tag = "<<PreparedFullName>>", Type = "PREPARED_FULLNAME" },
+        };
         return ReplacePdfPlaceholdersInternal(
             pdfBytes,
-            new List<PlaceholderSearchItem>
-            {
-                new() { Tag = $"<<Sign{suffix}>>", Type = "SIGN" },
-                new() { Tag = $"<<FullName{suffix}>>", Type = "FULLNAME" },
-                new() { Tag = $"<<NoteContent{suffix}>>", Type = "NOTE" },
-            },
+            searchItems,
             signatureImageBytes,
             fullName,
             noteContent);
     }
 
+    /// <summary>
+    /// Replaces FullName and NoteContent placeholders for digital signing. Same placeholders as electronic signing.
+    /// Also replaces &lt;&lt;PreparedFullName&gt;&gt; (trình ký style) with signer's name.
+    /// </summary>
     private byte[] ReplacePdfNameAndNotePlaceholders(
         byte[] pdfBytes,
         int stepOrder,
@@ -741,16 +775,36 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         string noteContent)
     {
         var suffix = stepOrder.ToString("D2");
+        var searchItems = new List<PlaceholderSearchItem>
+        {
+            new() { Tag = $"<<FullName{suffix}>>", Type = "FULLNAME" },
+            new() { Tag = $"<<NoteContent{suffix}>>", Type = "NOTE" },
+            // Same as trình ký: replace PreparedFullName with signer's name
+            new() { Tag = "<<PreparedFullName>>", Type = "PREPARED_FULLNAME" },
+        };
+        return ReplacePdfPlaceholdersInternal(
+            pdfBytes,
+            searchItems,
+            signatureImageBytes: null,
+            fullName,
+            noteContent);
+    }
+
+    /// <summary>
+    /// White-out &lt;&lt;SignNN&gt;&gt; placeholder in Bnn-signed PDF. Bnn draws the signature but does not remove the text.
+    /// </summary>
+    private byte[] ReplacePdfSignPlaceholderWhiteout(byte[] pdfBytes, int stepOrder)
+    {
+        var suffix = stepOrder.ToString("D2");
         return ReplacePdfPlaceholdersInternal(
             pdfBytes,
             new List<PlaceholderSearchItem>
             {
-                new() { Tag = $"<<FullName{suffix}>>", Type = "FULLNAME" },
-                new() { Tag = $"<<NoteContent{suffix}>>", Type = "NOTE" },
+                new() { Tag = $"<<Sign{suffix}>>", Type = "SIGN_WHITEOUT" },
             },
             signatureImageBytes: null,
-            fullName,
-            noteContent);
+            fullName: string.Empty,
+            noteContent: string.Empty);
     }
 
     private byte[] ReplacePreparedPlaceholders(
@@ -904,6 +958,10 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
             switch (pos.Type)
             {
+                case "SIGN_WHITEOUT":
+                    // Bnn draws signature at this position; we only white-out the placeholder text
+                    break;
+
                 case "SIGN":
                 case "PREPARED_SIGN":
                     if (signatureImageBytes != null && signatureImageBytes.Length > 0)
@@ -933,9 +991,11 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                     break;
 
                 case "NOTE":
+                    // Match ContentToBeApproved: strip HTML, preserve line breaks (same as trình ký)
+                    var notePlainText = HtmlToPlainWithLineBreaks(noteContent ?? string.Empty);
                     var noteFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8));
-                    gfx.DrawString(noteContent, noteFont, PdfSharpDrawing.XBrushes.Black,
-                        whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
+                    gfx.DrawString(notePlainText, noteFont, PdfSharpDrawing.XBrushes.Black,
+                        whiteRect, PdfSharpDrawing.XStringFormats.TopLeft);
                     break;
 
                 case "HTML_CONTENT":
@@ -976,8 +1036,19 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         IReadOnlyList<PlaceholderSearchItem> searchPairs)
     {
         var positions = new List<PlaceholderPosition>();
-        double[] pageHeights;
 
+        // Validate PDF header - PdfPig throws if bytes are not valid PDF (e.g. .docx from wrong file)
+        if (pdfBytes == null || pdfBytes.Length < 8)
+        {
+            return (positions, Array.Empty<double>());
+        }
+        var header = System.Text.Encoding.ASCII.GetString(pdfBytes.AsSpan(0, Math.Min(8, pdfBytes.Length)));
+        if (!header.StartsWith("%PDF", StringComparison.OrdinalIgnoreCase))
+        {
+            return (positions, Array.Empty<double>());
+        }
+
+        double[] pageHeights;
         using var pdfPigDoc = PdfDocument.Open(pdfBytes);
         pageHeights = new double[pdfPigDoc.NumberOfPages];
 

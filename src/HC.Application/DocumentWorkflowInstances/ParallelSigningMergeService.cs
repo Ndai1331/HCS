@@ -89,11 +89,25 @@ public sealed class ParallelSigningMergeService : IParallelSigningMergeService, 
             return;
         }
 
-        var originalFileRecord = await _documentFileRepository.FindAsync(instanceFiles.First().DocumentFileId);
+        // Template PDF is added last (after attached files); attached files may be .docx etc.
+        // Must use the PDF file - instanceFiles.First() could be a non-PDF attachment
+        DocumentFile? originalFileRecord = null;
+        var docFileIds = instanceFiles.Select(f => f.DocumentFileId).Distinct().ToList();
+        var docFiles = await _documentFileRepository.GetListAsync(x => docFileIds.Contains(x.Id));
+        foreach (var instFile in instanceFiles.OrderByDescending(f => f.CreationTime))
+        {
+            var docFile = docFiles.FirstOrDefault(f => f.Id == instFile.DocumentFileId);
+            if (docFile != null && !string.IsNullOrEmpty(docFile.Path) && IsPdfFile(docFile))
+            {
+                originalFileRecord = docFile;
+                break;
+            }
+        }
+
         if (originalFileRecord == null || string.IsNullOrEmpty(originalFileRecord.Path))
         {
-            _logger.LogWarning("[PARALLEL_MERGE] Original file not found or has no path. InstanceId={InstanceId}", instance.Id);
-            return;
+            _logger.LogWarning("[PARALLEL_MERGE] No PDF file found in instance files. InstanceId={InstanceId}", instance.Id);
+            throw new UserFriendlyException(_localizer["ErrorProcessingPdf", "No PDF file found for merge"]);
         }
 
         byte[] pdfBytes;
@@ -103,8 +117,17 @@ public sealed class ParallelSigningMergeService : IParallelSigningMergeService, 
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[PARALLEL_MERGE] Error reading original PDF. Path={Path}", originalFileRecord.Path);
-            throw new UserFriendlyException(_localizer["ErrorProcessingPdf"]);
+            _logger.LogError(ex, "[PARALLEL_MERGE] Error reading original PDF. Path={Path}, FileName={FileName}",
+                originalFileRecord.Path, originalFileRecord.Name);
+            throw new UserFriendlyException(_localizer["ErrorProcessingPdf", ex.Message]);
+        }
+
+        // Validate PDF header (blob might be wrong format if file selection was incorrect)
+        if (pdfBytes.Length < 8 || !System.Text.Encoding.ASCII.GetString(pdfBytes.AsSpan(0, 8)).StartsWith("%PDF", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogError("[PARALLEL_MERGE] Blob content is not valid PDF. Path={Path}, FileName={FileName}",
+                originalFileRecord.Path, originalFileRecord.Name);
+            throw new UserFriendlyException(_localizer["ErrorProcessingPdf", "File is not a valid PDF"]);
         }
 
         var allDoneAssignments = await _documentAssignmentRepository.GetListAsync(
@@ -222,5 +245,11 @@ public sealed class ParallelSigningMergeService : IParallelSigningMergeService, 
 
         _logger.LogInformation("[PARALLEL_MERGE] Merge completed. MergedFileId={FileId}, BlobPath={BlobPath}",
             mergedFile.Id, mergedBlobPath);
+    }
+
+    private static bool IsPdfFile(DocumentFile file)
+    {
+        var ext = Path.GetExtension(file.Name ?? file.Path ?? "").ToLowerInvariant();
+        return ext == ".pdf";
     }
 }

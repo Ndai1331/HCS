@@ -490,16 +490,19 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             }
         }
 
-        // Also attach the template file to the workflow instance if it was created
-        if (templateDocumentFileId.HasValue)
+        // Attach the PREPARED PDF (signingFileId) to the workflow instance - NOT templateDocumentFileId.
+        // When template is .docx, PrepareSubmissionPlaceholdersAsync converts to PDF and creates a new DocumentFile.
+        // templateDocumentFileId points to the original .docx; signingFileId is the converted PDF.
+        // Merge service needs this PDF for parallel signing.
+        if (signingFileId.HasValue)
         {
-            var templateInstanceFile = new DocumentWorkflowInstanceFile(
+            var mainSigningInstanceFile = new DocumentWorkflowInstanceFile(
                 GuidGenerator.Create(),
                 instance.Id,
-                templateDocumentFileId.Value
+                signingFileId.Value
             );
-            templateInstanceFile.TenantId = CurrentTenant.Id;
-            await _documentWorkflowInstanceFileRepository.InsertAsync(templateInstanceFile);
+            mainSigningInstanceFile.TenantId = CurrentTenant.Id;
+            await _documentWorkflowInstanceFileRepository.InsertAsync(mainSigningInstanceFile);
         }
 
         // 7. Send notification to assigned users
@@ -1231,8 +1234,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             "RE_SUBMIT"
         );
 
-        // 13. ISSUE-3 FIX: Only attach USER-UPLOADED files, NOT the signing PDF.
-        // The signing PDF is already referenced through DocumentAssignment.DocumentFileResultId.
+        // 13. Attach files: user-uploaded attached files + the prepared PDF (signingFileId)
+        // Merge service needs the prepared PDF in instance files for parallel signing.
         if (input.AttachedFileIds != null && input.AttachedFileIds.Any())
         {
             foreach (var fileId in input.AttachedFileIds)
@@ -1245,6 +1248,16 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 instanceFile.TenantId = CurrentTenant.Id;
                 await _documentWorkflowInstanceFileRepository.InsertAsync(instanceFile);
             }
+        }
+        if (signingFileId.HasValue)
+        {
+            var mainSigningInstanceFile = new DocumentWorkflowInstanceFile(
+                GuidGenerator.Create(),
+                returnedInstance.Id,
+                signingFileId.Value
+            );
+            mainSigningInstanceFile.TenantId = CurrentTenant.Id;
+            await _documentWorkflowInstanceFileRepository.InsertAsync(mainSigningInstanceFile);
         }
 
         // 14. Delete old attached files if requested

@@ -287,11 +287,11 @@ else
     <ModalContent Centered="true" Size="ModalSize.ExtraLarge">
         <ModalHeader>
             <ModalTitle>
-                <Icon Name="IconName.Info" Class="me-1" />
-                @L["ViewDetail"] @(!string.IsNullOrWhiteSpace(SelectedSurveySessionSummary?.FullName) ? $"{SelectedSurveySessionSummary.FullName} - {SelectedSurveySessionSummary.PhoneNumber}" : string.Empty)
-                @(!string.IsNullOrWhiteSpace(SelectedSurveySessionSummary?.PatientCode) ? $" - {SelectedSurveySessionSummary.PatientCode}" : string.Empty)
+                <Icon Name="IconName.Info" Color="Color.Primary" Class="me-1" />
+                @L["ViewDetail"]: @(!string.IsNullOrWhiteSpace(SelectedSurveySessionSummary?.FullName) ? $"{SelectedSurveySessionSummary.FullName}" : string.Empty)
+                @(!string.IsNullOrWhiteSpace(SelectedSurveySessionSummary?.PhoneNumber) ? $" - {SelectedSurveySessionSummary.PhoneNumber}" : string.Empty)
                 @(!string.IsNullOrWhiteSpace(SelectedSurveySessionSummary?.Note) ? $" - {SelectedSurveySessionSummary.Note}" : string.Empty)
-                @(SelectedSurveySessionSummary?.SurveyTime != null ? $" - {SelectedSurveySessionSummary.SurveyTime.Value.ToString("dd/MM/yyyy HH:mm")}" : string.Empty)
+                @(SelectedSurveySessionSummary?.SurveyTime != null ? $" - {SelectedSurveySessionSummary.SurveyTime.ToString("dd/MM/yyyy HH:mm")}" : string.Empty)
             </ModalTitle>
             <CloseButton Clicked="CloseDetailModalAsync" />
         </ModalHeader>
