@@ -25,9 +25,13 @@
 @using Microsoft.AspNetCore.Components
 @using Volo.Abp.Http.Client
 @using Excubo.Blazor.TreeViews
+@using HC.DocumentFiles
+@using Blazorise.PdfViewer
 
 @inherits HCComponentBase
 @inject IDocumentsAppService DocumentsAppService
+@inject IDocumentFilesAppService DocumentFilesAppService
+@inject Volo.Abp.BlobStoring.IBlobContainer BlobContainer
 @inject IUiMessageService UiMessageService
 @inject IBlockUiService BlockUiService
 @inject IUserDepartmentsAppService UserDepartmentsAppService
@@ -365,15 +369,15 @@
                         <Div Class="d-flex gap-1">
                             @if (CanEditDocument)
                             {
-
                                 <Button
                                     @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
                                     Color="Color.Secondary"
                                     Outline
                                     Size="Size.Small"
+                                    Title="@L["Edit"]"
                                     Class="mb-1">
                                     <Icon Name="IconName.Edit" />
-                                   </Button>
+                                </Button>
                             }
                             @if (CanDeleteDocument)
                             {
@@ -382,10 +386,19 @@
                                     Color="Color.Danger"
                                     Outline
                                     Size="Size.Small"
+                                    Title="@L["Delete"]"
                                     Class="mb-1">
                                     <Icon Name="IconName.Delete" />
-                                   </Button>
+                                </Button>
                             }
+                            <Button
+                                @onclick="@(() => OpenDocumentPdfViewerModalAsync(context))"
+                                Class="bg-brand text-white mb-1"
+                                Size="Size.Small"
+                                Outline
+                                Title="@L["ViewFile"]">
+                                <Icon Name="IconName.Eye" />
+                            </Button>
                         </Div>
                          
                     </DisplayTemplate>
@@ -652,7 +665,29 @@
     </ModalContent>
 </Modal>
 
-
+@* ************************* MODAL: PDF VIEWER ************************* *@
+<Modal @ref="DocumentPdfViewerModal" Class="pdf-viewer-modal">
+    <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
+        <ModalHeader>
+            <ModalTitle>@L["DocumentPreview"]</ModalTitle>
+            <CloseButton Clicked="CloseDocumentPdfViewerModalAsync" />
+        </ModalHeader>
+        <ModalBody Class="pdf-viewer-modal-body">
+            @if (IsDocumentPdfFile && !string.IsNullOrEmpty(DocumentPdfFileUrl))
+            {
+                <PdfViewerContainer Height="Height.Rem(35)">
+                    <PdfViewerToolbar ShowDownloading="false" />
+                    <PdfViewer Source="@DocumentPdfFileUrl" />
+                </PdfViewerContainer>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseDocumentPdfViewerModalAsync">
+                @L["Close"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
 
 <style>
     input[type="checkbox"] {

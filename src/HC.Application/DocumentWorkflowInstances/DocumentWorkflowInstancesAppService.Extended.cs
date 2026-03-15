@@ -1535,9 +1535,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     /// assignments/documents into memory. Filter, count, and page are done in SQL.
     /// 
     /// Logic:
-    ///   All = Document where user is receiver OR creator of any assignment
+    ///   All = Document where user is receiver OR initiator of workflow
     ///   SentToMe = DocumentAssignment.ReceiverUserId = currentUserId
-    ///   SentByMe = DocumentAssignment.CreatorId = currentUserId
+    ///   SentByMe = DocumentWorkflowInstance.CreatorId = currentUserId AND sent to others (exclude "Tôi gửi đến tôi")
     ///   Following = empty (no logic for now)
     /// </summary>
     public async Task<DocumentSigningPageResultDto> GetDocumentSigningListAsync(GetDocumentSigningListInput input)
@@ -1546,6 +1546,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         // ===== STEP 1: Build queryable for distinct document IDs per category at DB level =====
         var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
+        var instanceQueryable = await _documentWorkflowInstanceRepository.GetQueryableAsync();
         var documentQueryable = await _documentRepository.GetQueryableAsync();
 
         // Distinct document IDs where user is receiver (DB query, not materialized yet)
@@ -1554,14 +1555,20 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             .Select(a => a.DocumentId)
             .Distinct();
 
-        // Distinct document IDs where user is creator (DB query, not materialized yet)
-        var createdDocIdQuery = assignmentQueryable
-            .Where(a => a.CreatorId == currentUserId)
+        // SentByMe: documents where user INITIATED the workflow (trình ký) AND sent to others.
+        // Exclude "Tôi gửi đến tôi" (I sent to myself) - only count when sent to at least one other person.
+        var initiatedDocIdQuery = instanceQueryable
+            .Where(i => i.CreatorId == currentUserId)
+            .Select(i => i.DocumentId)
+            .Distinct();
+        var sentToOthersDocIdQuery = assignmentQueryable
+            .Where(a => a.ReceiverUserId != currentUserId)
             .Select(a => a.DocumentId)
             .Distinct();
+        var sentByMeDocIdQuery = initiatedDocIdQuery.Intersect(sentToOthersDocIdQuery);
 
-        // All = union of received + created
-        var allDocIdQuery = receivedDocIdQuery.Union(createdDocIdQuery);
+        // All = union of received + sentByMe (initiator)
+        var allDocIdQuery = receivedDocIdQuery.Union(sentByMeDocIdQuery);
 
         // ===== STEP 2: Build filtered document base query at DB level =====
         var baseDocQuery = documentQueryable.Where(d => allDocIdQuery.Contains(d.Id));
@@ -1594,7 +1601,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         int sentToMeCount = await AsyncExecuter.CountAsync(
             filteredDocIds.Where(id => receivedDocIdQuery.Contains(id)));
         int sentByMeCount = await AsyncExecuter.CountAsync(
-            filteredDocIds.Where(id => createdDocIdQuery.Contains(id)));
+            filteredDocIds.Where(id => sentByMeDocIdQuery.Contains(id)));
         int followingCount = 0; // No logic for now
         int allCount = await AsyncExecuter.CountAsync(filteredDocIds);
 
@@ -1606,7 +1613,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 modeFilteredQuery = baseDocQuery.Where(d => receivedDocIdQuery.Contains(d.Id));
                 break;
             case DocumentSigningFilterMode.SentByMe:
-                modeFilteredQuery = baseDocQuery.Where(d => createdDocIdQuery.Contains(d.Id));
+                modeFilteredQuery = baseDocQuery.Where(d => sentByMeDocIdQuery.Contains(d.Id));
                 break;
             case DocumentSigningFilterMode.Following:
                 // Return empty result for Following mode

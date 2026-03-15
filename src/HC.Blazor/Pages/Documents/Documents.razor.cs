@@ -12,8 +12,10 @@ using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.Documents;
+using HC.DocumentFiles;
 using HC.Permissions;
 using HC.Shared;
+using Volo.Abp.BlobStoring;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using HC.Departments;
@@ -76,6 +78,11 @@ public partial class Documents : IDisposable
     private DocumentSourceType? SelectedSourceType { get; set; }
 
     private Modal SendDocumentModal { get; set; } = new();
+
+    // PDF Viewer Modal
+    private Modal DocumentPdfViewerModal { get; set; } = new();
+    private string? DocumentPdfFileUrl { get; set; }
+    private bool IsDocumentPdfFile { get; set; }
 
     private CancellationTokenSource? SearchDebounceCts { get; set; }
 
@@ -1012,6 +1019,75 @@ public partial class Documents : IDisposable
     }
 
     #endregion Delete or Revoke Document
+
+    #region PDF Viewer
+
+    /// <summary>
+    /// Open PDF viewer modal for a document. Works for both sourceType 0 (Archive) and 1 (Personal).
+    /// Gets DocumentFiles by DocumentId, finds first PDF and displays it.
+    /// </summary>
+    private async Task OpenDocumentPdfViewerModalAsync(DocumentWithNavigationPropertiesDto context)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            if (context?.Document == null)
+            {
+                await BlockUiService.UnBlock();
+                return;
+            }
+
+            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
+            {
+                DocumentId = context.Document.Id,
+                MaxResultCount = 100,
+                SkipCount = 0
+            });
+
+            var pdfFile = documentFilesResult.Items
+                .FirstOrDefault(f => f.DocumentFile != null
+                    && !string.IsNullOrEmpty(f.DocumentFile.Path)
+                    && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(f.DocumentFile.Name));
+
+            var pdfFilePath = pdfFile?.DocumentFile?.Path;
+
+            if (string.IsNullOrEmpty(pdfFilePath))
+            {
+                await UiMessageService.Warn(L["NoPdfAvailable"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                await BlockUiService.UnBlock();
+                return;
+            }
+
+            var fileBytes = await BlobContainer.GetAllBytesAsync(pdfFilePath);
+            var base64 = Convert.ToBase64String(fileBytes);
+            DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
+            IsDocumentPdfFile = true;
+            await DocumentPdfViewerModal.Show();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error opening PDF viewer for document {DocumentId}", context?.Document?.Id);
+            await UiMessageService.Warn(L["NoPdfAvailable"] + ": " + ex.Message,
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    private async Task CloseDocumentPdfViewerModalAsync()
+    {
+        if (DocumentPdfViewerModal != null)
+        {
+            await DocumentPdfViewerModal.Hide();
+        }
+        DocumentPdfFileUrl = null;
+        IsDocumentPdfFile = false;
+    }
+
+    #endregion PDF Viewer
 
     /// <summary>
     /// Cleanup event handlers when component is disposed

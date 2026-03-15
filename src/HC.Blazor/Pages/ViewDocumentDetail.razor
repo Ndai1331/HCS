@@ -234,7 +234,7 @@
                     @if (IsPdfAvailable && !string.IsNullOrEmpty(PdfFileUrl))
                     {
                         <PdfViewerContainer Height="Height.Rem(65)">
-                            <PdfViewerToolbar />
+                            <PdfViewerToolbar ShowDownloading="false" />
                             <PdfViewer Source="@PdfFileUrl" />
                         </PdfViewerContainer>
                     }

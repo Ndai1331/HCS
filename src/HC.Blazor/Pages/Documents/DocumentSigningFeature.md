@@ -154,7 +154,7 @@ public enum DocumentSigningFilterMode
 {
     All = 0,       // Tất cả = Union(SentToMe, SentByMe, Following)
     SentToMe = 1,  // DocumentAssignment.ReceiverUserId = currentUserId
-    SentByMe = 2,  // DocumentAssignment.CreatorId = currentUserId
+    SentByMe = 2,  // DocumentWorkflowInstance.CreatorId = currentUserId AND sent to others (exclude "Tôi gửi đến tôi")
     Following = 3  // Chưa có logic
 }
 ```
@@ -344,7 +344,7 @@ public class DocumentSigningPageResultDto
 |------|-------|
 | **All** | Union(SentToMe, SentByMe, Following) |
 | **SentToMe** | `DocumentAssignment.ReceiverUserId = currentUserId` |
-| **SentByMe** | `DocumentAssignment.CreatorId = currentUserId` |
+| **SentByMe** | `DocumentWorkflowInstance.CreatorId = currentUserId` AND sent to others (exclude "Tôi gửi đến tôi") |
 | **Following** | Chưa implement (count = 0) |
 
 **Thêm filter:**

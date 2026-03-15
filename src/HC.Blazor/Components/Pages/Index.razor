@@ -676,8 +676,8 @@
 <ProjectTaskViewModal @ref="TaskDetailModal" OnViewPdfDocument="OpenPdfViewerModalForDocumentAsync" OnTaskUpdated="OnTaskUpdatedAsync" />
 
 @* ************************* PDF VIEWER MODAL ************************* *@
-<Modal @ref="PdfViewerModal" Class="pdf-viewer-modal" Size="ModalSize.ExtraLarge" Centered="true">
-    <ModalContent>
+<Modal @ref="PdfViewerModal" Class="pdf-viewer-modal">
+    <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
         <ModalHeader>
             <ModalTitle>@L["DocumentPreview"]</ModalTitle>
             <CloseButton Clicked="ClosePdfViewerModalAsync" />
@@ -686,7 +686,7 @@
             @if (IsPdfFile && !string.IsNullOrEmpty(PdfFileUrl))
             {
                 <PdfViewerContainer Height="Height.Rem(35)">
-                    <PdfViewerToolbar />
+                    <PdfViewerToolbar ShowDownloading="false" />
                     <PdfViewer Source="@PdfFileUrl" />
                 </PdfViewerContainer>
             }
@@ -864,7 +864,7 @@
             @if (IsDocumentPdfFile && !string.IsNullOrEmpty(DocumentPdfFileUrl))
             {
                 <PdfViewerContainer Height="Height.Rem(35)">
-                    <PdfViewerToolbar />
+                    <PdfViewerToolbar ShowDownloading="false" />
                     <PdfViewer Source="@DocumentPdfFileUrl" />
                 </PdfViewerContainer>
             }

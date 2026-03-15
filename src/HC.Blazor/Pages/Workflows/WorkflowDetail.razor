@@ -417,7 +417,7 @@
                                         {
                                             @* PDF Viewer for converted Word template *@
                                             <PdfViewerContainer Height="Height.Rem(45)">
-                                                <PdfViewerToolbar />
+                                                <PdfViewerToolbar ShowDownloading="false" />
                                                 <PdfViewer Source="@WordTemplatePdfUrl" @ref="@WordTemplatePdfViewerRef" />
                                             </PdfViewerContainer>
                                         }
