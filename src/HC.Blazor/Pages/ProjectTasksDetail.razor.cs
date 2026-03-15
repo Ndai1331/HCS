@@ -40,6 +40,7 @@ public partial class ProjectTasksDetail : HCComponentBase
     [Inject] private IProjectTaskDocumentsAppService ProjectTaskDocumentsAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
+    [Inject] private HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService { get; set; } = default!;
     [Inject] private ILogger<ProjectTasksDetail> NotificationLogger { get; set; } = default!;
     [Inject] private IUiMessageService UiMessageService { get; set; } = default!;
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
@@ -739,7 +740,11 @@ public partial class ProjectTasksDetail : HCComponentBase
                 var file = pdfFile.Items.First();
                 if (!string.IsNullOrEmpty(file.DocumentFile.Path))
                 {
-                    var fileBytes = await BlobContainer.GetAllBytesAsync(file.DocumentFile.Path);
+                    var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+                    {
+                        BlobPath = file.DocumentFile.Path,
+                        Action = "view"
+                    });
                     var base64 = Convert.ToBase64String(fileBytes);
                     PdfFileUrl = $"data:application/pdf;base64,{base64}";
                     IsPdfFile = true;
@@ -787,7 +792,19 @@ public partial class ProjectTasksDetail : HCComponentBase
                 var file = files.Items.First();
                 if (!string.IsNullOrEmpty(file.DocumentFile.Path))
                 {
-                    var fileBytes = await BlobContainer.GetAllBytesAsync(file.DocumentFile.Path);
+                    byte[] fileBytes;
+                    if (HC.Blazor.Shared.FileHelper.IsPdfFileExtension(file.DocumentFile.Name ?? ""))
+                    {
+                        fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+                        {
+                            BlobPath = file.DocumentFile.Path,
+                            Action = "download"
+                        });
+                    }
+                    else
+                    {
+                        fileBytes = await BlobContainer.GetAllBytesAsync(file.DocumentFile.Path);
+                    }
                     var base64 = Convert.ToBase64String(fileBytes);
                     var contentType = "application/octet-stream";
                     var jsCode = $@"

@@ -31,7 +31,7 @@
 @inherits HCComponentBase
 @inject IDocumentsAppService DocumentsAppService
 @inject IDocumentFilesAppService DocumentFilesAppService
-@inject Volo.Abp.BlobStoring.IBlobContainer BlobContainer
+@inject HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService
 @inject IUiMessageService UiMessageService
 @inject IBlockUiService BlockUiService
 @inject IUserDepartmentsAppService UserDepartmentsAppService
@@ -393,7 +393,7 @@
                             }
                             <Button
                                 @onclick="@(() => OpenDocumentPdfViewerModalAsync(context))"
-                                Class="bg-brand text-white mb-1"
+                                Class="btn-outline-brand text-brand mb-1"
                                 Size="Size.Small"
                                 Outline
                                 Title="@L["ViewFile"]">

@@ -1059,7 +1059,11 @@ public partial class Documents : IDisposable
                 return;
             }
 
-            var fileBytes = await BlobContainer.GetAllBytesAsync(pdfFilePath);
+            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+            {
+                BlobPath = pdfFilePath,
+                Action = "view"
+            });
             var base64 = Convert.ToBase64String(fileBytes);
             DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
             IsDocumentPdfFile = true;

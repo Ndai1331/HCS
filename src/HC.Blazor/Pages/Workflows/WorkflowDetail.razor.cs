@@ -45,6 +45,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
     [Inject] private ILogger<WorkflowDetail> Logger { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
+    [Inject] private HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService { get; set; } = default!;
     [Inject] private IDocxToPdfConverter DocxToPdfConverter { get; set; } = default!;
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
@@ -1369,7 +1370,11 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     {
         try
         {
-            var pdfBytes = await BlobContainer.GetAllBytesAsync(pdfTemplatePath);
+            var pdfBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+            {
+                BlobPath = pdfTemplatePath,
+                Action = "view"
+            });
             if (pdfBytes != null && pdfBytes.Length > 0)
             {
                 UploadedWordTemplatePdfPath = pdfTemplatePath;

@@ -1443,8 +1443,12 @@ public partial class DocumentSigning
                 return;
             }
 
-            // Get file bytes from blob storage and create data URL
-            var fileBytes = await BlobContainer.GetAllBytesAsync(pdfFilePath);
+            // Get watermarked PDF from API (user + timestamp stamped)
+            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+            {
+                BlobPath = pdfFilePath,
+                Action = "view"
+            });
             var base64 = Convert.ToBase64String(fileBytes);
             DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
             IsDocumentPdfFile = true;
@@ -1471,7 +1475,11 @@ public partial class DocumentSigning
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            var fileBytes = await BlobContainer.GetAllBytesAsync(filePath);
+            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+            {
+                BlobPath = filePath,
+                Action = "view"
+            });
             var base64 = Convert.ToBase64String(fileBytes);
             DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
             IsDocumentPdfFile = true;
@@ -1511,7 +1519,19 @@ public partial class DocumentSigning
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            var fileBytes = await BlobContainer.GetAllBytesAsync(filePath);
+            byte[] fileBytes;
+            if (HC.Blazor.Shared.FileHelper.IsPdfFileExtension(fileName))
+            {
+                fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+                {
+                    BlobPath = filePath,
+                    Action = "download"
+                });
+            }
+            else
+            {
+                fileBytes = await BlobContainer.GetAllBytesAsync(filePath);
+            }
 
             // Create blob URL and download using JavaScript
             var base64 = Convert.ToBase64String(fileBytes);

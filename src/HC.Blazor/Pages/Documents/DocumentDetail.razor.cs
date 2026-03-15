@@ -866,7 +866,19 @@ public partial class DocumentDetail : HCComponentBase
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            var fileBytes = await BlobContainer.GetAllBytesAsync(filePath);
+            byte[] fileBytes;
+            if (HC.Blazor.Shared.FileHelper.IsPdfFileExtension(fileName))
+            {
+                fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+                {
+                    BlobPath = filePath,
+                    Action = "download"
+                });
+            }
+            else
+            {
+                fileBytes = await BlobContainer.GetAllBytesAsync(filePath);
+            }
             
             // Create blob URL and download using JavaScript
             var base64 = Convert.ToBase64String(fileBytes);
@@ -1011,8 +1023,12 @@ public partial class DocumentDetail : HCComponentBase
         {
             IsPdfFile = true;
             
-            // Get file bytes from MinIO
-            var fileBytes = await BlobContainer.GetAllBytesAsync(firstFile.DocumentFile.Path);
+            // Get watermarked PDF from API (user + timestamp stamped)
+            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+            {
+                BlobPath = firstFile.DocumentFile.Path,
+                Action = "view"
+            });
             
             // Create data URL for PDF
             var base64 = Convert.ToBase64String(fileBytes);

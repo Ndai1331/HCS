@@ -21,6 +21,7 @@ public partial class CalendarEvents
 {
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
+    [Inject] private HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService { get; set; } = default!;
 
     // PDF viewer for task documents
     private Modal PdfViewerModal { get; set; } = new();
@@ -509,8 +510,12 @@ public partial class CalendarEvents
 
                 if (!string.IsNullOrEmpty(documentFile.DocumentFile.Path))
                 {
-                    // Get file bytes from MinIO
-                    var fileBytes = await BlobContainer.GetAllBytesAsync(documentFile.DocumentFile.Path);
+                    // Get watermarked PDF from API (user + timestamp stamped)
+                    var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+                    {
+                        BlobPath = documentFile.DocumentFile.Path,
+                        Action = "view"
+                    });
 
                     // Create data URL for PDF
                     var base64 = Convert.ToBase64String(fileBytes);

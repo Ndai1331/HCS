@@ -18,7 +18,6 @@ using HC.DocumentAssignments;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentFiles;
 using Humanizer;
-using Volo.Abp.BlobStoring;
 using Blazorise;
 using Volo.Abp.AspNetCore.Components.BlockUi;
 using Microsoft.Extensions.Caching.Memory;
@@ -49,7 +48,7 @@ public partial class Index
     [Inject] private IDocumentAssignmentsAppService DocumentAssignmentsAppService { get; set; } = default!;
     [Inject] private IDocumentWorkflowInstanceLogssAppService DocumentWorkflowInstanceLogssAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
-    [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
+    [Inject] private HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService { get; set; } = default!;
     [Inject] private IBlockUiService BlockUiService { get; set; } = default!;
     [Inject] private IMemoryCache __MemoryCache { get; set; } = default!;
     [Inject] private IHubContext<NotificationHub> HubContext { get; set; } = null!;
@@ -610,8 +609,12 @@ public partial class Index
 
                 if (!string.IsNullOrEmpty(documentFile.DocumentFile.Path))
                 {
-                    // Get file bytes from MinIO
-                    var fileBytes = await BlobContainer.GetAllBytesAsync(documentFile.DocumentFile.Path);
+                    // Get watermarked PDF from API (user + timestamp stamped)
+                    var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+                    {
+                        BlobPath = documentFile.DocumentFile.Path,
+                        Action = "view"
+                    });
 
                     // Create data URL for PDF
                     var base64 = Convert.ToBase64String(fileBytes);
@@ -946,7 +949,11 @@ public partial class Index
                 await BlockUiService.UnBlock();
                 return;
             }
-            var fileBytes = await BlobContainer.GetAllBytesAsync(path);
+            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+            {
+                BlobPath = path,
+                Action = "view"
+            });
             var base64 = Convert.ToBase64String(fileBytes);
             DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
             IsDocumentPdfFile = true;

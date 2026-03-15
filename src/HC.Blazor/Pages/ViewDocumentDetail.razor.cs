@@ -345,8 +345,12 @@ public partial class ViewDocumentDetail
 
         try
         {
-            // Get file bytes from MinIO
-            var fileBytes = await BlobContainer.GetAllBytesAsync(firstFile.DocumentFile.Path);
+            // Get watermarked PDF from API (user + timestamp stamped)
+            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+            {
+                BlobPath = firstFile.DocumentFile.Path,
+                Action = "view"
+            });
             
             // Create data URL for PDF
             var base64 = Convert.ToBase64String(fileBytes);
@@ -395,10 +399,14 @@ public partial class ViewDocumentDetail
 
         try
         {
-            var fileStream = await BlobContainer.GetAllBytesOrNullAsync(file.Path);
-            if (fileStream != null)
+            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
-                var base64 = Convert.ToBase64String(fileStream);
+                BlobPath = file.Path,
+                Action = "view"
+            });
+            if (fileBytes != null && fileBytes.Length > 0)
+            {
+                var base64 = Convert.ToBase64String(fileBytes);
                 PdfFileUrl = $"data:application/pdf;base64,{base64}";
                 IsPdfAvailable = true;
                 await InvokeAsync(StateHasChanged);
@@ -431,10 +439,14 @@ public partial class ViewDocumentDetail
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
-            var fileStream = await BlobContainer.GetAllBytesOrNullAsync(file.Path);
-            if (fileStream != null)
+            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
-                var base64 = Convert.ToBase64String(fileStream);
+                BlobPath = file.Path,
+                Action = "download"
+            });
+            if (fileBytes != null && fileBytes.Length > 0)
+            {
+                var base64 = Convert.ToBase64String(fileBytes);
                 var fileName = file.Name ?? "document.pdf";
                 await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", base64);
             }

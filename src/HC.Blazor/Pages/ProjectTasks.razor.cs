@@ -38,6 +38,7 @@ public partial class ProjectTasks
     [Inject] private IProjectTaskDocumentsAppService ProjectTaskDocumentsAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
+    [Inject] private HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService { get; set; } = default!;
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
     // Kanban UI
@@ -1172,7 +1173,19 @@ public partial class ProjectTasks
 
         try
         {
-            var fileBytes = await BlobContainer.GetAllBytesAsync(filePath);
+            byte[] fileBytes;
+            if (IsPdfFileExtension(fileName))
+            {
+                fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+                {
+                    BlobPath = filePath,
+                    Action = "download"
+                });
+            }
+            else
+            {
+                fileBytes = await BlobContainer.GetAllBytesAsync(filePath);
+            }
             
             // Create blob URL and download using JavaScript
             var base64 = Convert.ToBase64String(fileBytes);
@@ -1284,8 +1297,12 @@ public partial class ProjectTasks
                 }
             }
 
-            // Get file bytes from MinIO
-            var fileBytes = await BlobContainer.GetAllBytesAsync(documentFile.DocumentFile.Path);
+            // Get watermarked PDF from API (user + timestamp stamped)
+            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+            {
+                BlobPath = documentFile.DocumentFile.Path,
+                Action = "view"
+            });
             
             // Create data URL for PDF
             var base64 = Convert.ToBase64String(fileBytes);
