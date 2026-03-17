@@ -949,6 +949,7 @@
     "SurveyCollections:StartSurvey": "Bắt đầu khảo sát",
     "SurveyCollections:Complete": "Hoàn thành",
     "SurveyCollections:NoCriteriaFound": "Không tìm thấy tiêu chí khảo sát nào cho địa điểm này",
+    "SurveyCollections:NoCriteriaPleaseComeBackLater": "Không có tiêu chí đánh giá vui lòng quay lại sau",
     "SurveyCollections:EnterInformation": "Nhập thông tin của bạn",
     "SurveyCollections:UploadPhoto": "Tải ảnh lên (nếu có)",
     "SurveyCollections:ThankYou": "Cảm ơn",

@@ -887,6 +887,7 @@
     "SurveyCollections:StartSurvey": "Start survey",
     "SurveyCollections:Complete": "Complete",
     "SurveyCollections:NoCriteriaFound": "No criteria found for this location",
+    "SurveyCollections:NoCriteriaPleaseComeBackLater": "No evaluation criteria available. Please come back later",
     "SurveyCollections:EnterInformation": "Enter information",
     "SurveyCollections:UploadPhoto": "Upload photo (if available)",
     "SurveyCollections:ThankYou": "Thank you",

@@ -40,10 +40,9 @@
 <PageHeader Title="@PageTitle" />
 
 <Div id="lpx-wrapper" Class="full">
-    <Div Class="lpx-topbar-container">
-        <Div Class="lpx-content-container">
-            <Div Class="lpx-content-wrapper">
-                <Div Class="lpx-content">
+    <Div Class="lpx-content-container">
+        <Div Class="lpx-content-wrapper">
+            <Div Class="lpx-content">
                     @if (IsLoading)
                     {
                         <Row Class="justify-content-center">
@@ -89,53 +88,67 @@
                                 <h1 class="lpx-login-title mb-2">@SurveyLocation?.Name</h1>
                                 <p>@SurveyLocation?.Description</p>
                             </Div>
-                            @foreach (var criteria in SurveyCriterias.OrderBy(x => x.SurveyCriteria.DisplayOrder))
+                            @if (SurveyCriterias == null || !SurveyCriterias.Any())
                             {
-                                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
-                                    <Card Class="w-100">
-
-                                        
-                                        <CardBody Class="d-flex flex-column justify-content-between">
-                                            @* <Div Class="d-flex flex-column flex-md-row justify-content-center align-items-md-end">
-                                                <Div Class="d-flex justify-content-center align-items-center mb-2 mb-md-0">
-                                                    <img 
-                                                        src="@(string.IsNullOrEmpty(criteria.SurveyCriteria.Image) ? "/images/no-image-available.jpg" : FileHelper.GetImageUrl(ApiBaseUrl, criteria.SurveyCriteria.Image))"
-                                                        onerror="this.onerror = null; this.src = '/images/no-image-available.jpg';"
-                                                        alt="@criteria.SurveyCriteria.Name" 
-                                                        class="me-2"
-                                                        style="width: 150px; height: 150px; object-fit: contain;">
-                                                    
-                                                </Div>
-                                            </Div> *@
-                                            <Div>
-                                                <h4 class="mb-1 mt-1 text-dark text-center">@criteria.SurveyCriteria.Name</h4>
-                                            </Div>
-                                            <Div Class="mb-1 text-center">
-                                                @for (int star = 1; star <= 5; star++)
-                                                {
-                                                    var currentStar = star;
-                                                    <i class="hover-pointer
-                                                        @(GetRatingForCriteria(criteria.SurveyCriteria.Id) >= currentStar ? "bi bi-star-fill text-brand fs-40" : "bi bi-star text-muted fs-40")"
-                                                        @onclick="@(async () => await SetRatingForCriteria(criteria.SurveyCriteria.Id, currentStar))"   
-                                                        ></i>
-                                                }
-                                            </Div>
-                                        </CardBody>
-                                    </Card>
+                                <Column ColumnSize="ColumnSize.Is12" Class="text-center mt-4">
+                                    <Alert Color="Color.Warning">
+                                        <AlertMessage>@L["SurveyCollections:NoCriteriaPleaseComeBackLater"]</AlertMessage>
+                                    </Alert>
                                 </Column>
+                            }
+                            else
+                            {
+                                @foreach (var criteria in SurveyCriterias.OrderBy(x => x.SurveyCriteria.DisplayOrder))
+                                {
+                                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop" Class="d-flex">
+                                        <Card Class="w-100">
+
+                                            
+                                            <CardBody Class="d-flex flex-column justify-content-between">
+                                                @* <Div Class="d-flex flex-column flex-md-row justify-content-center align-items-md-end">
+                                                    <Div Class="d-flex justify-content-center align-items-center mb-2 mb-md-0">
+                                                        <img 
+                                                            src="@(string.IsNullOrEmpty(criteria.SurveyCriteria.Image) ? "/images/no-image-available.jpg" : FileHelper.GetImageUrl(ApiBaseUrl, criteria.SurveyCriteria.Image))"
+                                                            onerror="this.onerror = null; this.src = '/images/no-image-available.jpg';"
+                                                            alt="@criteria.SurveyCriteria.Name" 
+                                                            class="me-2"
+                                                            style="width: 150px; height: 150px; object-fit: contain;">
+                                                        
+                                                    </Div>
+                                                </Div> *@
+                                                <Div>
+                                                    <h4 class="mb-1 mt-1 text-dark text-center">@criteria.SurveyCriteria.Name</h4>
+                                                </Div>
+                                                <Div Class="mb-1 text-center">
+                                                    @for (int star = 1; star <= 5; star++)
+                                                    {
+                                                        var currentStar = star;
+                                                        <i class="hover-pointer
+                                                            @(GetRatingForCriteria(criteria.SurveyCriteria.Id) >= currentStar ? "bi bi-star-fill text-brand fs-40" : "bi bi-star text-muted fs-40")"
+                                                            @onclick="@(async () => await SetRatingForCriteria(criteria.SurveyCriteria.Id, currentStar))"   
+                                                            ></i>
+                                                    }
+                                                </Div>
+                                            </CardBody>
+                                        </Card>
+                                    </Column>
+                                }
                             }
                         </Row>
 
-                        <Row Class="mt-4">
-                            <Column ColumnSize="ColumnSize.Is12" Class="text-center">
-                                <Button Color="Color.Primary"
-                                        Size="Size.Large"
-                                        Clicked="@(async () => await ShowModalCreateSurveySessionAsync())">
-                                    <Icon Name="IconName.Save" Class="me-2" />
-                                    @L["SurveyCollections:SubmitSurvey"]
-                                </Button>
-                            </Column>
-                        </Row>
+                        @if (SurveyCriterias != null && SurveyCriterias.Any())
+                        {
+                            <Row Class="mt-4">
+                                <Column ColumnSize="ColumnSize.Is12" Class="text-center">
+                                    <Button Color="Color.Primary"
+                                            Size="Size.Large"
+                                            Clicked="@(async () => await ShowModalCreateSurveySessionAsync())">
+                                        <Icon Name="IconName.Save" Class="me-2" />
+                                        @L["SurveyCollections:SubmitSurvey"]
+                                    </Button>
+                                </Column>
+                            </Row>
+                        }
                     }
 
 
@@ -255,7 +268,6 @@
                 </Div>  
             </Div>
         </Div>
-    </Div>
 </Div>
 
 

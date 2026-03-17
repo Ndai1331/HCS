@@ -131,9 +131,7 @@ public partial class SurveyCollections
 
             if (criterias == null || !criterias.Any())
             {
-                _logger.LogWarning("[SurveyCollections] No criterias found or empty - showing UiMessageService.Warn");
-                await UiMessageService.Warn(L["SurveyCollections:NoCriteriaFound"],
-                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                _logger.LogWarning("[SurveyCollections] No criterias found or empty");
                 SurveyCriterias = new List<SurveyCriteriaWithNavigationPropertiesDto>();
                 return;
             }
