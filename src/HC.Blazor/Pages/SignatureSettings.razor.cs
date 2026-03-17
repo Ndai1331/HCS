@@ -730,27 +730,22 @@ public partial class SignatureSettings : HCComponentBase
         set => EditingSignatureSetting.DefaultSignType = value?.ToString() ?? string.Empty;
     }
 
-    // Helper properties for filter enum conversion
-    private ProviderType? FilterProviderType
+    // Use string for filter display - "All" (empty) works correctly (same pattern as IsActive)
+    private string ProviderTypeFilterValue { get; set; } = string.Empty;
+    private string DefaultSignTypeFilterValue { get; set; } = string.Empty;
+
+    private async Task OnFilterProviderTypeChangedAsync(string? value)
     {
-        get => Enum.TryParse<ProviderType>(Filter.ProviderType, out var result) ? result : null;
+        Filter.ProviderType = string.IsNullOrEmpty(value) ? null : value;
+        ProviderTypeFilterValue = value ?? string.Empty;
+        await SearchAsync();
     }
 
-    private async Task OnFilterProviderTypeChangedAsync(ProviderType? value)
+    private async Task OnFilterDefaultSignTypeChangedAsync(string? value)
     {
-        Filter.ProviderType = value?.ToString();
-        await OnProviderTypeChangedAsync(Filter.ProviderType);
-    }
-
-    private SignType? FilterDefaultSignType
-    {
-        get => Enum.TryParse<SignType>(Filter.DefaultSignType, out var result) ? result : null;
-    }
-
-    private async Task OnFilterDefaultSignTypeChangedAsync(SignType? value)
-    {
-        Filter.DefaultSignType = value?.ToString();
-        await OnDefaultSignTypeChangedAsync(Filter.DefaultSignType);
+        Filter.DefaultSignType = string.IsNullOrEmpty(value) ? null : value;
+        DefaultSignTypeFilterValue = value ?? string.Empty;
+        await SearchAsync();
     }
 
     protected virtual async Task OnCreateLayoutImgFileChanged(FileChangedEventArgs e)

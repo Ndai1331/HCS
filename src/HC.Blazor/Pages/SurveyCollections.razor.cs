@@ -61,22 +61,40 @@ public partial class SurveyCollections
         };
     }
 
+    protected override void OnParametersSet()
+    {
+        _logger.LogInformation("[SurveyCollections] OnParametersSet - SurveyLocationId: {SurveyLocationId}", SurveyLocationId);
+    }
+
     protected override async Task OnInitializedAsync()
     {
+        _logger.LogInformation("[SurveyCollections] OnInitializedAsync - SurveyLocationId: {SurveyLocationId}", SurveyLocationId);
         var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
         ApiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
+        _logger.LogInformation("[SurveyCollections] OnInitializedAsync - ApiBaseUrl: {ApiBaseUrl}", ApiBaseUrl ?? "(null)");
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        _logger.LogInformation("[SurveyCollections] OnAfterRenderAsync - firstRender: {FirstRender}", firstRender);
         if (firstRender)
         {
+            _logger.LogInformation("[SurveyCollections] firstRender=true, loading data...");
             await LoadSurveyLocationAsync();
+            _logger.LogInformation("[SurveyCollections] LoadSurveyLocationAsync done - SurveyLocation: {HasLocation}", SurveyLocation != null);
             await LoadSurveyCriteriasAsync();
+            _logger.LogInformation("[SurveyCollections] LoadSurveyCriteriasAsync done - SurveyCriterias count: {Count}", SurveyCriterias?.Count ?? 0);
 
             IsLoading = false;
-
+            _logger.LogInformation("[SurveyCollections] IsLoading=false, StateHasChanged");
             await InvokeAsync(StateHasChanged);
+
+            // Debug: log to browser console
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("console.log", $"[SurveyCollections] State: IsLoading={IsLoading}, SurveyLocation={SurveyLocation?.Name ?? "null"}, SurveyCriterias={SurveyCriterias?.Count ?? 0}, IsShowThankYou={IsShowThankYouMessage}");
+            }
+            catch { /* ignore if JS not ready */ }
         }
     }
 
@@ -84,10 +102,13 @@ public partial class SurveyCollections
     {
         try
         {
+            _logger.LogInformation("[SurveyCollections] LoadSurveyLocationAsync - calling API for SurveyLocationId: {SurveyLocationId}", SurveyLocationId);
             SurveyLocation = await SurveyLocationsAppService.GetPublicSurveyLocationAsync(SurveyLocationId);
+            _logger.LogInformation("[SurveyCollections] LoadSurveyLocationAsync - result: {Result}", SurveyLocation != null ? $"Name={SurveyLocation.Name}" : "NULL");
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[SurveyCollections] LoadSurveyLocationAsync - Exception");
             await HandleErrorAsync(ex);
             SurveyLocation = null;
         }
@@ -103,13 +124,14 @@ public partial class SurveyCollections
                 return;
             }
 
-            _logger.LogInformation($"Loading survey criterias for LocationId: {SurveyLocationId}");
+            _logger.LogInformation("[SurveyCollections] LoadSurveyCriteriasAsync - calling API for LocationId: {SurveyLocationId}", SurveyLocationId);
 
             var criterias = await SurveyCriteriasAppService.GetPublicSurveyCriteriasByLocationAsync(SurveyLocationId);
-            _logger.LogInformation($"Loaded {criterias?.Count ?? 0} criterias");
+            _logger.LogInformation("[SurveyCollections] LoadSurveyCriteriasAsync - API returned {Count} criterias", criterias?.Count ?? 0);
 
             if (criterias == null || !criterias.Any())
             {
+                _logger.LogWarning("[SurveyCollections] No criterias found or empty - showing UiMessageService.Warn");
                 await UiMessageService.Warn(L["SurveyCollections:NoCriteriaFound"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 SurveyCriterias = new List<SurveyCriteriaWithNavigationPropertiesDto>();
@@ -131,9 +153,9 @@ public partial class SurveyCollections
                 });
             }
 
-            _logger.LogInformation($"NewSurveyResults: {NewSurveyResults.Count}");
+            _logger.LogInformation("[SurveyCollections] LoadSurveyCriteriasAsync - NewSurveyResults: {Count}", NewSurveyResults.Count);
 
-            _logger.LogInformation($"Mapped to {SurveyCriterias.Count} SurveyCriteriaWithNavigationPropertiesDto objects");
+            _logger.LogInformation("[SurveyCollections] LoadSurveyCriteriasAsync - Mapped to {Count} SurveyCriteriaWithNavigationPropertiesDto", SurveyCriterias.Count);
         }
         catch (Exception ex)
         {

@@ -81,18 +81,14 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["ProviderType"]</FieldLabel>
-                        <Select TValue="ProviderType?" 
-                                SelectedValue="@FilterProviderType"
+                        <Select TValue="string"
+                                SelectedValue="@ProviderTypeFilterValue"
                                 SelectedValueChanged="@OnFilterProviderTypeChangedAsync">
-                            <ChildContent>
-                                <SelectItem TValue="ProviderType?" Value="@((ProviderType?)null)">@L["All"]</SelectItem>
-                                @foreach (var item in Enum.GetValues<ProviderType>())
-                                {
-                                    <SelectItem TValue="ProviderType?" Value="@item">
-                                        @L[$"Enum:ProviderType.{item}"]
-                                    </SelectItem>
-                                }
-                            </ChildContent>
+                            <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
+                            @foreach (var item in Enum.GetValues<ProviderType>())
+                            {
+                                <SelectItem Value="@item.ToString()">@L[$"Enum:ProviderType.{item}"]</SelectItem>
+                            }
                         </Select>
                     </Field>
                 </Column>
@@ -121,18 +117,14 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["DefaultSignType"]</FieldLabel>
-                        <Select TValue="SignType?" 
-                                SelectedValue="@FilterDefaultSignType"
+                        <Select TValue="string"
+                                SelectedValue="@DefaultSignTypeFilterValue"
                                 SelectedValueChanged="@OnFilterDefaultSignTypeChangedAsync">
-                            <ChildContent>
-                                <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L["All"]</SelectItem>
-                                @foreach (var item in Enum.GetValues<SignType>())
-                                {
-                                    <SelectItem TValue="SignType?" Value="@item">
-                                        @L[$"Enum:SignType.{item}"]
-                                    </SelectItem>
-                                }
-                            </ChildContent>
+                            <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
+                            @foreach (var item in Enum.GetValues<SignType>())
+                            {
+                                <SelectItem Value="@item.ToString()">@L[$"Enum:SignType.{item}"]</SelectItem>
+                            }
                         </Select>
                     </Field>
                 </Column>
