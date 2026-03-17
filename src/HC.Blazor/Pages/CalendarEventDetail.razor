@@ -415,18 +415,18 @@ else
                     <Row>
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
                             <Field>
-                                <FieldLabel>@L["RelatedId"]</FieldLabel>
-                                <div class="hc-select2-full" style="@(HasEditFieldError("RelatedId") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                    <Select2 IdSelector="c => c.Id.ToString()"
-                                             TextSelector="c => c.DisplayName"
-                                             FilterFunction="GetProjectCollectionLookupAsync"
-                                             GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
-                                             Datasource="ProjectsCollection"
-                                             Value="@SelectedEditProject"
-                                             OnValueChanged="@(() => { OnEditProjectChanged(); })"
-                                             Cache="__MemoryCache"
-                                             Multiselect="false" />
-                                </div>
+                                <FieldLabel>@L["Related"]</FieldLabel>
+                                @if (RelatedEntityId.HasValue && !string.IsNullOrWhiteSpace(RelatedEntityDisplayName))
+                                {
+                                    <a href="/project-detail/@RelatedEntityId" @onclick:preventDefault @onclick="@(() => NavigationManager.NavigateTo($"/project-detail/{RelatedEntityId}"))" class="text-primary text-decoration-none d-inline-flex align-items-center gap-2 py-2">
+                                        <Icon Name="IconName.Folder" />
+                                        <span>@RelatedEntityDisplayName</span>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
                             </Field>
                         </Column>
                     </Row>
@@ -436,18 +436,18 @@ else
                     <Row>
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnDesktop">
                             <Field>
-                                <FieldLabel>@L["RelatedId"]</FieldLabel>
-                                <div class="hc-select2-full" style="@(HasEditFieldError("RelatedId") ? "border: 1px solid #dc3545; border-radius: 0.25rem; padding: 2px;" : "")">
-                                    <Select2 IdSelector="c => c.Id.ToString()"
-                                             TextSelector="c => c.DisplayName"
-                                             FilterFunction="GetProjectTaskCollectionLookupAsync"
-                                             GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
-                                             Datasource="ProjectTasksCollection"
-                                             Value="@SelectedEditProjectTask"
-                                             OnValueChanged="@(() => { OnEditProjectTaskChanged(); })"
-                                             Cache="__MemoryCache"
-                                             Multiselect="false" />
-                                </div>
+                                <FieldLabel>@L["Related"]</FieldLabel>
+                                @if (RelatedEntityId.HasValue && !string.IsNullOrWhiteSpace(RelatedEntityDisplayName))
+                                {
+                                    <a href="/project-task-detail/@RelatedEntityId" @onclick:preventDefault @onclick="@(() => NavigationManager.NavigateTo($"/project-task-detail/{RelatedEntityId}"))" class="text-primary text-decoration-none d-inline-flex align-items-center gap-2 py-2">
+                                        <Icon Name="IconName.CheckSquare" />
+                                        <span>@RelatedEntityDisplayName</span>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
                             </Field>
                         </Column>
                     </Row>

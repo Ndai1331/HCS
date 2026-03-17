@@ -490,6 +490,17 @@ public partial class ProjectTaskCreateModal
             isValid = false;
         }
 
+        // DueDate must not be before StartDate (allow same day)
+        if (NewProjectTask.DueDate < NewProjectTask.StartDate)
+        {
+            CreateFieldErrors["DueDate"] = L["EndDateMustNotBeBeforeStartDate"];
+            if (isValid)
+            {
+                CreateGeneralValidationErrorKey = "EndDateMustNotBeBeforeStartDate";
+            }
+            isValid = false;
+        }
+
         return isValid;
     }
 

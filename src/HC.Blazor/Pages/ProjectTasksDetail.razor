@@ -217,7 +217,7 @@ else
                                                         <DatePicker TValue="DateTime"
                                                                     InputMode="DateInputMode.DateTime"
                                                                     Date="@EditingProjectTask.StartDate"
-                                                                    DateChanged="@(v => EditingProjectTask.StartDate = v)"
+                                                                    DateChanged="@(v => { EditingProjectTask.StartDate = v; EditFieldErrors.Remove("DueDate"); })"
                                                                     Placeholder="@string.Empty"
                                                                     DisplayFormat="dd/MM/yyyy HH:mm"
                                                                     InputFormat="dd/MM/yyyy HH:mm"
@@ -239,10 +239,11 @@ else
                                                         <DatePicker TValue="DateTime"
                                                                     InputMode="DateInputMode.DateTime"
                                                                     Date="@EditingProjectTask.DueDate"
-                                                                    DateChanged="@(v => EditingProjectTask.DueDate = v)"
+                                                                    DateChanged="@(v => { EditingProjectTask.DueDate = v; EditFieldErrors.Remove("DueDate"); })"
                                                                     Placeholder="@string.Empty"
                                                                     DisplayFormat="dd/MM/yyyy HH:mm"
                                                                     InputFormat="dd/MM/yyyy HH:mm"
+                                                                    Style="@(HasEditFieldError("DueDate") ? "border-color: #dc3545;" : "")"
                                                                     @ref="@EditProjectTaskDueDateDatePicker" />
                                                     </Addon>
                                                     <Addon AddonType="AddonType.End">
@@ -251,6 +252,10 @@ else
                                                         </Button>
                                                     </Addon>
                                                 </Addons>
+                                                @if (HasEditFieldError("DueDate"))
+                                                {
+                                                    <div class="invalid-feedback d-block">@GetEditFieldError("DueDate")</div>
+                                                }
                                             </Field>
                                         </Column>
                                     </Row>

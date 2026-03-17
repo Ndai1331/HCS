@@ -116,6 +116,10 @@ public partial class CalendarEventDetail : HCComponentBase
     private List<ProjectSelectItem> SelectedEditProject { get; set; } = new();
     private List<ProjectTaskSelectItem> SelectedEditProjectTask { get; set; } = new();
 
+    // Read-only display for related entity in edit mode (replaces Select2)
+    private Guid? RelatedEntityId { get; set; }
+    private string? RelatedEntityDisplayName { get; set; }
+
     private Guid _loadedCalendarEventId;
 
     public CalendarEventDetail()
@@ -230,26 +234,30 @@ public partial class CalendarEventDetail : HCComponentBase
             if (CurrentCalendarEvent != null)
             {
                 EditingCalendarEvent = ObjectMapper.Map<CalendarEventDto, CalendarEventUpdateDto>(CurrentCalendarEvent);
+                // RelatedName and RelatedEntityId are populated by CalendarEventsAppService.GetAsync
                 if (!string.IsNullOrEmpty(CurrentCalendarEvent.RelatedId))
                 {
-                    if (CurrentCalendarEvent.RelatedType == RelatedType.PROJECT.ToString())
+                    RelatedEntityId = CurrentCalendarEvent.RelatedEntityId;
+                    RelatedEntityDisplayName = CurrentCalendarEvent.RelatedName;
+                    if (CurrentCalendarEvent.RelatedType == RelatedType.PROJECT.ToString() && !string.IsNullOrWhiteSpace(RelatedEntityDisplayName))
                     {
-                        await GetProjectCollectionLookupAsync();
-                        var project = ProjectsCollection.FirstOrDefault(p => p.Id == CurrentCalendarEvent.RelatedId);
-                        if (project != null)
+                        SelectedEditProject = new List<ProjectSelectItem>
                         {
-                            SelectedEditProject = new List<ProjectSelectItem> { project };
-                        }
+                            new() { Id = CurrentCalendarEvent.RelatedId, DisplayName = RelatedEntityDisplayName }
+                        };
                     }
-                    else if (CurrentCalendarEvent.RelatedType == RelatedType.TASK.ToString())
+                    else if (CurrentCalendarEvent.RelatedType == RelatedType.TASK.ToString() && !string.IsNullOrWhiteSpace(RelatedEntityDisplayName))
                     {
-                        await GetProjectTaskCollectionLookupAsync();
-                        var task = ProjectTasksCollection.FirstOrDefault(t => t.Id == CurrentCalendarEvent.RelatedId);
-                        if (task != null)
+                        SelectedEditProjectTask = new List<ProjectTaskSelectItem>
                         {
-                            SelectedEditProjectTask = new List<ProjectTaskSelectItem> { task };
-                        }
+                            new() { Id = CurrentCalendarEvent.RelatedId, DisplayName = RelatedEntityDisplayName }
+                        };
                     }
+                }
+                else
+                {
+                    RelatedEntityId = null;
+                    RelatedEntityDisplayName = null;
                 }
             }
         }

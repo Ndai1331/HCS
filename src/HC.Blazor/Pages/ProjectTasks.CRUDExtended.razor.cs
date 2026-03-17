@@ -994,6 +994,17 @@ public partial class ProjectTasks
             isValid = false;
         }
 
+        // DueDate must not be before StartDate (allow same day)
+        if (EditingProjectTask.DueDate < EditingProjectTask.StartDate)
+        {
+            EditFieldErrors["DueDate"] = L["EndDateMustNotBeBeforeStartDate"];
+            if (isValid)
+            {
+                EditGeneralValidationErrorKey = "EndDateMustNotBeBeforeStartDate";
+            }
+            isValid = false;
+        }
+
         return isValid;
     }
 

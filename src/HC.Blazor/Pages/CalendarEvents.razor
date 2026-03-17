@@ -605,14 +605,14 @@
               <DataGridColumn TItem="CalendarEventDto"
                       Field="Title"
                       Caption="@L["Title"]"
-                        CellStyle="@((item) => "min-width: 150px")"
-                        Width="150px">
+                        CellStyle="@((item) => "min-width: 300px; max-width: 350px")"
+                        Width="300px">
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="Description"
                       Caption="@L["Description"]"
-                        CellStyle="@((item) => "min-width: 150px")"
-                        Width="150px">
+                        CellStyle="@((item) => "min-width: 300px; max-width: 350px")"
+                        Width="300px">
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="StartTime"
@@ -651,8 +651,8 @@
               <DataGridColumn TItem="CalendarEventDto"
                       Field="EventType"
                       Caption="@L["EventType"]"
-                        CellStyle="@((item) => "min-width: 150px")"
-                        Width="150px">
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px">
                   <DisplayTemplate>
                       @if (Enum.TryParse<EventType>(context.EventType, out var eventType))
                       {
@@ -688,11 +688,24 @@
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"
                       Field="RelatedId"
-                      Caption="@L["RelatedId"]"
-                        CellStyle="@((item) => "min-width: 150px")"
-                        Width="150px">
+                      Caption="@L["Related"]"
+                        CellStyle="@((item) => "min-width: 250px")"
+                        Width="250px">
                   <DisplayTemplate>
-                      @GetRelatedIdDisplayCode(context)
+                      @{
+                          var linkInfo = GetRelatedEntityLinkInfo(context);
+                          if (linkInfo.HasValue)
+                          {
+                              <a href="@linkInfo.Value.Url" @onclick:preventDefault @onclick="@(() => NavigationManager.NavigateTo(linkInfo.Value.Url))" class="text-primary text-decoration-none d-inline-flex align-items-center gap-1">
+                                  <Icon Name="@linkInfo.Value.Icon" Class="hc-related-icon" />
+                                  <span>@linkInfo.Value.DisplayName</span>
+                              </a>
+                          }
+                          else if (!string.IsNullOrWhiteSpace(context.RelatedId))
+                          {
+                              <span>@GetRelatedIdDisplayCode(context)</span>
+                          }
+                      }
                   </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="CalendarEventDto"

@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using HtmlToOpenXml;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
@@ -33,12 +35,15 @@ public static class WordPlaceholderReplacer
         DateTime currentDate)
     {
         var plainContent = HtmlToPlainWithLineBreaks(htmlContent ?? string.Empty);
+        var useHtmlForContent = !string.IsNullOrWhiteSpace(htmlContent) && htmlContent.Contains("<") && htmlContent.Contains(">");
+        var contentValue = useHtmlForContent ? string.Empty : plainContent;
+
         var replacements = new (string Placeholder, string Value)[]
         {
             ("<<DD>>", currentDate.ToString("dd")),
             ("<<MM>>", currentDate.ToString("MM")),
             ("<<YYYY>>", currentDate.ToString("yyyy")),
-            ("<<ContentToBeApproved>>", plainContent),
+            ("<<ContentToBeApproved>>", contentValue),
             ("<<PreparedFullName>>", fullName),
         };
 
@@ -52,6 +57,12 @@ public static class WordPlaceholderReplacer
             var mainPart = doc.MainDocumentPart ?? throw new InvalidOperationException("MainDocumentPart is null");
             var body = mainPart.Document?.Body;
             if (body == null) return docxBytes;
+
+            // Replace <<ContentToBeApproved>> with HTML (table, bold, italic, list) when content is HTML
+            if (useHtmlForContent)
+            {
+                ReplaceContentToBeApprovedWithHtml(mainPart, body, htmlContent!);
+            }
 
             // Replace text placeholders in all parts (main, headers, footers)
             ReplaceInPart(mainPart, replacements, signatureImageBytes);
@@ -67,6 +78,41 @@ public static class WordPlaceholderReplacer
         }
 
         return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Replaces &lt;&lt;ContentToBeApproved&gt;&gt; paragraph with HTML-converted content (tables, bold, italic, lists).
+    /// Uses HtmlToOpenXml to preserve formatting.
+    /// </summary>
+    private static void ReplaceContentToBeApprovedWithHtml(MainDocumentPart mainPart, Body body, string htmlContent)
+    {
+        var placeholder = "<<ContentToBeApproved>>";
+        var paragraph = body.Descendants<Paragraph>()
+            .FirstOrDefault(p => p.Descendants<Text>().Any(t => t.Text?.Contains(placeholder) == true));
+        if (paragraph == null) return;
+
+        var converter = new HtmlConverter(mainPart);
+        IList<DocumentFormat.OpenXml.OpenXmlCompositeElement> parsedElements;
+        try
+        {
+            parsedElements = converter.Parse(htmlContent);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (parsedElements == null || parsedElements.Count == 0) return;
+
+        var nextSibling = paragraph.NextSibling();
+        paragraph.Remove();
+
+        // InsertBefore inserts before the reference; first insert goes before nextSibling.
+        // To preserve order, insert in reverse so the last parsed element is inserted first (ends up last).
+        for (var i = parsedElements.Count - 1; i >= 0; i--)
+        {
+            body.InsertBefore(parsedElements[i].CloneNode(true), nextSibling);
+        }
     }
 
     private static void ReplaceInPart(

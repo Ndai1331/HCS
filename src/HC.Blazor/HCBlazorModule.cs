@@ -536,7 +536,7 @@ namespace HC.Blazor;
             })
             .AddBlazoriseRichTextEdit(options =>
             {
-                options.UseTables = false;
+                options.UseTables = true; // Enable table, bold, italic, list in signing content
             })
             .AddBootstrap5Providers()
             .AddFontAwesomeIcons();

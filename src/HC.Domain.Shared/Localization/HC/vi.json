@@ -82,6 +82,7 @@
     "ProgressPercentRange": "Tiến độ không hợp lệ.",
     "ProgressPercentMustBeBetween0And100": "Tiến độ phải từ 0 đến 100%",
     "StartDateMustBeBeforeDueDate": "Ngày bắt đầu phải trước ngày kết thúc",
+    "EndDateMustNotBeBeforeStartDate": "Ngày kết thúc không được nhỏ hơn ngày bắt đầu",
     "StorageNumberRequired": "Vui lòng nhập số lưu trữ.",
     "TypeRequired": "Vui lòng chọn loại.",
     "UrgencyLevelRequired": "Vui lòng chọn mức độ cấp bách.",
@@ -326,6 +327,7 @@
     "EventType": "Loại sự kiện",
     "RelatedType": "Loại liên quan",
     "RelatedId": "ID liên quan",
+    "Related": "Liên quan",
     "IssuingAuthority": "Đơn vị ban hành",
     "Unit": "Đơn vị",
     "Department": "Phòng ban",
@@ -1262,6 +1264,9 @@
     "RemoveMember": "Xoá thành viên",
     "MustTransferAdminBeforeLeaving" : "Cần chuyển quyền admin trước khi rời nhóm",
     "OnlyAdminCanDeleteConversation" : "Chỉ admin mới có quyền xóa nhóm",
-    "EndTimeMustBeAfterStartTime": "Thời gian kết thúc phải lớn hơn thời gian bắt đầu"
+    "EndTimeMustBeAfterStartTime": "Thời gian kết thúc phải lớn hơn thời gian bắt đầu",
+    "ReadyToUpload": "Sẵn sàng tải lên",
+    "UploadedSuccessfully": "Tải lên thành công",
+    "Uploading": "Đang tải lên"
   }
 }

@@ -100,57 +100,57 @@ public class WorkflowStepAssignmentsAppService : WorkflowStepAssignmentsAppServi
             }
         }
         
-        string notificationTitleKey;
-        string notificationContentKey;
-        string relatedId;
+        // string notificationTitleKey;
+        // string notificationContentKey;
+        // string relatedId;
         
-        if (document != null)
-        {
-            // Found document - use document info
-            notificationTitleKey = "WorkflowAssigned";
-            notificationContentKey = $"WorkflowAssignedMessage|{document.StorageNumber}|{document.Title}|{step.Name}|{currentUser?.UserName ?? L["System"]}";
-            relatedId = document.Id.ToString();
-        }
-        else
-        {
-            // No document found - just use step info
-            notificationTitleKey = "WorkflowStepAssigned";
-            notificationContentKey = $"WorkflowStepAssignedMessage|{step.Name}|{currentUser?.UserName ?? L["System"]}";
-            relatedId = step.Id.ToString();
-        }
+        // if (document != null)
+        // {
+        //     // Found document - use document info
+        //     notificationTitleKey = "WorkflowAssigned";
+        //     notificationContentKey = $"WorkflowAssignedMessage|{document.StorageNumber}|{document.Title}|{step.Name}|{currentUser?.UserName ?? L["System"]}";
+        //     relatedId = document.Id.ToString();
+        // }
+        // else
+        // {
+        //     // No document found - just use step info
+        //     notificationTitleKey = "WorkflowStepAssigned";
+        //     notificationContentKey = $"WorkflowStepAssignedMessage|{step.Name}|{currentUser?.UserName ?? L["System"]}";
+        //     relatedId = step.Id.ToString();
+        // }
         
-        var notification = new Notification(
-            GuidGenerator.Create(),
-            notificationTitleKey,
-            notificationContentKey,
-            SourceType.WORKFLOW.ToString(),
-            EventType.WORKFLOW_ASSIGNED.ToString(),
-            RelatedType.DOCUMENT.ToString(),
-            "NORMAL",
-            relatedId
-        );
+        // var notification = new Notification(
+        //     GuidGenerator.Create(),
+        //     notificationTitleKey,
+        //     notificationContentKey,
+        //     SourceType.WORKFLOW.ToString(),
+        //     EventType.WORKFLOW_ASSIGNED.ToString(),
+        //     RelatedType.DOCUMENT.ToString(),
+        //     "NORMAL",
+        //     relatedId
+        // );
         
-        notification.TenantId = CurrentTenant.Id;
-        await _notificationRepository.InsertAsync(notification);
+        // notification.TenantId = CurrentTenant.Id;
+        // await _notificationRepository.InsertAsync(notification);
         
-        // Create notification receiver
-        var notificationReceiver = new NotificationReceiver(
-            GuidGenerator.Create(),
-            notification.Id,
-            input.DefaultUserId.Value,
-            false
-        );
-        notificationReceiver.TenantId = CurrentTenant.Id;
-        await _notificationReceiverRepository.InsertAsync(notificationReceiver);
+        // // Create notification receiver
+        // var notificationReceiver = new NotificationReceiver(
+        //     GuidGenerator.Create(),
+        //     notification.Id,
+        //     input.DefaultUserId.Value,
+        //     false
+        // );
+        // notificationReceiver.TenantId = CurrentTenant.Id;
+        // await _notificationReceiverRepository.InsertAsync(notificationReceiver);
         
-        // Publish event to RabbitMQ
-        await _distributedEventBus.PublishAsync(
-            new NotificationCreatedEto
-            {
-                NotificationId = notification.Id,
-                ReceiverUserIds = new List<Guid> { input.DefaultUserId.Value }
-            }
-        );
+        // // Publish event to RabbitMQ
+        // await _distributedEventBus.PublishAsync(
+        //     new NotificationCreatedEto
+        //     {
+        //         NotificationId = notification.Id,
+        //         ReceiverUserIds = new List<Guid> { input.DefaultUserId.Value }
+        //     }
+        // );
         
         return result;
     }

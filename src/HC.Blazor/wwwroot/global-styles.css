@@ -83,6 +83,7 @@
 .select2-selection--single ,
 .select2-selection--multiple {
     border: 1px solid #323a461a !important;
+    border-radius: 0.5rem !important;
 }
 
 .select2-selection__rendered ,
@@ -95,16 +96,6 @@
     border-radius: 4px !important;
 }
 
-.select2-disabled .select2-selection ,
-.select2-disabled .select2-selection--multiple {
-    pointer-events: none;
-    opacity: 0.75;
-}
-
-.select2-disabled .select2-selection > span ,
-.select2-disabled .select2-selection--multiple > span {
-    background-color: inherit !important;
-}
 
 .select2-container--default .select2-selection--multiple .select2-selection__choice__remove{
     color: #fff !important;
@@ -114,6 +105,25 @@
     border: 1px solid #f72585 !important;
     color: #fff;
 }
+
+
+.select2-disabled .select2-selection ,
+.select2-disabled .select2-selection--multiple {
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+.select2-disabled .select2-selection > span ,
+.select2-disabled .select2-selection--multiple > span {
+    color: rgba(50, 81, 104, 0.5);
+    border-color: #e8eef3 !important;
+    background-color: #e8eef3 !important;
+}
+
+
+
+
+
 
 /* Hide Blazorise license banner globally */
 #blazorise-license-banner-host {

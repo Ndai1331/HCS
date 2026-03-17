@@ -94,10 +94,10 @@
                                      GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
                                      Datasource="WorkflowDefinitionsCollection"
                                      Value="@SelectedWorkflowDefinition"
-                                     OnValueChanged="@(() => { OnWorkflowDefinitionChanged(); WorkflowValidation.RemoveFieldError("WorkflowDefinitionId"); })"
+                                     OnValueChanged="@(async (value) => { await OnWorkflowDefinitionChanged(); WorkflowValidation.RemoveFieldError("WorkflowDefinitionId"); })"
                                      Cache="__MemoryCache"
                                      Multiselect="false"
-                                     Disabled="@IsWorkflowSaved" />
+                                     />
                         </div>
                         @if (WorkflowValidation.HasFieldError("WorkflowDefinitionId"))
                         {
@@ -110,7 +110,6 @@
                                   TextChanged="@((string value) => { CurrentWorkflow.Code = value; WorkflowValidation.RemoveFieldError("Code"); })"
                                   MaxLength="WorkflowConsts.CodeMaxLength" 
                                   Autofocus="true"
-                                  Disabled="@(IsWorkflowSaved && (IsEditing == false))"
                                   Style="@(WorkflowValidation.HasFieldError("Code") ? "border-color: #dc3545;" : "")" />
                         @if (WorkflowValidation.HasFieldError("Code"))
                         {
@@ -121,7 +120,6 @@
                         <FieldLabel>@L["Name"] *</FieldLabel>
                         <TextEdit Text="@CurrentWorkflow.Name" 
                                   TextChanged="@((string value) => { CurrentWorkflow.Name = value; WorkflowValidation.RemoveFieldError("Name"); })"
-                                  Disabled="@(IsWorkflowSaved && (IsEditing == false))"
                                   Style="@(WorkflowValidation.HasFieldError("Name") ? "border-color: #dc3545;" : "")" />
                         @if (WorkflowValidation.HasFieldError("Name"))
                         {
@@ -130,13 +128,11 @@
                     </Field>
                     <Field>
                         <FieldLabel>@L["Description"]</FieldLabel>
-                        <MemoEdit @bind-Text="@CurrentWorkflow.Description" 
-                                  Disabled="@(IsWorkflowSaved && (IsEditing == false))" />
+                        <MemoEdit @bind-Text="@CurrentWorkflow.Description" />
                     </Field>
                     <Field>
                         <Check TValue="bool" 
-                               @bind-Checked="@CurrentWorkflow.IsActive" 
-                               Disabled="@(IsWorkflowSaved && (IsEditing == false))">@L["IsActive"]</Check>
+                               @bind-Checked="@CurrentWorkflow.IsActive" >@L["IsActive"]</Check>
                     </Field>
                 </StepPanel>
 
@@ -553,6 +549,15 @@
                                           Class="datagrid-detail">
                                     <DataGridColumns>
                                         <DataGridColumn TItem="WorkflowStepAssignmentWithNavigationPropertiesDto"
+                                                Field="Step.Name"
+                                                Caption="@L["Step"]">
+                                        </DataGridColumn>
+                                        <DataGridColumn TItem="WorkflowStepAssignmentWithNavigationPropertiesDto"
+                                                Field="DefaultUser.Name"
+                                                Caption="@L["DefaultUser"]">
+                                        </DataGridColumn>
+
+                                        <DataGridColumn TItem="WorkflowStepAssignmentWithNavigationPropertiesDto"
                                                 Field="WorkflowStepAssignment.IsPrimary"
                                                 Caption="@L["IsPrimary"]">
                                             <DisplayTemplate>
@@ -580,14 +585,7 @@
                                                 }
                                             </DisplayTemplate>
                                         </DataGridColumn>
-                                        <DataGridColumn TItem="WorkflowStepAssignmentWithNavigationPropertiesDto"
-                                                Field="Step.Name"
-                                                Caption="@L["Step"]">
-                                        </DataGridColumn>
-                                        <DataGridColumn TItem="WorkflowStepAssignmentWithNavigationPropertiesDto"
-                                                Field="DefaultUser.Name"
-                                                Caption="@L["DefaultUser"]">
-                                        </DataGridColumn>
+                                        
                                         <DataGridColumn TItem="WorkflowStepAssignmentWithNavigationPropertiesDto" Caption="@L["Actions"]">
                                             <DisplayTemplate>
                                                 <div class="d-flex gap-1">
@@ -635,19 +633,10 @@
                     else
                     {
                        
-
-                        if(IsEditing)
-                        {
-                            <Button Color="Color.Success" Clicked="UpdateWorkflowAsync" Class="ms-2">
-                                <Icon Name="IconName.Save" Class="me-1" />
-                                @L["Update"]
-                            </Button>
-                        }else{
-                             <Button Color="Color.Primary" Clicked="EnableEditAsync">
-                            <Icon Name="IconName.Edit" Class="me-1" />
-                            @L["Edit"]
-                        </Button>}
-                      
+                        <Button Color="Color.Success" Clicked="UpdateWorkflowAsync" Class="ms-2">
+                            <Icon Name="IconName.Save" Class="me-1" />
+                            @L["Update"]
+                        </Button>
                     }
                 }
                 
@@ -823,18 +812,7 @@
                 <CloseButton Clicked="CloseCreateStepAssignmentModalAsync" />
             </ModalHeader>
             <ModalBody>
-                <Row>
-                    <Column ColumnSize="ColumnSize.Is6.OnDesktop">
-                        <Field>
-                            <Check TValue="bool" @bind-Checked="@NewStepAssignment.IsPrimary" Autofocus="true">@L["IsPrimary"]</Check>
-                        </Field>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.Is6.OnDesktop">
-                        <Field>
-                            <Check TValue="bool" @bind-Checked="@NewStepAssignment.IsActive">@L["IsActive"]</Check>
-                        </Field>
-                    </Column>
-                </Row>
+               
                 <Field>
                     <FieldLabel>@L["WorkflowStepTemplate"] *</FieldLabel>
                     <div class="hc-select2-full">
@@ -867,6 +845,19 @@
                                  Multiselect="false" />
                     </div>
                 </Field>
+
+                 <Row>
+                    <Column ColumnSize="ColumnSize.Is12">
+                        <Field>
+                            <Check TValue="bool" @bind-Checked="@NewStepAssignment.IsPrimary" Autofocus="true">@L["IsPrimary"]</Check>
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12">
+                        <Field>
+                            <Check TValue="bool" @bind-Checked="@NewStepAssignment.IsActive">@L["IsActive"]</Check>
+                        </Field>
+                    </Column>
+                </Row>
             </ModalBody>
             <ModalFooter>
                 <Button Color="Color.Secondary" Clicked="CloseCreateStepAssignmentModalAsync">

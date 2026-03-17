@@ -189,6 +189,8 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 IsActive = workflow.IsActive,
                 WorkflowDefinitionId = workflow.WorkflowDefinitionId
             };
+
+            EditingWorkflow = ObjectMapper.Map<WorkflowDto, WorkflowUpdateDto>(workflow);
             
             // Set selected workflow definition
             await GetWorkflowDefinitionCollectionLookupAsync();
@@ -248,30 +250,28 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             CurrentWorkflow.WorkflowDefinitionId = SelectedWorkflowDefinition?.FirstOrDefault()?.Id ?? default;
 
             var created = await WorkflowsAppService.CreateAsync(CurrentWorkflow);
-            CurrentWorkflowId = created.Id;
-            IsWorkflowSaved = true;
+            // CurrentWorkflowId = created.Id;
+
+            NavigationManager.NavigateTo($"/workflow-detail/{created.Id}", forceLoad: true);
+
+            // IsWorkflowSaved = true;
             
-            Logger?.LogInformation("[SaveWorkflowAsync] Workflow saved successfully. CurrentWorkflowId = {CurrentWorkflowId}, IsWorkflowSaved = {IsWorkflowSaved}", 
-                CurrentWorkflowId, IsWorkflowSaved);
+            // Logger?.LogInformation("[SaveWorkflowAsync] Workflow saved successfully. CurrentWorkflowId = {CurrentWorkflowId}, IsWorkflowSaved = {IsWorkflowSaved}", 
+            //     CurrentWorkflowId, IsWorkflowSaved);
             
-            // Update UI immediately to reflect IsWorkflowSaved = true
-            // This ensures NavigationAllowed will see the updated value
-            await InvokeAsync(StateHasChanged);
+            // await InvokeAsync(StateHasChanged);
             
-            // Small delay to ensure UI is fully updated before navigation
-            await Task.Delay(50);
+            // await Task.Delay(50);
             
-            await LoadWorkflowTemplateAsync();
-            // IsTemplateSaved is set in LoadWorkflowTemplateAsync
-            await LoadWorkflowStepTemplatesAsync();
-            HasWorkflowSteps = WorkflowStepTemplatesNavList.Any();
-            await LoadWorkflowStepAssignmentsAsync();
+            // await LoadWorkflowTemplateAsync();
+            // await LoadWorkflowStepTemplatesAsync();
+            // HasWorkflowSteps = WorkflowStepTemplatesNavList.Any();
+            // await LoadWorkflowStepAssignmentsAsync();
             
-            Logger?.LogInformation("[SaveWorkflowAsync] After loading data: CurrentWorkflowId = {CurrentWorkflowId}, CurrentWorkflow != null = {CurrentWorkflowNotNull}, CurrentWorkflowTemplate != null = {TemplateNotNull}", 
-                CurrentWorkflowId, CurrentWorkflow != null, CurrentWorkflowTemplate != null);
+            // Logger?.LogInformation("[SaveWorkflowAsync] After loading data: CurrentWorkflowId = {CurrentWorkflowId}, CurrentWorkflow != null = {CurrentWorkflowNotNull}, CurrentWorkflowTemplate != null = {TemplateNotNull}", 
+            //     CurrentWorkflowId, CurrentWorkflow != null, CurrentWorkflowTemplate != null);
             
-            // Update UI again after loading all data
-            await InvokeAsync(StateHasChanged);
+            // await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {
@@ -326,7 +326,6 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
 
             await WorkflowsAppService.UpdateAsync(CurrentWorkflowId, EditingWorkflow);
             await LoadWorkflowAsync(CurrentWorkflowId);
-            IsEditing = false;
         }
         catch (Exception ex)
         {
@@ -450,11 +449,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
 
     private async Task OnWorkflowDefinitionChanged()
     {
-        CurrentWorkflow.WorkflowDefinitionId = SelectedWorkflowDefinition?.FirstOrDefault()?.Id ?? default;
-        if (IsEditing)
-        {
-            EditingWorkflow.WorkflowDefinitionId = CurrentWorkflow.WorkflowDefinitionId;
-        }
+        CurrentWorkflow.WorkflowDefinitionId = SelectedWorkflowDefinition?.FirstOrDefault()?.Id ?? CurrentWorkflow.WorkflowDefinitionId;
         await InvokeAsync(StateHasChanged);
     }
 

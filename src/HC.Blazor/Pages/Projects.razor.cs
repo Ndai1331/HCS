@@ -1084,6 +1084,17 @@ public partial class Projects : HCComponentBase
             isValid = false;
         }
 
+        // EndDate must not be before StartDate (allow same day)
+        if (NewProject != null && NewProject.EndDate < NewProject.StartDate)
+        {
+            CreateFieldErrors["EndDate"] = L["EndDateMustNotBeBeforeStartDate"];
+            if (isValid)
+            {
+                CreateProjectValidationErrorKey = "EndDateMustNotBeBeforeStartDate";
+            }
+            isValid = false;
+        }
+
         // Required: Status
         // Status is enum, so we check if it's a valid value (not default if it's required)
         // Assuming ProjectStatus has a default value that means "not set"
@@ -1115,6 +1126,17 @@ public partial class Projects : HCComponentBase
             if (isValid)
             {
                 EditProjectValidationErrorKey = "NameRequired";
+            }
+            isValid = false;
+        }
+
+        // EndDate must not be before StartDate (allow same day)
+        if (EditingProject != null && EditingProject.EndDate < EditingProject.StartDate)
+        {
+            EditFieldErrors["EndDate"] = L["EndDateMustNotBeBeforeStartDate"];
+            if (isValid)
+            {
+                EditProjectValidationErrorKey = "EndDateMustNotBeBeforeStartDate";
             }
             isValid = false;
         }

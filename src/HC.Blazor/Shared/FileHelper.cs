@@ -42,8 +42,8 @@ public class FileHelper
             "upload" => L["Upload"].Value,
             "file" => L["File"].Value,
             "files" => L["Files"].Value,
-            "remove" => L["Remove"].Value,
-            "Remove" => L["Remove"].Value,
+            "remove" => L["FilePicker:Remove"].Value,
+            "Remove" => L["FilePicker:Remove"].Value,
             "cancel" => L["Cancel"].Value,
             "close" => L["Close"].Value,
             "uploaded" => L["Uploaded"].Value,
@@ -71,6 +71,11 @@ public class FileHelper
             "Are you sure you want to remove the file?" => L["FilePicker:RemoveConfirmation"],
             "Are you sure you want to clear all files?" => L["FilePicker:ClearConfirmation"],
             "Are you sure you want to clear the selected files?" => L["FilePicker:ClearConfirmation"],
+            "Ready to upload" => L["ReadyToUpload"],
+            "Readytoupload" => L["ReadyToUpload"],
+            "Uploaded successfully" => L["UploadedSuccessfully"],
+            "Uploadedsuccessfully" => L["UploadedSuccessfully"],
+            "Uploading" => L["Uploading"],
             _ => L[name].Value
         };
     }

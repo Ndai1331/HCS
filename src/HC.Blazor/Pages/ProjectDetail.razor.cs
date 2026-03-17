@@ -746,6 +746,17 @@ public partial class ProjectDetail : HCComponentBase
             isValid = false;
         }
 
+        // EndDate must not be before StartDate (allow same day)
+        if (NewProject != null && NewProject.EndDate < NewProject.StartDate)
+        {
+            CreateFieldErrors["EndDate"] = L["EndDateMustNotBeBeforeStartDate"];
+            if (isValid)
+            {
+                CreateProjectValidationErrorKey = "EndDateMustNotBeBeforeStartDate";
+            }
+            isValid = false;
+        }
+
         return isValid;
     }
 
@@ -772,6 +783,17 @@ public partial class ProjectDetail : HCComponentBase
             if (isValid)
             {
                 EditProjectValidationErrorKey = "NameRequired";
+            }
+            isValid = false;
+        }
+
+        // EndDate must not be before StartDate (allow same day)
+        if (EditingProject != null && EditingProject.EndDate < EditingProject.StartDate)
+        {
+            EditFieldErrors["EndDate"] = L["EndDateMustNotBeBeforeStartDate"];
+            if (isValid)
+            {
+                EditProjectValidationErrorKey = "EndDateMustNotBeBeforeStartDate";
             }
             isValid = false;
         }

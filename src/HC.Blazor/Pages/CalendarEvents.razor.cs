@@ -497,6 +497,27 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
         return calendarEvent.RelatedId;
     }
 
+    /// <summary>
+    /// Get related entity link info for display in list. Uses RelatedName and RelatedEntityId from DTO (populated by backend).
+    /// </summary>
+    private (string DisplayName, string Url, IconName Icon)? GetRelatedEntityLinkInfo(CalendarEventDto calendarEvent)
+    {
+        if (!calendarEvent.RelatedEntityId.HasValue || string.IsNullOrWhiteSpace(calendarEvent.RelatedName))
+        {
+            return null;
+        }
+
+        if (calendarEvent.RelatedType == RelatedType.PROJECT.ToString())
+        {
+            return (calendarEvent.RelatedName, $"/project-detail/{calendarEvent.RelatedEntityId}", IconName.Folder);
+        }
+        if (calendarEvent.RelatedType == RelatedType.TASK.ToString())
+        {
+            return (calendarEvent.RelatedName, $"/project-task-detail/{calendarEvent.RelatedEntityId}", IconName.CheckSquare);
+        }
+        return null;
+    }
+
     private async Task DownloadAsExcelAsync()
     {
         var token = (await CalendarEventsAppService.GetDownloadTokenAsync()).Token;

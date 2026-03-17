@@ -52,6 +52,12 @@ public partial class ProjectTasksAppService : ProjectTasksAppServiceBase, IProje
     // Override CreateAsync to add CalendarEvent for ProjectTask
     public override async Task<ProjectTaskDto> CreateAsync(ProjectTaskCreateDto input)
     {
+        // Validate DueDate must not be before StartDate (allow same day)
+        if (input.DueDate < input.StartDate)
+        {
+            throw new Volo.Abp.UserFriendlyException(L["EndDateMustNotBeBeforeStartDate"]);
+        }
+
         // Call base method to create task
         var result = await base.CreateAsync(input);
 
@@ -78,6 +84,12 @@ public partial class ProjectTasksAppService : ProjectTasksAppServiceBase, IProje
 
     public override async Task<ProjectTaskDto> UpdateAsync(Guid id, ProjectTaskUpdateDto input)
     {
+        // Validate DueDate must not be before StartDate (allow same day)
+        if (input.DueDate < input.StartDate)
+        {
+            throw new Volo.Abp.UserFriendlyException(L["EndDateMustNotBeBeforeStartDate"]);
+        }
+
         var task = await _projectTaskRepository.GetAsync(id);
 
         if (!CurrentUser.IsAdminRole())

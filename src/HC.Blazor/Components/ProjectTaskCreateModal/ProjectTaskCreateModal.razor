@@ -68,7 +68,7 @@
                             @* Only show Project selector if ProjectId is not provided *@
                             @if (!ProjectId.HasValue || ProjectId.Value == Guid.Empty)
                             {
-                                <Row Class="g-3">
+                                <Row Class="g-1">
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                         <Field>
                                             <FieldLabel>@L["Project"] *</FieldLabel>
@@ -109,7 +109,7 @@
                             }
                             else
                             {
-                                <Row Class="g-3">
+                                <Row Class="g-1">
                                     <Column ColumnSize="ColumnSize.Is12">
                                         <Field>
                                             <FieldLabel>@L["ParentTaskId"]</FieldLabel>
@@ -137,7 +137,7 @@
                                     <AlertDescription>@L[CreateGeneralValidationErrorKey]</AlertDescription>
                                 </Alert>
                             }
-                            <Row Class="g-3 mt-1">
+                            <Row Class="g-1 mt-1">
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["Code"] *</FieldLabel>
@@ -237,7 +237,7 @@
                             </Row>
 
                             @* DatePicker is outside Validations to avoid Blazorise validator inference errors. *@
-                            <Row Class="g-3 mt-1">
+                            <Row Class="g-1 mt-1">
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                     <Field>
                                         <FieldLabel>@L["StartDate"]</FieldLabel>
@@ -246,7 +246,7 @@
                                                 <DatePicker TValue="DateTime"
                                                             InputMode="DateInputMode.DateTime"
                                                             Date="@NewProjectTask.StartDate"
-                                                            DateChanged="@(v => NewProjectTask.StartDate = v)"
+                                                            DateChanged="@(v => { NewProjectTask.StartDate = v; CreateFieldErrors.Remove("DueDate"); })"
                                                             Placeholder="@string.Empty"
                                                             DisplayFormat="dd/MM/yyyy HH:mm"
                                                             InputFormat="dd/MM/yyyy HH:mm"
@@ -269,11 +269,12 @@
                                                 <DatePicker TValue="DateTime"
                                                             InputMode="DateInputMode.DateTime"
                                                             Date="@NewProjectTask.DueDate"
-                                                            DateChanged="@(v => NewProjectTask.DueDate = v)"
+                                                            DateChanged="@(v => { NewProjectTask.DueDate = v; CreateFieldErrors.Remove("DueDate"); })"
                                                             Placeholder="@string.Empty"
                                                             DisplayFormat="dd/MM/yyyy HH:mm"
                                                             InputFormat="dd/MM/yyyy HH:mm"
                                                             Disabled="@IsCreateWizardGeneralSaved"
+                                                            Style="@(HasCreateFieldError("DueDate") ? "border-color: #dc3545;" : "")"
                                                             @ref="@NewProjectTaskDueDateDatePicker" />
                                             </Addon>
                                             <Addon AddonType="AddonType.End">
@@ -282,11 +283,15 @@
                                                 </Button>
                                             </Addon>
                                         </Addons>
+                                        @if (HasCreateFieldError("DueDate"))
+                                        {
+                                            <div class="invalid-feedback d-block">@GetCreateFieldError("DueDate")</div>
+                                        }
                                     </Field>
                                 </Column>
                             </Row>
 
-                            <Row Class="g-3 mt-1">
+                            <Row Class="g-1 mt-1">
                                 <Column ColumnSize="ColumnSize.Is12">
                                     <Field>
                                         <FieldLabel>@L["Description"]</FieldLabel>
@@ -303,7 +308,7 @@
                             }
                             else
                             {
-                                <Row Class="g-3 align-items-center">
+                                <Row Class="g-1 align-items-center">
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                         <Field>
                                             <FieldLabel>@L["Assignee"] *</FieldLabel>
@@ -339,7 +344,7 @@
                                         </Button>
                                     </Column>
                                 </Row>
-                                <Row Class="g-3 mt-1">
+                                <Row Class="g-1 mt-1">
                                     <Column ColumnSize="ColumnSize.Is12">
                                         <Field>
                                             <FieldLabel>@L["Note"]</FieldLabel>
@@ -360,7 +365,11 @@
                                         </Row>
                                     </EmptyTemplate>
                                     <DataGridColumns>
-                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="User.UserName" Caption="@L["UserName"]" />
+                                        <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="User.UserName" Caption="@L["FullName"]" >
+                                            <DisplayTemplate>
+                                                 @(context.User?.Surname + " " + context.User?.Name)
+                                            </DisplayTemplate>
+                                        </DataGridColumn>
                                         <DataGridColumn TItem="ProjectTaskAssignmentWithNavigationPropertiesDto" Field="ProjectTaskAssignment.AssignmentRole" Caption="@L["AssignmentRole"]">
                                             <DisplayTemplate>
                                                 @if (Enum.TryParse<ProjectTaskAssignmentRole>(context.ProjectTaskAssignment.AssignmentRole, ignoreCase: true, out var role))
@@ -400,7 +409,7 @@
                             }
                             else
                             {
-                                <Row Class="g-3 align-items-center">
+                                <Row Class="g-1 align-items-center">
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                                         <Field>
                                             <FieldLabel>@L["Document"]</FieldLabel>

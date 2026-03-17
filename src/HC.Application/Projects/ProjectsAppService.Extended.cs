@@ -46,6 +46,12 @@ public partial class ProjectsAppService : ProjectsAppServiceBase, IProjectsAppSe
     // Override CreateAsync to add CalendarEvent for Project
     public override async Task<ProjectDto> CreateAsync(ProjectCreateDto input)
     {
+        // Validate EndDate must not be before StartDate (allow same day)
+        if (input.EndDate < input.StartDate)
+        {
+            throw new Volo.Abp.UserFriendlyException(L["EndDateMustNotBeBeforeStartDate"]);
+        }
+
         // Call base method to create project
         var result = await base.CreateAsync(input);
 
@@ -68,5 +74,16 @@ public partial class ProjectsAppService : ProjectsAppServiceBase, IProjectsAppSe
         await _calendarEventRepository.InsertAsync(calendarEvent);
 
         return result;
+    }
+
+    public override async Task<ProjectDto> UpdateAsync(Guid id, ProjectUpdateDto input)
+    {
+        // Validate EndDate must not be before StartDate (allow same day)
+        if (input.EndDate < input.StartDate)
+        {
+            throw new Volo.Abp.UserFriendlyException(L["EndDateMustNotBeBeforeStartDate"]);
+        }
+
+        return await base.UpdateAsync(id, input);
     }
 }

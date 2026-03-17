@@ -496,7 +496,7 @@
                                         <DatePicker TValue="DateTime"
                                                     InputMode="DateInputMode.DateTime"
                                                     Date="@NewProject.StartDate"
-                                                    DateChanged="@(v => NewProject.StartDate = v)"
+                                                    DateChanged="@(v => { NewProject.StartDate = v; CreateFieldErrors.Remove("EndDate"); })"
                                                     Placeholder="@string.Empty"
                                                     DisplayFormat="dd/MM/yyyy HH:mm"
                                                     InputFormat="dd/MM/yyyy HH:mm"
@@ -518,10 +518,11 @@
                                         <DatePicker TValue="DateTime"
                                                     InputMode="DateInputMode.DateTime"
                                                     Date="@NewProject.EndDate"
-                                                    DateChanged="@(v => NewProject.EndDate = v)"
+                                                    DateChanged="@(v => { NewProject.EndDate = v; CreateFieldErrors.Remove("EndDate"); })"
                                                     Placeholder="@string.Empty"
                                                     DisplayFormat="dd/MM/yyyy HH:mm"
                                                     InputFormat="dd/MM/yyyy HH:mm"
+                                                    Style="@(HasCreateFieldError("EndDate") ? "border-color: #dc3545;" : "")"
                                                     @ref="@NewProjectEndDateDatePicker" />
                                     </Addon>
                                     <Addon AddonType="AddonType.End">
@@ -530,6 +531,10 @@
                                         </Button>
                                     </Addon>
                                 </Addons>
+                                @if (HasCreateFieldError("EndDate"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetCreateFieldError("EndDate")</div>
+                                }
                             </Field>
                         </Column>
                     </Row>
@@ -897,7 +902,7 @@
                                         <DatePicker TValue="DateTime"
                                                     InputMode="DateInputMode.DateTime"
                                                     Date="@EditingProject.StartDate"
-                                                    DateChanged="@(v => EditingProject.StartDate = v)"
+                                                    DateChanged="@(v => { EditingProject.StartDate = v; EditFieldErrors.Remove("EndDate"); })"
                                                     Placeholder="@string.Empty"
                                                     DisplayFormat="dd/MM/yyyy HH:mm"
                                                     InputFormat="dd/MM/yyyy HH:mm"
@@ -919,10 +924,11 @@
                                         <DatePicker TValue="DateTime"
                                                     InputMode="DateInputMode.DateTime"
                                                     Date="@EditingProject.EndDate"
-                                                    DateChanged="@(v => EditingProject.EndDate = v)"
+                                                    DateChanged="@(v => { EditingProject.EndDate = v; EditFieldErrors.Remove("EndDate"); })"
                                                     Placeholder="@string.Empty"
                                                     DisplayFormat="dd/MM/yyyy HH:mm"
                                                     InputFormat="dd/MM/yyyy HH:mm"
+                                                    Style="@(HasEditFieldError("EndDate") ? "border-color: #dc3545;" : "")"
                                                     @ref="@EditingProjectEndDateDatePicker" />
                                     </Addon>
                                     <Addon AddonType="AddonType.End">
@@ -931,6 +937,10 @@
                                         </Button>
                                     </Addon>
                                 </Addons>
+                                @if (HasEditFieldError("EndDate"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetEditFieldError("EndDate")</div>
+                                }
                             </Field>
                         </Column>
                     </Row>

@@ -72,6 +72,7 @@
     "ProgressPercentRange": "Progress percent is out of range.",
     "ProgressPercentMustBeBetween0And100": "Progress must be between 0 and 100%",
     "StartDateMustBeBeforeDueDate": "Start date must be before due date",
+    "EndDateMustNotBeBeforeStartDate": "End date must not be before start date",
     "StorageNumberRequired": "Storage number is required.",
     "TypeRequired": "Type is required.",
     "UrgencyLevelRequired": "Urgency level is required.",
@@ -465,6 +466,7 @@
     "SourceType": "Source Type",
     "RelatedType": "Related Type",
     "RelatedId": "Related Id",
+    "Related": "Related",
     "Notifications": "Notifications",
     "ReadNotifications": "Read Notifications",
     "UnreadNotifications": "Unread Notifications",
@@ -1201,6 +1203,9 @@
     "RemoveMember": "Remove member",
     "MustTransferAdminBeforeLeaving": "Must transfer admin before leaving",
     "OnlyAdminCanDeleteConversation": "Only admin can delete conversation",
-    "EndTimeMustBeAfterStartTime": "End time must be after start time"
+    "EndTimeMustBeAfterStartTime": "End time must be after start time",
+    "ReadyToUpload": "Ready to upload",
+    "UploadedSuccessfully": "Uploaded successfully",
+    "Uploading": "Uploading"
   }
 }
