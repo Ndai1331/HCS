@@ -23,7 +23,7 @@ using HC.Shared;
 namespace HC.Departments;
 
 [RemoteService(IsEnabled = false)]
-[Authorize(HCPermissions.Departments.Default)]
+[Authorize(HCPermissions.MasterDatas.DepartmentDefault)]
 public abstract class DepartmentsAppServiceBase : HCAppService
 {
     protected IDistributedCache<DepartmentDownloadTokenCacheItem, string> _downloadTokenCache;
@@ -72,20 +72,20 @@ public abstract class DepartmentsAppServiceBase : HCAppService
         };
     }
 
-    [Authorize(HCPermissions.Departments.Delete)]
+    [Authorize(HCPermissions.MasterDatas.DepartmentDelete)]
     public virtual async Task DeleteAsync(Guid id)
     {
         await _departmentRepository.DeleteAsync(id);
     }
 
-    [Authorize(HCPermissions.Departments.Create)]
+    [Authorize(HCPermissions.MasterDatas.DepartmentCreate)]
     public virtual async Task<DepartmentDto> CreateAsync(DepartmentCreateDto input)
     {
         var department = await _departmentManager.CreateAsync(input.LeaderUserId, input.Code, input.Name, input.Level, input.SortOrder, input.IsActive, input.ParentId);
         return ObjectMapper.Map<Department, DepartmentDto>(department);
     }
 
-    [Authorize(HCPermissions.Departments.Edit)]
+    [Authorize(HCPermissions.MasterDatas.DepartmentEdit)]
     public virtual async Task<DepartmentDto> UpdateAsync(Guid id, DepartmentUpdateDto input)
     {
         var department = await _departmentManager.UpdateAsync(id, input.LeaderUserId, input.Code, input.Name, input.Level, input.SortOrder, input.IsActive, input.ParentId, input.ConcurrencyStamp);
@@ -109,13 +109,13 @@ public abstract class DepartmentsAppServiceBase : HCAppService
         return new RemoteStreamContent(memoryStream, "Departments.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     }
 
-    [Authorize(HCPermissions.Departments.Delete)]
+    [Authorize(HCPermissions.MasterDatas.DepartmentDelete)]
     public virtual async Task DeleteByIdsAsync(List<Guid> departmentIds)
     {
         await _departmentRepository.DeleteManyAsync(departmentIds);
     }
 
-    [Authorize(HCPermissions.Departments.Delete)]
+    [Authorize(HCPermissions.MasterDatas.DepartmentDelete)]
     public virtual async Task DeleteAllAsync(GetDepartmentsInput input)
     {
         await _departmentRepository.DeleteAllAsync(input.FilterText, input.Code, input.Name, input.ParentId, input.LevelMin, input.LevelMax, input.SortOrderMin, input.SortOrderMax, input.IsActive, input.LeaderUserId);

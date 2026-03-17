@@ -555,21 +555,28 @@ public partial class SignatureSettings : HCComponentBase
         await SearchAsync();
     }
 
-    protected virtual async Task OnAllowElectronicSignChangedAsync(bool? allowElectronicSign)
+    private string AllowElectronicSignFilterValue { get; set; } = string.Empty;
+    private string AllowDigitalSignFilterValue { get; set; } = string.Empty;
+    private string RequireOtpFilterValue { get; set; } = string.Empty;
+
+    protected virtual async Task OnAllowElectronicSignChangedAsync(string? allowElectronicSign)
     {
-        Filter.AllowElectronicSign = allowElectronicSign;
+        Filter.AllowElectronicSign = allowElectronicSign switch { "True" or "true" => true, "False" or "false" => false, _ => null };
+        AllowElectronicSignFilterValue = allowElectronicSign ?? string.Empty;
         await SearchAsync();
     }
 
-    protected virtual async Task OnAllowDigitalSignChangedAsync(bool? allowDigitalSign)
+    protected virtual async Task OnAllowDigitalSignChangedAsync(string? allowDigitalSign)
     {
-        Filter.AllowDigitalSign = allowDigitalSign;
+        Filter.AllowDigitalSign = allowDigitalSign switch { "True" or "true" => true, "False" or "false" => false, _ => null };
+        AllowDigitalSignFilterValue = allowDigitalSign ?? string.Empty;
         await SearchAsync();
     }
 
-    protected virtual async Task OnRequireOtpChangedAsync(bool? requireOtp)
+    protected virtual async Task OnRequireOtpChangedAsync(string? requireOtp)
     {
-        Filter.RequireOtp = requireOtp;
+        Filter.RequireOtp = requireOtp switch { "True" or "true" => true, "False" or "false" => false, _ => null };
+        RequireOtpFilterValue = requireOtp ?? string.Empty;
         await SearchAsync();
     }
 
@@ -603,27 +610,42 @@ public partial class SignatureSettings : HCComponentBase
         await SearchAsync();
     }
 
-    protected virtual async Task OnKeepOriginalFileChangedAsync(bool? keepOriginalFile)
+    private string KeepOriginalFileFilterValue { get; set; } = string.Empty;
+    private string OverwriteSignedFileFilterValue { get; set; } = string.Empty;
+    private string EnableSignLogFilterValue { get; set; } = string.Empty;
+
+    protected virtual async Task OnKeepOriginalFileChangedAsync(string? keepOriginalFile)
     {
-        Filter.KeepOriginalFile = keepOriginalFile;
+        Filter.KeepOriginalFile = keepOriginalFile switch { "True" or "true" => true, "False" or "false" => false, _ => null };
+        KeepOriginalFileFilterValue = keepOriginalFile ?? string.Empty;
         await SearchAsync();
     }
 
-    protected virtual async Task OnOverwriteSignedFileChangedAsync(bool? overwriteSignedFile)
+    protected virtual async Task OnOverwriteSignedFileChangedAsync(string? overwriteSignedFile)
     {
-        Filter.OverwriteSignedFile = overwriteSignedFile;
+        Filter.OverwriteSignedFile = overwriteSignedFile switch { "True" or "true" => true, "False" or "false" => false, _ => null };
+        OverwriteSignedFileFilterValue = overwriteSignedFile ?? string.Empty;
         await SearchAsync();
     }
 
-    protected virtual async Task OnEnableSignLogChangedAsync(bool? enableSignLog)
+    protected virtual async Task OnEnableSignLogChangedAsync(string? enableSignLog)
     {
-        Filter.EnableSignLog = enableSignLog;
+        Filter.EnableSignLog = enableSignLog switch { "True" or "true" => true, "False" or "false" => false, _ => null };
+        EnableSignLogFilterValue = enableSignLog ?? string.Empty;
         await SearchAsync();
     }
 
-    protected virtual async Task OnIsActiveChangedAsync(bool? isActive)
+    private string IsActiveFilterValue { get; set; } = string.Empty;
+
+    protected virtual async Task OnIsActiveChangedAsync(string? isActive)
     {
-        Filter.IsActive = isActive;
+        Filter.IsActive = isActive switch
+        {
+            "True" or "true" => true,
+            "False" or "false" => false,
+            _ => null
+        };
+        IsActiveFilterValue = isActive ?? string.Empty;
         await SearchAsync();
     }
 

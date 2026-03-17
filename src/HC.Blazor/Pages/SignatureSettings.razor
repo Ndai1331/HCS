@@ -139,10 +139,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["AllowElectronicSign"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.AllowElectronicSign"
+                        <Select TValue="string"
+		SelectedValue="@AllowElectronicSignFilterValue"
 		SelectedValueChanged="@OnAllowElectronicSignChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -151,10 +151,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["AllowDigitalSign"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.AllowDigitalSign"
+                        <Select TValue="string"
+		SelectedValue="@AllowDigitalSignFilterValue"
 		SelectedValueChanged="@OnAllowDigitalSignChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -163,10 +163,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["RequireOtp"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.RequireOtp"
+                        <Select TValue="string"
+		SelectedValue="@RequireOtpFilterValue"
 		SelectedValueChanged="@OnRequireOtpChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -213,10 +213,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["KeepOriginalFile"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.KeepOriginalFile"
+                        <Select TValue="string"
+		SelectedValue="@KeepOriginalFileFilterValue"
 		SelectedValueChanged="@OnKeepOriginalFileChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -225,10 +225,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["OverwriteSignedFile"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.OverwriteSignedFile"
+                        <Select TValue="string"
+		SelectedValue="@OverwriteSignedFileFilterValue"
 		SelectedValueChanged="@OnOverwriteSignedFileChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -237,10 +237,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["EnableSignLog"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.EnableSignLog"
+                        <Select TValue="string"
+		SelectedValue="@EnableSignLogFilterValue"
 		SelectedValueChanged="@OnEnableSignLogChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -249,10 +249,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["IsActive"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.IsActive"
+                        <Select TValue="string"
+		SelectedValue="@IsActiveFilterValue"
 		SelectedValueChanged="@OnIsActiveChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       

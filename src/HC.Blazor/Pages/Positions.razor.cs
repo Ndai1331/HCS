@@ -105,7 +105,7 @@ public partial class Positions
         }, IconName.Download);
         Toolbar.AddButton(L["NewPosition"], async () => {
             await OpenCreatePositionModalAsync();
-        }, IconName.Add, requiredPolicyName: HCPermissions.Positions.Create);
+        }, IconName.Add, requiredPolicyName: HCPermissions.MasterDatas.PositionCreate);
         return ValueTask.CompletedTask;
     }
 
@@ -125,9 +125,9 @@ public partial class Positions
 
     private async Task SetPermissionsAsync()
     {
-        CanCreatePosition = await AuthorizationService.IsGrantedAsync(HCPermissions.Positions.Create);
-        CanEditPosition = await AuthorizationService.IsGrantedAsync(HCPermissions.Positions.Edit);
-        CanDeletePosition = await AuthorizationService.IsGrantedAsync(HCPermissions.Positions.Delete);
+        CanCreatePosition = await AuthorizationService.IsGrantedAsync(HCPermissions.MasterDatas.PositionCreate);
+        CanEditPosition = await AuthorizationService.IsGrantedAsync(HCPermissions.MasterDatas.PositionEdit);
+        CanDeletePosition = await AuthorizationService.IsGrantedAsync(HCPermissions.MasterDatas.PositionDelete);
     }
 
     private async Task GetPositionsAsync()
@@ -311,9 +311,17 @@ public partial class Positions
         await SearchAsync();
     }
 
-    protected virtual async Task OnIsActiveChangedAsync(bool? isActive)
+    private string IsActiveFilterValue { get; set; } = string.Empty;
+
+    protected virtual async Task OnIsActiveChangedAsync(string? isActive)
     {
-        Filter.IsActive = isActive;
+        Filter.IsActive = isActive switch
+        {
+            "True" or "true" => true,
+            "False" or "false" => false,
+            _ => null
+        };
+        IsActiveFilterValue = isActive ?? string.Empty;
         await SearchAsync();
     }
 

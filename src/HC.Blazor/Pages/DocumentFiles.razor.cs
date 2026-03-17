@@ -285,9 +285,17 @@ public partial class DocumentFiles
         await SearchAsync();
     }
 
-    protected virtual async Task OnIsSignedChangedAsync(bool? isSigned)
+    private string IsSignedFilterValue { get; set; } = string.Empty;
+
+    protected virtual async Task OnIsSignedChangedAsync(string? isSigned)
     {
-        Filter.IsSigned = isSigned;
+        Filter.IsSigned = isSigned switch
+        {
+            "True" or "true" => true,
+            "False" or "false" => false,
+            _ => null
+        };
+        IsSignedFilterValue = isSigned ?? string.Empty;
         await SearchAsync();
     }
 

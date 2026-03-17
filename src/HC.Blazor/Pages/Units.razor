@@ -1,5 +1,5 @@
 @page "/unit-lists"
-@attribute [Authorize(HCPermissions.Units.Default)]
+@attribute [Authorize(HCPermissions.MasterDatas.UnitDefault)]
 @using HC.Units
 @using HC.Localization
 @using HC.Shared
@@ -101,10 +101,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["IsActive"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.IsActive"
+                        <Select TValue="string"
+		SelectedValue="@IsActiveFilterValue"
 		SelectedValueChanged="@OnIsActiveChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["True"]</SelectItem>
 <SelectItem Value="false">@L["False"]</SelectItem>
 </Select>                       

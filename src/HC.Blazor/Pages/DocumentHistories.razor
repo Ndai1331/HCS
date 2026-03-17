@@ -86,7 +86,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.DocumentId"
 		SelectedValueChanged="@OnDocumentIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
 @foreach(var item in DocumentsCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -102,7 +102,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.FromUser"
 		SelectedValueChanged="@OnFromUserChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
 @foreach(var item in IdentityUsersCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">
@@ -118,7 +118,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.ToUser"
 		SelectedValueChanged="@OnToUserChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
 @foreach(var item in IdentityUsersCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">

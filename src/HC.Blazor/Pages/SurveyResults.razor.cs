@@ -130,6 +130,14 @@ public partial class SurveyResults
     protected virtual async Task OnSurveyLocationChanged(Guid? locationId)
     {
         SelectedSurveyLocationId = locationId;
+        await SearchAsync();
+    }
+
+    /// <summary>
+    /// Search/apply filters - follows same pattern as Projects.razor
+    /// </summary>
+    protected virtual async Task SearchAsync()
+    {
         DetailCurrentPage = 1;
         await LoadStatisticsAsync();
         if (SurveySessionSummaryGridRef != null)
@@ -140,6 +148,7 @@ public partial class SurveyResults
         {
             await LoadSurveySessionSummariesAsync();
         }
+        await InvokeAsync(StateHasChanged);
     }
 
     protected virtual Task OnSelectedTabChanged(string selectedTab)

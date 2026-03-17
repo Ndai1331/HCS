@@ -79,18 +79,20 @@
         font-size: 15px;
     }
 </style>
-@* ************************* FILTER ************************* *@
+@* ************************* FILTER (same pattern as Projects.razor) ************************* *@
 <Card>
     <CardBody>
         <Row>
             <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                 <Field>
                     <FieldLabel>@L["SurveyLocation"]</FieldLabel>
-                    <Select TValue="Guid?" SelectedValue="@SelectedSurveyLocationId" SelectedValueChanged="@OnSurveyLocationChanged">
-                        <SelectItem Value="@((Guid?)null)">@L["All"]</SelectItem>
+                    <Select TValue="Guid?"
+                            SelectedValue="@SelectedSurveyLocationId"
+                            SelectedValueChanged="@OnSurveyLocationChanged">
+                        <SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
                         @foreach (var location in SurveyLocations)
                         {
-                            <SelectItem Value="@location.Id">@location.Name</SelectItem>
+                            <SelectItem TValue="Guid" Value="@location.Id">@location.Name</SelectItem>
                         }
                     </Select>
                 </Field>

@@ -287,13 +287,13 @@ public partial class DocumentAssignments
 
     protected virtual async Task OnActionTypeChangedAsync(string? actionType)
     {
-        Filter.ActionType = actionType;
+        Filter.ActionType = string.IsNullOrEmpty(actionType) ? null : actionType;
         await SearchAsync();
     }
 
     protected virtual async Task OnStatusChangedAsync(string? status)
     {
-        Filter.Status = status;
+        Filter.Status = string.IsNullOrEmpty(status) ? null : status;
         await SearchAsync();
     }
 
@@ -321,9 +321,17 @@ public partial class DocumentAssignments
         await SearchAsync();
     }
 
-    protected virtual async Task OnIsCurrentChangedAsync(bool? isCurrent)
+    private string IsCurrentFilterValue { get; set; } = string.Empty;
+
+    protected virtual async Task OnIsCurrentChangedAsync(string? isCurrent)
     {
-        Filter.IsCurrent = isCurrent;
+        Filter.IsCurrent = isCurrent switch
+        {
+            "True" or "true" => true,
+            "False" or "false" => false,
+            _ => null
+        };
+        IsCurrentFilterValue = isCurrent ?? string.Empty;
         await SearchAsync();
     }
 

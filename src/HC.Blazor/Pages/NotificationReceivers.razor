@@ -78,10 +78,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["IsRead"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.IsRead"
+                        <Select TValue="string"
+		SelectedValue="@IsReadFilterValue"
 		SelectedValueChanged="@OnIsReadChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       

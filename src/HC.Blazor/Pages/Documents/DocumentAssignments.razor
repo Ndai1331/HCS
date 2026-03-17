@@ -89,9 +89,9 @@
                         <FieldLabel>@L["ActionType"]</FieldLabel>
                         <Select 
                         TValue="string"
-		SelectedValue="@Filter.ActionType"
+		SelectedValue="@(string.IsNullOrEmpty(Filter.ActionType) ? string.Empty : Filter.ActionType)"
 		SelectedValueChanged="@OnActionTypeChangedAsync" >
-                            <SelectItem>@L["All"]</SelectItem>
+                            <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
                             <SelectItem Value="DocumentAssignmentActionType.PROCESS">@L["Process"]</SelectItem>
                             <SelectItem Value="DocumentAssignmentActionType.SIGN">@L["Sign"]</SelectItem>
                             <SelectItem Value="DocumentAssignmentActionType.VIEW">@L["View"]</SelectItem>
@@ -102,9 +102,9 @@
                     <Field>
                         <FieldLabel>@L["Status"]</FieldLabel>
                         <Select TValue="string"
-		SelectedValue="@Filter.Status"
+		SelectedValue="@(string.IsNullOrEmpty(Filter.Status) ? string.Empty : Filter.Status)"
 		SelectedValueChanged="@OnStatusChangedAsync">
-                            <SelectItem>@L["All"]</SelectItem>
+                            <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
                             <SelectItem Value="DocumentAssignmentStatus.PENDING">@L["Pending"]</SelectItem>
                             <SelectItem Value="DocumentAssignmentStatus.DONE">@L["Done"]</SelectItem>
                             <SelectItem Value="DocumentAssignmentStatus.REJECTED">@L["Rejected"]</SelectItem>
@@ -163,10 +163,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["IsCurrent"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.IsCurrent"
+                        <Select TValue="string"
+		SelectedValue="@IsCurrentFilterValue"
 		SelectedValueChanged="@OnIsCurrentChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -178,7 +178,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.DocumentId"
 		SelectedValueChanged="@OnDocumentIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
 @foreach(var item in DocumentsCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">
@@ -194,7 +194,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.WorkflowStepTemplateId"
 		SelectedValueChanged="@OnWorkflowStepTemplateIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
 @foreach(var item in WorkflowStepTemplatesCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">
@@ -210,7 +210,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.ReceiverUserId"
 		SelectedValueChanged="@OnReceiverUserIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
 @foreach(var item in IdentityUsersCollection)
 {
 	<SelectItem TValue="Guid" Value="@item.Id">

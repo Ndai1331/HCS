@@ -133,7 +133,7 @@ public partial class Departments
                 await OpenCreateDepartmentModal();
             }, IconName.Add, 
             Color.Primary,
-            requiredPolicyName: HCPermissions.Departments.Create);
+            requiredPolicyName: HCPermissions.MasterDatas.DepartmentCreate);
         }
         if(CanEditDepartment)
         {
@@ -141,13 +141,13 @@ public partial class Departments
                 await OpenCreateDepartmentModal(SelectedDepartment);
             }, IconName.Add, 
             Color.Success,
-            requiredPolicyName: HCPermissions.Departments.Create);
+            requiredPolicyName: HCPermissions.MasterDatas.DepartmentCreate);
 
             Toolbar.AddButton(L["Edit"], async () => {
                 await OpenEditDepartmentModal(SelectedDepartment);
             }, IconName.Edit, 
             Color.Primary,
-            requiredPolicyName: HCPermissions.Departments.Edit);
+            requiredPolicyName: HCPermissions.MasterDatas.DepartmentEdit);
         }
 
         if(CanEditDepartment)
@@ -156,7 +156,7 @@ public partial class Departments
                 await OpenMoveDepartmentModal(SelectedDepartment);
             }, IconName.ArrowRight, 
             Color.Info,
-            requiredPolicyName: HCPermissions.Departments.Edit);
+            requiredPolicyName: HCPermissions.MasterDatas.DepartmentEdit);
         }
 
         if(CanDeleteDepartment)
@@ -165,7 +165,7 @@ public partial class Departments
                 await OpenDeleteDepartmentModalAsync(SelectedDepartment);
             }, IconName.Delete, 
             Color.Danger,
-            requiredPolicyName: HCPermissions.Departments.Delete);
+            requiredPolicyName: HCPermissions.MasterDatas.DepartmentDelete);
         }
 
         return ValueTask.CompletedTask;
@@ -174,13 +174,13 @@ public partial class Departments
     private async Task SetPermissionsAsync()
     {
         CanCreateDepartment = await AuthorizationService
-            .IsGrantedAsync(HCPermissions.Departments.Create);
+            .IsGrantedAsync(HCPermissions.MasterDatas.DepartmentCreate);
             
         CanEditDepartment = await AuthorizationService
-            .IsGrantedAsync(HCPermissions.Departments.Edit);
+            .IsGrantedAsync(HCPermissions.MasterDatas.DepartmentEdit);
             
         CanDeleteDepartment = await AuthorizationService
-            .IsGrantedAsync(HCPermissions.Departments.Delete);
+            .IsGrantedAsync(HCPermissions.MasterDatas.DepartmentDelete);
     }
 
     private async Task GetDepartmentsAsync()

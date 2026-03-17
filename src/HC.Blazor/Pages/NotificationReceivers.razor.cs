@@ -230,9 +230,17 @@ public partial class NotificationReceivers
     }
 
 
-    protected virtual async Task OnIsReadChangedAsync(bool? isRead)
+    private string IsReadFilterValue { get; set; } = string.Empty;
+
+    protected virtual async Task OnIsReadChangedAsync(string? isRead)
     {
-        Filter.IsRead = isRead;
+        Filter.IsRead = isRead switch
+        {
+            "True" or "true" => true,
+            "False" or "false" => false,
+            _ => null
+        };
+        IsReadFilterValue = isRead ?? string.Empty;
         await SearchAsync();
     }
 

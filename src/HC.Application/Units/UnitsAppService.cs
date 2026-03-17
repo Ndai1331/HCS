@@ -21,7 +21,7 @@ using HC.Shared;
 namespace HC.Units;
 
 [RemoteService(IsEnabled = false)]
-[Authorize(HCPermissions.Units.Default)]
+[Authorize(HCPermissions.MasterDatas.UnitDefault)]
 public abstract class UnitsAppServiceBase : HCAppService
 {
     protected IDistributedCache<UnitDownloadTokenCacheItem, string> _downloadTokenCache;
@@ -51,20 +51,20 @@ public abstract class UnitsAppServiceBase : HCAppService
         return ObjectMapper.Map<Unit, UnitDto>(await _unitRepository.GetAsync(id));
     }
 
-    [Authorize(HCPermissions.Units.Delete)]
+    [Authorize(HCPermissions.MasterDatas.UnitDelete)]
     public virtual async Task DeleteAsync(Guid id)
     {
         await _unitRepository.DeleteAsync(id);
     }
 
-    [Authorize(HCPermissions.Units.Create)]
+    [Authorize(HCPermissions.MasterDatas.UnitCreate)]
     public virtual async Task<UnitDto> CreateAsync(UnitCreateDto input)
     {
         var unit = await _unitManager.CreateAsync(input.Code, input.Name, input.SortOrder, input.IsActive);
         return ObjectMapper.Map<Unit, UnitDto>(unit);
     }
 
-    [Authorize(HCPermissions.Units.Edit)]
+    [Authorize(HCPermissions.MasterDatas.UnitEdit)]
     public virtual async Task<UnitDto> UpdateAsync(Guid id, UnitUpdateDto input)
     {
         var unit = await _unitManager.UpdateAsync(id, input.Code, input.Name, input.SortOrder, input.IsActive, input.ConcurrencyStamp);
@@ -87,13 +87,13 @@ public abstract class UnitsAppServiceBase : HCAppService
         return new RemoteStreamContent(memoryStream, "Units.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     }
 
-    [Authorize(HCPermissions.Units.Delete)]
+    [Authorize(HCPermissions.MasterDatas.UnitDelete)]
     public virtual async Task DeleteByIdsAsync(List<Guid> unitIds)
     {
         await _unitRepository.DeleteManyAsync(unitIds);
     }
 
-    [Authorize(HCPermissions.Units.Delete)]
+    [Authorize(HCPermissions.MasterDatas.UnitDelete)]
     public virtual async Task DeleteAllAsync(GetUnitsInput input)
     {
         await _unitRepository.DeleteAllAsync(input.FilterText, input.Code, input.Name, input.SortOrderMin, input.SortOrderMax, input.IsActive);

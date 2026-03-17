@@ -96,17 +96,17 @@
 
                                         
                                         <CardBody Class="d-flex flex-column justify-content-between">
-                                            <Div Class="d-flex flex-column flex-md-row justify-content-center align-items-md-end">
+                                            @* <Div Class="d-flex flex-column flex-md-row justify-content-center align-items-md-end">
                                                 <Div Class="d-flex justify-content-center align-items-center mb-2 mb-md-0">
-                                                    <img src="@FileHelper.GetImageUrl(ApiBaseUrl, criteria.SurveyCriteria.Image)"
-                                                        onerror="el.onerror = null; el.src = 'https://www.freeiconspng.com/uploads/no-image-icon-6.png';"
+                                                    <img 
+                                                        src="@(string.IsNullOrEmpty(criteria.SurveyCriteria.Image) ? "/images/no-image-available.jpg" : FileHelper.GetImageUrl(ApiBaseUrl, criteria.SurveyCriteria.Image))"
+                                                        onerror="this.onerror = null; this.src = '/images/no-image-available.jpg';"
                                                         alt="@criteria.SurveyCriteria.Name" 
                                                         class="me-2"
                                                         style="width: 150px; height: 150px; object-fit: contain;">
                                                     
                                                 </Div>
-                                            
-                                            </Div>
+                                            </Div> *@
                                             <Div>
                                                 <h4 class="mb-1 mt-1 text-dark text-center">@criteria.SurveyCriteria.Name</h4>
                                             </Div>

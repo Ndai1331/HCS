@@ -105,7 +105,7 @@ public partial class Units
         }, IconName.Download);
         Toolbar.AddButton(L["NewUnit"], async () => {
             await OpenCreateUnitModalAsync();
-        }, IconName.Add, requiredPolicyName: HCPermissions.Units.Create);
+        }, IconName.Add, requiredPolicyName: HCPermissions.MasterDatas.UnitCreate);
         return ValueTask.CompletedTask;
     }
 
@@ -125,9 +125,9 @@ public partial class Units
 
     private async Task SetPermissionsAsync()
     {
-        CanCreateUnit = await AuthorizationService.IsGrantedAsync(HCPermissions.Units.Create);
-        CanEditUnit = await AuthorizationService.IsGrantedAsync(HCPermissions.Units.Edit);
-        CanDeleteUnit = await AuthorizationService.IsGrantedAsync(HCPermissions.Units.Delete);
+        CanCreateUnit = await AuthorizationService.IsGrantedAsync(HCPermissions.MasterDatas.UnitCreate);
+        CanEditUnit = await AuthorizationService.IsGrantedAsync(HCPermissions.MasterDatas.UnitEdit);
+        CanDeleteUnit = await AuthorizationService.IsGrantedAsync(HCPermissions.MasterDatas.UnitDelete);
     }
 
     private async Task GetUnitsAsync()
@@ -311,9 +311,17 @@ public partial class Units
         await SearchAsync();
     }
 
-    protected virtual async Task OnIsActiveChangedAsync(bool? isActive)
+    private string IsActiveFilterValue { get; set; } = string.Empty;
+
+    protected virtual async Task OnIsActiveChangedAsync(string? isActive)
     {
-        Filter.IsActive = isActive;
+        Filter.IsActive = isActive switch
+        {
+            "True" or "true" => true,
+            "False" or "false" => false,
+            _ => null
+        };
+        IsActiveFilterValue = isActive ?? string.Empty;
         await SearchAsync();
     }
 

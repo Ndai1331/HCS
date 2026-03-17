@@ -18,10 +18,7 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         // booksPermission.AddChild(HCPermissions.Books.Delete, L("Permission:Books.Delete"));
         //Define your own permissions here. Example:
         //myGroup.AddPermission(HCPermissions.MyPermission1, L("Permission:MyPermission1"));
-        var positionPermission = myGroup.AddPermission(HCPermissions.Positions.Default, L("Permission:Positions"));
-        positionPermission.AddChild(HCPermissions.Positions.Create, L("Permission:Create"));
-        positionPermission.AddChild(HCPermissions.Positions.Edit, L("Permission:Edit"));
-        positionPermission.AddChild(HCPermissions.Positions.Delete, L("Permission:Delete"));
+      
         var masterDataPermission = myGroup.AddPermission(HCPermissions.MasterDatas.Default, L("Permission:MasterDatas"));
         masterDataPermission.AddChild(HCPermissions.MasterDatas.Create, L("Permission:Create"));
         masterDataPermission.AddChild(HCPermissions.MasterDatas.Edit, L("Permission:Edit"));
@@ -86,14 +83,7 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         workflowStepTemplatePermission.AddChild(HCPermissions.WorkflowStepTemplates.Create, L("Permission:Create"));
         workflowStepTemplatePermission.AddChild(HCPermissions.WorkflowStepTemplates.Edit, L("Permission:Edit"));
         workflowStepTemplatePermission.AddChild(HCPermissions.WorkflowStepTemplates.Delete, L("Permission:Delete"));
-        var departmentPermission = myGroup.AddPermission(HCPermissions.Departments.Default, L("Permission:Departments"));
-        departmentPermission.AddChild(HCPermissions.Departments.Create, L("Permission:Create"));
-        departmentPermission.AddChild(HCPermissions.Departments.Edit, L("Permission:Edit"));
-        departmentPermission.AddChild(HCPermissions.Departments.Delete, L("Permission:Delete"));
-        var unitPermission = myGroup.AddPermission(HCPermissions.Units.Default, L("Permission:Units"));
-        unitPermission.AddChild(HCPermissions.Units.Create, L("Permission:Create"));
-        unitPermission.AddChild(HCPermissions.Units.Edit, L("Permission:Edit"));
-        unitPermission.AddChild(HCPermissions.Units.Delete, L("Permission:Delete"));
+       
         var workflowStepAssignmentPermission = myGroup.AddPermission(HCPermissions.WorkflowStepAssignments.Default, L("Permission:WorkflowStepAssignments"));
         workflowStepAssignmentPermission.AddChild(HCPermissions.WorkflowStepAssignments.Create, L("Permission:Create"));
         workflowStepAssignmentPermission.AddChild(HCPermissions.WorkflowStepAssignments.Edit, L("Permission:Edit"));

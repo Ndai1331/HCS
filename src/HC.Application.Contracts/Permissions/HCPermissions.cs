@@ -21,13 +21,13 @@ public static class HCPermissions
 
     //Add your own permission names. Example:
     //public const string MyPermission1 = GroupName + ".MyPermission1";
-    public static class Positions
-    {
-        public const string Default = GroupName + ".Positions";
-        public const string Edit = Default + ".Edit";
-        public const string Create = Default + ".Create";
-        public const string Delete = Default + ".Delete";
-    }
+    // public static class Positions
+    // {
+    //     public const string Default = GroupName + ".Positions";
+    //     public const string Edit = Default + ".Edit";
+    //     public const string Create = Default + ".Create";
+    //     public const string Delete = Default + ".Delete";
+    // }
 
     public static class MasterDatas
     {
@@ -164,21 +164,21 @@ public static class HCPermissions
         public const string Delete = Default + ".Delete";
     }
 
-    public static class Departments
-    {
-        public const string Default = GroupName + ".Departments";
-        public const string Edit = Default + ".Edit";
-        public const string Create = Default + ".Create";
-        public const string Delete = Default + ".Delete";
-    }
+    // public static class Departments
+    // {
+    //     public const string Default = GroupName + ".Departments";
+    //     public const string Edit = Default + ".Edit";
+    //     public const string Create = Default + ".Create";
+    //     public const string Delete = Default + ".Delete";
+    // }
 
-    public static class Units
-    {
-        public const string Default = GroupName + ".Units";
-        public const string Edit = Default + ".Edit";
-        public const string Create = Default + ".Create";
-        public const string Delete = Default + ".Delete";
-    }
+    // public static class Units
+    // {
+    //     public const string Default = GroupName + ".Units";
+    //     public const string Edit = Default + ".Edit";
+    //     public const string Create = Default + ".Create";
+    //     public const string Delete = Default + ".Delete";
+    // }
 
     public static class WorkflowStepAssignments
     {

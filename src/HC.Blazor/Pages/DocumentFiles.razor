@@ -90,10 +90,10 @@
                 <Column ColumnSize="ColumnSize.Is3">
                     <Field>
                         <FieldLabel>@L["IsSigned"]</FieldLabel>
-                        <Select TValue="bool?"
-		SelectedValue="@Filter.IsSigned"
+                        <Select TValue="string"
+		SelectedValue="@IsSignedFilterValue"
 		SelectedValueChanged="@OnIsSignedChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem Value="@string.Empty">@L["All"]</SelectItem>
 <SelectItem Value="true">@L["Yes"]</SelectItem>
 <SelectItem Value="false">@L["No"]</SelectItem>
 </Select>                       
@@ -129,7 +129,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.DocumentId"
 		SelectedValueChanged="@OnDocumentIdChangedAsync">
-<SelectItem></SelectItem>
+<SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
 @foreach(var item in DocumentsCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">

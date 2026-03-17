@@ -270,7 +270,7 @@
                         <Select TValue="Guid?"
 		SelectedValue="@Filter.WorkflowId"
 		SelectedValueChanged="@OnWorkflowIdChangedAsync">
-<SelectItem>@L["All"]</SelectItem>
+<SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
 @foreach(var item in WorkflowsCollection)
 {
 	<SelectItem TValue="Guid?" Value="@item.Id">

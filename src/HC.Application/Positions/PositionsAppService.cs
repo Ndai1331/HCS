@@ -22,7 +22,7 @@ using Volo.Abp.Linq;
 namespace HC.Positions;
 
 [RemoteService(IsEnabled = false)]
-[Authorize(HCPermissions.Positions.Default)]
+[Authorize(HCPermissions.MasterDatas.PositionDefault)]
 public abstract class PositionsAppServiceBase : HCAppService
 {
     protected IDistributedCache<PositionDownloadTokenCacheItem, string> _downloadTokenCache;
@@ -73,20 +73,20 @@ public abstract class PositionsAppServiceBase : HCAppService
         };
     }
 
-    [Authorize(HCPermissions.Positions.Delete)]
+    [Authorize(HCPermissions.MasterDatas.PositionDelete)]
     public virtual async Task DeleteAsync(Guid id)
     {
         await _positionRepository.DeleteAsync(id);
     }
 
-    [Authorize(HCPermissions.Positions.Create)]
+    [Authorize(HCPermissions.MasterDatas.PositionCreate)]
     public virtual async Task<PositionDto> CreateAsync(PositionCreateDto input)
     {
         var position = await _positionManager.CreateAsync(input.Code, input.Name, input.SignOrder, input.IsActive);
         return ObjectMapper.Map<Position, PositionDto>(position);
     }
 
-    [Authorize(HCPermissions.Positions.Edit)]
+    [Authorize(HCPermissions.MasterDatas.PositionEdit)]
     public virtual async Task<PositionDto> UpdateAsync(Guid id, PositionUpdateDto input)
     {
         var position = await _positionManager.UpdateAsync(id, input.Code, input.Name, input.SignOrder, input.IsActive, input.ConcurrencyStamp);
@@ -109,13 +109,13 @@ public abstract class PositionsAppServiceBase : HCAppService
         return new RemoteStreamContent(memoryStream, "Positions.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     }
 
-    [Authorize(HCPermissions.Positions.Delete)]
+    [Authorize(HCPermissions.MasterDatas.PositionDelete)]
     public virtual async Task DeleteByIdsAsync(List<Guid> positionIds)
     {
         await _positionRepository.DeleteManyAsync(positionIds);
     }
 
-    [Authorize(HCPermissions.Positions.Delete)]
+    [Authorize(HCPermissions.MasterDatas.PositionDelete)]
     public virtual async Task DeleteAllAsync(GetPositionsInput input)
     {
         await _positionRepository.DeleteAllAsync(input.FilterText, input.Code, input.Name, input.SignOrderMin, input.SignOrderMax, input.IsActive);

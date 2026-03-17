@@ -302,9 +302,17 @@ public partial class MasterDatas
         await SearchAsync();
     }
 
-    protected virtual async Task OnIsActiveChangedAsync(bool? isActive)
+    private string IsActiveFilterValue { get; set; } = string.Empty;
+
+    protected virtual async Task OnIsActiveChangedAsync(string? isActive)
     {
-        Filter.IsActive = isActive;
+        Filter.IsActive = isActive switch
+        {
+            "True" or "true" => true,
+            "False" or "false" => false,
+            _ => null
+        };
+        IsActiveFilterValue = isActive ?? string.Empty;
         await SearchAsync();
     }
 

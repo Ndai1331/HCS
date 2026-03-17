@@ -92,10 +92,10 @@
                     <Column ColumnSize="ColumnSize.Is3">
                         <Field>
                             <FieldLabel>@L["IsActive"]</FieldLabel>
-                            <Select TValue="bool?"
-                                    SelectedValue="@Filter.IsActive"
+                            <Select TValue="string"
+                                    SelectedValue="@IsActiveFilterValue"
                                     SelectedValueChanged="@OnIsActiveChangedAsync">
-                                <SelectItem>@L["All"]</SelectItem>
+                                <SelectItem Value="@string.Empty">@L["All"]</SelectItem>
                                 <SelectItem Value="true">@L["Yes"]</SelectItem>
                                 <SelectItem Value="false">@L["No"]</SelectItem>
                             </Select>
