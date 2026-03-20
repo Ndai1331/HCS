@@ -51,7 +51,7 @@
                     <Form id="NotificationReceiverSearchForm">
                         <Addons>
                             <Addon AddonType="AddonType.Body">
-                                <TextEdit @bind-Text="@Filter.FilterText"
+                                <TextEdit @bind-Text="@FilterText"
                                         Autofocus="true"
                                         Placeholder="@L["Search"]">
                                 </TextEdit>
@@ -128,12 +128,8 @@
                     </Field>
                 </Column>
             </Row>
-@*//<suite-custom-code-block-2>*@
-@*//</suite-custom-code-block-2>*@
         </div>
         </Row>
-@*//<suite-custom-code-block-3>*@
-@*//</suite-custom-code-block-3>*@
     </CardBody>
 </Card>
 @* ************************* DATA GRID ************************* *@
@@ -225,7 +221,9 @@
               </DataGridColumn>
               <DataGridColumn TItem="NotificationReceiverWithNavigationPropertiesDto"
                       Field="NotificationReceiver.ReadAt"
-                      Caption="@L["ReadAt"]">
+                      Caption="@L["ReadAt"]"
+                      CellStyle="@((item) => "min-width: 150px")"
+                      Width="120px">
                   <DisplayTemplate>
                         @(context.NotificationReceiver.ReadAt.HasValue ? context.NotificationReceiver.ReadAt.Value.ToShortDateString() : string.Empty)
                   </DisplayTemplate>
@@ -242,36 +240,43 @@
               </DataGridColumn>
               <DataGridColumn TItem="NotificationReceiverWithNavigationPropertiesDto"
                       Field="IdentityUser.Name"
-                      Caption="@L["IdentityUser"]">
+                      Caption="@L["IdentityUser"]"
+                      CellStyle="@((item) => "min-width: 150px")"
+                      Width="150px">
               </DataGridColumn>
                 <DataGridColumn TItem="NotificationReceiverWithNavigationPropertiesDto" Caption="@L["Actions"]">
                     <DisplayTemplate>
-                        <div class="hc-action-icons">
+                        <div class="d-flex gap-2"">
                             @if (!context.NotificationReceiver.IsRead)
                             {
-                                <i class="bi bi-check-circle-fill hc-action-icon hc-action-read text-success" 
-                                   title="@L["MarkAsRead"]"
-                                   @onclick="@(() => MarkAsReadAsync(context))"
-                                   style="cursor: pointer;"></i>
+
+                                <Button Outline Color="Color.Success"
+                                    Size="Size.Small" 
+                                    Title="@L["MarkAsRead"]"
+                                    Clicked="@(async () => await MarkAsReadAsync(context))">
+                                    <Icon Name="IconName.CheckSquare" />
+                                </Button>
                             }
                             @if (!string.IsNullOrEmpty(context.Notification.RelatedId))
                             {
-                                <i class="bi bi-arrow-right-circle-fill hc-action-icon hc-action-goto text-primary" 
-                                   title="@L["ViewDetail"]"
-                                   @onclick="@(() => ViewNotificationDetail(context.Notification))"
-                                   style="cursor: pointer;"></i>
+                                <Button Outline Color="Color.Primary"
+                                    Size="Size.Small" 
+                                    Title="@L["ViewDetail"]"
+                                    Clicked="@(async () => await ViewNotificationDetailAsync(context))">
+                                    <Icon Name="IconName.Eye" />
+                                </Button>
                             }
                             
                             @if (CanDeleteNotificationReceiver)
                             {
-                                <i class="bi bi-trash-fill hc-action-icon hc-action-delete" 
-                                   title="@L["Delete"]"
-                                   @onclick="@(() => DeleteNotificationReceiverWithConfirmationAsync(context))"
-                                   style="cursor: pointer;"></i>
+                                <Button Outline Color="Color.Danger"
+                                    Size="Size.Small" 
+                                    Title="@L["Delete"]"
+                                    Clicked="@(() => DeleteNotificationReceiverWithConfirmationAsync(context))">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
                             }
                         </div>
-@*//<suite-custom-code-block-4>*@
-@*//</suite-custom-code-block-4>*@
                     </DisplayTemplate>
                 </DataGridColumn>
             </DataGridColumns>
@@ -281,8 +286,6 @@
 @* ************************* EDIT MODAL ************************* *@
 <Modal @ref="EditNotificationReceiverModal" Closing="@EditNotificationReceiverModal.CancelClosingModalWhenFocusLost">
     <ModalContent Centered="true">
-@*//<suite-custom-code-block-8>*@
-@*//</suite-custom-code-block-8>*@
         <Form id="EditNotificationReceiverForm">
             <ModalHeader>
                 <ModalTitle>@L["Update"]</ModalTitle>
@@ -322,11 +325,7 @@
                     @L["Cancel"]
                 </Button>
                 <SubmitButton Form="EditNotificationReceiverForm" Clicked="UpdateNotificationReceiverAsync" />
-@*//<suite-custom-code-block-9>*@
-@*//</suite-custom-code-block-9>*@
             </ModalFooter>
         </Form>
-@*//<suite-custom-code-block-10>*@
-@*//</suite-custom-code-block-10>*@
     </ModalContent>
 </Modal>

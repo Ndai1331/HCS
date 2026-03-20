@@ -105,7 +105,7 @@
 
                                             
                                             <CardBody Class="d-flex flex-column justify-content-between">
-                                                @* <Div Class="d-flex flex-column flex-md-row justify-content-center align-items-md-end">
+                                                <Div Class="d-flex flex-column flex-md-row justify-content-center align-items-md-end">
                                                     <Div Class="d-flex justify-content-center align-items-center mb-2 mb-md-0">
                                                         <img 
                                                             src="@(string.IsNullOrEmpty(criteria.SurveyCriteria.Image) ? "/images/no-image-available.jpg" : FileHelper.GetImageUrl(ApiBaseUrl, criteria.SurveyCriteria.Image))"
@@ -115,7 +115,7 @@
                                                             style="width: 150px; height: 150px; object-fit: contain;">
                                                         
                                                     </Div>
-                                                </Div> *@
+                                                </Div>
                                                 <Div>
                                                     <h4 class="mb-1 mt-1 text-dark text-center">@criteria.SurveyCriteria.Name</h4>
                                                 </Div>

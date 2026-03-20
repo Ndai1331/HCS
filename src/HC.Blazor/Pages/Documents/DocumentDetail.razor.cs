@@ -202,7 +202,11 @@ public partial class DocumentDetail : HCComponentBase
     {   
         Toolbar.AddButton(L["Back"], () =>
         {
-            var sourceTypeParam = SourceType.HasValue ? $"?sourceType={SourceType.Value}" : "";
+            // Use sourceType from query, or fallback to document's SourceType when available
+            var effectiveSourceType = SourceType
+                ?? (CurrentDocument != null ? (int?)CurrentDocument.Document.SourceType : null)
+                ?? (DocumentCreateData != null ? (int?)DocumentCreateData.SourceType : null);
+            var sourceTypeParam = effectiveSourceType.HasValue ? $"?sourceType={effectiveSourceType.Value}" : "";
             NavigationManager.NavigateTo("/manage-documents" + sourceTypeParam);
             return Task.CompletedTask;
         }, IconName.ArrowLeft);
@@ -762,7 +766,10 @@ public partial class DocumentDetail : HCComponentBase
 
             await UiMessageService.Success(L["SuccessfullySaved"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-            var sourceTypeParam = SourceType.HasValue ? $"?sourceType={SourceType.Value}" : "";
+            var effectiveSourceType = SourceType
+                ?? (CurrentDocument != null ? (int?)CurrentDocument.Document.SourceType : null)
+                ?? (DocumentCreateData != null ? (int?)DocumentCreateData.SourceType : null);
+            var sourceTypeParam = effectiveSourceType.HasValue ? $"?sourceType={effectiveSourceType.Value}" : "";
             NavigationManager.NavigateTo($"/document-detail/{savedDocument.Id}{sourceTypeParam}", true);
         }
         catch (Exception ex)
@@ -977,7 +984,8 @@ public partial class DocumentDetail : HCComponentBase
             await DocumentsAppService.DeleteAsync(CurrentDocument.Document.Id);
             await UiMessageService.Success(L["SuccessfullyDeleted"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-            var sourceTypeParam = SourceType.HasValue ? $"?sourceType={SourceType.Value}" : "";
+            var effectiveSourceType = SourceType ?? (int?)CurrentDocument.Document.SourceType;
+            var sourceTypeParam = effectiveSourceType.HasValue ? $"?sourceType={effectiveSourceType.Value}" : "";
             NavigationManager.NavigateTo("/manage-documents" + sourceTypeParam);
         }
         catch (Exception ex)

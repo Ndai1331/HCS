@@ -1097,6 +1097,7 @@
     "SearchByTitleOrNumber": "Tìm theo tiêu đề hoặc số văn bản",
     "AllDocuments": "Tất cả văn bản",
     "SentToMe": "Văn bản gửi đến tôi",
+    "Source": "Nguồn",
     "SentByMe": "Tôi gửi đi",
     "Following": "Đang theo dõi",
     "SubmitForSigning": "Trình ký",
@@ -1268,6 +1269,8 @@
     "EndTimeMustBeAfterStartTime": "Thời gian kết thúc phải lớn hơn thời gian bắt đầu",
     "ReadyToUpload": "Sẵn sàng tải lên",
     "UploadedSuccessfully": "Tải lên thành công",
-    "Uploading": "Đang tải lên"
+    "Uploading": "Đang tải lên",
+    "SourceType": "Phân hệ",
+    "MarkAsRead": "Đánh dấu đã đọc"
   }
 }

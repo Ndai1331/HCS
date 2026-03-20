@@ -552,7 +552,7 @@ else
                                              Caption="@L["Name"]">
                                 <DisplayTemplate>
                                     <div class="d-flex align-items-center gap-2">
-                                        <span>@context.IdentityUser.Surname @context.IdentityUser.Name</span>
+                                        <span>@(context.IdentityUser != null ? $"{context.IdentityUser.Surname} {context.IdentityUser.Name}".Trim() : "-")</span>
                                     </div>
                                 </DisplayTemplate>
                             </DataGridColumn>

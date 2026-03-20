@@ -57,6 +57,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             {
                 var assignedDocumentIds = await GetAssignedDocumentIdsAsync(currentUserId.Value);
 
+                // sourceType=1 (Personal): (Document.SourceType == Personal) OR (DocumentAssignment.ReceiverUserId = currentUserId)
                 var totalCount = await _documentRepository.GetCountAsync(
                     input.FilterText,
                     input.No,
@@ -75,7 +76,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                     input.UrgencyLevelId,
                     input.SecrecyLevelId,
                     input.SourceType,
-                    currentUserId.Value,
+                    creatorId: null,
                     assignedDocumentIds);
 
                 var items = await _documentRepository.GetListWithNavigationPropertiesAsync(
@@ -96,16 +97,23 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                     input.UrgencyLevelId,
                     input.SecrecyLevelId,
                     input.SourceType,
-                    currentUserId.Value,
+                    creatorId: null,
                     assignedDocumentIds,
                     input.Sorting,
                     input.MaxResultCount,
                     input.SkipCount);
 
+                var dtos = ObjectMapper.Map<List<DocumentWithNavigationProperties>, List<DocumentWithNavigationPropertiesDto>>(items);
+                var assignedSet = assignedDocumentIds.ToHashSet();
+                foreach (var dto in dtos)
+                {
+                    dto.IsSentToMe = assignedSet.Contains(dto.Document.Id);
+                }
+
                 return new PagedResultDto<DocumentWithNavigationPropertiesDto>
                 {
                     TotalCount = totalCount,
-                    Items = ObjectMapper.Map<List<DocumentWithNavigationProperties>, List<DocumentWithNavigationPropertiesDto>>(items)
+                    Items = dtos
                 };
             }
         }
@@ -145,7 +153,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                     input.UrgencyLevelId,
                     input.SecrecyLevelId,
                     input.SourceType,
-                    currentUserId.Value,
+                    creatorId: null,
                     assignedDocumentIds);
 
                 var items = documents.Select(item => new

@@ -173,7 +173,8 @@
                 Priority = "NORMAL",
                 CreationTime = DateTime.Now,
                 RelatedId = messageData.ConversationId?.ToString(),
-                RelatedType = "CHAT"
+                RelatedType = "CHAT",
+                SourceType = "CHAT"
             };
             
             // Prevent duplicate notifications for same conversation

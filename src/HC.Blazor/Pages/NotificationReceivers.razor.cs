@@ -47,6 +47,8 @@ public partial class NotificationReceivers
 
     private bool IsMarkingAllAsRead { get; set; }
 
+    private string FilterText { get; set; } = string.Empty;
+
     [Inject] private IHubContext<NotificationHub> HubContext { get; set; } = null!;
 
     private NotificationReceiverUpdateDto EditingNotificationReceiver { get; set; }
@@ -133,6 +135,7 @@ public partial class NotificationReceivers
 
     private async Task GetNotificationReceiversAsync()
     {
+        Filter.FilterText = FilterText;
         Filter.MaxResultCount = PageSize;
         Filter.SkipCount = (CurrentPage - 1) * PageSize;
         Filter.Sorting = CurrentSorting;
@@ -364,14 +367,17 @@ public partial class NotificationReceivers
         }
     }
 
-    private void ViewNotificationDetail(NotificationDto notification)
+    private async Task ViewNotificationDetailAsync(NotificationReceiverWithNavigationPropertiesDto notification)
     {
-        if (string.IsNullOrEmpty(notification.RelatedId))
+        var notificationDto = notification.Notification;
+        if (string.IsNullOrEmpty(notificationDto.RelatedId))
             return;
 
-        var url = GetRelatedUrl(notification);
+        var url = GetRelatedUrl(notificationDto);
         if (url != "#")
         {
+            //mark notification as read
+            await MarkAsReadAsync(notification);
             NavigationManager.NavigateTo(url);
         }
     }

@@ -10,7 +10,7 @@
 @inject IOptions<AbpRouterOptions> RouterOptions
 @inject IOptions<LeptonXThemeBlazorOptions> LayoutOptions
 @inject IStringLocalizer<AbpUiResource> UiLocalizer
-@inject IStringLocalizer<HCResource> L
+@inject IStringLocalizer<HCResource> L  
 
 <CascadingAuthenticationState>
     <ErrorBoundary @ref="_errorBoundary">
@@ -54,6 +54,7 @@
 
 @code {
     private ErrorBoundary _errorBoundary = default!;
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
     [Inject] private HC.Blazor.Services.GlobalExceptionHandler GlobalExceptionHandler { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
@@ -88,7 +89,7 @@
             <h4>@UiLocalizer["Error"]</h4>
             <p>@exception.Message</p>
             <button class="btn btn-primary" 
-            @onclick="RecoverFromError">@UiLocalizer["Retry"]
+            @onclick="BackToHome">@UiLocalizer["BackToHome"]
             </button>
         </div>;
     }
@@ -109,5 +110,9 @@
     private void RecoverFromError()
     {
         _errorBoundary?.Recover();
+    }
+    private void BackToHome()
+    {
+        NavigationManager.NavigateTo("/" , forceLoad: true);
     }
 }

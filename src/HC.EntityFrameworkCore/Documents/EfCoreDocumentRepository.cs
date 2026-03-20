@@ -79,6 +79,9 @@ public abstract class EfCoreDocumentRepositoryBase : EfCoreRepository<HCDbContex
 
     protected virtual IQueryable<DocumentWithNavigationProperties> ApplyFilter(IQueryable<DocumentWithNavigationProperties> query, string? filterText, string? no = null, string? title = null, string? currentStatus = null, DateTime? completedTimeMin = null, DateTime? completedTimeMax = null, string? storageNumber = null, DateTime? incommingDateMin = null, DateTime? incommingDateMax = null, Guid? fieldId = null, Guid? unitId = null, Guid? workflowId = null, Guid? statusId = null, Guid? typeId = null, Guid? urgencyLevelId = null, Guid? secrecyLevelId = null, DocumentSourceType? sourceType = null, Guid? creatorId = null, List<Guid>? documentIds = null)
     {
+        var hasCreator = creatorId != null && creatorId != Guid.Empty;
+        var hasDocumentIds = documentIds != null && documentIds.Count > 0;
+
         var queryWithFilters = query
             .WhereIf(!string.IsNullOrWhiteSpace(filterText), e => e.Document.No!.Contains(filterText!) || e.Document.Title!.Contains(filterText!) || e.Document.CurrentStatus!.Contains(filterText!) || e.Document.StorageNumber!.Contains(filterText!))
             .WhereIf(!string.IsNullOrWhiteSpace(no), e => e.Document.No.Contains(no))
@@ -96,10 +99,13 @@ public abstract class EfCoreDocumentRepositoryBase : EfCoreRepository<HCDbContex
             .WhereIf(typeId != null && typeId != Guid.Empty, e => e.Type != null && e.Type.Id == typeId)
             .WhereIf(urgencyLevelId != null && urgencyLevelId != Guid.Empty, e => e.UrgencyLevel != null && e.UrgencyLevel.Id == urgencyLevelId)
             .WhereIf(secrecyLevelId != null && secrecyLevelId != Guid.Empty, e => e.SecrecyLevel != null && e.SecrecyLevel.Id == secrecyLevelId)
-            .WhereIf(sourceType.HasValue, e => e.Document.SourceType == sourceType!.Value);
+            .WhereIf(sourceType.HasValue && !hasDocumentIds, e => e.Document.SourceType == sourceType!.Value);
 
-        var hasCreator = creatorId != null && creatorId != Guid.Empty;
-        var hasDocumentIds = documentIds != null && documentIds.Count > 0;
+        // sourceType=1 (Personal): (Document.SourceType == Personal) OR (Document.Id in assignedDocumentIds)
+        if (sourceType.HasValue && hasDocumentIds)
+        {
+            return queryWithFilters.Where(e => e.Document.SourceType == sourceType!.Value || documentIds!.Contains(e.Document.Id));
+        }
 
         if (hasCreator && hasDocumentIds)
         {

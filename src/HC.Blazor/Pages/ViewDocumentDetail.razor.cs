@@ -23,6 +23,8 @@ public partial class ViewDocumentDetail
 
     [SupplyParameterFromQuery(Name = "id")]
     public Guid? DocumentIdQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "sourceType")]
+    public int? SourceType { get; set; }
 
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems { get; } = new();
     protected string PageTitle => L["ViewDocumentDetail"];
@@ -81,16 +83,21 @@ public partial class ViewDocumentDetail
 
     protected virtual ValueTask SetBreadcrumbItemsAsync()
     {
-        BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["DocumentAssignments"], "/document-assignments"));
+        BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["DocumentAssignments"], "/manage-documents"));
         BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["ViewDocumentDetail"]));
         return ValueTask.CompletedTask;
     }
 
     protected virtual ValueTask SetToolbarItemsAsync()
     {
-        Toolbar.AddButton(L["Back"], async () =>
+        Toolbar.AddButton(L["Back"], () =>
         {
-            NavigationManager.NavigateTo("/document-assignments");
+            // Use sourceType from query, or fallback to document's SourceType when available
+            var effectiveSourceType = SourceType
+                ?? (CurrentDocument != null ? (int?)CurrentDocument.Document.SourceType : null);
+            var sourceTypeParam = effectiveSourceType.HasValue ? $"?sourceType={effectiveSourceType.Value}" : "";
+            NavigationManager.NavigateTo("/manage-documents" + sourceTypeParam);
+            return Task.CompletedTask;
         }, IconName.ArrowLeft);
 
         return ValueTask.CompletedTask;

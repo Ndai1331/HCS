@@ -79,6 +79,9 @@ public partial class Documents : IDisposable
 
     private Modal SendDocumentModal { get; set; } = new();
 
+    // Submit for Signing Modal (reusable component)
+    private HC.Blazor.Components.SubmitWorkflowModal.SubmitWorkflowModal SubmitWorkflowModalRef { get; set; } = default!;
+
     // PDF Viewer Modal
     private Modal DocumentPdfViewerModal { get; set; } = new();
     private string? DocumentPdfFileUrl { get; set; }
@@ -690,6 +693,29 @@ public partial class Documents : IDisposable
         NavigationManager.NavigateTo("/document-detail/" + documentId + sourceTypeParam);
         await Task.CompletedTask;
     }
+
+    #region Submit for Signing (Workflow Modal)
+
+    private async Task ShowSubmitWorkflowModalAsync(DocumentWithNavigationPropertiesDto document)
+    {
+        if (SubmitWorkflowModalRef != null)
+        {
+            await SubmitWorkflowModalRef.ShowAsync(document);
+        }
+    }
+
+    private async Task OnSubmitWorkflowCompletedAsync()
+    {
+        await GetDocumentsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private Task OnSubmitWorkflowClosedAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    #endregion
 
     #region Send Document
 

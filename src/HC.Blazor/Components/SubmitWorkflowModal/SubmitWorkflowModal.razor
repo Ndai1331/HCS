@@ -1,0 +1,223 @@
+@using HC.Documents
+@using HC.DocumentWorkflowInstances
+@using HC.Shared
+@using Blazorise
+@using Blazorise.Components
+@using Blazorise.RichTextEdit
+@using Volo.Abp.Application.Dtos
+
+@inherits HCComponentBase
+
+<Modal @ref="ModalRef" Closing="@ModalRef.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>@L["CreateSigning"]</ModalTitle>
+            <CloseButton Clicked="CloseModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @* Pre-selected document info (when opened from Documents page) *@
+            @if (HasPreSelectedDocument && PreSelectedDocument != null)
+            {
+                <Alert Color="Color.Info" Visible="true" Class="mb-3">
+                    <AlertMessage>
+                        <i class="bi bi-file-earmark-text me-1"></i>@L["Document"]:
+                    </AlertMessage>
+                    <AlertDescription>
+                        @PreSelectedDocument.Document.Title - #@PreSelectedDocument.Document.No (@PreSelectedDocument.Document.StorageNumber)
+                    </AlertDescription>
+                </Alert>
+            }
+
+            @* Step 1: Select Workflow *@
+            <Field>
+                <FieldLabel>@L["SelectWorkflow"] <span class="text-danger">*</span></FieldLabel>
+                <Select TValue="Guid?"
+                    SelectedValue="@SelectedWorkflowId"
+                    SelectedValueChanged="@OnWorkflowSelectedAsync">
+                    <SelectItem TValue="Guid?" Value="@null">-- @L["SelectWorkflow"] --</SelectItem>
+                    @foreach (var wf in AvailableWorkflows)
+                    {
+                        <SelectItem TValue="Guid?" Value="@wf.Id">@wf.DisplayName</SelectItem>
+                    }
+                </Select>
+            </Field>
+
+            @* Step 2: Template file option (only when NOT pre-selected and workflow has template) *@
+            @if (!HasPreSelectedDocument && WorkflowSubmitInfo != null && WorkflowSubmitInfo.HasTemplateFile && !string.IsNullOrWhiteSpace(GetWorkflowTemplateFilePath(WorkflowSubmitInfo)))
+            {
+                <Card Class="mt-2 mb-2 border-info">
+                    <CardBody>
+                        <div class="d-flex align-items-center">
+                            <Check TValue="bool"
+                                Checked="@UseWorkflowTemplateFile"
+                                CheckedChanged="@OnUseWorkflowTemplateFileChanged"
+                                Class="me-2">
+                                <ChildContent>@L["UseWorkflowTemplateFile"]</ChildContent>
+                            </Check>
+                        </div>
+                        <div class="mt-2 p-2 bg-light rounded">
+                            <small class="text-muted">@L["WorkflowTemplateFile"]:</small>
+                            <div class="d-flex align-items-center mt-1">
+                                <Icon Name="IconName.File" Class="me-2 text-primary" />
+                                <span class="fw-bold">@GetWorkflowTemplateFileName(WorkflowSubmitInfo)</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">@GetWorkflowTemplateFilePath(WorkflowSubmitInfo)</small>
+                        </div>
+                    </CardBody>
+                </Card>
+            }
+
+            @* Step 3: Select Document (only when NOT pre-selected and NOT using template file) *@
+            @if (!HasPreSelectedDocument && !UseWorkflowTemplateFile)
+            {
+                <Field Class="mt-2">
+                    <FieldLabel>
+                        @if (WorkflowSubmitInfo != null && WorkflowSubmitInfo.HasTemplateFile)
+                        {
+                            @L["OrSelectFromMyDocuments"]
+                        }
+                        else
+                        {
+                            @L["SelectDocument"]
+                        }
+                        <span class="text-danger">*</span>
+                    </FieldLabel>
+                    <Autocomplete @key="ModalResetKey"
+                        TItem="DocumentWithNavigationPropertiesDto"
+                        TValue="Guid?"
+                        Data="@MyDocumentsList"
+                        TextField="@(item => $"{item.Document.StorageNumber} - {item.Document.Title}")"
+                        ValueField="@(item => (Guid?)item.Document.Id)"
+                        SelectedValue="@SelectedDocumentId"
+                        SelectedValueChanged="@OnDocumentSelectedAsync"
+                        Placeholder="@L["SearchByTitleOrNumber"]"
+                        FreeTyping
+                        MinLength="0"
+                        Filter="AutocompleteFilter.Contains">
+                    </Autocomplete>
+                </Field>
+
+                @if (SelectedDocumentId.HasValue && SelectedDocumentDto != null)
+                {
+                    <Alert Color="Color.Info" Visible="true" Class="mb-0">
+                        <AlertMessage>
+                            <i class="bi bi-file-earmark-text me-1"></i>@L["Document"]:
+                        </AlertMessage>
+                        <AlertDescription>
+                            @SelectedDocumentDto.Document.Title - #@SelectedDocumentDto.Document.No (@SelectedDocumentDto.Document.StorageNumber)
+                        </AlertDescription>
+                    </Alert>
+                }
+            }
+
+            @* Step 4: Workflow steps info *@
+            @if (WorkflowSubmitInfo != null)
+            {
+                <Card>
+                    <CardHeader>
+                        <strong>@L["WorkflowSteps"]</strong> - @WorkflowSubmitInfo.WorkflowName
+                    </CardHeader>
+                    <CardBody>
+                        @foreach (var step in WorkflowSubmitInfo.Steps)
+                        {
+                            <div class="d-flex align-items-start mb-1 p-2 border rounded">
+                                <div class="me-3">
+                                    <Badge Color="Color.Primary" Pill>@step.Order</Badge>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <strong>@step.Name</strong>
+                                    <small class="text-muted ms-2">(@L[step.Type])</small>
+                                    @if (step.SLADays.HasValue)
+                                    {
+                                        <small class="text-warning ms-2">
+                                            <i class="bi bi-clock"></i> @step.SLADays @L["Days"]
+                                        </small>
+                                    }
+                                    <div class="mt-1">
+                                        @foreach (var user in step.AssignedUsers)
+                                        {
+                                            <small class="badge bg-light text-dark me-1">
+                                                <i class="bi bi-person"></i>
+                                                @(user.FullName ?? user.UserName)
+                                                @if (user.IsPrimary)
+                                                {
+                                                    <i class="bi bi-star-fill text-warning ms-1"></i>
+                                                }
+                                            </small>
+                                        }
+                                        @if (!step.AssignedUsers.Any())
+                                        {
+                                            <small class="text-danger">@L["NoUsersAssigned"]</small>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </CardBody>
+                </Card>
+            }
+
+            @* Signing Content (required when source file is .doc/.docx) *@
+            @if (RequireSigningContent)
+            {
+                <Field>
+                    <FieldLabel>@L["SigningContent"] <span class="text-danger">*</span></FieldLabel>
+                    <RichTextEdit @ref="SigningContentEditorRef"
+                                  @key="ModalResetKey"
+                                  @bind-Value="@SigningContent"
+                                  Theme="RichTextEditTheme.Snow"
+                                  PlaceHolder="@L["EnterSigningContent"]"
+                                  ToolbarPosition="Placement.Bottom">
+                        <Toolbar>
+                            <RichTextEditToolbarGroup>
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Bold" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Italic" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Underline" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Strike" />
+                            </RichTextEditToolbarGroup>
+                            <RichTextEditToolbarGroup>
+                                <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="ordered" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="bullet" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Link" />
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Clean" />
+                            </RichTextEditToolbarGroup>
+                            <RichTextEditToolbarGroup>
+                                <RichTextEditToolbarButton Action="RichTextEditAction.Table" />
+                            </RichTextEditToolbarGroup>
+                        </Toolbar>
+                    </RichTextEdit>
+                </Field>
+            }
+
+            @* Attach Files *@
+            <Field Class="mt-2">
+                <FieldLabel>@L["AttachFiles"]</FieldLabel>
+                <FilePicker @ref="WorkflowFilePicker"
+                    Multiple
+                    Upload="OnFileUpload"
+                    ShowMode="FilePickerShowMode.List"
+                    MaxFileSize="52428800"
+                    FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
+                </FilePicker>
+                @if (UploadedFiles.Any())
+                {
+                    <div class="mt-2">
+                        @foreach (var file in UploadedFiles)
+                        {
+                            <Alert Color="Color.Success" Dismissible="false" Class="mb-1 py-1 px-2">
+                                <small><Icon Name="IconName.CheckCircle" Class="me-1" />@file.Name</small>
+                            </Alert>
+                        }
+                    </div>
+                }
+            </Field>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseModalAsync">@L["Cancel"]</Button>
+            <Button Color="Color.Primary" Clicked="ConfirmSubmitAsync"
+                    Disabled="@((!UseWorkflowTemplateFile && !SelectedDocumentId.HasValue) || !SelectedWorkflowId.HasValue || WorkflowSubmitInfo == null)">
+                <Icon Name="IconName.Check" Class="me-1" />@L["Submit"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>

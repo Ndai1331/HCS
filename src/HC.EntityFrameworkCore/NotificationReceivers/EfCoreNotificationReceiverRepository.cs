@@ -70,6 +70,7 @@ public abstract class EfCoreNotificationReceiverRepositoryBase : EfCoreRepositor
         .WhereIf(notificationId != null && notificationId != Guid.Empty, e => e.Notification != null && e.Notification.Id == notificationId)
         .WhereIf(identityUserId != null && identityUserId != Guid.Empty, e => e.IdentityUser != null && e.IdentityUser.Id == identityUserId)
         .WhereIf(!string.IsNullOrWhiteSpace(sourceType), e => e.Notification != null && e.Notification.SourceType == sourceType)
+        .WhereIf(!string.IsNullOrWhiteSpace(filterText), e => e.Notification != null && e.Notification.Title.Contains(filterText) || e.Notification != null && e.Notification.Content.Contains(filterText) || e.Notification != null && e.Notification.RelatedId.Contains(filterText))
         .WhereIf(creationTimeMin.HasValue, e => e.NotificationReceiver.CreationTime >= creationTimeMin!.Value)
         .WhereIf(creationTimeMax.HasValue, e => e.NotificationReceiver.CreationTime <= creationTimeMax!.Value);
     }

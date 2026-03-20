@@ -46,16 +46,30 @@ public abstract class CalendarEventParticipantsAppServiceBase : HCAppService
     {
         var totalCount = await _calendarEventParticipantRepository.GetCountAsync(input.FilterText, input.ResponseStatus, input.Notified, input.CalendarEventId, input.IdentityUserId);
         var items = await _calendarEventParticipantRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.ResponseStatus, input.Notified, input.CalendarEventId, input.IdentityUserId, input.Sorting, input.MaxResultCount, input.SkipCount);
+        // Manual mapping to handle null CalendarEvent/IdentityUser (orphaned participants from LEFT JOIN)
+        var dtos = items.Select(item => new CalendarEventParticipantWithNavigationPropertiesDto
+        {
+            CalendarEventParticipant = ObjectMapper.Map<CalendarEventParticipant, CalendarEventParticipantDto>(item.CalendarEventParticipant),
+            CalendarEvent = item.CalendarEvent == null ? null : ObjectMapper.Map<CalendarEvent, CalendarEventDto>(item.CalendarEvent),
+            IdentityUser = item.IdentityUser == null ? null : ObjectMapper.Map<Volo.Abp.Identity.IdentityUser, Volo.Abp.Identity.IdentityUserDto>(item.IdentityUser)
+        }).ToList();
         return new PagedResultDto<CalendarEventParticipantWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,
-            Items = ObjectMapper.Map<List<CalendarEventParticipantWithNavigationProperties>, List<CalendarEventParticipantWithNavigationPropertiesDto>>(items)
+            Items = dtos
         };
     }
 
     public virtual async Task<CalendarEventParticipantWithNavigationPropertiesDto> GetWithNavigationPropertiesAsync(Guid id)
     {
-        return ObjectMapper.Map<CalendarEventParticipantWithNavigationProperties, CalendarEventParticipantWithNavigationPropertiesDto>(await _calendarEventParticipantRepository.GetWithNavigationPropertiesAsync(id));
+        var item = await _calendarEventParticipantRepository.GetWithNavigationPropertiesAsync(id);
+        if (item == null) throw new Volo.Abp.BusinessException("HC:CalendarEventParticipantNotFound");
+        return new CalendarEventParticipantWithNavigationPropertiesDto
+        {
+            CalendarEventParticipant = ObjectMapper.Map<CalendarEventParticipant, CalendarEventParticipantDto>(item.CalendarEventParticipant),
+            CalendarEvent = item.CalendarEvent == null ? null : ObjectMapper.Map<CalendarEvent, CalendarEventDto>(item.CalendarEvent),
+            IdentityUser = item.IdentityUser == null ? null : ObjectMapper.Map<Volo.Abp.Identity.IdentityUser, Volo.Abp.Identity.IdentityUserDto>(item.IdentityUser)
+        };
     }
 
     public virtual async Task<CalendarEventParticipantDto> GetAsync(Guid id)

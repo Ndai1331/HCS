@@ -96,12 +96,15 @@ public class CalendarEventParticipantsAppService : CalendarEventParticipantsAppS
     {
         // Get participant info before deleting
         var participantWithNav = await _calendarEventParticipantRepository.GetWithNavigationPropertiesAsync(id);
-        var calendarEvent = participantWithNav.CalendarEvent;
-        var user = participantWithNav.IdentityUser;
+        var calendarEvent = participantWithNav?.CalendarEvent;
+        var user = participantWithNav?.IdentityUser;
         var currentUser = CurrentUser;
         
         // Call base method to delete participant
         await base.DeleteAsync(id);
+        
+        // Skip notification if CalendarEvent or IdentityUser is null (orphaned participant)
+        if (calendarEvent == null || user == null) return;
         
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters

@@ -393,9 +393,10 @@
                             }
                             <Button
                                 @onclick="@(() => OpenDocumentPdfViewerModalAsync(context))"
-                                Class="Color.Primary"
+                                Color="Color.Primary"
                                 Size="Size.Small"
                                 Outline
+                                    Class="mb-1"
                                 Title="@L["ViewFile"]">
                                 <Icon Name="IconName.Eye" />
                             </Button>
@@ -416,24 +417,45 @@
                                     Color="Color.Success"
                                     Outline
                                     Size="Size.Small"
+                                    Title="@L["Send"]"
                                     Class="mb-1">
                                     <Icon Name="IconName.Send" />
                                 </Button>
                             }
-                            @* @if (CanSubmitForSigning)
+                            @if (CanSubmitForSigning)
                             {
                                 <Button
-                                    @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
+                                    @onclick="@(() => ShowSubmitWorkflowModalAsync(context))"
                                     Color="Color.Warning"
                                     Outline
                                     Size="Size.Small"
+                                    Title="@L["SubmitForSigning"]"
                                     Class="mb-1">
                                     <Icon Name="IconName.CheckSquare" />
                                 </Button>
-                            } *@
+                            } 
                         </Div>
                     </DisplayTemplate>
                 </DataGridColumn>
+
+                @* Document source icon - only in Personal (sourceType=1): forward arrow for "văn bản gửi đến" *@
+                @if (SelectedSourceType == DocumentSourceType.Personal)
+                {
+                    <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
+                        Caption="@L["Source"]"
+                        Width="50px"
+                        CellStyle="@((item) => "min-width: 50px")">
+                        <DisplayTemplate>
+                            @if (context.IsSentToMe)
+                            {
+                                <Icon Name="IconName.Forward"
+                                    Class="text-primary"
+                                    Title="@L["SentToMe"]"
+                                    Style="font-size: 1.1rem;" />
+                            }
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                }
 
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="Document.No"
@@ -664,6 +686,11 @@
     </ModalFooter>
     </ModalContent>
 </Modal>
+
+@* ************************* MODAL: SUBMIT FOR SIGNING (Workflow) ************************* *@
+<SubmitWorkflowModal @ref="SubmitWorkflowModalRef"
+    OnSubmitted="OnSubmitWorkflowCompletedAsync"
+    OnClosed="OnSubmitWorkflowClosedAsync" />
 
 @* ************************* MODAL: PDF VIEWER ************************* *@
 <Modal @ref="DocumentPdfViewerModal" Class="pdf-viewer-modal">

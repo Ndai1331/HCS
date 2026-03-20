@@ -313,7 +313,7 @@ public partial class Index
 
             var participantEventIds = participantsResult.Items
                 .Where(x => x.CalendarEvent != null)
-                .Select(x => x.CalendarEvent.Id)
+                .Select(x => x.CalendarEvent!.Id)
                 .ToHashSet();
 
             CalendarEventsList = result.Items

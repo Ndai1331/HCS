@@ -66,45 +66,11 @@ public partial class DocumentSigning
     private int SentByMeCount { get; set; }
     private int FollowingCount { get; set; }
 
-    // Submit Workflow Modal
-    private Modal SubmitWorkflowModal { get; set; } = new();
-    private Guid? SelectedWorkflowId { get; set; }
-    private IReadOnlyList<LookupDto<Guid>> AvailableWorkflows { get; set; } = new List<LookupDto<Guid>>();
-    private WorkflowSubmitInfoDto? WorkflowSubmitInfo { get; set; }
-    private bool UseTemplateFile { get; set; } = true;
+    // Submit Workflow Modal (reusable component)
+    private HC.Blazor.Components.SubmitWorkflowModal.SubmitWorkflowModal SubmitWorkflowModalRef { get; set; } = default!;
 
-    /// <summary>
-    /// If true, use the workflow template file to create a new Document + DocumentFile.
-    /// Available when the selected workflow template has a file path.
-    /// </summary>
-    private bool UseWorkflowTemplateFile { get; set; }
-
-    // Document selection in submit modal
+    // My documents list - used by Resubmit modal for document selection
     private List<DocumentWithNavigationPropertiesDto> MyDocumentsList { get; set; } = new();
-    private Guid? SelectedDocumentId { get; set; }
-    private DocumentWithNavigationPropertiesDto? SelectedDocumentDto { get; set; }
-    private int ModalResetKey { get; set; } // Used to force re-render Autocomplete via @key
-
-    // Signing content (required when source file is .doc/.docx)
-    private string? SigningContent { get; set; }
-    private RichTextEdit? SigningContentEditorRef { get; set; }
-    /// <summary>
-    /// True when selected document's first file is .doc/.docx (used when not using template file).
-    /// </summary>
-    private bool IsSelectedDocumentWordFormat { get; set; }
-
-    /// <summary>
-    /// True when SigningContent (RichText) is required - i.e. source file is .doc or .docx.
-    /// When true, flow runs steps 2-4: input content, replace placeholders, convert to PDF.
-    /// When false, flow goes directly to step 5 (send PDF to workflow).
-    /// </summary>
-    private bool RequireSigningContent =>
-        (UseWorkflowTemplateFile && WorkflowSubmitInfo?.IsTemplateFileWordFormat == true)
-        || (!UseWorkflowTemplateFile && SelectedDocumentId.HasValue && IsSelectedDocumentWordFormat);
-
-    // File upload in submit modal
-    private FilePicker? WorkflowFilePicker { get; set; }
-    private List<UploadedFileInfo> UploadedFiles { get; set; } = new();
 
     // Action Modal
     private Modal WorkflowActionModal { get; set; } = new();
@@ -199,7 +165,6 @@ public partial class DocumentSigning
 
             BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["DocumentSigning"]));
             await SetToolbarItemsAsync();
-            await LoadWorkflowLookupAsync();
             await LoadDocumentSigningListAsync();
             IsInitialDataLoaded = true;
             await TryAutoOpenActionModalFromNotificationAsync();
@@ -272,20 +237,6 @@ public partial class DocumentSigning
         finally
         {
             IsLoading = false;
-        }
-    }
-
-    private async Task LoadWorkflowLookupAsync()
-    {
-        try
-        {
-            var result = await DocumentWorkflowInstancesAppService.GetWorkflowLookupAsync(
-                new LookupRequestDto { MaxResultCount = 1000 });
-            AvailableWorkflows = result.Items;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading workflow lookup");
         }
     }
 
@@ -542,242 +493,25 @@ public partial class DocumentSigning
 
     #endregion
 
-    #region Submit Workflow Modal
+    #region Submit Workflow Modal (Reusable Component)
 
     private async Task ShowSubmitWorkflowModalAsync()
     {
-        try
+        if (SubmitWorkflowModalRef != null)
         {
-            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-
-            // Reset modal state
-            SelectedDocumentId = null;
-            SelectedDocumentDto = null;
-            SelectedWorkflowId = null;
-            WorkflowSubmitInfo = null;
-            UseTemplateFile = true;
-            UseWorkflowTemplateFile = false;
-            SigningContent = null;
-            UploadedFiles.Clear();
-            ModalResetKey++; // Force re-render Autocomplete to clear text
-
-            // Clear FilePicker
-            if (WorkflowFilePicker != null)
-            {
-                await WorkflowFilePicker.Clear();
-            }
-
-            // Load personal documents for selection
-            await LoadMyDocumentsAsync();
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-        finally
-        {
-            await BlockUiService.UnBlock();
-            await InvokeAsync(SubmitWorkflowModal.Show);
+            await SubmitWorkflowModalRef.ShowAsync(preSelectedDocument: null);
         }
     }
 
-    private async Task OnDocumentSelectedAsync(Guid? documentId)
+    private async Task OnSubmitWorkflowCompletedAsync()
     {
-        SelectedDocumentId = documentId;
-        SelectedDocumentDto = documentId.HasValue
-            ? MyDocumentsList.FirstOrDefault(d => d.Document.Id == documentId.Value)
-            : null;
-        IsSelectedDocumentWordFormat = false;
-        if (documentId.HasValue)
-        {
-            try
-            {
-                IsSelectedDocumentWordFormat = await DocumentWorkflowInstancesAppService.IsDocumentSourceFileWordFormatAsync(documentId.Value);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to check document source file format for {DocumentId}", documentId);
-            }
-        }
+        await LoadDocumentSigningListAsync();
         await InvokeAsync(StateHasChanged);
     }
 
-    private void OnUseWorkflowTemplateFileChanged(bool value)
+    private Task OnSubmitWorkflowClosedAsync()
     {
-        UseWorkflowTemplateFile = value;
-        if (value)
-        {
-            // When using template file, clear document selection
-            SelectedDocumentId = null;
-            SelectedDocumentDto = null;
-            IsSelectedDocumentWordFormat = false;
-        }
-    }
-
-    private async Task OnWorkflowSelectedAsync(Guid? workflowId)
-    {
-        SelectedWorkflowId = workflowId;
-        WorkflowSubmitInfo = null;
-
-        if (workflowId.HasValue && workflowId.Value != Guid.Empty)
-        {
-            try
-            {
-                await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-                WorkflowSubmitInfo = await DocumentWorkflowInstancesAppService.GetWorkflowSubmitInfoAsync(workflowId.Value);
-            }
-            catch (Exception ex)
-            {
-                await HandleErrorAsync(ex);
-            }
-            finally
-            {
-                await BlockUiService.UnBlock();
-            }
-        }
-
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task CloseSubmitWorkflowModalAsync()
-    {
-        await InvokeAsync(SubmitWorkflowModal.Hide);
-    }
-
-    /// <summary>
-    /// Blazorise Upload event handler - fires once per file when UploadAll() is triggered.
-    /// Blazorise handles sequential file reading internally, avoiding Blazor Server
-    /// RemoteJSDataStream pipe issues. This is the official Blazorise pattern.
-    /// See: https://blazorise.com/docs/components/file-picker
-    /// </summary>
-    private async Task OnFileUpload(FileUploadEventArgs e)
-    {
-        try
-        {
-            using var memoryStream = new MemoryStream();
-            await e.File.OpenReadStream(long.MaxValue).CopyToAsync(memoryStream);
-            var fileBytes = memoryStream.ToArray();
-
-            // Generate unique file path
-            var extension = Path.GetExtension(e.File.Name);
-            var filePath = $"workflow-files/{Guid.NewGuid()}{extension}";
-
-            // Upload to blob storage
-            using var uploadStream = new MemoryStream(fileBytes);
-            await BlobContainer.SaveAsync(filePath, uploadStream);
-
-            // Create DocumentFile record
-            var documentFileDto = await DocumentFilesAppService.CreateAsync(new DocumentFileCreateDto
-            {
-                Name = e.File.Name,
-                Path = filePath,
-                Hash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(fileBytes)),
-                IsSigned = false,
-                UploadedAt = Clock.Now, // BUG-4 FIX: use Clock.Now instead of DateTime.Now
-                // DocumentId = SelectedDocumentId
-            });
-
-            UploadedFiles.Add(new UploadedFileInfo
-            {
-                DocumentFileId = documentFileDto.Id,
-                Name = e.File.Name,
-                Path = filePath
-            });
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error uploading file {FileName}", e.File.Name);
-            await HandleErrorAsync(ex);
-        }
-        finally
-        {
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private async Task ConfirmSubmitWorkflowAsync()
-    {
-        try
-        {
-            // Validate workflow selection
-            if (!SelectedWorkflowId.HasValue || WorkflowSubmitInfo == null)
-            {
-                await UiMessageService.Error(L["PleaseSelectWorkflow"],
-                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                return;
-            }
-
-            // Validate document selection (required only when not using template file)
-            if (!UseWorkflowTemplateFile && !SelectedDocumentId.HasValue)
-            {
-                await UiMessageService.Error(L["The {0} field is required.", L["Document"]],
-                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                return;
-            }
-
-            // Validate first step has users
-            var firstStep = WorkflowSubmitInfo.Steps.OrderBy(s => s.Order).FirstOrDefault();
-            if (firstStep == null || !firstStep.AssignedUsers.Any())
-            {
-                await UiMessageService.Error(L["FirstStepMustHaveAssignedUsers"],
-                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                return;
-            }
-
-            var confirmed = await UiMessageService.Confirm(L["ConfirmSubmitForSigning"]);
-            if (!confirmed) return;
-
-            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-
-            // Blazor binding updates on blur; if user clicks Submit without blurring the RichTextEdit,
-            // SigningContent may still be null. Get value directly from editor to ensure we have latest content.
-            var signingContent = SigningContent?.Trim();
-            if (SigningContentEditorRef != null)
-            {
-                var editorHtml = await SigningContentEditorRef.GetHtmlAsync();
-                if (!string.IsNullOrWhiteSpace(editorHtml))
-                {
-                    signingContent = editorHtml.Trim();
-                }
-            }
-
-            // Validate SigningContent when source file is .doc/.docx (required for placeholder <<ContentToBeApproved>>)
-            if (RequireSigningContent && string.IsNullOrWhiteSpace(signingContent))
-            {
-                await UiMessageService.Error(L["The {0} field is required.", L["SigningContent"]],
-                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                await BlockUiService.UnBlock();
-                return;
-            }
-
-            var input = new SubmitToWorkflowInput
-            {
-                DocumentId = UseWorkflowTemplateFile ? null : SelectedDocumentId,
-                WorkflowId = SelectedWorkflowId.Value,
-                UseWorkflowTemplateFile = UseWorkflowTemplateFile,
-                UseTemplateFile = UseTemplateFile,
-                SigningContent = signingContent,
-                AttachedFileIds = UploadedFiles.Any()
-                    ? UploadedFiles.Select(f => f.DocumentFileId).ToList()
-                    : null
-            };
-
-            await DocumentWorkflowInstancesAppService.SubmitToWorkflowAsync(input);
-
-            await UiMessageService.Success(L["WorkflowSubmittedSuccessfully"],
-            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-            await InvokeAsync(SubmitWorkflowModal.Hide);
-            await LoadDocumentSigningListAsync();
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-        finally
-        {
-            await BlockUiService.UnBlock();
-        }
+        return Task.CompletedTask;
     }
 
     #endregion
