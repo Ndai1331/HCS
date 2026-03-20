@@ -75,12 +75,12 @@ public partial class ProjectMembersAppService : ProjectMembersAppServiceBase, IP
         // Get project information
         var project = await _projectRepository.GetAsync(input.ProjectId);
         var memberUser = await _identityUserRepository.GetAsync(input.UserId);
-        var currentUser = CurrentUser;
 
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
         var notificationTitleKey = "ProjectMemberAdded";
-        var notificationContentKey = $"ProjectMemberAddedMessage|{project.Code}|{project.Name}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"ProjectMemberAddedMessage|{project.Code}|{project.Name}|{userFullName ?? L["System"]}";
 
         var notification = new Notification(
             GuidGenerator.Create(),
@@ -149,7 +149,7 @@ public partial class ProjectMembersAppService : ProjectMembersAppServiceBase, IP
         var memberWithNav = await _projectMemberRepository.GetWithNavigationPropertiesAsync(id);
         var project = memberWithNav.Project;
         var user = memberWithNav.User;
-        var currentUser = CurrentUser;
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
 
         // Remove user from CalendarAssignments before deleting member
         // Find the CalendarEvent for this project
@@ -184,7 +184,7 @@ public partial class ProjectMembersAppService : ProjectMembersAppServiceBase, IP
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
         var notificationTitleKey = "ProjectMemberRemoved";
-        var notificationContentKey = $"ProjectMemberRemovedMessage|{project.Code}|{project.Name}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"ProjectMemberRemovedMessage|{project.Code}|{project.Name}|{userFullName ?? L["System"]}";
 
         var notification = new Notification(
             GuidGenerator.Create(),
@@ -229,12 +229,12 @@ public partial class ProjectMembersAppService : ProjectMembersAppServiceBase, IP
         // Get project and user information
         var project = await _projectRepository.GetAsync(input.ProjectId);
         var memberUser = await _identityUserRepository.GetAsync(input.UserId);
-        var currentUser = CurrentUser;
         
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
         var notificationTitleKey = "ProjectMemberUpdated";
-        var notificationContentKey = $"ProjectMemberUpdatedMessage|{project.Code}|{project.Name}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"ProjectMemberUpdatedMessage|{project.Code}|{project.Name}|{userFullName ?? L["System"]}";
         
         var notification = new Notification(
             GuidGenerator.Create(),

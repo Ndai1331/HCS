@@ -104,21 +104,21 @@
                     <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.All)"
                         Clicked="@(() => OnFilterModeChanged(DocumentSigningFilterMode.All))">
                         <Div Class="d-flex justify-content-between align-items-center">
-                            <span><Icon Name="IconName.List" Class="me-2" />@L["AllDocuments"]</span>
+                            <span><Icon Name="IconName.List" Class="me-2" />@L["SignFilesAll"]</span>
                             <Badge Color="Color.Primary" Pill>@AllCount</Badge>
                         </Div>
                     </ListGroupItem>
                     <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.SentToMe)"
                         Clicked="@(() => OnFilterModeChanged(DocumentSigningFilterMode.SentToMe))">
                         <Div Class="d-flex justify-content-between align-items-center">
-                            <span><Icon Name="IconName.Mail" Class="me-2" />@L["SentToMe"]</span>
+                            <span><Icon Name="IconName.Mail" Class="me-2" />@L["SignFilesSentToMe"]</span>
                             <Badge Color="Color.Warning" Pill>@SentToMeCount</Badge>
                         </Div>
                     </ListGroupItem>
                     <ListGroupItem Class="@GetFilterItemClass(DocumentSigningFilterMode.SentByMe)"
                         Clicked="@(() => OnFilterModeChanged(DocumentSigningFilterMode.SentByMe))">
                         <Div Class="d-flex justify-content-between align-items-center">
-                            <span><Icon Name="IconName.Send" Class="me-2" />@L["SentByMe"]</span>
+                            <span><Icon Name="IconName.Send" Class="me-2" />@L["SignFilesSentByMe"]</span>
                             <Badge Color="Color.Info" Pill>@SentByMeCount</Badge>
                         </Div>
                     </ListGroupItem>

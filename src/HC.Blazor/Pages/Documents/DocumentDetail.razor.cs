@@ -45,6 +45,7 @@ public partial class DocumentDetail : HCComponentBase
     private bool CanEditDocument { get; set; }
     private bool CanCreateDocument { get; set; }
     private bool CanDeleteDocumentFile { get; set; }
+    private bool CanDeleteDocument { get; set; }
 
 
     // Document data
@@ -125,7 +126,6 @@ public partial class DocumentDetail : HCComponentBase
             await LoadLookupDataAsync();
             BreadcrumbItems.Clear();
             BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Documents"], "/manage-documents"));
-            await SetToolbarItemsAsync();
 
             if (DocumentId == Guid.Empty && DocumentIdQuery.HasValue)
             {
@@ -188,6 +188,8 @@ public partial class DocumentDetail : HCComponentBase
                 BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["Details"]));
                 await LoadDocumentAsync();
             }
+
+            await SetToolbarItemsAsync();
             await BlockUiService.UnBlock();
             await InvokeAsync(StateHasChanged);
         }
@@ -197,9 +199,10 @@ public partial class DocumentDetail : HCComponentBase
         CanCreateDocument = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.Documents.Create);
         CanEditDocument = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.Documents.Edit);
         CanDeleteDocumentFile = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.DocumentFiles.Delete);
+        CanDeleteDocument = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.Documents.Delete);
     }
     protected virtual ValueTask SetToolbarItemsAsync()
-    {   
+    {
         Toolbar.AddButton(L["Back"], () =>
         {
             // Use sourceType from query, or fallback to document's SourceType when available
@@ -218,9 +221,11 @@ public partial class DocumentDetail : HCComponentBase
         {
             Toolbar.AddButton(L["Edit"], OnSave, IconName.Edit, Color.Primary);
         }
-        if (CurrentDocument != null && CanDeleteDocumentFile)
+        // Whole-document delete: only archive (SourceType = 0), not inbox/personal/workflow rows
+        if (CurrentDocument != null && CanDeleteDocument
+            && CurrentDocument.Document.SourceType == DocumentSourceType.Archive)
         {
-            Toolbar.AddButton(L["Delete"],DeleteDocumentAsync, IconName.Delete, Color.Danger);
+            Toolbar.AddButton(L["Delete"], DeleteDocumentAsync, IconName.Delete, Color.Danger);
         }
         return ValueTask.CompletedTask;
     }

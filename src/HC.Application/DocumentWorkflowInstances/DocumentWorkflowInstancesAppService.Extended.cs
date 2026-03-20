@@ -233,6 +233,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         Guid documentId;
         Guid? templateDocumentFileId = null;
         Document? createdDocument = null; // Keep reference to avoid re-fetching before UoW commit
+        // After duplicating Archive/Personal/SentToMe -> Workflow doc, map selected source file id to the new copy.
+        Guid? signingFilePreferenceAfterDuplicate = null;
 
         // If UseWorkflowTemplateFile = true, create a new Document + DocumentFile from the template
         if (input.UseWorkflowTemplateFile)
@@ -299,7 +301,32 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             if (!input.DocumentId.HasValue || input.DocumentId.Value == default)
                 throw new UserFriendlyException(L["The {0} field is required.", L["Document"]]);
 
-            documentId = input.DocumentId.Value;
+            var sourceDocumentId = input.DocumentId.Value;
+            var sourceDoc = await _documentRepository.GetAsync(sourceDocumentId);
+
+            // Workflow (3): submit/resubmit on the signing document itself — no clone.
+            // Archive / Personal / SentToMe (0–2): clone so originals stay in manage-documents menus.
+            if (sourceDoc.SourceType == DocumentSourceType.Workflow)
+            {
+                documentId = sourceDocumentId;
+            }
+            else
+            {
+                createdDocument = await DuplicateDocumentForWorkflowSubmitAsync(sourceDoc, input.WorkflowId);
+                documentId = createdDocument.Id;
+                var oldToNewFileMap = await DuplicateDocumentFilesForWorkflowAsync(sourceDocumentId, documentId);
+                if (input.DocumentFileId.HasValue &&
+                    oldToNewFileMap.TryGetValue(input.DocumentFileId.Value, out var mappedFileId))
+                {
+                    signingFilePreferenceAfterDuplicate = mappedFileId;
+                }
+            }
+        }
+
+        // Original row (Archive/Personal/SentToMe): store workflow id and mirror in-progress status on parent.
+        if (createdDocument?.ParentDocumentId is Guid parentIdForSubmit)
+        {
+            await SyncParentDocumentOnWorkflowSubmitAsync(parentIdForSubmit, input.WorkflowId);
         }
 
         // Check if document already has an active workflow instance
@@ -398,7 +425,20 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         if (signingFileId == null)
         {
             var documentFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
-            signingFileId = documentFiles.OrderBy(f => f.UploadedAt).FirstOrDefault()?.Id ?? input.DocumentFileId;
+            if (signingFilePreferenceAfterDuplicate.HasValue &&
+                documentFiles.Any(f => f.Id == signingFilePreferenceAfterDuplicate.Value))
+            {
+                signingFileId = signingFilePreferenceAfterDuplicate;
+            }
+            else if (input.DocumentFileId.HasValue &&
+                     documentFiles.Any(f => f.Id == input.DocumentFileId.Value))
+            {
+                signingFileId = input.DocumentFileId;
+            }
+            else
+            {
+                signingFileId = documentFiles.OrderBy(f => f.UploadedAt).FirstOrDefault()?.Id ?? input.DocumentFileId;
+            }
         }
 
         signingFileId = await _workflowSigningExecutionService.PrepareSubmissionPlaceholdersAsync(
@@ -519,6 +559,103 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         }
 
         return ObjectMapper.Map<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>(instance);
+    }
+
+    /// <summary>
+    /// Creates a new document row for workflow signing; original Archive/Personal/SentToMe rows are unchanged.
+    /// </summary>
+    private async Task<Document> DuplicateDocumentForWorkflowSubmitAsync(Document source, Guid workflowId)
+    {
+        var now = Clock.Now;
+        var storageNumber = $"WF-{now:yyyyMMddHHmmssfff}";
+        if (storageNumber.Length > DocumentConsts.StorageNumberMaxLength)
+        {
+            storageNumber = storageNumber[..DocumentConsts.StorageNumberMaxLength];
+        }
+
+        var duplicate = await _documentManager.CreateAsync(
+            source.FieldId,
+            source.UnitId,
+            workflowId,
+            source.StatusId,
+            source.TypeId,
+            source.UrgencyLevelId,
+            source.SecrecyLevelId,
+            source.Title,
+            source.CompletedTime,
+            storageNumber,
+            source.IncommingDate,
+            source.No,
+            source.CurrentStatus,
+            DocumentSourceType.Workflow);
+
+        duplicate.ParentDocumentId = source.Id;
+        return await _documentRepository.UpdateAsync(duplicate);
+    }
+
+    /// <summary>
+    /// Marks the original document as tied to the selected workflow and sets status to in-progress for manage-documents UX.
+    /// </summary>
+    private async Task SyncParentDocumentOnWorkflowSubmitAsync(Guid parentDocumentId, Guid workflowId)
+    {
+        var parent = await _documentRepository.GetAsync(parentDocumentId);
+        parent.WorkflowId = workflowId;
+        await _documentRepository.UpdateAsync(parent);
+        await UpdateDocumentStatusAsync(parentDocumentId, DocumentStatusCode.DANG_XU_LY);
+    }
+
+    /// <summary>
+    /// Copies blob-backed files to the workflow duplicate so signing does not touch archive blobs.
+    /// </summary>
+    /// <returns>Map from source DocumentFile.Id to new DocumentFile.Id.</returns>
+    private async Task<Dictionary<Guid, Guid>> DuplicateDocumentFilesForWorkflowAsync(Guid sourceDocumentId, Guid targetDocumentId)
+    {
+        var map = new Dictionary<Guid, Guid>();
+        var sourceFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == sourceDocumentId);
+        foreach (var sourceFile in sourceFiles.OrderBy(f => f.UploadedAt))
+        {
+            if (string.IsNullOrEmpty(sourceFile.Path))
+            {
+                Logger.LogWarning(
+                    "[DUPLICATE_DOC] Skipping file without path. FileId={FileId}, DocumentId={DocId}",
+                    sourceFile.Id, sourceDocumentId);
+                continue;
+            }
+
+            try
+            {
+                var fileBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
+                var extension = Path.GetExtension(sourceFile.Name);
+                var newBlobPath = $"{WorkflowConstants.BlobPathSigningSteps}{Guid.NewGuid()}{extension}";
+                await _blobContainer.SaveAsync(newBlobPath, fileBytes);
+
+                var newFile = new DocumentFile(
+                    GuidGenerator.Create(),
+                    targetDocumentId,
+                    sourceFile.Name,
+                    sourceFile.IsSigned,
+                    Clock.Now,
+                    newBlobPath,
+                    sourceFile.Hash);
+                newFile.TenantId = CurrentTenant.Id;
+                await _documentFileRepository.InsertAsync(newFile, autoSave: true);
+                map[sourceFile.Id] = newFile.Id;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex,
+                    "[DUPLICATE_DOC] Failed to copy file for workflow duplicate. SourceFileId={SourceFileId}",
+                    sourceFile.Id);
+                throw new UserFriendlyException(L["ErrorCopyingFileForNextStep"]);
+            }
+        }
+
+        if (map.Count == 0)
+        {
+            throw new UserFriendlyException(L["NoFilesAvailable"]);
+        }
+
+        return map;
     }
 
     /// <summary>
@@ -1535,9 +1672,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     /// assignments/documents into memory. Filter, count, and page are done in SQL.
     /// 
     /// Logic:
-    ///   All = Document where user is receiver OR initiator of workflow
-    ///   SentToMe = DocumentAssignment.ReceiverUserId = currentUserId
-    ///   SentByMe = DocumentWorkflowInstance.CreatorId = currentUserId AND sent to others (exclude "Tôi gửi đến tôi")
+    ///   All = Document where user is receiver (workflow step) OR initiator of workflow
+    ///   SentToMe = DocumentAssignment.WorkflowStepTemplateId != null AND ReceiverUserId = currentUserId (real workflow steps only)
+    ///   SentByMe = DocumentWorkflowInstance.CreatorId = currentUserId AND sent to others via workflow assignments
     ///   Following = empty (no logic for now)
     /// </summary>
     public async Task<DocumentSigningPageResultDto> GetDocumentSigningListAsync(GetDocumentSigningListInput input)
@@ -1549,21 +1686,24 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var instanceQueryable = await _documentWorkflowInstanceRepository.GetQueryableAsync();
         var documentQueryable = await _documentRepository.GetQueryableAsync();
 
-        // Distinct document IDs where user is receiver (DB query, not materialized yet)
+        // Signing documents only: SourceType = Workflow (3). Manage-documents / inbox use other source types.
+        var workflowDocumentQuery = documentQueryable.Where(d => d.SourceType == DocumentSourceType.Workflow);
+
+        // Distinct document IDs where user is receiver on a real workflow step (not VIEW/send-only assignments)
         var receivedDocIdQuery = assignmentQueryable
-            .Where(a => a.ReceiverUserId == currentUserId)
-            .Select(a => a.DocumentId)
+            .Where(a => a.ReceiverUserId == currentUserId && a.WorkflowStepTemplateId != null)
+            .Join(workflowDocumentQuery, a => a.DocumentId, d => d.Id, (a, d) => d.Id)
             .Distinct();
 
         // SentByMe: documents where user INITIATED the workflow (trình ký) AND sent to others.
         // Exclude "Tôi gửi đến tôi" (I sent to myself) - only count when sent to at least one other person.
         var initiatedDocIdQuery = instanceQueryable
             .Where(i => i.CreatorId == currentUserId)
-            .Select(i => i.DocumentId)
+            .Join(workflowDocumentQuery, i => i.DocumentId, d => d.Id, (i, d) => d.Id)
             .Distinct();
         var sentToOthersDocIdQuery = assignmentQueryable
-            .Where(a => a.ReceiverUserId != currentUserId)
-            .Select(a => a.DocumentId)
+            .Where(a => a.ReceiverUserId != currentUserId && a.WorkflowStepTemplateId != null)
+            .Join(workflowDocumentQuery, a => a.DocumentId, d => d.Id, (a, d) => d.Id)
             .Distinct();
         var sentByMeDocIdQuery = initiatedDocIdQuery.Intersect(sentToOthersDocIdQuery);
 
@@ -1657,7 +1797,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         // Load current user's assignments for the paged documents only (for CanAct/MyAssignment)
         var myAssignments = await AsyncExecuter.ToListAsync(
-            assignmentQueryable.Where(a => pagedDocIds.Contains(a.DocumentId) && a.ReceiverUserId == currentUserId));
+            assignmentQueryable.Where(a =>
+                pagedDocIds.Contains(a.DocumentId) &&
+                a.ReceiverUserId == currentUserId &&
+                a.WorkflowStepTemplateId != null));
 
         // Get all workflow instances for the paged documents
         var allInstances = await _documentWorkflowInstanceRepository.GetListAsync(
@@ -2216,29 +2359,31 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     /// <summary>
     /// Update document status by DocumentStatusCode enum.
     /// Looks up MasterData by Code and Type = "TRANG_THAI_VB".
+    /// When the document is a workflow child (<see cref="Document.ParentDocumentId"/>), applies the same status to the parent.
     /// </summary>
     private async Task UpdateDocumentStatusAsync(Guid documentId, DocumentStatusCode statusCode)
     {
         try
         {
             var document = await _documentRepository.GetAsync(documentId);
-            var code = statusCode.GetCode();
-
-            var statusList = await _masterDataRepository.GetListAsync(
-                x => x.Code == code && x.Type == MasterDataType.Status.GetTypeValue());
-
-            var status = statusList.FirstOrDefault();
-            if (status == null)
+            if (!await TryApplyDocumentStatusByCodeAsync(document, statusCode))
             {
-                Logger.LogWarning("MasterData with Code='{Code}' and Type='TRANG_THAI_VB' not found. Document status will not be updated.", code);
                 return;
             }
 
-            document.StatusId = status.Id;
             await _documentRepository.UpdateAsync(document);
 
+            if (document.ParentDocumentId.HasValue)
+            {
+                var parent = await _documentRepository.GetAsync(document.ParentDocumentId.Value);
+                if (await TryApplyDocumentStatusByCodeAsync(parent, statusCode))
+                {
+                    await _documentRepository.UpdateAsync(parent);
+                }
+            }
+
             Logger.LogInformation("Document status updated to {Code}: DocumentId={DocumentId}, StatusId={StatusId}",
-                code, documentId, status.Id);
+                statusCode.GetCode(), documentId, document.StatusId);
         }
         catch (Exception ex)
         {
@@ -2246,6 +2391,27 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 statusCode.GetCode(), documentId);
             // Don't throw - we don't want to fail the workflow action if status update fails
         }
+    }
+
+    /// <summary>
+    /// Resolves MasterData status and assigns <see cref="Document.StatusId"/>. Returns false if master data is missing.
+    /// </summary>
+    private async Task<bool> TryApplyDocumentStatusByCodeAsync(Document document, DocumentStatusCode statusCode)
+    {
+        var code = statusCode.GetCode();
+        var statusList = await _masterDataRepository.GetListAsync(
+            x => x.Code == code && x.Type == MasterDataType.Status.GetTypeValue());
+        var status = statusList.FirstOrDefault();
+        if (status == null)
+        {
+            Logger.LogWarning(
+                "MasterData with Code='{Code}' and Type='TRANG_THAI_VB' not found. Document status will not be updated.",
+                code);
+            return false;
+        }
+
+        document.StatusId = status.Id;
+        return true;
     }
 
     #endregion

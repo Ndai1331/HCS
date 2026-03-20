@@ -27,13 +27,19 @@ public enum DocumentSourceType
     Archive = 0,
 
     /// <summary>
-    /// Văn bản của tôi - Personal documents
+    /// Văn bản của tôi - Personal documents (created by current user)
     /// </summary>
     [Description("Personal")]
     Personal = 1,
 
     /// <summary>
-    /// Văn bản tạo từ quy trình trình ký - Workflow generated documents
+    /// Văn bản gửi tới tôi - Inbox (individual or department routing; optional denormalized fields on Document)
+    /// </summary>
+    [Description("SentToMe")]
+    SentToMe = 2,
+
+    /// <summary>
+    /// Văn bản trình ký (workflow) - Document signing / workflow pipeline
     /// </summary>
     [Description("Workflow")]
     Workflow = 3

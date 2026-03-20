@@ -75,12 +75,12 @@ public partial class ProjectTaskAssignmentsAppService : ProjectTaskAssignmentsAp
         // Get project task and user information
         var projectTask = await _projectTaskRepository.GetAsync(input.ProjectTaskId);
         var assignedUser = await _identityUserRepository.GetAsync(input.UserId);
-        var currentUser = CurrentUser;
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
 
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
         var notificationTitleKey = "TaskAssigned";
-        var notificationContentKey = $"TaskAssignedMessage|{projectTask.Code}|{projectTask.Title}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"TaskAssignedMessage|{projectTask.Code}|{projectTask.Title}|{userFullName ?? L["System"]}";
 
         var notification = new Notification(
             GuidGenerator.Create(),
@@ -149,7 +149,7 @@ public partial class ProjectTaskAssignmentsAppService : ProjectTaskAssignmentsAp
         var assignmentWithNav = await _projectTaskAssignmentRepository.GetWithNavigationPropertiesAsync(id);
         var projectTask = assignmentWithNav.ProjectTask;
         var user = assignmentWithNav.User;
-        var currentUser = CurrentUser;
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
 
         // Remove user from CalendarAssignments before deleting assignment
         // Find the CalendarEvent for this task
@@ -184,7 +184,7 @@ public partial class ProjectTaskAssignmentsAppService : ProjectTaskAssignmentsAp
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
         var notificationTitleKey = "TaskAssignRemoved";
-        var notificationContentKey = $"TaskAssignRemovedMessage|{projectTask.Code}|{projectTask.Title}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"TaskAssignRemovedMessage|{projectTask.Code}|{projectTask.Title}|{userFullName ?? L["System"]}";
 
         var notification = new Notification(
             GuidGenerator.Create(),
@@ -229,12 +229,12 @@ public partial class ProjectTaskAssignmentsAppService : ProjectTaskAssignmentsAp
         // Get project task and user information
         var projectTask = await _projectTaskRepository.GetAsync(input.ProjectTaskId);
         var assignedUser = await _identityUserRepository.GetAsync(input.UserId);
-        var currentUser = CurrentUser;
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
         
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
         var notificationTitleKey = "TaskAssignUpdated";
-        var notificationContentKey = $"TaskAssignUpdatedMessage|{projectTask.Code}|{projectTask.Title}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"TaskAssignUpdatedMessage|{projectTask.Code}|{projectTask.Title}|{userFullName ?? L["System"]}";
         
         var notification = new Notification(
             GuidGenerator.Create(),

@@ -4,11 +4,10 @@
 
 Tài liệu này mô tả các API mobile cần dùng để tích hợp theo flow web hiện tại cho 2 nhóm chức năng:
 
-1. **Project**
+1. **Project** (DỰ ÁN)
    - Project (CRUD)
-   - ProjectAssignments / ProjectAssigments → backend hiện tại tương ứng với **ProjectMembers**
-   - ProjectDocuments → **hiện chưa có entity/API relation riêng cho ProjectDocument** trong backend hiện tại
-2. **ProjectTask**
+   - ProjectMembers
+2. **ProjectTask** (CÔNG VIỆC)
    - ProjectTask (CRUD)
    - ProjectTaskAssignment / ProjectTaskAssigment
    - ProjectTaskDocument
@@ -26,34 +25,28 @@ Ngoài CRUD, tài liệu cũng liệt kê:
 | Nghiệp vụ mobile yêu cầu | API/backend hiện tại | Ghi chú |
 |---|---|---|
 | Project | `Projects` | Có đầy đủ CRUD |
-| ProjectAssignments / ProjectAssigments | `ProjectMembers` | Web đang dùng `ProjectMembers` để quản lý thành viên dự án |
-| ProjectDocuments | **Chưa có API riêng** | Nếu cần văn bản cấp project thì hiện phải dùng `Documents`; chưa có bảng relation Project-Document riêng |
+| ProjectMembers /  Web đang dùng `ProjectMembers` để quản lý thành viên dự án |
 | ProjectTask | `ProjectTasks` | Có đầy đủ CRUD |
 | ProjectTaskAssignment / ProjectTaskAssigment | `ProjectTaskAssignments` | Có CRUD + user lookup |
 | ProjectTaskDocument | `ProjectTaskDocuments` | Có CRUD + document lookup |
-
-> Kết luận quan trọng: backend hiện tại **không có** module `ProjectDocuments` độc lập. Nếu mobile cần “văn bản của dự án”, hiện chỉ có 2 cách:
-> 1. dùng `Documents` như danh mục văn bản tổng quát,
-> 2. hoặc dùng `ProjectTaskDocuments` khi văn bản gắn với **task** cụ thể.
 
 ---
 
 ## 3. Base URL và authentication
 
 - Tất cả API bên dưới đang nằm dưới nhóm `api/app/...`.
-- Ví dụ local API host theo AGENTS: `https://localhost:44379`.
+- Ví dụ local API host theo AGENTS: `https://dev.benhvien199.vn`.
 - Mobile chỉ cần ghép: `{baseUrl}` + `{route}`.
 
 Ví dụ:
-- `GET https://localhost:44379/api/app/projects`
-- `GET https://localhost:44379/api/app/project-tasks`
+- `GET https://dev.benhvien199.vn/api/app/projects`
+- `GET https://dev.benhvien199.vn/api/app/project-tasks`
 
 Tài liệu này tập trung vào contract API; phần auth/token có thể dùng cùng cơ chế mà mobile đang dùng cho các API khác của hệ thống.
 
 ---
 
-## 4. Flow tích hợp tổng quát giống web
-
+## 4. Flow tích hợp Dự án giống web
 ### 4.1. Flow Project trên web hiện tại
 
 1. Mở danh sách project.
@@ -68,9 +61,9 @@ Tài liệu này tập trung vào contract API; phần auth/token có thể dùn
 5. Khi mở danh sách task theo project:
    - gọi list `ProjectTasks` với `ProjectId`.
 
-### 4.2. Flow ProjectTask trên web hiện tại
+### 4.2. Flow ProjectTask (Công việc) trên web hiện tại
 
-1. Tạo task phần thông tin chung trước.
+1. Tạo task phần thông tin chung trước. (save xong qua bước 2)
 2. Sau khi có `ProjectTaskId`:
    - gọi `ProjectTaskAssignments` để thêm người thực hiện,
    - gọi `ProjectTaskDocuments` để gắn văn bản.
@@ -201,9 +194,8 @@ Dùng khi tạo/sửa project để chọn `OwnerDepartmentId`.
 
 ---
 
-## 5.3. ProjectAssignments = ProjectMembers
+## 5.3. ProjectMembers
 
-> Trong backend/web hiện tại, “gán người vào project” đang dùng module **ProjectMembers**, không có entity tên `ProjectAssignment` riêng.
 
 ### 5.3.1. Danh sách thành viên dự án
 
@@ -270,49 +262,6 @@ Body giống create, thêm `concurrencyStamp`.
 **GET** `/api/app/project-members/identity-user-lookup`
 
 Đây là API mobile nên dùng khi cần **get user** để gán vào project.
-
----
-
-## 5.4. ProjectDocuments
-
-### 5.4.1. Trạng thái hiện tại của backend
-
-Hiện tại backend **chưa có**:
-- entity `ProjectDocument`,
-- controller `api/app/project-documents`,
-- relation Project ↔ Document riêng.
-
-### 5.4.2. Cách mobile xử lý ở thời điểm hiện tại
-
-Nếu mobile cần “lấy document” trong ngữ cảnh project, hiện có 2 hướng:
-
-#### Cách A — dùng danh mục Documents tổng quát
-
-**GET** `/api/app/documents`
-
-Dùng khi muốn hiển thị kho văn bản chung để user chọn/xem.
-
-Query hay dùng:
-- `FilterText`
-- `Title`
-- `No`
-- `CurrentStatus`
-- `SourceType`
-- `CreatorId`
-- `SkipCount`
-- `MaxResultCount`
-
-#### Cách B — nếu document đang gắn với task của project
-
-1. Gọi list task theo project:
-   - `GET /api/app/project-tasks?ProjectId={projectId}`
-2. Với từng task hoặc task đang chọn, gọi:
-   - `GET /api/app/project-task-documents?ProjectTaskId={taskId}`
-
-### 5.4.3. Kiến nghị cho mobile
-
-- Nếu business thực sự cần tab “ProjectDocuments” độc lập giống `ProjectTaskDocuments`, backend cần bổ sung module mới.
-- Ở thời điểm hiện tại, mobile **không nên tự giả định** có API `/api/app/project-documents`.
 
 ---
 
@@ -890,23 +839,17 @@ Dùng khi mobile gọi `Documents` để lọc nguồn văn bản.
 
 ## 11. Các lưu ý tích hợp quan trọng
 
-1. **ProjectDocuments chưa tồn tại ở backend**
-   - Mobile không nên hard-code API `project-documents`.
-
-2. **ProjectAssignments thực tế là ProjectMembers**
-   - Nếu spec mobile dùng tên `ProjectAssignments`, nên map nội bộ sang API `project-members`.
-
-3. **Task priority/status đang gửi bằng string**
+1. **Task priority/status đang gửi bằng string**
    - Không gửi số `0/1/2...` cho create/update task; nên gửi `HIGH`, `TODO`... theo enum name.
 
-4. **Update cần `concurrencyStamp`**
+2. **Update cần `concurrencyStamp`**
    - Khi mobile load detail để edit, phải giữ lại `concurrencyStamp` rồi gửi lại lúc update.
 
-5. **Document file tách khỏi document relation**
+3. **Document file tách khỏi document relation**
    - `ProjectTaskDocuments` chỉ là relation task ↔ document.
    - Muốn lấy file thật, phải gọi thêm `DocumentFiles` theo `DocumentId`.
 
-6. **PDF watermark là flow riêng**
+4. **PDF watermark là flow riêng**
    - Nếu mobile cần xem/tải PDF có watermark, cần dùng service PDF viewer và truyền `blobPath` thực tế.
 
 ---
@@ -959,9 +902,6 @@ Dùng khi mobile gọi `Documents` để lọc nguồn văn bản.
 
 ## 13. Kết luận ngắn gọn cho team mobile
 
-- `ProjectAssignments` => dùng `ProjectMembers`.
-- `ProjectDocuments` => **chưa có API riêng**.
-- `ProjectTaskAssignment` và `ProjectTaskDocument` đã đủ API CRUD + lookup để mobile tích hợp giống web.
 - Muốn **get user**: dùng `identity-user-lookup`.
 - Muốn **get document** để gắn task: dùng `project-task-documents/document-lookup`.
 - Muốn lấy **file thật của document**: dùng `document-files?DocumentId=...`.

@@ -95,6 +95,14 @@ public class WorkflowOverdueBackgroundWorker : AsyncPeriodicBackgroundWorkerBase
                     {
                         document.StatusId = status.Id;
                         await documentRepository.UpdateAsync(document);
+
+                        // Mirror cancel status on original manage-documents row when child is a workflow duplicate.
+                        if (document.ParentDocumentId.HasValue)
+                        {
+                            var parent = await documentRepository.GetAsync(document.ParentDocumentId.Value);
+                            parent.StatusId = status.Id;
+                            await documentRepository.UpdateAsync(parent);
+                        }
                     }
                     else
                     {

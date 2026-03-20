@@ -101,12 +101,6 @@ public abstract class EfCoreDocumentRepositoryBase : EfCoreRepository<HCDbContex
             .WhereIf(secrecyLevelId != null && secrecyLevelId != Guid.Empty, e => e.SecrecyLevel != null && e.SecrecyLevel.Id == secrecyLevelId)
             .WhereIf(sourceType.HasValue && !hasDocumentIds, e => e.Document.SourceType == sourceType!.Value);
 
-        // sourceType=1 (Personal): (Document.SourceType == Personal) OR (Document.Id in assignedDocumentIds)
-        if (sourceType.HasValue && hasDocumentIds)
-        {
-            return queryWithFilters.Where(e => e.Document.SourceType == sourceType!.Value || documentIds!.Contains(e.Document.Id));
-        }
-
         if (hasCreator && hasDocumentIds)
         {
             return queryWithFilters.Where(e => e.Document.CreatorId == creatorId || documentIds!.Contains(e.Document.Id));

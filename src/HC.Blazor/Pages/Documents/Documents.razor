@@ -323,9 +323,12 @@
                         <Button Clicked="ClearSelection" Class="mx-1 btn-outline-secondary">@L["ClearSelection"]</Button>
                     }
                 }
-                <Button Color="Color.Danger" Class="mx-1" Size="Size.Medium" Clicked="DeleteSelectedDocumentsAsync">
-                    <Icon Name="@IconName.Delete" /> @L["Delete"]
-                </Button>
+                @if (CanDeleteDocument && CanDeleteOrRevokeInArchiveView)
+                {
+                    <Button Color="Color.Danger" Class="mx-1" Size="Size.Medium" Clicked="DeleteSelectedDocumentsAsync">
+                        <Icon Name="@IconName.Delete" /> @L["Delete"]
+                    </Button>
+                }
             </div>
         </Div>
         <hr Visibility="@(SelectedDocuments.Any() ? Visibility.Visible : Visibility.Invisible)"
@@ -359,7 +362,7 @@
                 </Row>
             </EmptyTemplate>   
             <DataGridColumns>
-                @if (CanDeleteDocument && DocumentList.Any())
+                @if (CanDeleteDocument && CanDeleteOrRevokeInArchiveView && DocumentList.Any())
                 {
                     <DataGridMultiSelectColumn TItem="DocumentWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
                 }
@@ -367,7 +370,7 @@
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" Caption="@L["Actions"]" Width="120px">
                     <DisplayTemplate>
                         <Div Class="d-flex gap-1">
-                            @if (CanEditDocument)
+                            @if (CanEditDocument && CanShowEditDocumentButton)
                             {
                                 <Button
                                     @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
@@ -379,7 +382,7 @@
                                     <Icon Name="IconName.Edit" />
                                 </Button>
                             }
-                            @if (CanDeleteDocument)
+                            @if (CanDeleteDocument && CanDeleteOrRevokeInArchiveView)
                             {
                                 <Button
                                     @onclick="@(async () => await ShowDeleteOrRevokeModalAsync(context))"
@@ -422,7 +425,7 @@
                                     <Icon Name="IconName.Send" />
                                 </Button>
                             }
-                            @if (CanSubmitForSigning)
+                            @if (CanSubmitForSigning && !context.HideSubmitForSigningButton)
                             {
                                 <Button
                                     @onclick="@(() => ShowSubmitWorkflowModalAsync(context))"
@@ -438,21 +441,23 @@
                     </DisplayTemplate>
                 </DataGridColumn>
 
-                @* Document source icon - only in Personal (sourceType=1): forward arrow for "văn bản gửi đến" *@
-                @if (SelectedSourceType == DocumentSourceType.Personal)
+                @* Sent to me (sourceType=2): show routing metadata from Document *@
+                @if (SelectedSourceType == DocumentSourceType.SentToMe)
                 {
                     <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
-                        Caption="@L["Source"]"
-                        Width="50px"
-                        CellStyle="@((item) => "min-width: 50px")">
+                        Caption="@L["FromUser"]"
+                        Width="180px"
+                        CellStyle="@((item) => "min-width: 160px")">
                         <DisplayTemplate>
-                            @if (context.IsSentToMe)
-                            {
-                                <Icon Name="IconName.Forward"
-                                    Class="text-primary"
-                                    Title="@L["SentToMe"]"
-                                    Style="font-size: 1.1rem;" />
-                            }
+                            <small>@(context.FromUserDisplayName ?? "—")</small>
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                    <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
+                        Caption="@L["Department"]"
+                        Width="160px"
+                        CellStyle="@((item) => "min-width: 140px")">
+                        <DisplayTemplate>
+                            <small>@(context.DepartmentDisplayName ?? "—")</small>
                         </DisplayTemplate>
                     </DataGridColumn>
                 }

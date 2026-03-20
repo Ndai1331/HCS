@@ -67,11 +67,11 @@ public class DocumentAssignmentsAppService : DocumentAssignmentsAppServiceBase, 
             step = await _workflowStepTemplateRepository.GetAsync(input.WorkflowStepTemplateId.Value);
         }
         var receiverUser = await _identityUserRepository.GetAsync(input.ReceiverUserId);
-        var currentUser = CurrentUser;
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
         var notificationTitleKey = "WorkflowAssigned";
-        var notificationContentKey = $"WorkflowAssignedMessage|{document.StorageNumber}|{document.Title}|{step.Name}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"WorkflowAssignedMessage|{document.StorageNumber}|{document.Title}|{step.Name}|{userFullName ?? L["System"]}";
         var notification = new Notification(GuidGenerator.Create(), notificationTitleKey, notificationContentKey, SourceType.WORKFLOW.ToString(), EventType.WORKFLOW_ASSIGNED.ToString(), RelatedType.DOCUMENT.ToString(), "NORMAL", document.Id.ToString());
         notification.TenantId = CurrentTenant.Id;
         await _notificationRepository.InsertAsync(notification);
@@ -92,13 +92,13 @@ public class DocumentAssignmentsAppService : DocumentAssignmentsAppServiceBase, 
         var document = assignmentWithNav.Document;
         var step = assignmentWithNav.WorkflowStepTemplate;
         var receiverUser = assignmentWithNav.ReceiverUser;
-        var currentUser = CurrentUser;
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
         // Call base method to delete assignment
         await base.DeleteAsync(id);
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
         var notificationTitleKey = "WorkflowAssignRemoved";
-        var notificationContentKey = $"WorkflowAssignRemovedMessage|{document.StorageNumber}|{document.Title}|{step.Name}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"WorkflowAssignRemovedMessage|{document.StorageNumber}|{document.Title}|{step.Name}|{userFullName ?? L["System"]}";
         var notification = new Notification(GuidGenerator.Create(), notificationTitleKey, notificationContentKey, SourceType.WORKFLOW.ToString(), EventType.WORKFLOW_ASSIGN_REMOVED.ToString(), RelatedType.DOCUMENT.ToString(), "NORMAL", document.Id.ToString());
         notification.TenantId = CurrentTenant.Id;
         await _notificationRepository.InsertAsync(notification);
@@ -124,11 +124,11 @@ public class DocumentAssignmentsAppService : DocumentAssignmentsAppServiceBase, 
         }
         
         var receiverUser = await _identityUserRepository.GetAsync(input.ReceiverUserId);
-        var currentUser = CurrentUser;
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
         var notificationTitleKey = "WorkflowAssignUpdated";
-        var notificationContentKey = $"WorkflowAssignUpdatedMessage|{document.StorageNumber}|{document.Title}|{step.Name}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"WorkflowAssignUpdatedMessage|{document.StorageNumber}|{document.Title}|{step.Name}|{userFullName ?? L["System"]}";
         var notification = new Notification(GuidGenerator.Create(), notificationTitleKey, notificationContentKey, SourceType.WORKFLOW.ToString(), EventType.WORKFLOW_ASSIGN_UPDATED.ToString(), RelatedType.DOCUMENT.ToString(), "NORMAL", document.Id.ToString());
         notification.TenantId = CurrentTenant.Id;
         await _notificationRepository.InsertAsync(notification);

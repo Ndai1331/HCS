@@ -395,6 +395,17 @@ public class HCTenantDbContext : HCDbContextBase<HCTenantDbContext>
             b.Property(x => x.CompletedTime).HasColumnName(nameof(Document.CompletedTime));
             b.Property(x => x.StorageNumber).HasColumnName(nameof(Document.StorageNumber)).IsRequired().HasMaxLength(DocumentConsts.StorageNumberMaxLength);
             b.Property(x => x.IncommingDate).HasColumnName(nameof(Document.IncommingDate));
+            b.Property(x => x.SourceType).HasColumnName(nameof(Document.SourceType)).IsRequired();
+            b.Property(x => x.FromUserId).HasColumnName(nameof(Document.FromUserId));
+            b.Property(x => x.ReceiverUserId).HasColumnName(nameof(Document.ReceiverUserId));
+            b.Property(x => x.DepartmentId).HasColumnName(nameof(Document.DepartmentId));
+            b.HasIndex(x => x.SourceType);
+            b.HasIndex(x => x.FromUserId);
+            b.HasIndex(x => x.ReceiverUserId);
+            b.HasIndex(x => x.DepartmentId);
+            b.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.FromUserId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.ReceiverUserId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<Department>().WithMany().HasForeignKey(x => x.DepartmentId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<MasterData>().WithMany().HasForeignKey(x => x.FieldId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<Workflow>().WithMany().HasForeignKey(x => x.WorkflowId).OnDelete(DeleteBehavior.SetNull);

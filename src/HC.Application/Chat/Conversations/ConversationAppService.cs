@@ -131,7 +131,6 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             await uow.CompleteAsync();
         }
 
-        // Send real-time notification to all members (except sender for User conversations)
         var senderUser = await _chatUserLookupService.FindByIdAsync(CurrentUser.GetId());
         var messageDto = new ChatMessageRdto
         {

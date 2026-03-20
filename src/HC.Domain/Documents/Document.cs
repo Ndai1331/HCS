@@ -49,6 +49,26 @@ public abstract class DocumentBase : FullAuditedAggregateRoot<Guid>, IMultiTenan
 
     public DocumentSourceType SourceType { get; set; } = DocumentSourceType.Archive;
 
+    /// <summary>
+    /// User who sent the document (populated when using Send flow; for inbox display).
+    /// </summary>
+    public Guid? FromUserId { get; set; }
+
+    /// <summary>
+    /// Intended individual recipient when send targets a single user (optional denormalized).
+    /// </summary>
+    public Guid? ReceiverUserId { get; set; }
+
+    /// <summary>
+    /// Intended department recipient when send targets a single department (optional denormalized).
+    /// </summary>
+    public Guid? DepartmentId { get; set; }
+
+    /// <summary>
+    /// For workflow signing copies (SourceType = Workflow): links to the original Archive/Personal/SentToMe document.
+    /// </summary>
+    public virtual Guid? ParentDocumentId { get; set; }
+
     protected DocumentBase()
     {
     }

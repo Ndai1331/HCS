@@ -1,6 +1,26 @@
+using System;
+
 namespace HC.Documents;
 
 public class DocumentDto : DocumentDtoBase
 {
-    //Write your custom code here...
+    /// <summary>
+    /// User who sent the document (Send flow).
+    /// </summary>
+    public Guid? FromUserId { get; set; }
+
+    /// <summary>
+    /// Denormalized individual recipient when send targets one user.
+    /// </summary>
+    public Guid? ReceiverUserId { get; set; }
+
+    /// <summary>
+    /// Denormalized department recipient when send targets one department.
+    /// </summary>
+    public Guid? DepartmentId { get; set; }
+
+    /// <summary>
+    /// Workflow duplicate → original document id (manage-documents row).
+    /// </summary>
+    public Guid? ParentDocumentId { get; set; }
 }

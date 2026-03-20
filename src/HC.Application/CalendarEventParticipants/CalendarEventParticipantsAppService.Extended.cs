@@ -48,12 +48,12 @@ public class CalendarEventParticipantsAppService : CalendarEventParticipantsAppS
         // Get calendar event and user information
         var calendarEvent = await _calendarEventRepository.GetAsync(input.CalendarEventId);
         var participantUser = await _identityUserRepository.GetAsync(input.IdentityUserId);
-        var currentUser = CurrentUser;
         
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
         var notificationTitleKey = "CalendarInvited";
-        var notificationContentKey = $"CalendarInvitedMessage|{calendarEvent.Title}|{calendarEvent.StartTime:dd/MM/yyyy HH:mm}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"CalendarInvitedMessage|{calendarEvent.Title}|{calendarEvent.StartTime:dd/MM/yyyy HH:mm}|{userFullName ?? L["System"]}";
         
         var notification = new Notification(
             GuidGenerator.Create(),
@@ -98,7 +98,6 @@ public class CalendarEventParticipantsAppService : CalendarEventParticipantsAppS
         var participantWithNav = await _calendarEventParticipantRepository.GetWithNavigationPropertiesAsync(id);
         var calendarEvent = participantWithNav?.CalendarEvent;
         var user = participantWithNav?.IdentityUser;
-        var currentUser = CurrentUser;
         
         // Call base method to delete participant
         await base.DeleteAsync(id);
@@ -107,9 +106,10 @@ public class CalendarEventParticipantsAppService : CalendarEventParticipantsAppS
         if (calendarEvent == null || user == null) return;
         
         // Store localization keys instead of translated text
-        // Format: "Key|param1|param2|param3" for Content with parameters
+        // Format: "Key|param1|param2|param3" for Content with parameters   
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
         var notificationTitleKey = "CalendarInviteRemoved";
-        var notificationContentKey = $"CalendarInviteRemovedMessage|{calendarEvent.Title}|{calendarEvent.StartTime:dd/MM/yyyy HH:mm}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"CalendarInviteRemovedMessage|{calendarEvent.Title}|{calendarEvent.StartTime:dd/MM/yyyy HH:mm}|{userFullName ?? L["System"]}";
         
         var notification = new Notification(
             GuidGenerator.Create(),
@@ -154,12 +154,12 @@ public class CalendarEventParticipantsAppService : CalendarEventParticipantsAppS
         // Get calendar event and user information
         var calendarEvent = await _calendarEventRepository.GetAsync(input.CalendarEventId);
         var participantUser = await _identityUserRepository.GetAsync(input.IdentityUserId);
-        var currentUser = CurrentUser;
         
         // Store localization keys instead of translated text
         // Format: "Key|param1|param2|param3" for Content with parameters
+        string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
         var notificationTitleKey = "CalendarInviteUpdated";
-        var notificationContentKey = $"CalendarInviteUpdatedMessage|{calendarEvent.Title}|{calendarEvent.StartTime:dd/MM/yyyy HH:mm}|{currentUser?.UserName ?? L["System"]}";
+        var notificationContentKey = $"CalendarInviteUpdatedMessage|{calendarEvent.Title}|{calendarEvent.StartTime:dd/MM/yyyy HH:mm}|{userFullName ?? L["System"]}";
         
         var notification = new Notification(
             GuidGenerator.Create(),

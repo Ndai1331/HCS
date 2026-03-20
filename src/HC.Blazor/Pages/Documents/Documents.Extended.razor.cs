@@ -17,17 +17,25 @@ public partial class Documents
     }
 
     /// <summary>
-    /// Set filter to Personal documents (Văn bản của tôi)
-    /// Shows documents where SourceType = Personal AND (CreatorId = CurrentUserId OR assigned via DocumentAssignments)
+    /// Set filter to Personal documents (Văn bản của tôi): SourceType = 1 AND CreatorId = current user.
     /// </summary>
     protected async Task SetPersonalFilterAsync()
     {
         SelectedSourceType = DocumentSourceType.Personal;
         Filter.SourceType = DocumentSourceType.Personal;
-        
-        // For personal documents, also filter by current user as creator
         Filter.CreatorId = CurrentUser.Id;
-        
+        await SearchAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Set filter to documents sent to current user (SourceType = 2 tab / inbox logic).
+    /// </summary>
+    protected async Task SetSentToMeFilterAsync()
+    {
+        SelectedSourceType = DocumentSourceType.SentToMe;
+        Filter.SourceType = DocumentSourceType.SentToMe;
+        Filter.CreatorId = null;
         await SearchAsync();
         await InvokeAsync(StateHasChanged);
     }
@@ -37,8 +45,8 @@ public partial class Documents
     /// </summary>
     protected async Task ClearAllFiltersAsync()
     {
-        SelectedSourceType = null;
-        Filter.SourceType = null;
+        SelectedSourceType = DocumentSourceType.Archive;
+        Filter.SourceType = DocumentSourceType.Archive;
         Filter.CreatorId = null;
         await SearchAsync();
         await InvokeAsync(StateHasChanged);

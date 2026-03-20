@@ -811,9 +811,12 @@
     "Menu:Chat:Chat": "Chat",
     "Menu:ArchiveDocuments": "Quản lý tài liệu",
     "Menu:PersonalDocuments": "Tài liệu của tôi",
+    "Menu:DocumentsSentToMe": "Tài liệu gửi tới tôi",
     "DocumentSource": "Phân hệ",
     "ArchiveDocuments": "Tài liệu lưu trữ",
     "PersonalDocuments": "Tài liệu của tôi",
+    "DocumentsSentToMe": "Tài liệu gửi tới tôi",
+    "DeleteRevokeOnlyInArchiveView": "Chỉ được xóa hoặc thu hồi tài liệu ở menu Văn thư lưu trữ (sourceType = 0).",
     "CreateGroupChat": "Tạo nhóm chat",
     "CreateProjectChat": "Tạo chat dự án",
     "CreateTaskChat": "Tạo chat công việc",
@@ -1271,6 +1274,9 @@
     "UploadedSuccessfully": "Tải lên thành công",
     "Uploading": "Đang tải lên",
     "SourceType": "Phân hệ",
-    "MarkAsRead": "Đánh dấu đã đọc"
+    "MarkAsRead": "Đánh dấu đã đọc",
+    "SignFilesAll": "Tất cả tài liệu trình ký",
+    "SignFilesSentToMe": "Tài liệu trình ký gửi tới tôi",
+    "SignFilesSentByMe": "Tài liệu trình ký tôi gửi đi"
   }
 }

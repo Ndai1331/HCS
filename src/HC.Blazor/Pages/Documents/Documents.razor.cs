@@ -77,6 +77,16 @@ public partial class Documents : IDisposable
     // Add SourceType filter for distinguishing Archive and Personal documents
     private DocumentSourceType? SelectedSourceType { get; set; }
 
+    /// <summary>
+    /// Delete / revoke allowed only in Archive view (sourceType = 0). SentToMe (2) and Personal (1) are not allowed.
+    /// </summary>
+    private bool CanDeleteOrRevokeInArchiveView => SelectedSourceType == DocumentSourceType.Archive;
+
+    /// <summary>
+    /// SentToMe inbox: no edit navigation — only view PDF, send, submit for signing.
+    /// </summary>
+    private bool CanShowEditDocumentButton => SelectedSourceType != DocumentSourceType.SentToMe;
+
     private Modal SendDocumentModal { get; set; } = new();
 
     // Submit for Signing Modal (reusable component)
@@ -294,11 +304,15 @@ public partial class Documents : IDisposable
             SelectedSourceType = (DocumentSourceType)sourceTypeInt;
             Filter.SourceType = SelectedSourceType;
 
-            // For Personal documents, also filter by current user
             if (SelectedSourceType == DocumentSourceType.Personal)
             {
                 Filter.CreatorId = CurrentUser.Id;
                 PageTitle = L["PersonalDocuments"];
+            }
+            else if (SelectedSourceType == DocumentSourceType.SentToMe)
+            {
+                Filter.CreatorId = null;
+                PageTitle = L["DocumentsSentToMe"];
             }
             else if (SelectedSourceType == DocumentSourceType.Archive)
             {
@@ -315,10 +329,11 @@ public partial class Documents : IDisposable
         }
         else
         {
-            SelectedSourceType = null;
-            Filter.SourceType = null;
+            // manage-documents without query: default to Archive (văn thư lưu trữ)
+            SelectedSourceType = DocumentSourceType.Archive;
+            Filter.SourceType = DocumentSourceType.Archive;
             Filter.CreatorId = null;
-            PageTitle = L["Documents"];
+            PageTitle = L["ArchiveDocuments"];
         }
     }
 
@@ -345,7 +360,10 @@ public partial class Documents : IDisposable
 
         return ValueTask.CompletedTask;
     }
-    private bool RowSelectableHandler(RowSelectableEventArgs<DocumentWithNavigationPropertiesDto> rowSelectableEventArgs) => rowSelectableEventArgs.SelectReason is not DataGridSelectReason.RowClick && CanDeleteDocument;
+    private bool RowSelectableHandler(RowSelectableEventArgs<DocumentWithNavigationPropertiesDto> rowSelectableEventArgs) =>
+        rowSelectableEventArgs.SelectReason is not DataGridSelectReason.RowClick
+        && CanDeleteDocument
+        && CanDeleteOrRevokeInArchiveView;
 
     private async Task SetPermissionsAsync()
     {
@@ -567,6 +585,7 @@ public partial class Documents : IDisposable
     protected virtual async Task OnSourceTypeChangedAsync(DocumentSourceType? sourceType)
     {
         Filter.SourceType = sourceType;
+        Filter.CreatorId = sourceType == DocumentSourceType.Personal ? CurrentUser.Id : null;
         await DebouncedSearchAsync();
     }
 
@@ -667,6 +686,12 @@ public partial class Documents : IDisposable
 
     private async Task DeleteSelectedDocumentsAsync()
     {
+        if (!CanDeleteOrRevokeInArchiveView)
+        {
+            await UiMessageService.Warn(L["DeleteRevokeOnlyInArchiveView"]);
+            return;
+        }
+
         var message = AllDocumentsSelected ? L["DeleteAllRecords"].Value : L["DeleteSelectedRecords", SelectedDocuments.Count].Value;
         if (!await UiMessageService.Confirm(message))
         {
@@ -964,6 +989,12 @@ public partial class Documents : IDisposable
 
     private async Task ShowDeleteOrRevokeModalAsync(DocumentWithNavigationPropertiesDto document)
     {
+        if (!CanDeleteOrRevokeInArchiveView)
+        {
+            await UiMessageService.Warn(L["DeleteRevokeOnlyInArchiveView"]);
+            return;
+        }
+
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);  
@@ -992,6 +1023,13 @@ public partial class Documents : IDisposable
     {
         try
         {
+            if (!CanDeleteOrRevokeInArchiveView)
+            {
+                await UiMessageService.Warn(L["DeleteRevokeOnlyInArchiveView"]);
+                await CloseDeleteOrRevokeModalAsync();
+                return;
+            }
+
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
 
             if (DocumentToDeleteOrRevoke == null || DocumentToDeleteOrRevoke.Document == null)

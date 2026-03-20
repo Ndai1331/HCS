@@ -959,9 +959,12 @@
     "Menu:FileManagement": "File Management",
     "Menu:ArchiveDocuments": "Archive Documents",
     "Menu:PersonalDocuments": "My Documents",
+    "Menu:DocumentsSentToMe": "Documents sent to me",
     "DocumentSource": "Document Source",
     "ArchiveDocuments": "Archive Documents",
     "PersonalDocuments": "Personal Documents",
+    "DocumentsSentToMe": "Documents sent to me",
+    "DeleteRevokeOnlyInArchiveView": "Delete and revoke are only allowed for archive documents (secretary / sourceType 0).",
     "Update": "Update",
     "Personal": "Personal",
     "SendDocument": "Send Document",
@@ -1208,6 +1211,9 @@
     "EndTimeMustBeAfterStartTime": "End time must be after start time",
     "ReadyToUpload": "Ready to upload",
     "UploadedSuccessfully": "Uploaded successfully",
-    "Uploading": "Uploading"
+    "Uploading": "Uploading",
+    "SignFilesAll": "All sign files",
+    "SignFilesSentToMe": "Sign files sent to me",
+    "SignFilesSentByMe": "Sign files sent by me"
   }
 }
