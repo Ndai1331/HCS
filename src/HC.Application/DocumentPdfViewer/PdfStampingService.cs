@@ -32,9 +32,9 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
 {
     private readonly ILogger<PdfStampingService> _logger;
 
-    // Watermark opacity (0-255, lower = more transparent)
-    private const int WatermarkAlpha = 80;
-    private const double WatermarkFontSize = 24;
+    // Watermark opacity (0-255, lower = more transparent / fainter)
+    private const int WatermarkAlpha = 48;
+    private const double WatermarkFontSize = 14;
     private const double DiagonalAngleDegrees = -45;
     private static readonly string[] WatermarkFontCandidates =
     {
@@ -74,8 +74,8 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
                 LogRuntimeFontDiagnostics();
                 return pdfBytes;
             }
-            // Red watermark for visibility (RGB 220, 0, 0)
-            var brush = new XSolidBrush(XColor.FromArgb(WatermarkAlpha, 220, 0, 0));
+            // Subtle gray watermark (low alpha for a dim appearance)
+            var brush = new XSolidBrush(XColor.FromArgb(WatermarkAlpha, 110, 110, 115));
 
             for (var i = 0; i < document.PageCount; i++)
             {

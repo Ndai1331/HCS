@@ -787,6 +787,25 @@ public partial class Documents : IDisposable
         }
     }
 
+    private void OnSendDocumentTargetChanged(bool personal)
+    {
+        if (IsPersonal == personal)
+        {
+            return;
+        }
+
+        IsPersonal = personal;
+        if (personal)
+        {
+            SelectedDepartments.Clear();
+            SelectedItem = new DepartmentTreeView();
+        }
+        else
+        {
+            SelectedRecipients.Clear();
+        }
+    }
+
     private async Task<List<LookupDto<Guid>>> GetRecipientsLookupAsync(
     IReadOnlyList<LookupDto<Guid>> source,
     string search,

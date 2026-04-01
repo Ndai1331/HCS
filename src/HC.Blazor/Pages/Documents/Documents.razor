@@ -577,13 +577,31 @@
                     </AlertDescription>
                 </Alert>
             }
-            @* cá nhân hoặc phòng ban  *@
+            @* cá nhân hoặc phòng ban (radio giống Phê duyệt/Từ chối ở DocumentSigning) *@
             <Field>
-                <FieldLabel>@L["SendTo"] </FieldLabel>
-                <Select TValue="bool" @bind-SelectedValue="@IsPersonal">
-                    <SelectItem Value="true">@L["Personal"]</SelectItem>
-                    <SelectItem Value="false">@L["Department"]</SelectItem>
-                </Select>
+                <FieldLabel class="fw-bold">@L["SendTo"]</FieldLabel>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="radio" name="sendDocumentTarget" id="sendDocumentToPersonal"
+                               @onchange="@(() => OnSendDocumentTargetChanged(true))"
+                               checked="@IsPersonal">
+                        <label class="form-check-label" for="sendDocumentToPersonal">
+                            <strong class="text-primary">
+                                <i class="bi bi-person me-1"></i>@L["Personal"]
+                            </strong>
+                        </label>
+                    </div>
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="radio" name="sendDocumentTarget" id="sendDocumentToDepartment"
+                               @onchange="@(() => OnSendDocumentTargetChanged(false))"
+                               checked="@(!IsPersonal)">
+                        <label class="form-check-label" for="sendDocumentToDepartment">
+                            <strong class="text-info">
+                                <i class="bi bi-building me-1"></i>@L["Department"]
+                            </strong>
+                        </label>
+                    </div>
+                </div>
             </Field>
 
             @* người nhận *@
