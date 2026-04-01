@@ -552,13 +552,13 @@ else
                 </PdfViewerContainer>
             }
         </ModalBody>
-        <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="ClosePdfViewerModalAsync">
-                @L["Close"]
-            </Button>
-        </ModalFooter>
+        <PdfViewerTaskActionsFooter OnClose="ClosePdfViewerModalAsync"
+                                    OnAssignTask="AssignTaskFromPdfViewerAsync"
+                                    DisableAssignTask="@(!CurrentPdfDocumentId.HasValue)" />
     </ModalContent>
 </Modal>
+
+<ProjectTaskCreateModal @ref="CreateTaskModalRef" OnTaskCreated="OnTaskCreatedFromPdfAsync" />
 
 <style>
     .pdf-viewer-modal .modal-content {

@@ -9,7 +9,7 @@ namespace HC.DocumentPdfViewer;
 public class GetWatermarkedPdfInput
 {
     public string BlobPath { get; set; } = string.Empty;
-    public string Action { get; set; } = "view"; // "view" or "download"
+    public string WatermarkAction { get; set; } = "view"; // "view" or "download"
 }
 
 /// <summary>

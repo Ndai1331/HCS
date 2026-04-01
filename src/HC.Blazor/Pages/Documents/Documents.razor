@@ -696,6 +696,7 @@
 <SubmitWorkflowModal @ref="SubmitWorkflowModalRef"
     OnSubmitted="OnSubmitWorkflowCompletedAsync"
     OnClosed="OnSubmitWorkflowClosedAsync" />
+<ProjectTaskCreateModal @ref="CreateTaskModalRef" OnTaskCreated="OnTaskCreatedFromPdfAsync" />
 
 @* ************************* MODAL: PDF VIEWER ************************* *@
 <Modal @ref="DocumentPdfViewerModal" Class="pdf-viewer-modal">
@@ -713,11 +714,9 @@
                 </PdfViewerContainer>
             }
         </ModalBody>
-        <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="CloseDocumentPdfViewerModalAsync">
-                @L["Close"]
-            </Button>
-        </ModalFooter>
+        <PdfViewerTaskActionsFooter OnClose="CloseDocumentPdfViewerModalAsync"
+                                    OnAssignTask="AssignTaskFromDocumentPdfViewerAsync"
+                                    DisableAssignTask="@(!CurrentDocumentPdfDocumentId.HasValue)" />
     </ModalContent>
 </Modal>
 

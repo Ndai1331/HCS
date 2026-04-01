@@ -141,6 +141,64 @@ public class CustomFontResolver : IFontResolver
             }
         }
 
+        // Fallback: fuzzy-match by filename tokens (handles distro-specific naming).
+        foreach (var dir in _fontDirectories)
+        {
+            if (!Directory.Exists(dir))
+                continue;
+
+            try
+            {
+                var allFontFiles = Directory
+                    .EnumerateFiles(dir, "*.*", SearchOption.AllDirectories)
+                    .Where(f => f.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase)
+                             || f.EndsWith(".otf", StringComparison.OrdinalIgnoreCase)
+                             || f.EndsWith(".ttc", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                var wantedTokens = normalizedFamily
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(t => t.ToLowerInvariant())
+                    .ToArray();
+
+                var styleToken = isBold && isItalic
+                    ? new[] { "bold", "italic", "oblique", "bi" }
+                    : isBold
+                        ? new[] { "bold", "bd" }
+                        : isItalic
+                            ? new[] { "italic", "oblique", "it" }
+                            : new[] { "regular", "book", "roman" };
+
+                var fuzzyMatch = allFontFiles.FirstOrDefault(path =>
+                {
+                    var fileName = Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
+                    var hasFamily = wantedTokens.All(fileName.Contains);
+                    if (!hasFamily)
+                    {
+                        return false;
+                    }
+
+                    // For regular style, family match is enough.
+                    if (!isBold && !isItalic)
+                    {
+                        return true;
+                    }
+
+                    return styleToken.Any(fileName.Contains);
+                });
+
+                if (fuzzyMatch != null)
+                {
+                    _pathCache.TryAdd(cacheKey, fuzzyMatch);
+                    return fuzzyMatch;
+                }
+            }
+            catch
+            {
+                // Ignore IO/permission errors and continue.
+            }
+        }
+
         // Last resort: try any font as ultimate fallback
         if (normalizedFamily != "arial" && normalizedFamily != "dejavu sans" && normalizedFamily != "liberation sans")
         {
@@ -255,35 +313,60 @@ public class CustomFontResolver : IFontResolver
 
     private static string[] GetFontDirectories()
     {
+        // Allow injecting font directories via env var (semicolon-separated).
+        // Example: HC_FONT_DIRS="/app/fonts;/usr/share/fonts"
+        var envDirs = (Environment.GetEnvironmentVariable("HC_FONT_DIRS") ?? string.Empty)
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        // Always include app-local fonts folder for container/distroless environments.
+        var baseDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var appFonts = new[]
+        {
+            Path.Combine(baseDir, "fonts"),
+            "/app/fonts"
+        };
+
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            return new[]
+            return envDirs
+                .Concat(appFonts)
+                .Concat(new[]
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts)),
                 @"C:\Windows\Fonts"
-            };
+            })
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
             var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            return new[]
+            return envDirs
+                .Concat(appFonts)
+                .Concat(new[]
             {
                 "/System/Library/Fonts/Supplemental",
                 "/System/Library/Fonts",
                 "/Library/Fonts",
                 Path.Combine(home, "Library/Fonts")
-            };
+            })
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
 
         // Linux
-        return new[]
-        {
-            "/usr/share/fonts",
-            "/usr/local/share/fonts",
-            "/usr/share/fonts/truetype",
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".fonts")
-        };
+        return envDirs
+            .Concat(appFonts)
+            .Concat(new[]
+            {
+                "/usr/share/fonts",
+                "/usr/local/share/fonts",
+                "/usr/share/fonts/truetype",
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".fonts")
+            })
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     #endregion

@@ -514,7 +514,7 @@ public partial class CalendarEvents
                     var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
                     {
                         BlobPath = documentFile.DocumentFile.Path,
-                        Action = "view"
+                        WatermarkAction = "view"
                     });
 
                     // Create data URL for PDF

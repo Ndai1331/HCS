@@ -108,6 +108,7 @@ public partial class Index
     private Modal DocumentPdfViewerModal { get; set; } = new();
     private string? DocumentPdfFileUrl { get; set; }
     private bool IsDocumentPdfFile { get; set; }
+    private Guid? CurrentDocumentPdfDocumentId { get; set; }
 
     // Notification Detail Modal
     private Modal NotificationDetailModal { get; set; } = new();
@@ -122,6 +123,7 @@ public partial class Index
     // PDF viewer for task documents
     private string? PdfFileUrl { get; set; }
     private bool IsPdfFile { get; set; }
+    private Guid? CurrentTaskPdfDocumentId { get; set; }
     private Modal PdfViewerModal { get; set; } = default!;
     private Dictionary<Guid, bool> DocumentHasPdfCache { get; set; } = new();
 
@@ -595,6 +597,8 @@ public partial class Index
                 return;
             }
 
+            CurrentTaskPdfDocumentId = projectTaskDocument.Document.Id;
+
             // Get document files for this document
             var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
             {
@@ -613,7 +617,7 @@ public partial class Index
                     var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
                     {
                         BlobPath = documentFile.DocumentFile.Path,
-                        Action = "view"
+                        WatermarkAction = "view"
                     });
 
                     // Create data URL for PDF
@@ -643,6 +647,7 @@ public partial class Index
         }
         PdfFileUrl = null;
         IsPdfFile = false;
+        CurrentTaskPdfDocumentId = null;
     }
 
     protected string GetStatusBadgeColor(string status)
@@ -928,6 +933,8 @@ public partial class Index
                 return;
             }
 
+            CurrentDocumentPdfDocumentId = docItem.Document.Id;
+
             // Get document files for this document
             var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
             {
@@ -952,7 +959,7 @@ public partial class Index
             var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = path,
-                Action = "view"
+                WatermarkAction = "view"
             });
             var base64 = Convert.ToBase64String(fileBytes);
             DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
@@ -978,6 +985,31 @@ public partial class Index
         }
         DocumentPdfFileUrl = null;
         IsDocumentPdfFile = false;
+        CurrentDocumentPdfDocumentId = null;
+    }
+
+    private async Task AssignTaskFromTaskPdfViewerAsync()
+    {
+        if (!CurrentTaskPdfDocumentId.HasValue)
+        {
+            return;
+        }
+
+        var documentId = CurrentTaskPdfDocumentId.Value;
+        await ClosePdfViewerModalAsync();
+        await CreateTaskModal.OpenCreateProjectTaskModalAsync(documentId);
+    }
+
+    private async Task AssignTaskFromDocumentPdfViewerAsync()
+    {
+        if (!CurrentDocumentPdfDocumentId.HasValue)
+        {
+            return;
+        }
+
+        var documentId = CurrentDocumentPdfDocumentId.Value;
+        await CloseDocumentPdfViewerModalAsync();
+        await CreateTaskModal.OpenCreateProjectTaskModalAsync(documentId);
     }
 
     // -------------------------------

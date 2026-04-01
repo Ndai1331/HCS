@@ -137,10 +137,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         // Get workflow
         var workflow = await _workflowRepository.GetAsync(workflowId);
 
-        // ISSUE-07 FIX: Sort by CreationTime descending to consistently get the latest template
-        // (FullAuditedAggregateRoot handles soft-delete via IsDeleted filter automatically)
-        var templates = await _workflowTemplateRepository.GetListAsync(x => x.WorkflowId == workflowId);
-        var activeTemplate = templates.OrderByDescending(x => x.CreationTime).FirstOrDefault();
+        var activeTemplate = await ResolveLatestWorkflowTemplateForSubmissionAsync(workflowId);
         if (activeTemplate == null)
         {
             throw new UserFriendlyException(L["NoActiveWorkflowTemplateFound"]);
@@ -167,6 +164,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             ? await _identityUserRepository.GetListAsync(x => userIds.Contains(x.Id))
             : new List<IdentityUser>();
         var userDict = users.ToDictionary(u => u.Id, u => u);
+
+        await EnsureWorkflowTemplateRunnableAsync(activeTemplate, stepTemplates, allAssignments);
 
         // Build result
         var result = new WorkflowSubmitInfoDto
@@ -202,6 +201,43 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         };
 
         return result;
+    }
+
+    private async Task<WorkflowTemplate?> ResolveLatestWorkflowTemplateForSubmissionAsync(Guid workflowId)
+    {
+        var templates = await _workflowTemplateRepository.GetListAsync(x => x.WorkflowId == workflowId);
+        return templates
+            .OrderByDescending(x => x.CreationTime)
+            .FirstOrDefault();
+    }
+
+    private async Task EnsureWorkflowTemplateRunnableAsync(
+        WorkflowTemplate template,
+        IReadOnlyList<WorkflowStepTemplate> stepTemplates,
+        IReadOnlyList<WorkflowStepAssignment> allAssignments)
+    {
+        if (!stepTemplates.Any())
+        {
+            throw new UserFriendlyException(L["NoWorkflowStepsFound"]);
+        }
+
+        var orderedSteps = stepTemplates.OrderBy(x => x.Order).ToList();
+        var firstStep = orderedSteps.First();
+        var firstStepHasAssignee = allAssignments.Any(a => a.StepId == firstStep.Id && a.DefaultUserId.HasValue);
+        if (!firstStepHasAssignee)
+        {
+            throw new UserFriendlyException(L["FirstStepMustHaveAssignedUsers"]);
+        }
+
+        if (template.SignMode == nameof(SignMode.PARALLEL))
+        {
+            var hasStepWithoutAssignee = orderedSteps.Any(step =>
+                !allAssignments.Any(a => a.StepId == step.Id && a.DefaultUserId.HasValue));
+            if (hasStepWithoutAssignee)
+            {
+                throw new UserFriendlyException(L["AllStepsMustHaveAssignedUsers"]);
+            }
+        }
     }
 
     #endregion
@@ -1169,7 +1205,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             throw new UserFriendlyException(L["OnlyInitiatorCanResubmit"]);
         }
 
-        var documentId = returnedInstance.DocumentId;
+        var originalReturnedDocumentId = returnedInstance.DocumentId;
+        var documentId = originalReturnedDocumentId;
 
         // 3. If user wants to change the document file, handle it
         // ISSUE-1 FIX: When using template file, REUSE the existing DocumentFile instead of creating a duplicate.
@@ -1225,19 +1262,26 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             newSigningFileId = input.DocumentFileId.Value;
         }
 
-        // 4. If user wants to update the document (change to a different personal document)
-        // BUG-6 FIX: Reset old document status since it's no longer in any active workflow.
+        // 4. If user wants to update the document, preserve the invariant that workflows operate
+        // only on workflow documents. Personal/archive/sent rows must be duplicated first.
         if (input.NewDocumentId.HasValue && input.NewDocumentId.Value != documentId)
         {
-            await UpdateDocumentStatusAsync(documentId, DocumentStatusCode.DA_GUI);
-            documentId = input.NewDocumentId.Value;
-            // Update the instance to point to the new document
+            await UpdateDocumentStatusAsync(originalReturnedDocumentId, DocumentStatusCode.DA_GUI);
+
+            var replacementDocument = await PrepareWorkflowDocumentForResubmitAsync(
+                input.NewDocumentId.Value,
+                returnedInstance.WorkflowId);
+
+            documentId = replacementDocument.DocumentId;
             returnedInstance.DocumentId = documentId;
+            newSigningFileId = replacementDocument.SigningFileId ?? newSigningFileId;
         }
 
-        // 5. Cleanup old RETURNED instance's assignments (mark as not current)
+        // 5. Cleanup old RETURNED instance's assignments (mark as not current).
+        // Always clean up against the original returned document so switching documents
+        // does not leave stale "current" assignments behind.
         var oldAssignments = await _documentAssignmentRepository.GetListAsync(
-            x => x.DocumentId == returnedInstance.DocumentId
+            x => x.DocumentId == originalReturnedDocumentId
             && (x.Status == nameof(DocumentAssignmentStatus.REJECTED)
                 || x.Status == nameof(DocumentAssignmentStatus.REVOKE)));
 
@@ -1437,6 +1481,29 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         await UpdateDocumentStatusAsync(documentId, DocumentStatusCode.DANG_XU_LY);
 
         return ObjectMapper.Map<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>(returnedInstance);
+    }
+
+    private async Task<(Guid DocumentId, Guid? SigningFileId)> PrepareWorkflowDocumentForResubmitAsync(
+        Guid selectedDocumentId,
+        Guid workflowId)
+    {
+        var selectedDocument = await _documentRepository.GetAsync(selectedDocumentId);
+        if (selectedDocument.SourceType == DocumentSourceType.Workflow)
+        {
+            return (selectedDocument.Id, null);
+        }
+
+        var duplicatedDocument = await DuplicateDocumentForWorkflowSubmitAsync(selectedDocument, workflowId);
+        await DuplicateDocumentFilesForWorkflowAsync(selectedDocument.Id, duplicatedDocument.Id);
+        await SyncParentDocumentOnWorkflowSubmitAsync(selectedDocument.Id, workflowId);
+
+        var duplicatedFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == duplicatedDocument.Id);
+        var preferredSigningFileId = duplicatedFiles
+            .OrderBy(f => f.UploadedAt)
+            .Select(f => (Guid?)f.Id)
+            .FirstOrDefault();
+
+        return (duplicatedDocument.Id, preferredSigningFileId);
     }
 
     /// <summary>

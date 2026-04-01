@@ -251,7 +251,14 @@ public class ConversationController : ChatController, IConversationAppService
     {
         return _conversationAppService.DeleteFileAsync(id);
     }
-    
+
+    [HttpGet]
+    [Route("files/message/{messageId}")]
+    public Task<List<MessageFileDto>> GetMessageFilesAsync(Guid messageId)
+    {
+        return _conversationAppService.GetMessageFilesAsync(messageId);
+    }
+
     [HttpPost]
     [Route("forward-message")]
     public Task<ChatMessageDto> ForwardMessageAsync([FromBody] ForwardMessageInput input)

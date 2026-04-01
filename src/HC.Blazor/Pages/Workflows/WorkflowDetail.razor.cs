@@ -1368,7 +1368,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             var pdfBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = pdfTemplatePath,
-                Action = "view"
+                WatermarkAction = "view"
             });
             if (pdfBytes != null && pdfBytes.Length > 0)
             {

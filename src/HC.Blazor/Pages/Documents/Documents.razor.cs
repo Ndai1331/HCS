@@ -96,6 +96,8 @@ public partial class Documents : IDisposable
     private Modal DocumentPdfViewerModal { get; set; } = new();
     private string? DocumentPdfFileUrl { get; set; }
     private bool IsDocumentPdfFile { get; set; }
+    private Guid? CurrentDocumentPdfDocumentId { get; set; }
+    private HC.Blazor.Components.ProjectTaskCreateModal.ProjectTaskCreateModal CreateTaskModalRef { get; set; } = default!;
 
     private CancellationTokenSource? SearchDebounceCts { get; set; }
 
@@ -1101,6 +1103,8 @@ public partial class Documents : IDisposable
                 return;
             }
 
+            CurrentDocumentPdfDocumentId = context.Document.Id;
+
             var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
             {
                 DocumentId = context.Document.Id,
@@ -1126,7 +1130,7 @@ public partial class Documents : IDisposable
             var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = pdfFilePath,
-                Action = "view"
+                WatermarkAction = "view"
             });
             var base64 = Convert.ToBase64String(fileBytes);
             DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
@@ -1153,6 +1157,24 @@ public partial class Documents : IDisposable
         }
         DocumentPdfFileUrl = null;
         IsDocumentPdfFile = false;
+        CurrentDocumentPdfDocumentId = null;
+    }
+
+    private async Task AssignTaskFromDocumentPdfViewerAsync()
+    {
+        if (!CurrentDocumentPdfDocumentId.HasValue)
+        {
+            return;
+        }
+
+        var documentId = CurrentDocumentPdfDocumentId.Value;
+        await CloseDocumentPdfViewerModalAsync();
+        await CreateTaskModalRef.OpenCreateProjectTaskModalAsync(documentId);
+    }
+
+    private Task OnTaskCreatedFromPdfAsync()
+    {
+        return GetDocumentsAsync();
     }
 
     #endregion PDF Viewer

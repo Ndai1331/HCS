@@ -47,7 +47,6 @@ public class FileController : ChatController
     [Route("message/{messageId}")]
     public Task<List<MessageFileDto>> GetMessageFilesAsync(Guid messageId)
     {
-        // TODO: Implement in service
-        throw new NotImplementedException();
+        return _conversationAppService.GetMessageFilesAsync(messageId);
     }
 }

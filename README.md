@@ -137,3 +137,10 @@ chmod 700 /www/server/panel/data/compose/hcs/certs
 dotnet ef migrations add AddPdfPathToWorkflowTemplate -c HCDbContext
 
 dotnet ef database update -c HCDbContext
+
+
+
+
+sudo apt-get update
+sudo apt-get install -y fontconfig fonts-dejavu-core fonts-liberation
+fc-cache -f -v

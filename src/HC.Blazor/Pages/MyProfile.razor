@@ -367,14 +367,6 @@
                                                     </DisplayTemplate>
                                             </DataGridColumn>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
-                                                    Field="UserSignature.Secret"
-                                                    Caption="@L["Secret"]"
-                                                    Width="150px">
-                                                    <DisplayTemplate>
-                                                        <span class="text-muted">@context.UserSignature.Secret?.TruncateWithPostfix(20, "...")</span>
-                                                    </DisplayTemplate>
-                                            </DataGridColumn>
-                                            <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.ValidFrom"
                                                     Caption="@L["ValidFrom"]">
                                                 <DisplayTemplate>
@@ -527,7 +519,7 @@
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                         <Field>
                             <FieldLabel>@L["Secret"]</FieldLabel>
-                            <TextEdit @bind-Text="@NewUserSignature.Secret" />
+                            <TextEdit Role="TextRole.Password" @bind-Text="@NewUserSignature.Secret" />
                         </Field>
                     </Column>
                     @if (IsDigitalSignType(NewUserSignature.SignType))
@@ -713,7 +705,7 @@
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                         <Field>
                             <FieldLabel>@L["Secret"]</FieldLabel>
-                            <TextEdit @bind-Text="@EditingUserSignature.Secret" />
+                            <TextEdit Role="TextRole.Password" @bind-Text="@EditingUserSignature.Secret" />
                         </Field>
                     </Column>
                     @if (IsDigitalSignType(EditingUserSignature.SignType))

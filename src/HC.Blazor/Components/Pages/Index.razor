@@ -691,11 +691,9 @@
                 </PdfViewerContainer>
             }
         </ModalBody>
-        <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="ClosePdfViewerModalAsync">
-                @L["Close"]
-            </Button>
-        </ModalFooter>
+        <PdfViewerTaskActionsFooter OnClose="ClosePdfViewerModalAsync"
+                                    OnAssignTask="AssignTaskFromTaskPdfViewerAsync"
+                                    DisableAssignTask="@(!CurrentTaskPdfDocumentId.HasValue)" />
     </ModalContent>
 </Modal>
 
@@ -869,11 +867,9 @@
                 </PdfViewerContainer>
             }
         </ModalBody>
-        <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="CloseDocumentPdfViewerModalAsync">
-                @L["Close"]
-            </Button>
-        </ModalFooter>
+        <PdfViewerTaskActionsFooter OnClose="CloseDocumentPdfViewerModalAsync"
+                                    OnAssignTask="AssignTaskFromDocumentPdfViewerAsync"
+                                    DisableAssignTask="@(!CurrentDocumentPdfDocumentId.HasValue)" />
     </ModalContent>
 </Modal>
 

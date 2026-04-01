@@ -87,6 +87,9 @@ services:
       - MinIO__WithSSL=false
       - MinIO__CreateContainerIfNotExists=true
 
+      # Fonts for PDF watermarking (container/distroless safe)
+      - HC_FONT_DIRS=/app/fonts
+
     ports:
       - "44379:8081"
       - "8083:8080"
@@ -98,6 +101,7 @@ services:
     restart: on-failure
     volumes:
       - ./certs:/app/certs
+      - ./fonts:/app/fonts:ro
     networks:
       - abp-network
 
