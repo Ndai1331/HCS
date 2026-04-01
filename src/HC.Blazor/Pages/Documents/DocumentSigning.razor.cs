@@ -122,6 +122,8 @@ public partial class DocumentSigning
     private Modal DocumentPdfViewerModal { get; set; } = new();
     private string? DocumentPdfFileUrl { get; set; }
     private bool IsDocumentPdfFile { get; set; }
+    private Guid? CurrentDocumentPdfDocumentId { get; set; }
+    private HC.Blazor.Components.ProjectTaskCreateModal.ProjectTaskCreateModal CreateTaskModalRef { get; set; } = default!;
 
     // Resubmit Returned Workflow Modal
     private Modal ResubmitWorkflowModal { get; set; } = new();
@@ -1127,6 +1129,7 @@ public partial class DocumentSigning
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            CurrentDocumentPdfDocumentId = item.DocumentId;
 
             string? pdfFilePath = null;
 
@@ -1181,7 +1184,7 @@ public partial class DocumentSigning
             var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = pdfFilePath,
-                Action = "view"
+                WatermarkAction = "view"
             });
             var base64 = Convert.ToBase64String(fileBytes);
             DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
@@ -1209,10 +1212,11 @@ public partial class DocumentSigning
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            CurrentDocumentPdfDocumentId = null;
             var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = filePath,
-                Action = "view"
+                WatermarkAction = "view"
             });
             var base64 = Convert.ToBase64String(fileBytes);
             DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
@@ -1239,6 +1243,24 @@ public partial class DocumentSigning
         }
         DocumentPdfFileUrl = null;
         IsDocumentPdfFile = false;
+        CurrentDocumentPdfDocumentId = null;
+    }
+
+    private async Task AssignTaskFromDocumentPdfViewerAsync()
+    {
+        if (!CurrentDocumentPdfDocumentId.HasValue)
+        {
+            return;
+        }
+
+        var documentId = CurrentDocumentPdfDocumentId.Value;
+        await CloseDocumentPdfViewerModalAsync();
+        await CreateTaskModalRef.OpenCreateProjectTaskModalAsync(documentId);
+    }
+
+    private Task OnTaskCreatedFromPdfAsync()
+    {
+        return LoadDocumentSigningListAsync();
     }
 
     #endregion
@@ -1259,7 +1281,7 @@ public partial class DocumentSigning
                 fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
                 {
                     BlobPath = filePath,
-                    Action = "download"
+                    WatermarkAction = "download"
                 });
             }
             else

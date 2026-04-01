@@ -214,6 +214,7 @@ public partial class ProjectTasks
     private string? PdfFileUrl { get; set; }
     private bool IsPdfFile { get; set; }
     private Modal? PdfViewerModal { get; set; }
+    private Guid? CurrentPdfDocumentId { get; set; }
     
     // Track which modal was open before opening PDF viewer
     private bool WasCreateModalOpen { get; set; }
@@ -1179,7 +1180,7 @@ public partial class ProjectTasks
                 fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
                 {
                     BlobPath = filePath,
-                    Action = "download"
+                    WatermarkAction = "download"
                 });
             }
             else
@@ -1246,6 +1247,7 @@ public partial class ProjectTasks
             {
                 return;
             }
+            CurrentPdfDocumentId = projectTaskDocument.Document.Id;
             
             // Get document files for this document
             var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
@@ -1301,7 +1303,7 @@ public partial class ProjectTasks
             var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = documentFile.DocumentFile.Path,
-                Action = "view"
+                WatermarkAction = "view"
             });
             
             // Create data URL for PDF
@@ -1342,6 +1344,19 @@ public partial class ProjectTasks
         // Clear PDF data
         PdfFileUrl = null;
         IsPdfFile = false;
+        CurrentPdfDocumentId = null;
+    }
+
+    private async Task AssignTaskFromPdfViewerAsync()
+    {
+        if (!CurrentPdfDocumentId.HasValue || ProjectTaskCreateModalRef == null)
+        {
+            return;
+        }
+
+        var documentId = CurrentPdfDocumentId.Value;
+        await ClosePdfViewerModalAsync();
+        await ProjectTaskCreateModalRef.OpenCreateProjectTaskModalAsync(documentId);
     }
     
     private async Task CacheDocumentPdfInfoAsync(IReadOnlyList<ProjectTaskDocumentWithNavigationPropertiesDto> documents)

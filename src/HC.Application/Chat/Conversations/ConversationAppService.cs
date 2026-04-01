@@ -1442,11 +1442,38 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             
             // Delete from database
             await _messageFileRepository.DeleteAsync(file);
-            
+
             await uow.CompleteAsync();
         }
     }
-    
+
+    public virtual async Task<List<MessageFileDto>> GetMessageFilesAsync(Guid messageId)
+    {
+        var currentUserId = CurrentUser.GetId();
+        var userMessages = await _userMessageRepository.GetListAsync(messageId);
+        var hasAccess = userMessages.Any(um => um.UserId == currentUserId);
+
+        if (!hasAccess)
+        {
+            throw new BusinessException("HC.Chat:FileAccessDenied");
+        }
+
+        var files = await _messageFileRepository.GetByMessageIdAsync(messageId);
+
+        return files.Select(file => new MessageFileDto
+        {
+            Id = file.Id,
+            MessageId = file.MessageId,
+            FileName = file.FileName,
+            ContentType = file.ContentType,
+            FileSize = file.FileSize,
+            FileExtension = file.FileExtension,
+            FilePath = file.FilePath,
+            DownloadUrl = $"/api/chat/files/{file.Id}/download",
+            CreationTime = file.CreationTime
+        }).ToList();
+    }
+
     /// <summary>
     /// Forward a message to another conversation
     /// </summary>

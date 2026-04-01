@@ -34,7 +34,7 @@ public class DocumentPdfViewerAppService : ApplicationService, IDocumentPdfViewe
     public async Task<byte[]> GetWatermarkedPdfAsync(GetWatermarkedPdfInput input)
     {
         var blobPath = input?.BlobPath ?? string.Empty;
-        var action = input?.Action ?? "view";
+        var action = input?.WatermarkAction ?? "view";
         if (string.IsNullOrWhiteSpace(blobPath))
         {
             throw new Volo.Abp.UserFriendlyException("Blob path is required.");
@@ -50,7 +50,18 @@ public class DocumentPdfViewerAppService : ApplicationService, IDocumentPdfViewe
         }
 
         var stampedBytes = _pdfStampingService.AddWatermark(pdfBytes, userDisplayName, actionTime, action);
-        _logger.LogInformation("PDF watermarked for {User} action={Action} path={Path}", userDisplayName, action, blobPath);
+        if (ReferenceEquals(stampedBytes, pdfBytes))
+        {
+            _logger.LogWarning(
+                "PDF watermarking skipped/failed for {User} action={Action} path={Path}. Returning original bytes.",
+                userDisplayName,
+                action,
+                blobPath);
+        }
+        else
+        {
+            _logger.LogInformation("PDF watermarked for {User} action={Action} path={Path}", userDisplayName, action, blobPath);
+        }
         return stampedBytes;
     }
 

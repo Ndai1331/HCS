@@ -1,0 +1,38 @@
+@using Microsoft.AspNetCore.Components
+@inherits HCComponentBase
+
+<ModalFooter>
+    <Button Color="Color.Secondary" Clicked="OnCloseClickedAsync">
+        @L["Close"]
+    </Button>
+    @if (ShowAssignTask)
+    {
+        <Button Color="Color.Primary" Clicked="OnAssignTaskClickedAsync" Disabled="@DisableAssignTask">
+            <Icon Name="IconName.Users" Class="me-1" />
+            @L["AssignTask"]
+        </Button>
+    }
+</ModalFooter>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnAssignTask { get; set; }
+    [Parameter] public bool ShowAssignTask { get; set; } = true;
+    [Parameter] public bool DisableAssignTask { get; set; }
+
+    private async Task OnCloseClickedAsync()
+    {
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
+    private async Task OnAssignTaskClickedAsync()
+    {
+        if (OnAssignTask.HasDelegate)
+        {
+            await OnAssignTask.InvokeAsync();
+        }
+    }
+}

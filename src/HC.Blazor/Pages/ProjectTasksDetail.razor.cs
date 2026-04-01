@@ -116,6 +116,8 @@ public partial class ProjectTasksDetail : HCComponentBase
     private Modal? PdfViewerModal { get; set; }
     private bool IsPdfFile { get; set; }
     private string? PdfFileUrl { get; set; }
+    private Guid? CurrentPdfDocumentId { get; set; }
+    private HC.Blazor.Components.ProjectTaskCreateModal.ProjectTaskCreateModal CreateTaskModalRef { get; set; } = default!;
     private Dictionary<Guid, bool> DocumentHasPdfCache { get; set; } = new();
 
     // Helper methods
@@ -726,6 +728,7 @@ public partial class ProjectTasksDetail : HCComponentBase
         {
             return;
         }
+        CurrentPdfDocumentId = context.Document.Id;
 
         try
         {
@@ -754,7 +757,7 @@ public partial class ProjectTasksDetail : HCComponentBase
                     var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
                     {
                         BlobPath = file.DocumentFile.Path,
-                        Action = "view"
+                        WatermarkAction = "view"
                     });
                     var base64 = Convert.ToBase64String(fileBytes);
                     PdfFileUrl = $"data:application/pdf;base64,{base64}";
@@ -780,6 +783,24 @@ public partial class ProjectTasksDetail : HCComponentBase
         }
         PdfFileUrl = null;
         IsPdfFile = false;
+        CurrentPdfDocumentId = null;
+    }
+
+    private async Task AssignTaskFromPdfViewerAsync()
+    {
+        if (!CurrentPdfDocumentId.HasValue)
+        {
+            return;
+        }
+
+        var documentId = CurrentPdfDocumentId.Value;
+        await ClosePdfViewerModalAsync();
+        await CreateTaskModalRef.OpenCreateProjectTaskModalAsync(documentId);
+    }
+
+    private Task OnTaskCreatedFromPdfAsync()
+    {
+        return LoadProjectTaskAsync();
     }
 
     private async Task DownloadDocumentFileAsync(ProjectTaskDocumentWithNavigationPropertiesDto context)
@@ -809,7 +830,7 @@ public partial class ProjectTasksDetail : HCComponentBase
                         fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
                         {
                             BlobPath = file.DocumentFile.Path,
-                            Action = "download"
+                            WatermarkAction = "download"
                         });
                     }
                     else

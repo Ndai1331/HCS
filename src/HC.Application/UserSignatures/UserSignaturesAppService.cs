@@ -138,7 +138,6 @@ public abstract class UserSignaturesAppServiceBase : HCAppService
             SignType = item.UserSignature.SignType,
             ProviderCode = item.UserSignature.ProviderCode,
             TokenRef = item.UserSignature.TokenRef,
-            Secret = item.UserSignature.Secret,
             SealImg = item.UserSignature.SealImg,
             SignatureImage = item.UserSignature.SignatureImage,
             ValidFrom = item.UserSignature.ValidFrom,

@@ -63,11 +63,13 @@ public interface IConversationAppService : IApplicationService
     Task<ChatMessageDto> SendMessageWithFilesAsync(SendMessageWithFilesInput input);
     
     Task<MessageFileDto> UploadFileAsync(UploadFileInput input);
-    
+
     Task<FileDto> DownloadFileAsync(Guid fileId);
-    
+
     Task DeleteFileAsync(Guid fileId);
-    
+
+    Task<List<MessageFileDto>> GetMessageFilesAsync(Guid messageId);
+
     /// <summary>
     /// Forward a message to another conversation
     /// </summary>

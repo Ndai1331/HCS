@@ -155,6 +155,7 @@
     "Actions": "Hành động",
     "Add": "Thêm",
     "Close": "Đóng",
+    "AssignTask": "Giao việc",
     "Delete": "Xoá",
     "Edit": "Sửa",
     "Tasks": "Công việc",
@@ -1277,6 +1278,8 @@
     "MarkAsRead": "Đánh dấu đã đọc",
     "SignFilesAll": "Tất cả tài liệu trình ký",
     "SignFilesSentToMe": "Tài liệu trình ký gửi tới tôi",
-    "SignFilesSentByMe": "Tài liệu trình ký tôi gửi đi"
+    "SignFilesSentByMe": "Tài liệu trình ký tôi gửi đi",
+    "FromUser" : "Từ người gửi",
+    "PleaseSelectDocument": "Vui lòng chọn tài liệu"
   }
 }

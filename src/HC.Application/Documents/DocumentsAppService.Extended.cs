@@ -336,7 +336,9 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         var fromAssignmentsQuery = assignmentQ
             .Where(a => a.ReceiverUserId == userId
                         && a.ActionType == viewAction
-                        && a.WorkflowStepTemplateId == null)
+                        && a.WorkflowStepTemplateId == null
+                        && a.IsCurrent
+                        && a.Status != nameof(DocumentAssignmentStatus.REVOKE))
             .Join(docQ.Where(d => d.SourceType != DocumentSourceType.Workflow),
                 a => a.DocumentId,
                 d => d.Id,
@@ -486,6 +488,21 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
 
             _logger.LogInformation("Sending document to {RecipientCount} recipients", allReceiverUserIds.Count);
 
+            var viewAction = DocumentAssignmentActionType.VIEW.ToString();
+            var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
+            var existingInboxAssignments = await AsyncExecuter.ToListAsync(
+                assignmentQueryable
+                    .Where(a => a.DocumentId == input.DocumentId
+                                && allReceiverUserIds.Contains(a.ReceiverUserId)
+                                && a.ActionType == viewAction
+                                && a.WorkflowStepTemplateId == null
+                                && a.IsCurrent
+                                && a.Status != nameof(DocumentAssignmentStatus.REVOKE))
+                    .OrderByDescending(a => a.CreationTime));
+            var existingInboxAssignmentByReceiver = existingInboxAssignments
+                .GroupBy(a => a.ReceiverUserId)
+                .ToDictionary(g => g.Key, g => g.First());
+
             // Create notification (ICurrentUser has Name / UserName; no Surname on interface)
             var userFullName = !string.IsNullOrWhiteSpace(CurrentUser.Name)
                 ? CurrentUser.Name!
@@ -531,17 +548,9 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                     $"Document sent from user {CurrentUser.UserName ?? L["System"]}"
                 );
 
-                // Check if DocumentAssignment already exists for this document and user
-                var existingAssignments = await _documentAssignmentRepository.GetListAsync(
-                    documentId: input.DocumentId,
-                    receiverUserId: receiverUserId
-                );
-
-                var existingAssignment = existingAssignments.FirstOrDefault();
-
-                if (existingAssignment != null)
+                if (existingInboxAssignmentByReceiver.TryGetValue(receiverUserId, out var existingAssignment))
                 {
-                    // DocumentAssignment exists → Update status to DONE and ProcessedAt
+                    // Reuse only inbox VIEW assignments from the send flow.
                     existingAssignment.Status = DocumentAssignmentStatus.DONE.ToString();
                     existingAssignment.ProcessedAt = now;
                     existingAssignment.IsCurrent = true;
@@ -637,10 +646,13 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             var document = await _documentRepository.GetAsync(input.DocumentId);
             EnsureArchiveDocumentForDeleteOrRevoke(document);
 
-            // Get all document assignments for this document
-            var documentAssignments = await _documentAssignmentRepository.GetListAsync(
-                documentId: input.DocumentId
-            );
+            var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
+            var viewAction = DocumentAssignmentActionType.VIEW.ToString();
+            var documentAssignments = await AsyncExecuter.ToListAsync(
+                assignmentQueryable.Where(a =>
+                    a.DocumentId == input.DocumentId
+                    && a.ActionType == viewAction
+                    && a.WorkflowStepTemplateId == null));
 
             if (documentAssignments == null || documentAssignments.Count == 0)
             {
@@ -660,6 +672,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             foreach (var documentAssignment in documentAssignments)
             {
                 documentAssignment.Status = DocumentAssignmentStatus.REVOKE.ToString();
+                documentAssignment.IsCurrent = false;
                 await _documentAssignmentRepository.UpdateAsync(documentAssignment);
             }
 

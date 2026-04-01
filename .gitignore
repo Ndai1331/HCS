@@ -12,6 +12,9 @@
 *.appsettings.Development.secrets.json
 *.appsettings.secrets.json
 *.appsettings.Production.secrets.json
+appsettings.Development.secrets.json
+appsettings.secrets.json
+appsettings.Production.secrets.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -27,6 +30,8 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
+Logs/
+**/Logs/
 
 # Visual Studio 2015 cache/options directory
 .vs/

@@ -356,7 +356,7 @@ public partial class ViewDocumentDetail
             var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = firstFile.DocumentFile.Path,
-                Action = "view"
+                WatermarkAction = "view"
             });
             
             // Create data URL for PDF
@@ -409,7 +409,7 @@ public partial class ViewDocumentDetail
             var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = file.Path,
-                Action = "view"
+                WatermarkAction = "view"
             });
             if (fileBytes != null && fileBytes.Length > 0)
             {
@@ -449,7 +449,7 @@ public partial class ViewDocumentDetail
             var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = file.Path,
-                Action = "download"
+                WatermarkAction = "download"
             });
             if (fileBytes != null && fileBytes.Length > 0)
             {

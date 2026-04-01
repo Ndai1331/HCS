@@ -6,6 +6,7 @@
 @using Microsoft.Extensions.Logging
 @using Microsoft.JSInterop
 @using System.Linq
+@using System.Threading
 
 @if (_isInitialized)
 {
@@ -42,9 +43,11 @@
     private HashSet<Guid> _removingNotifications = new(); // Track notifications being removed for fade-out animation
     private bool _isInitialized = false;
     private bool _isInitializing = false; // Prevent multiple initialization attempts
+    private bool _isDisposed = false;
     private DotNetObjectReference<NotificationToast>? _objRef;
     private Dictionary<Guid, string> _chatNotifications = new(); // Track chat notifications by ConversationId
     private readonly object _notificationsLock = new object(); // Lock for thread-safe access to _notifications
+    private readonly CancellationTokenSource _disposeCts = new();
 
     [Inject] private NavigationManager NavigationManager { get; set; } = null!;
     [Inject] private INotificationsAppService NotificationsAppService { get; set; } = null!;
@@ -60,6 +63,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         if (firstRender && CurrentUser.IsAuthenticated && !_isInitialized && !_isInitializing)
         {
             _isInitializing = true;
@@ -171,40 +179,31 @@
                 Title = "Chat:NewMessage",
                 Content = $"Chat:MessageFrom|{senderName}",
                 Priority = "NORMAL",
-                CreationTime = DateTime.Now,
+                CreationTime = Clock.Now,
                 RelatedId = messageData.ConversationId?.ToString(),
                 RelatedType = "CHAT",
                 SourceType = "CHAT"
             };
-            
+
             // Prevent duplicate notifications for same conversation
-            if (messageData.ConversationId.HasValue && _chatNotifications.ContainsKey(messageData.ConversationId.Value))
-            {
-                NotificationLogger.LogInformation("[NotificationToast] ⚠️ Chat notification already exists for ConversationId={ConversationId}", messageData.ConversationId.Value);
-                return;
-            }
-            
-            if (messageData.ConversationId.HasValue)
-            {
-                _chatNotifications[messageData.ConversationId.Value] = messageData.Text ?? "";
-            }
-            
             lock (_notificationsLock)
             {
+                if (messageData.ConversationId.HasValue && _chatNotifications.ContainsKey(messageData.ConversationId.Value))
+                {
+                    NotificationLogger.LogInformation("[NotificationToast] ⚠️ Chat notification already exists for ConversationId={ConversationId}", messageData.ConversationId.Value);
+                    return;
+                }
+
+                if (messageData.ConversationId.HasValue)
+                {
+                    _chatNotifications[messageData.ConversationId.Value] = messageData.Text ?? "";
+                }
+
                 _notifications.Insert(0, notification);
             }
             await InvokeAsync(StateHasChanged);
-            
-            // Auto-remove after 5 seconds
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(5000);
-                await RemoveNotificationWithAnimationAsync(notification.Id);
-                if (messageData.ConversationId.HasValue)
-                {
-                    _chatNotifications.Remove(messageData.ConversationId.Value);
-                }
-            });
+
+            _ = ScheduleAutoRemoveAsync(notification.Id, messageData.ConversationId);
             
             NotificationLogger.LogInformation("[NotificationToast] ✅ Chat notification displayed: Sender={Sender}, Text={Text}", 
                 messageData.SenderUsername, messageData.Text?.Substring(0, Math.Min(20, messageData.Text?.Length ?? 0)));
@@ -318,33 +317,26 @@
                 Title = "Chat:NewConversation",
                 Content = $"{contentKey}|{contentParam}",
                 Priority = "NORMAL",
-                CreationTime = DateTime.Now,
+                CreationTime = Clock.Now,
                 RelatedId = conversationData.ConversationId.ToString(),
                 RelatedType = "CHAT"
             };
-            
+
             // Prevent duplicate notifications for same conversation
-            if (_chatNotifications.ContainsKey(conversationData.ConversationId))
-            {
-                NotificationLogger.LogInformation("[NotificationToast] ⚠️ Conversation notification already exists for ConversationId={ConversationId}", conversationData.ConversationId);
-                return;
-            }
-            
-            _chatNotifications[conversationData.ConversationId] = conversationData.ConversationName ?? "";
-            
             lock (_notificationsLock)
             {
+                if (_chatNotifications.ContainsKey(conversationData.ConversationId))
+                {
+                    NotificationLogger.LogInformation("[NotificationToast] ⚠️ Conversation notification already exists for ConversationId={ConversationId}", conversationData.ConversationId);
+                    return;
+                }
+
+                _chatNotifications[conversationData.ConversationId] = conversationData.ConversationName ?? "";
                 _notifications.Insert(0, notification);
             }
             await InvokeAsync(StateHasChanged);
-            
-            // Auto-remove after 5 seconds
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(5000);
-                await RemoveNotificationWithAnimationAsync(notification.Id);
-                _chatNotifications.Remove(conversationData.ConversationId);
-            });
+
+            _ = ScheduleAutoRemoveAsync(notification.Id, conversationData.ConversationId);
             
             NotificationLogger.LogInformation("[NotificationToast] ✅ Conversation notification displayed: Type={Type}, Creator={Creator}", 
                 conversationData.Type, creatorName);
@@ -384,13 +376,8 @@
                 {
                     _notifications.Insert(0, notification);
                 }
-                
-                // Auto-remove after 5 seconds with fade-out animation
-                _ = Task.Run(async () =>
-                {
-                    await Task.Delay(5000);
-                    await RemoveNotificationWithAnimationAsync(notificationId);
-                });
+
+                _ = ScheduleAutoRemoveAsync(notificationId);
             }
             else
             {
@@ -406,19 +393,40 @@
 
     private async Task RemoveNotificationWithAnimationAsync(Guid notificationId)
     {
+        if (_isDisposed || _disposeCts.IsCancellationRequested)
+        {
+            return;
+        }
+
         // Add to removing set to trigger fade-out animation
-        _removingNotifications.Add(notificationId);
+        lock (_notificationsLock)
+        {
+            _removingNotifications.Add(notificationId);
+        }
         await InvokeAsync(StateHasChanged);
-        
+
         // Wait for animation to complete (300ms)
-        await Task.Delay(300);
-        
+        try
+        {
+            await Task.Delay(300, _disposeCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
         // Remove from list with lock
         lock (_notificationsLock)
         {
             _notifications.RemoveAll(n => n.Id == notificationId);
+            _removingNotifications.Remove(notificationId);
         }
-        _removingNotifications.Remove(notificationId);
+
+        if (_isDisposed || _disposeCts.IsCancellationRequested)
+        {
+            return;
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 
@@ -531,10 +539,32 @@
         }
     }
 
+    private async Task ScheduleAutoRemoveAsync(Guid notificationId, Guid? conversationId = null)
+    {
+        try
+        {
+            await Task.Delay(5000, _disposeCts.Token);
+            await RemoveNotificationWithAnimationAsync(notificationId);
+
+            if (conversationId.HasValue)
+            {
+                lock (_notificationsLock)
+                {
+                    _chatNotifications.Remove(conversationId.Value);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         try
         {
+            _isDisposed = true;
+            _disposeCts.Cancel();
             NotificationLogger.LogInformation("[NotificationToast] 🔴 Starting cleanup - IsInitialized={IsInitialized}", _isInitialized);
             
             if (_isInitialized)
@@ -567,6 +597,8 @@
                 _objRef = null;
                 NotificationLogger.LogInformation("[NotificationToast] ✅ DotNetObjectReference disposed");
             }
+
+            _disposeCts.Dispose();
         }
         catch (Exception ex)
         {

@@ -47,6 +47,7 @@ public partial class ProjectTaskCreateModal
     private DatePicker<DateTime>? NewProjectTaskDueDateDatePicker { get; set; }
 
     private Dictionary<Guid, bool> DocumentHasPdfCache { get; set; } = new();
+    private Guid? PendingPrimaryDocumentId { get; set; }
 
 
     private IReadOnlyList<ProjectTaskAssignmentWithNavigationPropertiesDto> CreateAssignmentsList { get; set; } = new List<ProjectTaskAssignmentWithNavigationPropertiesDto>();
@@ -193,8 +194,10 @@ public partial class ProjectTaskCreateModal
     }
 
     
-    public async Task OpenCreateProjectTaskModalAsync()
+    public async Task OpenCreateProjectTaskModalAsync(Guid? primaryDocumentId = null)
     {
+        PendingPrimaryDocumentId = primaryDocumentId;
+
         NewProjectTask = new ProjectTaskDto
         {
             StartDate = DateTime.Now,
@@ -404,6 +407,7 @@ public partial class ProjectTaskCreateModal
             // Load step-2 data after task is created.
             await LoadCreateAssignmentsAsync();
             await LoadCreateDocumentsAsync();
+            await AttachPendingPrimaryDocumentAsync();
 
             SelectedCreateTab = "assignments";
             await InvokeAsync(StateHasChanged);
@@ -417,6 +421,30 @@ public partial class ProjectTaskCreateModal
             IsSavingGeneralInformation = false;
             await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private async Task AttachPendingPrimaryDocumentAsync()
+    {
+        if (CreateWizardProjectTaskId == Guid.Empty || !PendingPrimaryDocumentId.HasValue || PendingPrimaryDocumentId.Value == Guid.Empty)
+        {
+            return;
+        }
+
+        var primaryDocumentId = PendingPrimaryDocumentId.Value;
+        if (CreateDocumentsList.Any(x => x.Document?.Id == primaryDocumentId))
+        {
+            return;
+        }
+
+        await ProjectTaskDocumentsAppService.CreateAsync(new ProjectTaskDocumentCreateDto
+        {
+            ProjectTaskId = CreateWizardProjectTaskId,
+            DocumentId = primaryDocumentId,
+            DocumentPurpose = ProjectTaskDocumentPurpose.REFERENCE.ToString()
+        });
+
+        await LoadCreateDocumentsAsync();
+        PendingPrimaryDocumentId = null;
     }
 
     private bool ValidateCreateGeneralInformation()
@@ -524,6 +552,8 @@ public partial class ProjectTaskCreateModal
                 return;
             }
             await CloseCreateProjectTaskModalAsync();
+            await UiMessageService.Success(L["TaskCreatedSuccessfully"],
+            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             
             // Notify parent component that task was created
             if (OnTaskCreated.HasDelegate)

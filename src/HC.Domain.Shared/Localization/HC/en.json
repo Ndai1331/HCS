@@ -147,6 +147,7 @@
     "Actions": "Actions",
     "Add": "Add",
     "Close": "Close",
+    "AssignTask": "Assign Task",
     "Delete": "Delete",
     "Edit": "Edit",
     "Members": "Members",
@@ -1214,6 +1215,7 @@
     "Uploading": "Uploading",
     "SignFilesAll": "All sign files",
     "SignFilesSentToMe": "Sign files sent to me",
-    "SignFilesSentByMe": "Sign files sent by me"
+    "SignFilesSentByMe": "Sign files sent by me",
+    "PleaseSelectDocument": "Please select a document"
   }
 }
