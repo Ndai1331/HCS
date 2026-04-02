@@ -158,8 +158,8 @@ namespace HC.Blazor;
             .AddInteractiveServerComponents()
             .AddCircuitOptions(options =>
             {
-                // Configure circuit options for Blazor Server
-                options.DetailedErrors = true;
+                // Avoid leaking stack/details in production (risk review H4)
+                options.DetailedErrors = hostingEnvironment.IsDevelopment();
             });
         
         // Add HttpContextAccessor for SignalR authentication
@@ -748,32 +748,36 @@ namespace HC.Blazor;
         }
 
         app.UseDynamicClaims();
-        
-        // Debug: Log tenant ID and SignalR requests for troubleshooting
-        app.Use(async (httpContext, next) =>
+
+        if (env.IsDevelopment())
         {
-            var path = httpContext.Request.Path.Value ?? "";
-            if (path.Contains("/notificationHub"))
+            // Verbose auth/tenant logging only in development (risk review M1)
+            app.Use(async (httpContext, next) =>
             {
-                var logger = httpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HCBlazorModule>>();
-                var isAuthenticated = httpContext.User?.Identity?.IsAuthenticated ?? false;
-                var userId = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "Anonymous";
-                var hasCookies = httpContext.Request.Cookies.Count > 0;
-                
-                logger.LogInformation("[SignalR Debug] Path={Path}, IsAuthenticated={IsAuthenticated}, UserId={UserId}, HasCookies={HasCookies}, CookieCount={CookieCount}",
-                    path, isAuthenticated, userId, hasCookies, httpContext.Request.Cookies.Count);
-            }
-            
-            if (MultiTenancyConsts.IsEnabled)
-            {
-                var currentTenant = httpContext.RequestServices.GetRequiredService<Volo.Abp.MultiTenancy.ICurrentTenant>();
-                var logger = httpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HCBlazorModule>>();
-                var userId = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "Anonymous";
-                logger.LogWarning($"[DEBUG] UserId: {userId}, TenantId: {currentTenant.Id}, Name: {currentTenant.Name}, IsAvailable: {currentTenant.IsAvailable}");
-            }
-            await next();
-        });
-        
+                var path = httpContext.Request.Path.Value ?? "";
+                if (path.Contains("/notificationHub"))
+                {
+                    var logger = httpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HCBlazorModule>>();
+                    var isAuthenticated = httpContext.User?.Identity?.IsAuthenticated ?? false;
+                    var userId = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "Anonymous";
+                    var hasCookies = httpContext.Request.Cookies.Count > 0;
+
+                    logger.LogInformation("[SignalR Debug] Path={Path}, IsAuthenticated={IsAuthenticated}, UserId={UserId}, HasCookies={HasCookies}, CookieCount={CookieCount}",
+                        path, isAuthenticated, userId, hasCookies, httpContext.Request.Cookies.Count);
+                }
+
+                if (MultiTenancyConsts.IsEnabled)
+                {
+                    var currentTenant = httpContext.RequestServices.GetRequiredService<Volo.Abp.MultiTenancy.ICurrentTenant>();
+                    var logger = httpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HCBlazorModule>>();
+                    var userId = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "Anonymous";
+                    logger.LogWarning("[DEBUG] UserId: {UserId}, TenantId: {TenantId}, Name: {TenantName}, IsAvailable: {IsAvailable}",
+                        userId, currentTenant.Id, currentTenant.Name, currentTenant.IsAvailable);
+                }
+                await next();
+            });
+        }
+
         app.UseAuthorization();
 
         // app.Use(async (context, next) =>

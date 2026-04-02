@@ -472,6 +472,7 @@
     "LayoutImg": "Ảnh layout",
     "TokenRefRequiredForDigitalSign": "Ký số bắt buộc nhập Token Ref",
     "SecretRequiredForDigitalSign": "Ký số bắt buộc nhập Secret",
+    "DigitalSignSecretLeaveBlankToKeep": "Để trống để giữ secret hiện tại. Chỉ nhập khi đổi secret mới.",
     "SealImgRequiredForDigitalSign": "Ký số bắt buộc có ảnh con dấu",
     "LayoutImgRequiredForDigitalSign": "Bật ký số bắt buộc cấu hình ảnh layout",
     "SignatureImage": "Hình ảnh chữ ký",

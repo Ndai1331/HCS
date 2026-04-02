@@ -304,7 +304,10 @@ public partial class SignatureSettingDtoToSignatureSettingUpdateDtoBlazorMapper 
 [Mapper]
 public partial class UserSignatureDtoToUserSignatureUpdateDtoBlazorMapper : MapperBase<UserSignatureDto, UserSignatureUpdateDto>
 {
+    [MapperIgnoreTarget(nameof(UserSignatureUpdateDto.Secret))]
     public override partial UserSignatureUpdateDto Map(UserSignatureDto source);
+
+    [MapperIgnoreTarget(nameof(UserSignatureUpdateDto.Secret))]
     public override partial void Map(UserSignatureDto source, UserSignatureUpdateDto destination);
 }
 

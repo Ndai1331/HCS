@@ -34,7 +34,7 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
 
     // Watermark opacity (0-255, lower = more transparent / fainter)
     private const int WatermarkAlpha = 48;
-    private const double WatermarkFontSize = 14;
+    private const double WatermarkFontSize = 18;
     private const double DiagonalAngleDegrees = -45;
     private static readonly string[] WatermarkFontCandidates =
     {
