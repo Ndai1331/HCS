@@ -42,63 +42,56 @@ public class ContactAppService : ChatAppService, IContactAppService
             var currentUserId = CurrentUser.GetId();
             var conversations = await _conversationRepository.GetListByUserIdAsync(currentUserId, input.Filter ?? string.Empty);
             var conversationContacts = new List<ChatContactDto>();
-            
+
+            var conversationRows = conversations.Where(x => x?.Conversation != null).ToList();
+            var allConversationIds = conversationRows.Select(x => x.Conversation!.Id).Distinct().ToList();
+            IReadOnlyDictionary<Guid, ConversationMember> membersByConversation = new Dictionary<Guid, ConversationMember>();
+            IReadOnlyDictionary<Guid, int> activeMemberCountsByConversation = new Dictionary<Guid, int>();
+            try
+            {
+                if (allConversationIds.Count > 0)
+                {
+                    membersByConversation = await _conversationMemberRepository.GetDictionaryByConversationIdsAndUserIdAsync(allConversationIds, currentUserId);
+                    var idsForGroupMemberCount = conversationRows
+                        .Where(x => x.Conversation!.Type != ConversationType.User)
+                        .Select(x => x.Conversation!.Id)
+                        .Distinct()
+                        .ToList();
+                    if (idsForGroupMemberCount.Count > 0)
+                    {
+                        activeMemberCountsByConversation = await _conversationMemberRepository.GetActiveMemberCountsByConversationIdsAsync(idsForGroupMemberCount);
+                    }
+                }
+            }
+            catch
+            {
+                membersByConversation = new Dictionary<Guid, ConversationMember>();
+                activeMemberCountsByConversation = new Dictionary<Guid, int>();
+            }
+
             foreach (var x in conversations)
             {
                 if (x?.Conversation == null) continue;
-                
-                // Get pin status, pinned date, role, and unread count for current user
+
                 var isPinned = false;
                 DateTime? pinnedDate = null;
                 string memberRole = null;
-                int unreadMessageCount = 0;
-                if (x.Conversation.Type != ConversationType.User)
+                var unreadMessageCount = 0;
+                if (membersByConversation.TryGetValue(x.Conversation.Id, out var member))
                 {
-                    try
+                    if (x.Conversation.Type != ConversationType.User)
                     {
-                        var member = await _conversationMemberRepository.GetByConversationAndUserAsync(x.Conversation.Id, currentUserId);
-                        isPinned = member?.IsPinned ?? false;
-                        pinnedDate = member?.PinnedDate;
-                        memberRole = member?.Role; // ADMIN or MEMBER
-                        unreadMessageCount = member?.UnreadMessageCount ?? 0; // Get unread count from member
+                        isPinned = member.IsPinned;
+                        pinnedDate = member.PinnedDate;
+                        memberRole = member.Role;
                     }
-                    catch
-                    {
-                        // Ignore errors when getting member
-                        isPinned = false;
-                        pinnedDate = null;
-                        memberRole = null;
-                        unreadMessageCount = 0;
-                    }
+                    unreadMessageCount = member.UnreadMessageCount;
                 }
-                else
-                {
-                    // For User conversations, also get unread count
-                    try
-                    {
-                        var member = await _conversationMemberRepository.GetByConversationAndUserAsync(x.Conversation.Id, currentUserId);
-                        unreadMessageCount = member?.UnreadMessageCount ?? 0;
-                    }
-                    catch
-                    {
-                        unreadMessageCount = 0;
-                    }
-                }
-                
-                // Get member count for group/project/task
+
                 var memberCount = 0;
                 if (x.Conversation.Type != ConversationType.User)
                 {
-                    try
-                    {
-                        var members = await _conversationMemberRepository.GetByConversationIdAsync(x.Conversation.Id);
-                        memberCount = members?.Count(m => m.IsActive) ?? 0;
-                    }
-                    catch
-                    {
-                        // Ignore errors when getting members
-                        memberCount = 0;
-                    }
+                    memberCount = activeMemberCountsByConversation.GetValueOrDefault(x.Conversation.Id);
                 }
                 
                 conversationContacts.Add(new ChatContactDto

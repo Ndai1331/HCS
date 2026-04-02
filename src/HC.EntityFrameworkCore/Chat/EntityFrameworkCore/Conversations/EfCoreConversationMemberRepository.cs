@@ -62,6 +62,45 @@ public class EfCoreConversationMemberRepository : EfCoreRepository<IChatDbContex
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
     
+    public virtual async Task<IReadOnlyDictionary<Guid, ConversationMember>> GetDictionaryByConversationIdsAndUserIdAsync(
+        IReadOnlyCollection<Guid> conversationIds,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (conversationIds == null || conversationIds.Count == 0)
+        {
+            return new Dictionary<Guid, ConversationMember>();
+        }
+
+        var idList = conversationIds as List<Guid> ?? conversationIds.ToList();
+        var members = await (await GetDbSetAsync())
+            .Where(x => idList.Contains(x.ConversationId) && x.UserId == userId)
+            .ToListAsync(GetCancellationToken(cancellationToken));
+
+        return members
+            .GroupBy(x => x.ConversationId)
+            .ToDictionary(g => g.Key, g => g.First());
+    }
+
+    public virtual async Task<IReadOnlyDictionary<Guid, int>> GetActiveMemberCountsByConversationIdsAsync(
+        IReadOnlyCollection<Guid> conversationIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (conversationIds == null || conversationIds.Count == 0)
+        {
+            return new Dictionary<Guid, int>();
+        }
+
+        var idList = conversationIds as List<Guid> ?? conversationIds.ToList();
+        var rows = await (await GetDbSetAsync())
+            .Where(x => idList.Contains(x.ConversationId) && x.IsActive)
+            .GroupBy(x => x.ConversationId)
+            .Select(g => new { ConversationId = g.Key, Count = g.Count() })
+            .ToListAsync(GetCancellationToken(cancellationToken));
+
+        return rows.ToDictionary(x => x.ConversationId, x => x.Count);
+    }
+
     public virtual async Task<ConversationMember> GetByConversationAndUserAsync(
         Guid conversationId, 
         Guid userId,

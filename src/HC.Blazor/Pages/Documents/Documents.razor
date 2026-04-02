@@ -1,5 +1,6 @@
 @page "/manage-documents"
 @attribute [Authorize(HCPermissions.Documents.Default)]
+@using HC.Blazor.Services
 @using HC.Departments
 @using HC.Documents
 @using HC.MasterDatas
@@ -37,6 +38,7 @@
 @inject IUserDepartmentsAppService UserDepartmentsAppService
 @inject IDepartmentsAppService DepartmentsAppService
 @inject IMasterDatasAppService MasterDatasAppService
+@inject IDocumentsPageLookupCache DocumentsPageLookupCache
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
 @inject NavigationManager NavigationManager

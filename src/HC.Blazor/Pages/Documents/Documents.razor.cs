@@ -591,74 +591,78 @@ public partial class Documents : IDisposable
         await DebouncedSearchAsync();
     }
 
-    private async Task<List<LookupDto<Guid>>> GetTypeMasterDataLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    private const int DocumentLookupPageSize = 200;
+
+    private async Task<List<LookupDto<Guid>>> LoadMasterDataLookupForGridAsync(MasterDataType type, string filter)
     {
+        if (string.IsNullOrWhiteSpace(filter))
+        {
+            return await DocumentsPageLookupCache.GetMasterDataLookupAsync(
+                type.GetTypeValue(),
+                () => MasterDatasAppService.GetListAsync(new GetMasterDatasInput
+                {
+                    Type = type.GetTypeValue(),
+                    MaxResultCount = DocumentLookupPageSize,
+                    SkipCount = 0
+                }));
+        }
+
         var result = await MasterDatasAppService.GetListAsync(new GetMasterDatasInput
         {
-            Type = MasterDataType.DocumentType.GetTypeValue(),
+            Type = type.GetTypeValue(),
             FilterText = filter,
-            MaxResultCount = 1000,
+            MaxResultCount = DocumentLookupPageSize,
             SkipCount = 0
         });
-        TypeMasterDataCollection = result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
-        return TypeMasterDataCollection.ToList();
+        return result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
+    }
+
+    private async Task<List<LookupDto<Guid>>> GetTypeMasterDataLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    {
+        var list = await LoadMasterDataLookupForGridAsync(MasterDataType.DocumentType, filter);
+        TypeMasterDataCollection = list;
+        return list;
     }
 
     private async Task<List<LookupDto<Guid>>> GetUrgencyLevelMasterDataLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
-        var result = await MasterDatasAppService.GetListAsync(new GetMasterDatasInput
-        {
-            Type = MasterDataType.UrgencyLevel.GetTypeValue(),
-            FilterText = filter,
-            MaxResultCount = 1000,
-            SkipCount = 0
-        });
-        UrgencyLevelMasterDataCollection = result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
-        return UrgencyLevelMasterDataCollection.ToList();
+        var list = await LoadMasterDataLookupForGridAsync(MasterDataType.UrgencyLevel, filter);
+        UrgencyLevelMasterDataCollection = list;
+        return list;
     }
 
     private async Task<List<LookupDto<Guid>>> GetSecrecyLevelMasterDataLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
-        var result = await MasterDatasAppService.GetListAsync(new GetMasterDatasInput
-        {
-            Type = MasterDataType.SecrecyLevel.GetTypeValue(),
-            FilterText = filter,
-            MaxResultCount = 1000,
-            SkipCount = 0
-        });
-        SecrecyLevelMasterDataCollection = result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
-        return SecrecyLevelMasterDataCollection.ToList();
+        var list = await LoadMasterDataLookupForGridAsync(MasterDataType.SecrecyLevel, filter);
+        SecrecyLevelMasterDataCollection = list;
+        return list;
     }
 
     private async Task<List<LookupDto<Guid>>> GetFieldMasterDataLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
-        var result = await MasterDatasAppService.GetListAsync(new GetMasterDatasInput
-        {
-            Type = MasterDataType.Field.GetTypeValue(),
-            FilterText = filter,
-            MaxResultCount = 1000,
-            SkipCount = 0
-        });
-        FieldMasterDataCollection = result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
-        return FieldMasterDataCollection.ToList();
+        var list = await LoadMasterDataLookupForGridAsync(MasterDataType.Field, filter);
+        FieldMasterDataCollection = list;
+        return list;
     }
 
     private async Task<List<LookupDto<Guid>>> GetStatusMasterDataLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
-        var result = await MasterDatasAppService.GetListAsync(new GetMasterDatasInput
-        {
-            Type = MasterDataType.Status.GetTypeValue(),
-            FilterText = filter,
-            MaxResultCount = 1000,
-            SkipCount = 0
-        });
-        StatusMasterDataCollection = result.Items.Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name }).ToList();
-        return StatusMasterDataCollection.ToList();
+        var list = await LoadMasterDataLookupForGridAsync(MasterDataType.Status, filter);
+        StatusMasterDataCollection = list;
+        return list;
     }
 
     private async Task<List<LookupDto<Guid>>> GetUnitLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
-        var result = await DocumentsAppService.GetUnitLookupAsync(new LookupRequestDto { Filter = filter });
+        if (string.IsNullOrWhiteSpace(filter))
+        {
+            var list = await DocumentsPageLookupCache.GetUnitsLookupAsync(() =>
+                DocumentsAppService.GetUnitLookupAsync(new LookupRequestDto { Filter = "", MaxResultCount = DocumentLookupPageSize }));
+            UnitsCollection = list;
+            return list;
+        }
+
+        var result = await DocumentsAppService.GetUnitLookupAsync(new LookupRequestDto { Filter = filter, MaxResultCount = DocumentLookupPageSize });
         UnitsCollection = result.Items;
         return UnitsCollection.ToList();
     }

@@ -60,6 +60,13 @@ public abstract class DocumentControllerBase : AbpController
     }
 
     [HttpGet]
+    [Route("unit-lookup/{id}")]
+    public virtual Task<LookupDto<Guid>?> GetUnitLookupByIdAsync(Guid id)
+    {
+        return _documentsAppService.GetUnitLookupByIdAsync(id);
+    }
+
+    [HttpGet]
     [Route("workflow-lookup")]
     public virtual Task<PagedResultDto<LookupDto<Guid>>> GetWorkflowLookupAsync(LookupRequestDto input)
     {

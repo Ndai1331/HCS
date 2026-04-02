@@ -27,7 +27,7 @@ public abstract class EfCoreDocumentRepositoryBase : EfCoreRepository<HCDbContex
        Guid? fieldId = null, Guid? unitId = null, Guid? workflowId = null, Guid? statusId = null, 
        Guid? typeId = null, Guid? urgencyLevelId = null, Guid? secrecyLevelId = null, DocumentSourceType? sourceType = null, Guid? creatorId = null, CancellationToken cancellationToken = default)
     {
-        var query = await GetQueryForNavigationPropertiesAsync();
+        var query = await GetQueryForNavigationPropertiesAsync(trackEntities: false);
         query = ApplyFilter(query, filterText, no, title, currentStatus, completedTimeMin, completedTimeMax, storageNumber, incommingDateMin, incommingDateMax, fieldId, unitId, workflowId, statusId, typeId, urgencyLevelId, secrecyLevelId, sourceType, creatorId);
         var ids = query.Select(x => x.Document.Id);
         await DeleteManyAsync(ids, cancellationToken: GetCancellationToken(cancellationToken));
@@ -41,28 +41,35 @@ public abstract class EfCoreDocumentRepositoryBase : EfCoreRepository<HCDbContex
 
     public virtual async Task<List<DocumentWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? no = null, string? title = null, string? currentStatus = null, DateTime? completedTimeMin = null, DateTime? completedTimeMax = null, string? storageNumber = null, DateTime? incommingDateMin = null, DateTime? incommingDateMax = null, Guid? fieldId = null, Guid? unitId = null, Guid? workflowId = null, Guid? statusId = null, Guid? typeId = null, Guid? urgencyLevelId = null, Guid? secrecyLevelId = null, DocumentSourceType? sourceType = null, Guid? creatorId = null, List<Guid>? documentIds = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)
     {
-        var query = await GetQueryForNavigationPropertiesAsync();
+        var query = await GetQueryForNavigationPropertiesAsync(trackEntities: false);
         query = ApplyFilter(query, filterText, no, title, currentStatus, completedTimeMin, completedTimeMax, storageNumber, incommingDateMin, incommingDateMax, fieldId, unitId, workflowId, statusId, typeId, urgencyLevelId, secrecyLevelId, sourceType, creatorId, documentIds);
         query = query.OrderBy(string.IsNullOrWhiteSpace(sorting) ? DocumentConsts.GetDefaultSorting(true) : sorting);
         return await query.PageBy(skipCount, maxResultCount).ToListAsync(cancellationToken);
     }
 
-    protected virtual async Task<IQueryable<DocumentWithNavigationProperties>> GetQueryForNavigationPropertiesAsync()
+    protected virtual async Task<IQueryable<DocumentWithNavigationProperties>> GetQueryForNavigationPropertiesAsync(bool trackEntities = true)
     {
-        return from document in (await GetDbSetAsync())
-               join field in (await GetDbContextAsync()).Set<MasterData>() on document.FieldId equals field.Id into masterDatas
+        var dbContext = await GetDbContextAsync();
+        var documents = await GetDbSetAsync();
+        var documentQuery = trackEntities ? documents : documents.AsNoTracking();
+        var masterData = dbContext.Set<MasterData>().AsNoTracking();
+        var units = dbContext.Set<Unit>().AsNoTracking();
+        var workflows = dbContext.Set<Workflow>().AsNoTracking();
+
+        return from document in documentQuery
+               join field in masterData on document.FieldId equals field.Id into masterDatas
                from field in masterDatas.DefaultIfEmpty()
-               join unit in (await GetDbContextAsync()).Set<Unit>() on document.UnitId equals unit.Id into units
-               from unit in units.DefaultIfEmpty()
-               join workflow in (await GetDbContextAsync()).Set<Workflow>() on document.WorkflowId equals workflow.Id into workflows
-               from workflow in workflows.DefaultIfEmpty()
-               join status in (await GetDbContextAsync()).Set<MasterData>() on document.StatusId equals status.Id into masterDatas1
+               join unit in units on document.UnitId equals unit.Id into unitJoin
+               from unit in unitJoin.DefaultIfEmpty()
+               join workflow in workflows on document.WorkflowId equals workflow.Id into workflowsJoin
+               from workflow in workflowsJoin.DefaultIfEmpty()
+               join status in masterData on document.StatusId equals status.Id into masterDatas1
                from status in masterDatas1.DefaultIfEmpty()
-               join type in (await GetDbContextAsync()).Set<MasterData>() on document.TypeId equals type.Id into masterDatas2
+               join type in masterData on document.TypeId equals type.Id into masterDatas2
                from type in masterDatas2.DefaultIfEmpty()
-               join urgencyLevel in (await GetDbContextAsync()).Set<MasterData>() on document.UrgencyLevelId equals urgencyLevel.Id into masterDatas3
+               join urgencyLevel in masterData on document.UrgencyLevelId equals urgencyLevel.Id into masterDatas3
                from urgencyLevel in masterDatas3.DefaultIfEmpty()
-               join secrecyLevel in (await GetDbContextAsync()).Set<MasterData>() on document.SecrecyLevelId equals secrecyLevel.Id into masterDatas4
+               join secrecyLevel in masterData on document.SecrecyLevelId equals secrecyLevel.Id into masterDatas4
                from secrecyLevel in masterDatas4.DefaultIfEmpty()
                select new DocumentWithNavigationProperties
                {
@@ -82,8 +89,13 @@ public abstract class EfCoreDocumentRepositoryBase : EfCoreRepository<HCDbContex
         var hasCreator = creatorId != null && creatorId != Guid.Empty;
         var hasDocumentIds = documentIds != null && documentIds.Count > 0;
 
+        var filterPattern = string.IsNullOrWhiteSpace(filterText) ? null : "%" + filterText + "%";
         var queryWithFilters = query
-            .WhereIf(!string.IsNullOrWhiteSpace(filterText), e => e.Document.No!.Contains(filterText!) || e.Document.Title!.Contains(filterText!) || e.Document.CurrentStatus!.Contains(filterText!) || e.Document.StorageNumber!.Contains(filterText!))
+            .WhereIf(filterPattern != null, e =>
+                (e.Document.No != null && EF.Functions.ILike(e.Document.No, filterPattern!)) ||
+                (e.Document.Title != null && EF.Functions.ILike(e.Document.Title, filterPattern!)) ||
+                (e.Document.CurrentStatus != null && EF.Functions.ILike(e.Document.CurrentStatus, filterPattern!)) ||
+                (e.Document.StorageNumber != null && EF.Functions.ILike(e.Document.StorageNumber, filterPattern!)))
             .WhereIf(!string.IsNullOrWhiteSpace(no), e => e.Document.No.Contains(no))
             .WhereIf(!string.IsNullOrWhiteSpace(title), e => e.Document.Title.Contains(title))
             .WhereIf(!string.IsNullOrWhiteSpace(currentStatus), e => e.Document.CurrentStatus.Contains(currentStatus))
@@ -113,22 +125,27 @@ public abstract class EfCoreDocumentRepositoryBase : EfCoreRepository<HCDbContex
 
     public virtual async Task<List<Document>> GetListAsync(string? filterText = null, string? no = null, string? title = null, string? currentStatus = null, DateTime? completedTimeMin = null, DateTime? completedTimeMax = null, string? storageNumber = null, DateTime? incommingDateMin = null, DateTime? incommingDateMax = null, Guid? fieldId = null, Guid? unitId = null, Guid? workflowId = null, Guid? statusId = null, Guid? typeId = null, Guid? urgencyLevelId = null, Guid? secrecyLevelId = null, DocumentSourceType? sourceType = null, Guid? creatorId = null, List<Guid>? documentIds = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)
     {
-        var query = ApplyFilter((await GetQueryableAsync()), filterText, no, title, currentStatus, completedTimeMin, completedTimeMax, storageNumber, incommingDateMin, incommingDateMax, fieldId, unitId, workflowId, statusId, typeId, urgencyLevelId, secrecyLevelId, sourceType, creatorId, documentIds);
+        var query = ApplyFilter((await GetQueryableAsync()).AsNoTracking(), filterText, no, title, currentStatus, completedTimeMin, completedTimeMax, storageNumber, incommingDateMin, incommingDateMax, fieldId, unitId, workflowId, statusId, typeId, urgencyLevelId, secrecyLevelId, sourceType, creatorId, documentIds);
         query = query.OrderBy(string.IsNullOrWhiteSpace(sorting) ? DocumentConsts.GetDefaultSorting(false) : sorting);
         return await query.PageBy(skipCount, maxResultCount).ToListAsync(cancellationToken);
     }
 
     public virtual async Task<long> GetCountAsync(string? filterText = null, string? no = null, string? title = null, string? currentStatus = null, DateTime? completedTimeMin = null, DateTime? completedTimeMax = null, string? storageNumber = null, DateTime? incommingDateMin = null, DateTime? incommingDateMax = null, Guid? fieldId = null, Guid? unitId = null, Guid? workflowId = null, Guid? statusId = null, Guid? typeId = null, Guid? urgencyLevelId = null, Guid? secrecyLevelId = null, DocumentSourceType? sourceType = null, Guid? creatorId = null, List<Guid>? documentIds = null, CancellationToken cancellationToken = default)
     {
-        var query = await GetQueryForNavigationPropertiesAsync();
+        var query = await GetQueryForNavigationPropertiesAsync(trackEntities: false);
         query = ApplyFilter(query, filterText, no, title, currentStatus, completedTimeMin, completedTimeMax, storageNumber, incommingDateMin, incommingDateMax, fieldId, unitId, workflowId, statusId, typeId, urgencyLevelId, secrecyLevelId, sourceType, creatorId, documentIds);
         return await query.LongCountAsync(GetCancellationToken(cancellationToken));
     }
 
     protected virtual IQueryable<Document> ApplyFilter(IQueryable<Document> query, string? filterText = null, string? no = null, string? title = null, string? currentStatus = null, DateTime? completedTimeMin = null, DateTime? completedTimeMax = null, string? storageNumber = null, DateTime? incommingDateMin = null, DateTime? incommingDateMax = null, Guid? fieldId = null, Guid? unitId = null, Guid? workflowId = null, Guid? statusId = null, Guid? typeId = null, Guid? urgencyLevelId = null, Guid? secrecyLevelId = null, DocumentSourceType? sourceType = null, Guid? creatorId = null, List<Guid>? documentIds = null)
     {
+        var filterPattern = string.IsNullOrWhiteSpace(filterText) ? null : "%" + filterText + "%";
         var queryWithFilters = query
-            .WhereIf(!string.IsNullOrWhiteSpace(filterText), e => e.No!.Contains(filterText!) || e.Title!.Contains(filterText!) || e.CurrentStatus!.Contains(filterText!) || e.StorageNumber!.Contains(filterText!))
+            .WhereIf(filterPattern != null, e =>
+                (e.No != null && EF.Functions.ILike(e.No, filterPattern!)) ||
+                (e.Title != null && EF.Functions.ILike(e.Title, filterPattern!)) ||
+                (e.CurrentStatus != null && EF.Functions.ILike(e.CurrentStatus, filterPattern!)) ||
+                (e.StorageNumber != null && EF.Functions.ILike(e.StorageNumber, filterPattern!)))
             .WhereIf(!string.IsNullOrWhiteSpace(no), e => e.No.Contains(no))
             .WhereIf(!string.IsNullOrWhiteSpace(title), e => e.Title.Contains(title))
             .WhereIf(!string.IsNullOrWhiteSpace(currentStatus), e => e.CurrentStatus.Contains(currentStatus))

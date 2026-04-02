@@ -28,11 +28,13 @@
 @using System.IO
 @using System.Security.Cryptography
 @using System.Text
+@using HC.Blazor.Services
 @using HC.Blazor.Shared
 @inherits HCComponentBase
 @inject IDocumentsAppService DocumentsAppService
 @inject IDocumentFilesAppService DocumentFilesAppService
 @inject IMasterDatasAppService MasterDatasAppService
+@inject IDocumentsPageLookupCache DocumentsPageLookupCache
 @inject IUiMessageService UiMessageService
 @inject IBlockUiService BlockUiService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH

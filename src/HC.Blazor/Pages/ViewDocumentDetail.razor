@@ -21,6 +21,7 @@
 @using Volo.Abp.BlazoriseUI
 @using Volo.Abp.BlazoriseUI.Components
 @using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
+@using HC.Blazor.Services
 @using HC.Permissions
 @using HC.MasterDatas
 @using HC.Units
@@ -37,6 +38,7 @@
 @inject IDocumentsAppService DocumentsAppService
 @inject IDocumentFilesAppService DocumentFilesAppService
 @inject IMasterDatasAppService MasterDatasAppService
+@inject IDocumentsPageLookupCache DocumentsPageLookupCache
 @inject IDocumentAssignmentsAppService DocumentAssignmentsAppService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject NavigationManager NavigationManager
