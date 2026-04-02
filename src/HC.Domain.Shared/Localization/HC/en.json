@@ -1044,6 +1044,7 @@
 
     "Menu:DocumentSigning": "Document Signing",
     "DocumentSigning": "Document Signing",
+    "WorkflowNotificationItemNotFound": "Cannot open this signing item from the notification. It may not be in your list, you may not have access, or the document was removed.",
     "FromDate": "From Date",
     "ToDate": "To Date",
     "SearchByTitleOrNumber": "Search by title or document number",

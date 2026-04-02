@@ -54,7 +54,7 @@ public partial class MyDocuments
             await SetPermissionsAsync();
             await SetBreadcrumbItemsAsync();
             await SetToolbarItemsAsync();
-            await GetDocumentHistoriesAsync();
+            // Document histories load only via DataGrid ReadData -> OnDataGridReadAsync (avoid duplicate GET on first paint)
             await InvokeAsync(StateHasChanged);
         }
         Logger.LogInformation("MyDocuments OnAfterRenderAsync end");
@@ -85,7 +85,10 @@ public partial class MyDocuments
 
     private async Task OnDataGridReadAsync(DataGridReadDataEventArgs<DocumentHistoryWithNavigationPropertiesDto> e)
     {
+        CurrentSorting = e.Columns.Where(c => c.SortDirection != SortDirection.Default).Select(c => c.Field + (c.SortDirection == SortDirection.Descending ? " DESC" : "")).JoinAsString(",");
+        CurrentPage = e.Page;
         await GetDocumentHistoriesAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task OnFilterTextChangedAsync(string value)

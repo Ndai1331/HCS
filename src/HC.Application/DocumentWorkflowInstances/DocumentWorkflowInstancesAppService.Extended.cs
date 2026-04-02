@@ -1856,6 +1856,12 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 break;
         }
 
+        if (input.FocusDocumentId.HasValue)
+        {
+            var focusId = input.FocusDocumentId.Value;
+            modeFilteredQuery = modeFilteredQuery.Where(d => d.Id == focusId);
+        }
+
         // ===== STEP 5: Count + page at DB level =====
         var totalCount = await AsyncExecuter.CountAsync(modeFilteredQuery);
         var pagedDocuments = await AsyncExecuter.ToListAsync(

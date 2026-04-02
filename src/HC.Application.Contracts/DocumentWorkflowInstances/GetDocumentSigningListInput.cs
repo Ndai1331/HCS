@@ -18,6 +18,11 @@ public class GetDocumentSigningListInput : PagedAndSortedResultRequestDto
     public DateTime? FromDate { get; set; }
 
     public DateTime? ToDate { get; set; }
+
+    /// <summary>
+    /// When set, restricts the query to this document (e.g. deep link / notification). Uses Skip/Take on that subset.
+    /// </summary>
+    public Guid? FocusDocumentId { get; set; }
 }
 
 /// <summary>

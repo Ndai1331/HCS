@@ -1097,6 +1097,7 @@
 
     "Menu:DocumentSigning": "Ký duyệt",
     "DocumentSigning": "Trình ký văn bản",
+    "WorkflowNotificationItemNotFound": "Không mở được hồ sơ trình ký từ thông báo. Văn bản có thể không nằm trong danh sách của bạn, bạn không có quyền truy cập, hoặc văn bản đã bị xóa.",
     "FromDate": "Từ ngày",
     "ToDate": "Đến ngày",
     "SearchByTitleOrNumber": "Tìm theo tiêu đề hoặc số văn bản",

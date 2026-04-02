@@ -97,7 +97,7 @@ public abstract class MasterDataPageBase : HCComponentBase
         {
             await SetBreadcrumbItemsAsync();
             await SetToolbarItemsAsync();
-            await GetMasterDatasAsync();
+            // List loads only via DataGrid ReadData -> OnDataGridReadAsync (avoid duplicate GET on first paint)
             await InvokeAsync(StateHasChanged);
         }
     }

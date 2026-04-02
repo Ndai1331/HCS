@@ -99,9 +99,8 @@ public partial class Workflows
                 SelectedFilterWorkflowDefinition = new List<LookupDto<Guid>> { workflowDef };
             }
         }
-        
-        // Load workflows on initialization
-        await GetWorkflowsAsync();
+
+        // List loads only via DataGrid ReadData -> OnDataGridReadAsync (avoid duplicate GET on first paint)
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

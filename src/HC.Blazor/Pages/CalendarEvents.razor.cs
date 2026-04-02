@@ -153,8 +153,6 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
 
 
     private const string FullCalendarMonthView = "dayGridMonth";
-    private const string FullCalendarWeekView = "timeGridWeek";
-    private const string FullCalendarDayView = "timeGridDay";
     private const string FullCalendarElementId = "hc-calendar-events-fullcalendar";
 
     // Calendar properties
@@ -215,11 +213,7 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
         {
             await SetBreadcrumbItemsAsync();
             await SetToolbarItemsAsync();
-            // Ensure data is loaded for both views
-            if (!CalendarEventList.Any())
-            {
-                await GetCalendarEventsAsync();
-            }
+            // Events are loaded in OnInitializedAsync (calendar view). List view loads via ReadData -> OnDataGridReadAsync.
         }
 
         if (IsListView)
@@ -1587,11 +1581,6 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
 
     private void EnsureSelectedCalendarDate()
     {
-        if (!string.Equals(SelectedSchedulerView, FullCalendarMonthView, StringComparison.Ordinal))
-        {
-            return;
-        }
-
         var firstDayOfMonth = new DateOnly(SelectedSchedulerDate.Year, SelectedSchedulerDate.Month, 1);
         if (SelectedSchedulerDate != firstDayOfMonth)
         {
@@ -1608,12 +1597,7 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
 
         var selectedDate = SelectedSchedulerDate.ToDateTime(TimeOnly.MinValue);
 
-        return SelectedSchedulerView switch
-        {
-            FullCalendarWeekView => (GetStartOfWeek(selectedDate), GetStartOfWeek(selectedDate).AddDays(7)),
-            FullCalendarDayView => (selectedDate.Date, selectedDate.Date.AddDays(1)),
-            _ => (new DateTime(selectedDate.Year, selectedDate.Month, 1), new DateTime(selectedDate.Year, selectedDate.Month, 1).AddMonths(1))
-        };
+        return (new DateTime(selectedDate.Year, selectedDate.Month, 1), new DateTime(selectedDate.Year, selectedDate.Month, 1).AddMonths(1));
     }
 
     private async Task SyncFullCalendarAsync()
@@ -1631,9 +1615,7 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
                 buttonText = new
                 {
                     today = L["Today"].Value,
-                    month = L["Month"].Value,
-                    week = L["Week"].Value,
-                    day = L["Day"].Value
+                    month = L["Month"].Value
                 },
                 events = Appointments.Select(appointment => new
                 {
@@ -1671,20 +1653,10 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
         CalendarSyncRequired = false;
     }
 
-    private static DateTime GetStartOfWeek(DateTime value)
+    private static string NormalizeFullCalendarView(string? _)
     {
-        var diff = ((int)value.DayOfWeek + 6) % 7;
-        return value.Date.AddDays(-diff);
-    }
-
-    private static string NormalizeFullCalendarView(string? viewType)
-    {
-        return viewType switch
-        {
-            FullCalendarWeekView => FullCalendarWeekView,
-            FullCalendarDayView => FullCalendarDayView,
-            _ => FullCalendarMonthView
-        };
+        // UI exposes month grid only; ignore any legacy/other view types from the calendar.
+        return FullCalendarMonthView;
     }
 
     private static DateTime ParseFullCalendarDate(string value)

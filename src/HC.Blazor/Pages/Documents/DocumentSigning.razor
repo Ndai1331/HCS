@@ -600,29 +600,33 @@
                                     @* Note - content is used for <<NoteContentXX>> placeholder when signing *@
                                     <Field>
                                         <FieldLabel class="fw-bold">@L["Note"]</FieldLabel>
-                                        <RichTextEdit @ref="ActionNoteEditorRef"
-                                                      @bind-Value="@ActionNote"
-                                                      Theme="RichTextEditTheme.Snow"
-                                                      PlaceHolder="@L["EnterNoteOptional"]"
-                                                      ToolbarPosition="Placement.Bottom">
-                                            <Toolbar>
-                                                <RichTextEditToolbarGroup>
-                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Bold" />
-                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Italic" />
-                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Underline" />
-                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Strike" />
-                                                </RichTextEditToolbarGroup>
-                                                <RichTextEditToolbarGroup>
-                                                    <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="ordered" />
-                                                    <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="bullet" />
-                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Link" />
-                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Clean" />
-                                                </RichTextEditToolbarGroup>
-                                                <RichTextEditToolbarGroup>
-                                                    <RichTextEditToolbarButton Action="RichTextEditAction.Table" />
-                                                </RichTextEditToolbarGroup>
-                                            </Toolbar>
-                                        </RichTextEdit>
+                                        @if (_showActionModalRichTextEditors)
+                                        {
+                                            <RichTextEdit @key="_actionModalEditorSessionKey"
+                                                          @ref="ActionNoteEditorRef"
+                                                          @bind-Value="@ActionNote"
+                                                          Theme="RichTextEditTheme.Snow"
+                                                          PlaceHolder="@L["EnterNoteOptional"]"
+                                                          ToolbarPosition="Placement.Bottom">
+                                                <Toolbar>
+                                                    <RichTextEditToolbarGroup>
+                                                        <RichTextEditToolbarButton Action="RichTextEditAction.Bold" />
+                                                        <RichTextEditToolbarButton Action="RichTextEditAction.Italic" />
+                                                        <RichTextEditToolbarButton Action="RichTextEditAction.Underline" />
+                                                        <RichTextEditToolbarButton Action="RichTextEditAction.Strike" />
+                                                    </RichTextEditToolbarGroup>
+                                                    <RichTextEditToolbarGroup>
+                                                        <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="ordered" />
+                                                        <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="bullet" />
+                                                        <RichTextEditToolbarButton Action="RichTextEditAction.Link" />
+                                                        <RichTextEditToolbarButton Action="RichTextEditAction.Clean" />
+                                                    </RichTextEditToolbarGroup>
+                                                    <RichTextEditToolbarGroup>
+                                                        <RichTextEditToolbarButton Action="RichTextEditAction.Table" />
+                                                    </RichTextEditToolbarGroup>
+                                                </Toolbar>
+                                            </RichTextEdit>
+                                        }
                                     </Field>
                                 </fieldset>
                             }
@@ -1065,29 +1069,33 @@
                 @* Signing Content (editable, pre-populated) *@
                 <Field Class="mt-2">
                     <FieldLabel>@L["SigningContent"]</FieldLabel>
-                    <RichTextEdit @ref="ResubmitSigningContentEditorRef"
-                                  @bind-Value="@ResubmitSigningContent"
-                                  Theme="RichTextEditTheme.Snow"
-                                  PlaceHolder="@L["EnterSigningContent"]"
-                                  ToolbarPosition="Placement.Bottom">
-                        <Toolbar>
-                            <RichTextEditToolbarGroup>
-                                <RichTextEditToolbarButton Action="RichTextEditAction.Bold" />
-                                <RichTextEditToolbarButton Action="RichTextEditAction.Italic" />
-                                <RichTextEditToolbarButton Action="RichTextEditAction.Underline" />
-                                <RichTextEditToolbarButton Action="RichTextEditAction.Strike" />
-                            </RichTextEditToolbarGroup>
-                            <RichTextEditToolbarGroup>
-                                <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="ordered" />
-                                <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="bullet" />
-                                <RichTextEditToolbarButton Action="RichTextEditAction.Link" />
-                                <RichTextEditToolbarButton Action="RichTextEditAction.Clean" />
-                            </RichTextEditToolbarGroup>
-                            <RichTextEditToolbarGroup>
-                                <RichTextEditToolbarButton Action="RichTextEditAction.Table" />
-                            </RichTextEditToolbarGroup>
-                        </Toolbar>
-                    </RichTextEdit>
+                    @if (_showResubmitModalRichTextEditors)
+                    {
+                        <RichTextEdit @key="_resubmitModalEditorSessionKey"
+                                      @ref="ResubmitSigningContentEditorRef"
+                                      @bind-Value="@ResubmitSigningContent"
+                                      Theme="RichTextEditTheme.Snow"
+                                      PlaceHolder="@L["EnterSigningContent"]"
+                                      ToolbarPosition="Placement.Bottom">
+                            <Toolbar>
+                                <RichTextEditToolbarGroup>
+                                    <RichTextEditToolbarButton Action="RichTextEditAction.Bold" />
+                                    <RichTextEditToolbarButton Action="RichTextEditAction.Italic" />
+                                    <RichTextEditToolbarButton Action="RichTextEditAction.Underline" />
+                                    <RichTextEditToolbarButton Action="RichTextEditAction.Strike" />
+                                </RichTextEditToolbarGroup>
+                                <RichTextEditToolbarGroup>
+                                    <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="ordered" />
+                                    <RichTextEditToolbarButton Action="RichTextEditAction.List" Value="bullet" />
+                                    <RichTextEditToolbarButton Action="RichTextEditAction.Link" />
+                                    <RichTextEditToolbarButton Action="RichTextEditAction.Clean" />
+                                </RichTextEditToolbarGroup>
+                                <RichTextEditToolbarGroup>
+                                    <RichTextEditToolbarButton Action="RichTextEditAction.Table" />
+                                </RichTextEditToolbarGroup>
+                            </Toolbar>
+                        </RichTextEdit>
+                    }
                 </Field>
 
                 @* Document Files (read-only - signing PDF, template files) *@

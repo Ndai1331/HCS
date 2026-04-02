@@ -73,8 +73,33 @@
         margin-bottom: 1rem;
     }
 
-    .hc-fullcalendar-host .fc-button {
+    .hc-fullcalendar-host .fc .fc-button {
         text-transform: capitalize;
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+        color: var(--bs-btn-color, #fff) !important;
+    }
+
+    .hc-fullcalendar-host .fc .fc-button:hover:not(:disabled) {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+        filter: brightness(0.92);
+        color: var(--bs-btn-color, #fff) !important;
+    }
+
+    .hc-fullcalendar-host .fc .fc-button:disabled {
+        opacity: 0.65;
+    }
+
+    .hc-fullcalendar-host .fc .fc-button:focus {
+        box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb, 13, 110, 253), 0.35);
+    }
+
+    .hc-fullcalendar-host .fc .fc-button-primary:not(:disabled):active,
+    .hc-fullcalendar-host .fc .fc-button-primary:not(:disabled).fc-button-active {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+        color: var(--bs-btn-color, #fff) !important;
     }
 
     .hc-fullcalendar-host .fc-daygrid-day,

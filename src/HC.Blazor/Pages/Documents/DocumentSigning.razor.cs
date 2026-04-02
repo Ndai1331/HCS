@@ -139,6 +139,14 @@ public partial class DocumentSigning
     private List<Guid> ResubmitDeleteFileIds { get; set; } = new();
     private int ResubmitModalResetKey { get; set; }
 
+    /// <summary>
+    /// Defer RichTextEdit mount until modal is shown so Quill initializes in a visible DOM (avoids Blazorise dispose NRE).
+    /// </summary>
+    private bool _showActionModalRichTextEditors;
+    private int _actionModalEditorSessionKey;
+    private bool _showResubmitModalRichTextEditors;
+    private int _resubmitModalEditorSessionKey;
+
     #endregion
 
     #region Inner Classes
@@ -529,26 +537,64 @@ public partial class DocumentSigning
 
         HasTriedAutoOpenFromNotification = true;
 
-        var relatedId = NotificationRelatedId.Value;
-        var targetDocument = DocumentSigningList.FirstOrDefault(x =>
-            (x.WorkflowInstanceId.HasValue && x.WorkflowInstanceId.Value == relatedId)
-            || x.DocumentId == relatedId);
-
-        if (targetDocument == null)
+        try
         {
-            Logger.LogInformation("Auto-open workflow modal skipped because related item {RelatedId} is not found in current page.", relatedId);
-            return;
+            var relatedId = NotificationRelatedId.Value;
+            var targetDocument = DocumentSigningList.FirstOrDefault(x =>
+                (x.WorkflowInstanceId.HasValue && x.WorkflowInstanceId.Value == relatedId)
+                || x.DocumentId == relatedId);
+
+            if (targetDocument == null)
+            {
+                targetDocument = await FetchSigningItemForNotificationAsync(relatedId);
+            }
+
+            if (targetDocument == null)
+            {
+                Logger.LogInformation(
+                    "Auto-open workflow modal skipped: related id {RelatedId} not found in signing list.",
+                    relatedId);
+                await UiMessageService.Warn(L["WorkflowNotificationItemNotFound"],
+                    options: new Action<UiMessageOptions>(o => o.OkButtonText = L["Ok"]));
+                return;
+            }
+
+            var canProcess = targetDocument.CanAct
+                && targetDocument.MyAssignmentId.HasValue
+                && string.Equals(targetDocument.MyAssignmentStatus, nameof(DocumentAssignmentStatus.PENDING), StringComparison.OrdinalIgnoreCase);
+
+            await ShowActionModalAsync(targetDocument, viewOnly: !canProcess);
         }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Auto-open workflow modal from notification failed.");
+            await HandleErrorAsync(ex);
+        }
+    }
 
-        var canProcess = targetDocument.CanAct
-            && targetDocument.MyAssignmentId.HasValue
-            && string.Equals(targetDocument.MyAssignmentStatus, nameof(DocumentAssignmentStatus.PENDING), StringComparison.OrdinalIgnoreCase);
-
-        await ShowActionModalAsync(targetDocument, viewOnly: !canProcess);
+    /// <summary>
+    /// Loads a single signing row by document or workflow id (full list scope, no date filter) for notification deep links.
+    /// </summary>
+    private async Task<DocumentSigningItemDto?> FetchSigningItemForNotificationAsync(Guid relatedId)
+    {
+        var input = new GetDocumentSigningListInput
+        {
+            FilterMode = DocumentSigningFilterMode.All,
+            FromDate = null,
+            ToDate = null,
+            FilterText = null,
+            FocusDocumentId = relatedId,
+            MaxResultCount = 1,
+            SkipCount = 0
+        };
+        var result = await DocumentWorkflowInstancesAppService.GetDocumentSigningListAsync(input);
+        return result.Items.FirstOrDefault();
     }
 
     private async Task ShowActionModalAsync(DocumentSigningItemDto document, bool viewOnly = false)
     {
+        var loadSucceeded = false;
+        _showActionModalRichTextEditors = false;
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
@@ -609,21 +655,40 @@ public partial class DocumentSigning
                     Logger.LogError(ex, "Error checking overdue for workflow instance {InstanceId}", document.WorkflowInstanceId.Value);
                 }
             }
+
+            loadSucceeded = true;
         }
         catch (Exception ex)
         {
+            SelectedDocumentForAction = null;
+            _showActionModalRichTextEditors = false;
             await HandleErrorAsync(ex);
         }
         finally
         {
             await BlockUiService.UnBlock();
-            await InvokeAsync(WorkflowActionModal.Show);
+            if (loadSucceeded)
+            {
+                _actionModalEditorSessionKey++;
+                await InvokeAsync(WorkflowActionModal.Show);
+                await Task.Delay(100);
+                _showActionModalRichTextEditors = true;
+                await InvokeAsync(StateHasChanged);
+            }
         }
+    }
+
+    private async Task HideWorkflowActionModalAsync()
+    {
+        _showActionModalRichTextEditors = false;
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(50);
+        await InvokeAsync(WorkflowActionModal.Hide);
     }
 
     private async Task CloseActionModalAsync()
     {
-        await InvokeAsync(WorkflowActionModal.Hide);
+        await HideWorkflowActionModalAsync();
     }
 
     private async Task ConfirmWorkflowActionAsync()
@@ -722,7 +787,7 @@ public partial class DocumentSigning
 
             await UiMessageService.Success(successMessage,
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-            await InvokeAsync(WorkflowActionModal.Hide);
+            await HideWorkflowActionModalAsync();
             await LoadDocumentSigningListAsync();
             await InvokeAsync(StateHasChanged);
         }
@@ -746,6 +811,8 @@ public partial class DocumentSigning
     /// </summary>
     private async Task ShowResubmitModalAsync(DocumentSigningItemDto document)
     {
+        var loadSucceeded = false;
+        _showResubmitModalRichTextEditors = false;
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
@@ -785,21 +852,40 @@ public partial class DocumentSigning
                         .FirstOrDefault(d => d.Document.Id == ReturnedWorkflowInfo.DocumentId);
                 }
             }
+
+            loadSucceeded = true;
         }
         catch (Exception ex)
         {
+            ReturnedWorkflowInfo = null;
+            _showResubmitModalRichTextEditors = false;
             await HandleErrorAsync(ex);
         }
         finally
         {
             await BlockUiService.UnBlock();
-            await InvokeAsync(ResubmitWorkflowModal.Show);
+            if (loadSucceeded)
+            {
+                _resubmitModalEditorSessionKey++;
+                await InvokeAsync(ResubmitWorkflowModal.Show);
+                await Task.Delay(100);
+                _showResubmitModalRichTextEditors = true;
+                await InvokeAsync(StateHasChanged);
+            }
         }
+    }
+
+    private async Task HideResubmitWorkflowModalAsync()
+    {
+        _showResubmitModalRichTextEditors = false;
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(50);
+        await InvokeAsync(ResubmitWorkflowModal.Hide);
     }
 
     private async Task CloseResubmitModalAsync()
     {
-        await InvokeAsync(ResubmitWorkflowModal.Hide);
+        await HideResubmitWorkflowModalAsync();
     }
 
     private void OnResubmitDocumentSelected(Guid? documentId)
@@ -928,7 +1014,7 @@ public partial class DocumentSigning
 
             await UiMessageService.Success(L["WorkflowResubmittedSuccessfully"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-            await InvokeAsync(ResubmitWorkflowModal.Hide);
+            await HideResubmitWorkflowModalAsync();
             await LoadDocumentSigningListAsync();
             await InvokeAsync(StateHasChanged);
         }
