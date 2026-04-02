@@ -350,7 +350,7 @@ public partial class Projects : HCComponentBase
         {
             Logger?.LogInformation("=== GenerateNextProjectCodeAsync: Starting ===");
             int maxNumber = 0;
-            const int pageSize = 1000; // Process in batches
+            const int pageSize = 200; // Process in batches
             int skipCount = 0;
             bool hasMore = true;
             int batchNumber = 0;
@@ -625,7 +625,7 @@ public partial class Projects : HCComponentBase
     {
         var allChildTasks = new List<ProjectTaskWithNavigationPropertiesDto>();
         var skipCount = 0;
-        const int batchSize = 1000;
+        const int batchSize = 200;
         var hasMore = true;
 
         while (hasMore)

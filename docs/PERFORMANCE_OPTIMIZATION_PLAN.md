@@ -56,6 +56,12 @@
 **Kỳ vọng**
 - Giảm overhead không cần thiết khi build expression/query.
 
+**Đã áp dụng (module ưu tiên)**  
+- `EfCoreCalendarEventParticipantRepository`: một `GetDbContextAsync()`, reuse `Set<CalendarEvent>()`, `Set<IdentityUser>()`.  
+- `EfCoreProjectRepository`: overload không tham số **delegate** sang overload có filter (tránh `memberGroup.ToList()` trong projection, thống nhất SQL với đường list/count).  
+- `EfCoreProjectTaskRepository`: overload không tham số **delegate** sang overload đầy đủ (một nguồn query, có `AsNoTracking` + filter sớm).  
+- Document + Chat conversation repo: đã rà/trước đó có tối ưu tương ứng; các danh mục khác ít tải có thể bỏ qua nếu không đo được vấn đề.
+
 ---
 
 ### P1 — Application Service
@@ -162,6 +168,57 @@
 ## 5) Checklist triển khai
 - [ ] Bổ sung benchmark dữ liệu lớn (documents/conversations thực tế).
 - [ ] Tối ưu query + index migration cho search text.
-- [ ] Tối ưu service logic gửi văn bản theo batch.
-- [ ] Tối ưu cache lookup phía Blazor.
+- [x] Tối ưu service logic gửi văn bản theo batch (và một phần Chat / workflow document — xem mục 6).
+- [x] Tối ưu cache lookup phía Blazor (một phần; giới hạn lookup ~200 trên các màn nhiều lookup).
 - [ ] So sánh metrics trước/sau và chốt acceptance criteria.
+
+## 6) Ghi chú triển khai đã áp dụng (tóm tắt lợi ích)
+
+Phần này ghi lại các hướng đã chỉnh trong code để đối chiếu với mục 2–3; không thay thế việc đo metrics (mục 4).
+
+### 6.1 Chat — tần suất cao (`ConversationAppService`, EF conversation, lookup user)
+
+**Đã làm (hướng chính)**  
+- Batch / giảm lặp query khi validate hoặc gán user (thay nhiều `FindByIdAsync` đơn lẻ khi phù hợp).  
+- `InsertManyAsync` / `UpdateManyAsync` cho message và member (unread) khi có nhiều bản ghi trong một thao tác.  
+- `EfCoreConversationRepository.GetListByUserIdAsync`: preload thành viên / user theo lô, tránh **N+1** trong vòng lặp từng conversation.  
+- `ChatUserLookupService.GetListByIdsAsync`: một round-trip `GetListAsync(ids)` trong UoW thay vì lookup từng id; interface `IChatUserLookupService` mở rộng method batch.
+
+**Lợi ích**  
+- Ít round-trip DB trên luồng chat; danh sách conversation dài ổn định hơn về số query; ghi nhận/giải phóng tải khi spike tin nhắn.
+
+---
+
+### 6.2 `DocumentWorkflowInstances` — file list + status lookup
+
+**File:** `DocumentWorkflowInstancesAppService.Extended.cs`  
+
+**Đã làm**  
+- `IsDocumentSourceFileWordFormatAsync`: `GetQueryableAsync` + `OrderBy(UploadedAt)` + `AsyncExecuter.FirstOrDefaultAsync` — không `GetListAsync` toàn bộ file.  
+- Resolve signing file khi submit: `AnyAsync` / `FirstOrDefaultAsync` theo nhánh (ưu tiên id duplicate / `DocumentFileId` / file đầu theo `UploadedAt`).  
+- Resubmit + template: một query lấy file template khớp `Path`, `!IsSigned`, `OrderByDescending(UploadedAt)` thay list đầy đủ.  
+- Resubmit — chọn file mặc định: `OrderByDescending(UploadedAt)` + `FirstOrDefaultAsync`.  
+- `TryApplyDocumentStatusByCodeAsync`: `GetQueryableAsync` + `FirstOrDefaultAsync` trên MasterData (cùng pattern `DocumentsAppService`).  
+- Cleanup assignment (re-submit / returned): `UpdateManyAsync` sau khi gán `IsCurrent = false` thay vòng `UpdateAsync` từng entity.
+
+**Lợi ích**  
+- Document nhiều file: không kéo toàn bộ `DocumentFile` vào RAM; tra status chỉ một hàng; nhiều assignment cập nhật trong ít lần gọi repository hơn.
+
+---
+
+### 6.3 Blazor — giới hạn lookup
+
+**Đã làm (phía team)**  
+- Giảm `MaxResultCount` cố định ~**1000 → ~200** trên các màn nhiều lookup (Calendar, Workflow, Index, …), kết hợp các tối ưu cache/API by-id nếu đã có.
+
+**Lợi ích**  
+- Payload nhỏ hơn, parse/render nhanh hơn, ít áp lực bộ nhớ trình duyệt và tải server khi nhiều lookup song song.
+
+---
+
+### 6.4 EF — `GetQueryForNavigationProperties` (Calendar, Project, ProjectTask)
+
+Chi tiết kỹ thuật nằm trong mục **2.3 / Đã áp dụng**.  
+
+**Lợi ích**  
+- Một `DbContext` cho join calendar participant; project/task tránh duplicate query shape và tránh `ToList()` trong tree không cần thiết; dễ bảo trì một đường query có filter + `AsNoTracking` cho list lớn.

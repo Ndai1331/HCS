@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
@@ -17,5 +18,13 @@ public class CalendarEventParticipantController : CalendarEventParticipantContro
 {
     public CalendarEventParticipantController(ICalendarEventParticipantsAppService calendarEventParticipantsAppService) : base(calendarEventParticipantsAppService)
     {
+    }
+
+    [HttpPost]
+    [Route("participant-counts-by-calendar-event-ids")]
+    public virtual Task<List<CalendarEventParticipantCountByEventDto>> CalculateParticipantCountsByCalendarEventIdsAsync(
+        GetCalendarEventParticipantCountsInput input)
+    {
+        return _calendarEventParticipantsAppService.CalculateParticipantCountsByCalendarEventIdsAsync(input);
     }
 }

@@ -8,6 +8,8 @@ using HC.Shared;
 using Microsoft.Extensions.Caching.Memory;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Entities;
+using Volo.Abp.Http.Client;
 using Volo.Abp.MultiTenancy;
 
 namespace HC.Blazor.Services;
@@ -17,6 +19,11 @@ public interface IDocumentsPageLookupCache
     Task<List<LookupDto<Guid>>> GetMasterDataLookupAsync(string typeValue, Func<Task<PagedResultDto<MasterDataDto>>> loadFactory);
 
     Task<List<LookupDto<Guid>>> GetUnitsLookupAsync(Func<Task<PagedResultDto<LookupDto<Guid>>>> loadFactory);
+
+    /// <summary>
+    /// Caches single master data row by id (display labels on detail/view pages, revisits within the same Blazor circuit).
+    /// </summary>
+    Task<LookupDto<Guid>?> GetMasterDataByIdAsync(Guid id, Func<Task<MasterDataDto>> loadFactory);
 }
 
 /// <summary>
@@ -64,5 +71,30 @@ public class DocumentsPageLookupCache : IDocumentsPageLookupCache, IScopedDepend
         }
 
         return list!;
+    }
+
+    public async Task<LookupDto<Guid>?> GetMasterDataByIdAsync(Guid id, Func<Task<MasterDataDto>> loadFactory)
+    {
+        var key = CacheKey($"mdi-{id}");
+        if (_memoryCache.TryGetValue(key, out LookupDto<Guid>? cached))
+        {
+            return cached;
+        }
+
+        try
+        {
+            var dto = await loadFactory();
+            var lookup = new LookupDto<Guid> { Id = dto.Id, DisplayName = dto.Name };
+            _memoryCache.Set(key, lookup, new MemoryCacheEntryOptions { SlidingExpiration = CacheDuration });
+            return lookup;
+        }
+        catch (EntityNotFoundException)
+        {
+            return null;
+        }
+        catch (AbpRemoteCallException ex) when (ex.HttpStatusCode == (int)System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
     }
 }

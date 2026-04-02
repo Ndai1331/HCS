@@ -253,7 +253,7 @@ public partial class DocumentSigning
             {
                 SourceType = DocumentSourceType.Personal,
                 CreatorId = CurrentUser.Id,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             });
             MyDocumentsList = result.Items.ToList();

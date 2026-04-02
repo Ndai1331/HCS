@@ -117,7 +117,7 @@ public partial class SurveyResults
         {
             var result = await SurveyLocationsAppService.GetListAsync(new GetSurveyLocationsInput
             {
-                MaxResultCount = 1000
+                MaxResultCount = 200
             });
             SurveyLocations = result.Items.ToList();
         }

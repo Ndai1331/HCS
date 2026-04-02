@@ -312,9 +312,15 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             return;
         }
 
-        foreach (var id in documentIds.Distinct())
+        var distinctIds = documentIds.Distinct().ToList();
+        var documents = await _documentRepository.GetListAsync(d => distinctIds.Contains(d.Id));
+        if (documents.Count != distinctIds.Count)
         {
-            var document = await _documentRepository.GetAsync(id);
+            throw new UserFriendlyException(L["DocumentNotFound"]);
+        }
+
+        foreach (var document in documents)
+        {
             EnsureArchiveDocumentForDeleteOrRevoke(document);
         }
 
@@ -691,13 +697,13 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
 
             _logger.LogInformation("Revoking document from {RecipientCount} recipients", receiverUserIds.Count);
 
-            // Update all document assignments status to REVOKE
             foreach (var documentAssignment in documentAssignments)
             {
                 documentAssignment.Status = DocumentAssignmentStatus.REVOKE.ToString();
                 documentAssignment.IsCurrent = false;
-                await _documentAssignmentRepository.UpdateAsync(documentAssignment);
             }
+
+            await _documentAssignmentRepository.UpdateManyAsync(documentAssignments);
 
             // Create notification
             var notificationTitleKey = "DocumentRevoked";
@@ -717,27 +723,28 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             notification.TenantId = CurrentTenant.Id;
             await _notificationRepository.InsertAsync(notification);
 
-            // Create notification receivers for each user
-            foreach (var receiverUserId in receiverUserIds)
+            var revokeHistoryComment = $"Revoked document {document.Title} by {CurrentUser.UserName ?? L["System"]}";
+            var notificationReceivers = receiverUserIds.Select(receiverUserId =>
             {
-                var notificationReceiver = new NotificationReceiver(
-                    GuidGenerator.Create(),
-                    notification.Id,
-                    receiverUserId,
-                    false
-                );
-                notificationReceiver.TenantId = CurrentTenant.Id;
-                await _notificationReceiverRepository.InsertAsync(notificationReceiver);
+                var nr = new NotificationReceiver(GuidGenerator.Create(), notification.Id, receiverUserId, false);
+                nr.TenantId = CurrentTenant.Id;
+                return nr;
+            }).ToList();
+            await _notificationReceiverRepository.InsertManyAsync(notificationReceivers);
 
-                // Create document history with Action = THU HOI
-                await _documentHistoryManager.CreateAsync(
+            var revokeHistories = receiverUserIds.Select(receiverUserId =>
+            {
+                var dh = new DocumentHistory(
+                    GuidGenerator.Create(),
                     input.DocumentId,
-                    currentUserId.Value,
+                    currentUserId,
                     receiverUserId,
                     "THU_HOI",
-                    $"Revoked document {document.Title} by {CurrentUser.UserName ?? L["System"]}"
-                );
-            }
+                    revokeHistoryComment);
+                dh.TenantId = CurrentTenant.Id;
+                return dh;
+            }).ToList();
+            await _documentHistoryRepository.InsertManyAsync(revokeHistories);
 
             // Publish event to RabbitMQ for real-time notification
             await _distributedEventBus.PublishAsync(
@@ -771,10 +778,9 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             var document = await _documentRepository.GetAsync(documentId);
             var code = statusCode.GetCode();
 
-            var statusList = await _masterDataRepository.GetListAsync(
-                x => x.Code == code && x.Type == MasterDataType.Status.GetTypeValue());
-
-            var status = statusList.FirstOrDefault();
+            var statusQuery = (await _masterDataRepository.GetQueryableAsync())
+                .Where(x => x.Code == code && x.Type == MasterDataType.Status.GetTypeValue());
+            var status = await AsyncExecuter.FirstOrDefaultAsync(statusQuery);
             if (status == null)
             {
                 _logger.LogWarning("MasterData with Code='{Code}' and Type='TRANG_THAI_VB' not found. Document status will not be updated.", code);

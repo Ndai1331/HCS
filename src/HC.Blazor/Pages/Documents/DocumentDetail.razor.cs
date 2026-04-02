@@ -26,8 +26,6 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using System.Text.Json;
 using Volo.Abp.AspNetCore.Components.Messages;
 using Blazorise.DataGrid;
-using Volo.Abp.Http.Client;
-
 namespace HC.Blazor.Pages.Documents;
 
 public partial class DocumentDetail : HCComponentBase
@@ -323,7 +321,7 @@ public partial class DocumentDetail : HCComponentBase
             var result = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
             {
                 DocumentId = DocumentId,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             });
             
@@ -420,25 +418,20 @@ public partial class DocumentDetail : HCComponentBase
         }
 
         var result = await DocumentsAppService.GetUnitLookupAsync(new LookupRequestDto { Filter = filter, MaxResultCount = DocumentLookupPageSize });
-        UnitsCollection = result.Items;
-        return UnitsCollection.ToList();
+        if (result.Items is List<LookupDto<Guid>> unitList)
+        {
+            UnitsCollection = unitList;
+            return unitList;
+        }
+        var materialized = result.Items.ToList();
+        UnitsCollection = materialized;
+        return materialized;
     }
 
-    private async Task<LookupDto<Guid>?> GetMasterDataByIdAsync(Guid id, MasterDataType type)
+    private Task<LookupDto<Guid>?> GetMasterDataByIdAsync(Guid id, MasterDataType type)
     {
-        try
-        {
-            var dto = await MasterDatasAppService.GetAsync(id);
-            return new LookupDto<Guid> { Id = dto.Id, DisplayName = dto.Name };
-        }
-        catch (Volo.Abp.Domain.Entities.EntityNotFoundException)
-        {
-            return null;
-        }
-        catch (Volo.Abp.Http.Client.AbpRemoteCallException ex) when (ex.HttpStatusCode == (int)System.Net.HttpStatusCode.NotFound)
-        {
-            return null;
-        }
+        _ = type;
+        return DocumentsPageLookupCache.GetMasterDataByIdAsync(id, () => MasterDatasAppService.GetAsync(id));
     }
 
     private Task<LookupDto<Guid>?> GetUnitByIdAsync(Guid id)

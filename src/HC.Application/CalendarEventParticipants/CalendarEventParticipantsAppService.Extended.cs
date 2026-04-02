@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Caching;
@@ -195,5 +196,28 @@ public class CalendarEventParticipantsAppService : CalendarEventParticipantsAppS
         );
         
         return result;
+    }
+
+    public virtual async Task<List<CalendarEventParticipantCountByEventDto>> CalculateParticipantCountsByCalendarEventIdsAsync(
+        GetCalendarEventParticipantCountsInput input)
+    {
+        var ids = input?.CalendarEventIds?
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList() ?? new List<Guid>();
+
+        if (ids.Count == 0)
+        {
+            return new List<CalendarEventParticipantCountByEventDto>();
+        }
+
+        var byEvent = await _calendarEventParticipantRepository.GetCountsByCalendarEventIdsAsync(ids);
+        var map = byEvent.ToDictionary(x => x.CalendarEventId, x => x.Count);
+
+        return ids.Select(id => new CalendarEventParticipantCountByEventDto
+        {
+            CalendarEventId = id,
+            Count = map.TryGetValue(id, out var c) ? c : 0
+        }).ToList();
     }
 }

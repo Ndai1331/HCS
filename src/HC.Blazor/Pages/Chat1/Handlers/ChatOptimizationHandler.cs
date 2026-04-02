@@ -57,8 +57,8 @@ namespace HC.Blazor.Pages.Chat1.Handlers
                 // Mark as processed
                 _processedMessageIds.Add(messageData.Id);
 
-                // Limit cache size (keep last 1000 messages)
-                if (_processedMessageIds.Count > 1000)
+                // Limit cache size (keep last 200 messages)
+                if (_processedMessageIds.Count > 200)
                 {
                     var oldest = _processedMessageIds.First();
                     _processedMessageIds.Remove(oldest);

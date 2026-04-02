@@ -105,6 +105,11 @@ public partial class Documents : IDisposable
     private string? previousAbsoluteUrl;
     private string? previousSourceTypeValue;
 
+    /// <summary>
+    /// After first DataGrid ReadData; avoids CheckForUrlChangesAsync racing before snapshot matches navigation.
+    /// </summary>
+    private bool _documentListHydrated;
+
     public Documents()
     {
         DepartmentList = new List<DepartmentDto>();
@@ -120,8 +125,18 @@ public partial class Documents : IDisposable
     {
         // Update page title from query parameter during initialization
         UpdateSourceTypeFromQuery();
+        // Initialize before first LocationChanged so missing previousSourceTypeValue does not look like a "tab change"
+        SyncNavigationSnapshotForUrlChecks();
         Logger.LogInformation($"OnInitializedAsync: PageTitle={PageTitle}, SelectedSourceType={SelectedSourceType}");
         return Task.CompletedTask;
+    }
+
+    private void SyncNavigationSnapshotForUrlChecks()
+    {
+        var currentUrl = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        previousAbsoluteUrl = currentUrl.ToString();
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(currentUrl.Query);
+        previousSourceTypeValue = query.TryGetValue("sourceType", out var st) ? st.ToString() : null;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -134,12 +149,6 @@ public partial class Documents : IDisposable
 
             // Register location changed event handler
             NavigationManager.LocationChanged += OnLocationChanged;
-
-            // Initialize previous URL and sourceType
-            var currentUrl = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
-            previousAbsoluteUrl = currentUrl.ToString();
-            var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(currentUrl.Query);
-            previousSourceTypeValue = query.TryGetValue("sourceType", out var st) ? st.ToString() : null;
 
             await SetPermissionsAsync();
             await SetToolbarItemsAsync();
@@ -157,8 +166,7 @@ public partial class Documents : IDisposable
             BreadcrumbItems.Clear();
             await SetBreadcrumbItemsAsync();
 
-            // Load documents with the sourceType filter
-            await GetDocumentsAsync();
+            // Documents load only via DataGrid ReadData -> OnDataGridReadAsync (avoid duplicate GET on first paint)
 
             await InvokeAsync(StateHasChanged);
         }
@@ -233,6 +241,11 @@ public partial class Documents : IDisposable
     /// </summary>
     private async Task CheckForUrlChangesAsync()
     {
+        if (!_documentListHydrated)
+        {
+            return;
+        }
+
         try
         {
             var currentUrl = NavigationManager.ToAbsoluteUri(NavigationManager.Uri).ToString();
@@ -468,9 +481,17 @@ public partial class Documents : IDisposable
 
     private async Task OnDataGridReadAsync(DataGridReadDataEventArgs<DocumentWithNavigationPropertiesDto> e)
     {
-        CurrentSorting = e.Columns.Where(c => c.SortDirection != SortDirection.Default).Select(c => c.Field + (c.SortDirection == SortDirection.Descending ? " DESC" : "")).JoinAsString(",");
-        CurrentPage = e.Page;
-        await GetDocumentsAsync();
+        try
+        {
+            CurrentSorting = e.Columns.Where(c => c.SortDirection != SortDirection.Default).Select(c => c.Field + (c.SortDirection == SortDirection.Descending ? " DESC" : "")).JoinAsString(",");
+            CurrentPage = e.Page;
+            await GetDocumentsAsync();
+        }
+        finally
+        {
+            _documentListHydrated = true;
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 
@@ -663,8 +684,14 @@ public partial class Documents : IDisposable
         }
 
         var result = await DocumentsAppService.GetUnitLookupAsync(new LookupRequestDto { Filter = filter, MaxResultCount = DocumentLookupPageSize });
-        UnitsCollection = result.Items;
-        return UnitsCollection.ToList();
+        if (result.Items is List<LookupDto<Guid>> unitList)
+        {
+            UnitsCollection = unitList;
+            return unitList;
+        }
+        var materialized = result.Items.ToList();
+        UnitsCollection = materialized;
+        return materialized;
     }
 
     private Task SelectAllItems()

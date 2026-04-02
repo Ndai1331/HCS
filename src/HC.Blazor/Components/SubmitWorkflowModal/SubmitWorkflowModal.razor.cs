@@ -116,7 +116,7 @@ public partial class SubmitWorkflowModal
         try
         {
             var result = await DocumentWorkflowInstancesAppService.GetWorkflowLookupAsync(
-                new LookupRequestDto { MaxResultCount = 1000 });
+                new LookupRequestDto { MaxResultCount = 200 });
             AvailableWorkflows = result.Items;
         }
         catch (Exception ex)
@@ -133,7 +133,7 @@ public partial class SubmitWorkflowModal
             {
                 SourceType = DocumentSourceType.Personal,
                 CreatorId = CurrentUser.Id,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             });
             MyDocumentsList = result.Items.ToList();

@@ -74,14 +74,24 @@ public abstract class EfCoreProjectTaskRepositoryBase : EfCoreRepository<HCDbCon
 
     protected virtual async Task<IQueryable<ProjectTaskWithNavigationProperties>> GetQueryForNavigationPropertiesAsync()
     {
-        return from projectTask in (await GetDbSetAsync()).Where(x => !x.IsDeleted)
-               join project in (await GetDbContextAsync()).Set<Project>().Where(p => !p.IsDeleted) on projectTask.ProjectId equals project.Id into projects
-               from project in projects.DefaultIfEmpty()
-               select new ProjectTaskWithNavigationProperties
-               {
-                   ProjectTask = projectTask,
-                   Project = project
-               };
+        return await GetQueryForNavigationPropertiesAsync(
+            filterText: null,
+            onlyParentTasks: false,
+            onlyChildTasks: false,
+            parentTaskId: null,
+            code: null,
+            title: null,
+            description: null,
+            startDateMin: null,
+            startDateMax: null,
+            dueDateMin: null,
+            dueDateMax: null,
+            priority: null,
+            status: null,
+            progressPercentMin: null,
+            progressPercentMax: null,
+            projectId: null,
+            userId: null);
     }
 
     // protected virtual IQueryable<ProjectTaskWithNavigationProperties> ApplyFilter(IQueryable<ProjectTaskWithNavigationProperties> query, string? filterText, string? parentTaskId = null, string? code = null, string? title = null, string? description = null, DateTime? startDateMin = null, DateTime? startDateMax = null, DateTime? dueDateMin = null, DateTime? dueDateMax = null, string? priority = null, string? status = null, int? progressPercentMin = null, int? progressPercentMax = null, Guid? projectId = null, Guid? userId = null)

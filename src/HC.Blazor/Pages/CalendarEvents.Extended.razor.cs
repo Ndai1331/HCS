@@ -258,7 +258,7 @@ public partial class CalendarEvents
             var participantsResult = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
             {
                 CalendarEventId = calendarEvent.Id,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             });
             ViewingEventParticipants = participantsResult.Items;
@@ -307,13 +307,13 @@ public partial class CalendarEvents
             var membersTask = ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
             {
                 ProjectId = projectId,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             });
             var tasksTask = ProjectTasksAppService.GetListAsync(new GetProjectTasksInput
             {
                 ProjectId = projectId,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             });
 

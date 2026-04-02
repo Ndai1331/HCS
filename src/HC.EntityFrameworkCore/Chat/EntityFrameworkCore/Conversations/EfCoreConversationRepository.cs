@@ -64,26 +64,48 @@ public class EfCoreConversationRepository : EfCoreRepository<IChatDbContext, Con
             .Where(c => conversationIds.Contains(c.Id))
             .ToListAsync(GetCancellationToken(cancellationToken));
         
-        // Step 3: For each conversation, get target user if it's User type
+        var userDmIds = conversationList
+            .Where(c => c.Type == ConversationType.User)
+            .Select(c => c.Id)
+            .ToList();
+
+        Dictionary<Guid, ChatUser> targetUserByConversation = new Dictionary<Guid, ChatUser>();
+        if (userDmIds.Count > 0)
+        {
+            var otherMemberRows = await conversationMembers
+                .Where(m => userDmIds.Contains(m.ConversationId) && m.UserId != userId && m.IsActive)
+                .Select(m => new { m.ConversationId, m.UserId })
+                .ToListAsync(GetCancellationToken(cancellationToken));
+
+            var otherUserIdByConversation = otherMemberRows
+                .GroupBy(r => r.ConversationId)
+                .ToDictionary(g => g.Key, g => g.First().UserId);
+
+            var targetUserIds = otherUserIdByConversation.Values.Distinct().ToList();
+            if (targetUserIds.Count > 0)
+            {
+                var chatUsers = await dbContext.ChatUsers
+                    .Where(u => targetUserIds.Contains(u.Id))
+                    .ToListAsync(GetCancellationToken(cancellationToken));
+                var userById = chatUsers.ToDictionary(u => u.Id);
+                foreach (var pair in otherUserIdByConversation)
+                {
+                    if (userById.TryGetValue(pair.Value, out var cu))
+                    {
+                        targetUserByConversation[pair.Key] = cu;
+                    }
+                }
+            }
+        }
+
         var result = new List<ConversationWithTargetUser>();
         
         foreach (var conversation in conversationList)
         {
             ChatUser targetUser = null;
-            
-            // For User type, get the other member as target user
             if (conversation.Type == ConversationType.User)
             {
-                var otherMemberId = await conversationMembers
-                    .Where(m => m.ConversationId == conversation.Id && m.UserId != userId && m.IsActive)
-                    .Select(m => m.UserId)
-                    .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
-                
-                if (otherMemberId != Guid.Empty)
-                {
-                    targetUser = await dbContext.ChatUsers
-                        .FirstOrDefaultAsync(u => u.Id == otherMemberId, GetCancellationToken(cancellationToken));
-                }
+                targetUserByConversation.TryGetValue(conversation.Id, out targetUser);
             }
             
             // Apply filter

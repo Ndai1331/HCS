@@ -340,7 +340,7 @@ public partial class ProjectDetail : HCComponentBase
         // Load only child tasks using pagination (to avoid validation limits)
         var allChildTasks = new List<ProjectTaskWithNavigationPropertiesDto>();
         int skipCount = 0;
-        const int batchSize = 1000; // Use reasonable batch size
+        const int batchSize = 200; // Use reasonable batch size
         bool hasMore = true;
 
         while (hasMore)
@@ -867,7 +867,7 @@ public partial class ProjectDetail : HCComponentBase
         try
         {
             int maxNumber = 0;
-            const int pageSize = 1000;
+            const int pageSize = 200;
             int skipCount = 0;
             bool hasMore = true;
             var foundCodes = new List<string>();

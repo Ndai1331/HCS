@@ -68,6 +68,18 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         _logger = logger;
     }
 
+    private async Task ValidateChatUsersExistAsync(IEnumerable<Guid> userIds)
+    {
+        var distinct = userIds.Distinct().ToList();
+        var users = await _chatUserLookupService.GetListByIdsAsync(distinct);
+        if (users.Count != distinct.Count)
+        {
+            var found = users.Select(u => u.Id).ToHashSet();
+            var missing = distinct.First(id => !found.Contains(id));
+            throw new BusinessException("HC.Chat:UserNotFound").WithData("UserId", missing);
+        }
+    }
+
     public virtual async Task<ChatMessageDto> SendMessageAsync(SendMessageInput input)
     {
         // ALL conversations now require ConversationId
@@ -105,27 +117,31 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             var activeMembers = conversation.Members.Where(m => m.IsActive).ToList();
             memberUserIds = activeMembers.Select(m => m.UserId).ToList();
             
+            var targetIdForSide = activeMembers.FirstOrDefault(m => m.UserId != currentUserId)?.UserId ?? currentUserId;
+            var userMessages = new List<UserMessage>(activeMembers.Count);
             foreach (var member in activeMembers)
             {
                 var side = member.UserId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver;
-                // Use first other member as target, or current user if alone
-                var targetId = activeMembers.FirstOrDefault(m => m.UserId != currentUserId)?.UserId ?? currentUserId;
-                
-                await _userMessageRepository.InsertAsync(
-                    new UserMessage(GuidGenerator.Create(), member.UserId, message.Id, side, targetId, CurrentTenant.Id)
-                );
+                userMessages.Add(
+                    new UserMessage(GuidGenerator.Create(), member.UserId, message.Id, side, targetIdForSide, CurrentTenant.Id));
             }
+
+            await _userMessageRepository.InsertManyAsync(userMessages);
             
             // Update LastMessage for the conversation (shared by all members)
             var now = Clock.Now;
             conversation.SetLastMessage(messageText, now);
             await _conversationRepository.UpdateAsync(conversation);
             
-            // Increment unread count for all active members except sender
-            foreach (var member in activeMembers.Where(m => m.UserId != currentUserId))
+            var membersToBumpUnread = activeMembers.Where(m => m.UserId != currentUserId).ToList();
+            foreach (var member in membersToBumpUnread)
             {
                 member.IncrementUnreadCount();
-                await _conversationMemberRepository.UpdateAsync(member);
+            }
+
+            if (membersToBumpUnread.Count > 0)
+            {
+                await _conversationMemberRepository.UpdateManyAsync(membersToBumpUnread);
             }
             
             await uow.CompleteAsync();
@@ -377,14 +393,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         var allUserIds = new List<Guid> { currentUserId };
         allUserIds.AddRange(input.MemberUserIds);
         
-        foreach (var userId in allUserIds.Distinct())
-        {
-            var user = await _chatUserLookupService.FindByIdAsync(userId);
-            if (user == null)
-            {
-                throw new BusinessException("HC.Chat:UserNotFound").WithData("UserId", userId);
-            }
-        }
+        await ValidateChatUsersExistAsync(allUserIds);
         
         Conversation conversation;
         using (var uow = UnitOfWorkManager.Begin(requiresNew: true))
@@ -468,14 +477,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             allUserIds.AddRange(input.MemberUserIds);
         }
         
-        foreach (var userId in allUserIds.Distinct())
-        {
-            var user = await _chatUserLookupService.FindByIdAsync(userId);
-            if (user == null)
-            {
-                throw new BusinessException("HC.Chat:UserNotFound").WithData("UserId", userId);
-            }
-        }
+        await ValidateChatUsersExistAsync(allUserIds);
         
         Conversation conversation;
         using (var uow = UnitOfWorkManager.Begin(requiresNew: true))
@@ -562,14 +564,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             allUserIds.AddRange(input.MemberUserIds);
         }
         
-        foreach (var userId in allUserIds.Distinct())
-        {
-            var user = await _chatUserLookupService.FindByIdAsync(userId);
-            if (user == null)
-            {
-                throw new BusinessException("HC.Chat:UserNotFound").WithData("UserId", userId);
-            }
-        }
+        await ValidateChatUsersExistAsync(allUserIds);
         
         Conversation conversation;
         using (var uow = UnitOfWorkManager.Begin(requiresNew: true))

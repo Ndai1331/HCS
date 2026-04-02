@@ -45,15 +45,22 @@ public abstract class EfCoreDocumentAssignmentRepositoryBase : EfCoreRepository<
 
     protected virtual async Task<IQueryable<DocumentAssignmentWithNavigationProperties>> GetQueryForNavigationPropertiesAsync()
     {
-        return from documentAssignment in (await GetDbSetAsync())
-               join document in (await GetDbContextAsync()).Set<Document>() on documentAssignment.DocumentId equals document.Id into documents
-               from document in documents.DefaultIfEmpty()
-               join workflowStepTemplate in (await GetDbContextAsync()).Set<WorkflowStepTemplate>() on documentAssignment.WorkflowStepTemplateId equals workflowStepTemplate.Id into workflowStepTemplates
-               from workflowStepTemplate in workflowStepTemplates.DefaultIfEmpty()
-               join receiverUser in (await GetDbContextAsync()).Set<IdentityUser>() on documentAssignment.ReceiverUserId equals receiverUser.Id into identityUsers
-               from receiverUser in identityUsers.DefaultIfEmpty()
-               join documentFileResult in (await GetDbContextAsync()).Set<DocumentFile>() on documentAssignment.DocumentFileResultId equals documentFileResult.Id into documentFileResults
-               from documentFileResult in documentFileResults.DefaultIfEmpty()
+        var dbContext = await GetDbContextAsync();
+        var documentAssignments = await GetDbSetAsync();
+        var documents = dbContext.Set<Document>();
+        var workflowStepTemplates = dbContext.Set<WorkflowStepTemplate>();
+        var identityUsers = dbContext.Set<IdentityUser>();
+        var documentFiles = dbContext.Set<DocumentFile>();
+
+        return from documentAssignment in documentAssignments
+               join document in documents on documentAssignment.DocumentId equals document.Id into documentJoin
+               from document in documentJoin.DefaultIfEmpty()
+               join workflowStepTemplate in workflowStepTemplates on documentAssignment.WorkflowStepTemplateId equals workflowStepTemplate.Id into wstJoin
+               from workflowStepTemplate in wstJoin.DefaultIfEmpty()
+               join receiverUser in identityUsers on documentAssignment.ReceiverUserId equals receiverUser.Id into userJoin
+               from receiverUser in userJoin.DefaultIfEmpty()
+               join documentFileResult in documentFiles on documentAssignment.DocumentFileResultId equals documentFileResult.Id into fileJoin
+               from documentFileResult in fileJoin.DefaultIfEmpty()
                where document != null && document.IsDeleted == false
                select new DocumentAssignmentWithNavigationProperties
                {
@@ -80,9 +87,12 @@ public abstract class EfCoreDocumentAssignmentRepositoryBase : EfCoreRepository<
     public virtual async Task<List<DocumentAssignment>> GetListAsync(string? filterText = null, int? stepOrderMin = null, int? stepOrderMax = null, string? actionType = null, string? status = null, DateTime? assignedAtMin = null, DateTime? assignedAtMax = null, DateTime? processedAtMin = null, DateTime? processedAtMax = null, bool? isCurrent = null, Guid? documentId = null, Guid? workflowStepTemplateId = null, Guid? receiverUserId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)
     {
         // Join with Document table to filter out deleted documents
-        var query = from documentAssignment in (await GetDbSetAsync())
-                    join document in (await GetDbContextAsync()).Set<Document>() on documentAssignment.DocumentId equals document.Id into documents
-                    from document in documents.DefaultIfEmpty()
+        var dbContext = await GetDbContextAsync();
+        var documentAssignments = await GetDbSetAsync();
+        var documents = dbContext.Set<Document>();
+        var query = from documentAssignment in documentAssignments
+                    join document in documents on documentAssignment.DocumentId equals document.Id into documentJoin
+                    from document in documentJoin.DefaultIfEmpty()
                     where document != null && document.IsDeleted == false
                     select documentAssignment;
         

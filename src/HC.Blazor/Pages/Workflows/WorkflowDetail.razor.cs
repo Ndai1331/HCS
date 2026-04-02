@@ -702,7 +702,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             var result = await WorkflowStepTemplatesAppService.GetListAsync(new GetWorkflowStepTemplatesInput
             {
                 WorkflowTemplateId = CurrentWorkflowTemplate.Id,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0,
                 Sorting = "WorkflowStepTemplate.Order ASC"
             });
@@ -898,7 +898,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 var result = await WorkflowStepAssignmentsAppService.GetListAsync(new GetWorkflowStepAssignmentsInput
                 {
                     StepId = step.Id,
-                    MaxResultCount = 1000,
+                    MaxResultCount = 200,
                     SkipCount = 0
                 });
                 
@@ -1099,7 +1099,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         var result = await WorkflowStepTemplatesAppService.GetListAsync(new GetWorkflowStepTemplatesInput
         {
             WorkflowTemplateId = CurrentWorkflowTemplate.Id,
-            MaxResultCount = 1000,
+            MaxResultCount = 200,
             SkipCount = 0
         });
         
@@ -1120,7 +1120,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         var result = await WorkflowStepTemplatesAppService.GetListAsync(new GetWorkflowStepTemplatesInput 
         { 
             WorkflowTemplateId = CurrentWorkflowTemplate.Id, 
-            MaxResultCount = 1000, 
+            MaxResultCount = 200, 
             SkipCount = 0 
         });
         
@@ -1139,7 +1139,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         var result = await WorkflowStepAssignmentsAppService.GetIdentityUserLookupAsync(new LookupRequestDto
         {
             Filter = null,
-            MaxResultCount = 1000,
+            MaxResultCount = 200,
             SkipCount = 0
         });
         IdentityUsersCollection = result.Items;

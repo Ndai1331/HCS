@@ -43,10 +43,13 @@ public abstract class EfCoreCalendarEventParticipantRepositoryBase : EfCoreRepos
 
     protected virtual async Task<IQueryable<CalendarEventParticipantWithNavigationProperties>> GetQueryForNavigationPropertiesAsync()
     {
+        var dbContext = await GetDbContextAsync();
+        var calendarEventsSet = dbContext.Set<CalendarEvent>();
+        var identityUsersSet = dbContext.Set<IdentityUser>();
         return from calendarEventParticipant in (await GetDbSetAsync())
-               join calendarEvent in (await GetDbContextAsync()).Set<CalendarEvent>() on calendarEventParticipant.CalendarEventId equals calendarEvent.Id into calendarEvents
+               join calendarEvent in calendarEventsSet on calendarEventParticipant.CalendarEventId equals calendarEvent.Id into calendarEvents
                from calendarEvent in calendarEvents.DefaultIfEmpty()
-               join identityUser in (await GetDbContextAsync()).Set<IdentityUser>() on calendarEventParticipant.IdentityUserId equals identityUser.Id into identityUsers
+               join identityUser in identityUsersSet on calendarEventParticipant.IdentityUserId equals identityUser.Id into identityUsers
                from identityUser in identityUsers.DefaultIfEmpty()
                select new CalendarEventParticipantWithNavigationProperties
                {

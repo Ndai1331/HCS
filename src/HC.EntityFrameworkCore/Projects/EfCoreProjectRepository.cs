@@ -52,44 +52,19 @@ public abstract class EfCoreProjectRepositoryBase : EfCoreRepository<HCDbContext
 
     protected virtual async Task<IQueryable<ProjectWithNavigationProperties>> GetQueryForNavigationPropertiesAsync()
     {
-        var dbContext = await GetDbContextAsync();
-        var projects = await GetDbSetAsync();
-
-        return
-            from project in projects
-
-            join ownerDepartment in dbContext.Set<Department>()
-                on project.OwnerDepartmentId equals ownerDepartment.Id into departments
-            from ownerDepartment in departments.DefaultIfEmpty()
-
-            join projectMembers in dbContext.Set<ProjectMember>()
-                on project.Id equals projectMembers.ProjectId into memberGroup
-
-            join projectTasks in dbContext.Set<ProjectTask>()
-                on project.Id equals projectTasks.ProjectId into taskGroup
-
-            select new ProjectWithNavigationProperties
-            {
-                Project = project,
-                OwnerDepartment = ownerDepartment,
-                ProjectMembers = memberGroup.ToList(),
-                ProjectMemberCount = memberGroup.Count(),
-                ProjectTaskCount = taskGroup.Count()
-            };
-        // return from project in (await GetDbSetAsync())
-        //        join ownerDepartment in dbContext.Set<Department>() on project.OwnerDepartmentId equals ownerDepartment.Id into departments
-        //        from ownerDepartment in departments.DefaultIfEmpty()
-
-        //        join projectMembers in dbContext.Set<ProjectMember>() on project.Id equals projectMembers.ProjectId into projectMemberss
-        //        from projectMembers in projectMemberss.DefaultIfEmpty()
-        //        select new ProjectWithNavigationProperties
-        //        {
-        //            Project = project,
-        //            OwnerDepartment = ownerDepartment,
-                   
-        //            ProjectMemberCount = dbContext.Set<ProjectMember>().Count(pm => pm.ProjectId == project.Id),
-        //            ProjectTaskCount = dbContext.Set<ProjectTask>().Count(pt => pt.ProjectId == project.Id)
-        //        };
+        // Delegate to filtered query with no predicates to avoid duplicate shapes and memberGroup.ToList() in SQL translation.
+        return await GetQueryForNavigationPropertiesAsync(
+            filterText: null,
+            code: null,
+            name: null,
+            description: null,
+            startDateMin: null,
+            startDateMax: null,
+            endDateMin: null,
+            endDateMax: null,
+            status: null,
+            ownerDepartmentId: null,
+            userId: null);
     }
 
 

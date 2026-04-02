@@ -196,7 +196,7 @@ public partial class Index
             // Get all projects
             var allProjectsResult = await ProjectsAppService.GetListAsync(new GetProjectsInput
             {
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             });
 
@@ -205,7 +205,7 @@ public partial class Index
             // Get all projects with date filter
             var input = new GetProjectsInput
             {
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             };
 
@@ -237,7 +237,7 @@ public partial class Index
             // Get all tasks with date filter
             var input = new GetProjectTasksInput
             {
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             };
 
@@ -279,7 +279,7 @@ public partial class Index
 
             var input = new GetCalendarEventsInput
             {
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0,
                 Sorting = "StartTime"
             };
@@ -308,7 +308,7 @@ public partial class Index
             var participantsResult = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
             {
                 IdentityUserId = CurrentUser.Id,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0,
                 Sorting = "CalendarEventParticipant.CreationTime DESC"
             });
@@ -469,7 +469,7 @@ public partial class Index
         {
             var input = new GetProjectTasksInput
             {
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0,
                 Sorting = "ProjectTask.StartDate DESC"
             };
@@ -853,7 +853,7 @@ public partial class Index
         try
         {
             int maxNumber = 0;
-            const int pageSize = 1000;
+            const int pageSize = 200;
             int skipCount = 0;
             bool hasMore = true;
 
@@ -1263,7 +1263,7 @@ public partial class Index
             var participantsResult = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
             {
                 CalendarEventId = calendarEvent.Id,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             });
             ViewingEventParticipants = participantsResult.Items;
@@ -1301,13 +1301,13 @@ public partial class Index
             var membersTask = ProjectMembersAppService.GetListAsync(new GetProjectMembersInput
             {
                 ProjectId = projectId,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             });
             var tasksTask = ProjectTasksAppService.GetListAsync(new GetProjectTasksInput
             {
                 ProjectId = projectId,
-                MaxResultCount = 1000,
+                MaxResultCount = 200,
                 SkipCount = 0
             });
 

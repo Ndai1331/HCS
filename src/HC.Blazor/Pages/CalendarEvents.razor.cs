@@ -318,7 +318,7 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
 
                 calendarFilter = new GetCalendarEventsInput
                 {
-                    MaxResultCount = 1000,
+                    MaxResultCount = 200,
                     SkipCount = 0,
                     Sorting = CurrentSorting,
                     StartTimeMax = rangeEndInclusive,
@@ -364,28 +364,26 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
             Logger.LogInformation("GetCalendarEventsAsync - API Result - TotalCount: {Total}, Items Count: {Items}, CalendarEventList Count: {ListCount}",
                 TotalCount, result?.Items?.Count ?? 0, CalendarEventList.Count);
             
-            // Pre-load participant counts for all events
+            // Pre-load participant counts for all events (single batch API + SQL GROUP BY)
             if (CalendarEventList.Any())
             {
                 var eventIds = CalendarEventList.Select(e => e.Id).ToList();
-                var tasks = eventIds.Select(async id =>
+                try
                 {
-                    try
+                    var countItems = await CalendarEventParticipantsAppService.CalculateParticipantCountsByCalendarEventIdsAsync(
+                        new GetCalendarEventParticipantCountsInput { CalendarEventIds = eventIds });
+                    foreach (var row in countItems)
                     {
-                        var countResult = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
-                        {
-                            CalendarEventId = id,
-                            MaxResultCount = 1,
-                            SkipCount = 0
-                        });
-                        _participantCountCache[id] = (int)countResult.TotalCount;
+                        _participantCountCache[row.CalendarEventId] = row.Count;
                     }
-                    catch
+                }
+                catch
+                {
+                    foreach (var id in eventIds)
                     {
                         _participantCountCache[id] = 0;
                     }
-                });
-                await Task.WhenAll(tasks);
+                }
             }
 
             await ClearSelection();
@@ -735,7 +733,7 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
         var result = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
         {
             CalendarEventId = CreateWizardCalendarEventId,
-            MaxResultCount = 1000,
+            MaxResultCount = 200,
             SkipCount = 0
         });
 
@@ -848,7 +846,7 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
         var result = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
         {
             CalendarEventId = EditingCalendarEventId,
-            MaxResultCount = 1000,
+            MaxResultCount = 200,
             SkipCount = 0
         });
 

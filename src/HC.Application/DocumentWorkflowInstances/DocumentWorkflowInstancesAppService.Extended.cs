@@ -121,8 +121,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     [Authorize(HCPermissions.Documents.SubmitForSigning)]
     public async Task<bool> IsDocumentSourceFileWordFormatAsync(Guid documentId)
     {
-        var files = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
-        var firstFile = files.OrderBy(f => f.UploadedAt).FirstOrDefault();
+        var query = (await _documentFileRepository.GetQueryableAsync())
+            .Where(f => f.DocumentId == documentId)
+            .OrderBy(f => f.UploadedAt);
+        var firstFile = await AsyncExecuter.FirstOrDefaultAsync(query);
         if (firstFile == null) return false;
         var path = firstFile.Path ?? firstFile.Name ?? "";
         return IsWordFormatPath(path);
@@ -388,14 +390,14 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 && (x.Status == nameof(DocumentAssignmentStatus.REJECTED)
                     || x.Status == nameof(DocumentAssignmentStatus.REVOKE)));
 
-            foreach (var oldAssignment in oldAssignments)
-            {
-                oldAssignment.IsCurrent = false; // Mark as not current so they don't interfere with new workflow
-                await _documentAssignmentRepository.UpdateAsync(oldAssignment);
-            }
-
             if (oldAssignments.Any())
             {
+                foreach (var oldAssignment in oldAssignments)
+                {
+                    oldAssignment.IsCurrent = false; // Mark as not current so they don't interfere with new workflow
+                }
+
+                await _documentAssignmentRepository.UpdateManyAsync(oldAssignments);
                 Logger.LogInformation(
                     "[RE_SUBMIT] Cleaned up {Count} old assignments for document {DocumentId} before re-submit.",
                     oldAssignments.Count, documentId);
@@ -460,20 +462,31 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         Guid? signingFileId = templateDocumentFileId;
         if (signingFileId == null)
         {
-            var documentFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
-            if (signingFilePreferenceAfterDuplicate.HasValue &&
-                documentFiles.Any(f => f.Id == signingFilePreferenceAfterDuplicate.Value))
+            var filesQueryBase = (await _documentFileRepository.GetQueryableAsync())
+                .Where(x => x.DocumentId == documentId);
+            if (signingFilePreferenceAfterDuplicate.HasValue)
             {
-                signingFileId = signingFilePreferenceAfterDuplicate;
+                var prefQuery = filesQueryBase.Where(f => f.Id == signingFilePreferenceAfterDuplicate.Value);
+                if (await AsyncExecuter.AnyAsync(prefQuery))
+                {
+                    signingFileId = signingFilePreferenceAfterDuplicate;
+                }
             }
-            else if (input.DocumentFileId.HasValue &&
-                     documentFiles.Any(f => f.Id == input.DocumentFileId.Value))
+
+            if (signingFileId == null && input.DocumentFileId.HasValue)
             {
-                signingFileId = input.DocumentFileId;
+                var docFileQuery = filesQueryBase.Where(f => f.Id == input.DocumentFileId.Value);
+                if (await AsyncExecuter.AnyAsync(docFileQuery))
+                {
+                    signingFileId = input.DocumentFileId;
+                }
             }
-            else
+
+            if (signingFileId == null)
             {
-                signingFileId = documentFiles.OrderBy(f => f.UploadedAt).FirstOrDefault()?.Id ?? input.DocumentFileId;
+                var firstQuery = filesQueryBase.OrderBy(f => f.UploadedAt);
+                var first = await AsyncExecuter.FirstOrDefaultAsync(firstQuery);
+                signingFileId = first?.Id ?? input.DocumentFileId;
             }
         }
 
@@ -1215,8 +1228,6 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         if (input.UseWorkflowTemplateFile)
         {
-            // Find the existing template-based DocumentFile for this document (reuse, don't duplicate)
-            var existingDocFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
             var workflowInfo = await GetWorkflowSubmitInfoAsync(returnedInstance.WorkflowId);
 
             var workflowTemplatePath = !string.IsNullOrWhiteSpace(workflowInfo.WordTemplatePath)
@@ -1228,11 +1239,11 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 throw new UserFriendlyException(L["WorkflowTemplateHasNoFile"]);
             }
 
-            // Try to find existing file that matches the template path
-            var existingTemplateFile = existingDocFiles
-                .Where(f => f.Path == workflowTemplatePath && !f.IsSigned)
-                .OrderByDescending(f => f.UploadedAt)
-                .FirstOrDefault();
+            // Try to find existing file that matches the template path (single DB row, not full file list)
+            var existingTemplateQuery = (await _documentFileRepository.GetQueryableAsync())
+                .Where(f => f.DocumentId == documentId && f.Path == workflowTemplatePath && !f.IsSigned)
+                .OrderByDescending(f => f.UploadedAt);
+            var existingTemplateFile = await AsyncExecuter.FirstOrDefaultAsync(existingTemplateQuery);
 
             if (existingTemplateFile != null)
             {
@@ -1285,10 +1296,14 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             && (x.Status == nameof(DocumentAssignmentStatus.REJECTED)
                 || x.Status == nameof(DocumentAssignmentStatus.REVOKE)));
 
-        foreach (var oldAssignment in oldAssignments)
+        if (oldAssignments.Any())
         {
-            oldAssignment.IsCurrent = false;
-            await _documentAssignmentRepository.UpdateAsync(oldAssignment);
+            foreach (var oldAssignment in oldAssignments)
+            {
+                oldAssignment.IsCurrent = false;
+            }
+
+            await _documentAssignmentRepository.UpdateManyAsync(oldAssignments);
         }
 
         // 6. Get workflow info
@@ -1343,8 +1358,11 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         Guid? signingFileId = newSigningFileId;
         if (signingFileId == null)
         {
-            var documentFiles = await _documentFileRepository.GetListAsync(x => x.DocumentId == documentId);
-            signingFileId = documentFiles.OrderByDescending(f => f.UploadedAt).FirstOrDefault()?.Id;
+            var latestFileQuery = (await _documentFileRepository.GetQueryableAsync())
+                .Where(x => x.DocumentId == documentId)
+                .OrderByDescending(f => f.UploadedAt);
+            var latest = await AsyncExecuter.FirstOrDefaultAsync(latestFileQuery);
+            signingFileId = latest?.Id;
         }
 
         signingFileId = await _workflowSigningExecutionService.PrepareSubmissionPlaceholdersAsync(
@@ -2466,9 +2484,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     private async Task<bool> TryApplyDocumentStatusByCodeAsync(Document document, DocumentStatusCode statusCode)
     {
         var code = statusCode.GetCode();
-        var statusList = await _masterDataRepository.GetListAsync(
-            x => x.Code == code && x.Type == MasterDataType.Status.GetTypeValue());
-        var status = statusList.FirstOrDefault();
+        var statusQuery = (await _masterDataRepository.GetQueryableAsync())
+            .Where(x => x.Code == code && x.Type == MasterDataType.Status.GetTypeValue());
+        var status = await AsyncExecuter.FirstOrDefaultAsync(statusQuery);
         if (status == null)
         {
             Logger.LogWarning(

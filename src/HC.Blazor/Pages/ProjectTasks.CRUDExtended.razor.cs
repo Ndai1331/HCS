@@ -40,7 +40,7 @@ public partial class ProjectTasks
         try
         {
             int maxNumber = 0;
-            const int pageSize = 1000; // Process in batches
+            const int pageSize = 200; // Process in batches
             int skipCount = 0;
             bool hasMore = true;
             
@@ -329,7 +329,7 @@ public partial class ProjectTasks
         var result = await ProjectTaskAssignmentsAppService.GetListAsync(new GetProjectTaskAssignmentsInput
         {
             ProjectTaskId = CreateWizardProjectTaskId,
-            MaxResultCount = 1000,
+            MaxResultCount = 200,
             SkipCount = 0
         });
 
@@ -347,7 +347,7 @@ public partial class ProjectTasks
         var result = await ProjectTaskAssignmentsAppService.GetListAsync(new GetProjectTaskAssignmentsInput
         {
             ProjectTaskId = EditingProjectTaskId,
-            MaxResultCount = 1000,
+            MaxResultCount = 200,
             SkipCount = 0
         });
 
@@ -365,7 +365,7 @@ public partial class ProjectTasks
         var result = await ProjectTaskDocumentsAppService.GetListAsync(new GetProjectTaskDocumentsInput
         {
             ProjectTaskId = CreateWizardProjectTaskId,
-            MaxResultCount = 1000,
+            MaxResultCount = 200,
             SkipCount = 0
         });
 
@@ -386,7 +386,7 @@ public partial class ProjectTasks
         var result = await ProjectTaskDocumentsAppService.GetListAsync(new GetProjectTaskDocumentsInput
         {
             ProjectTaskId = EditingProjectTaskId,
-            MaxResultCount = 1000,
+            MaxResultCount = 200,
             SkipCount = 0
         });
 

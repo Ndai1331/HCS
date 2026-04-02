@@ -106,7 +106,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     
     // Track processed message IDs to prevent duplicate UnreadMessageCount increments
     private HashSet<Guid> _processedMessageIds = new HashSet<Guid>();
-    private const int MaxProcessedIdsCacheSize = 1000; // Cleanup when cache gets too large
+    private const int MaxProcessedIdsCacheSize = 200; // Cleanup when cache gets too large
     
     // New properties for expanded features
     public ChatMessageDto ReplyingToMessage { get; set; }
