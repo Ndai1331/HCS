@@ -64,7 +64,10 @@ public abstract class UserSignatureManagerBase : DomainService
         userSignature.SignatureImage = signatureImage;
         userSignature.IsActive = isActive;
         userSignature.TokenRef = tokenRef;
-        userSignature.Secret = secret;
+        if (!string.IsNullOrWhiteSpace(secret))
+        {
+            userSignature.Secret = secret;
+        }
         userSignature.SealImg = sealImg;
         userSignature.ValidFrom = validFrom;
         userSignature.ValidTo = validTo;

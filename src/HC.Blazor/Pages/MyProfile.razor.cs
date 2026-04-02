@@ -535,12 +535,7 @@ public partial class MyProfile
                 isValid = false;
             }
 
-            if (string.IsNullOrWhiteSpace(EditingUserSignature?.Secret))
-            {
-                EditSignatureFieldErrors["Secret"] = L["SecretRequiredForDigitalSign"];
-                if (isValid) EditSignatureValidationErrorKey = "SecretRequiredForDigitalSign";
-                isValid = false;
-            }
+            // Secret is not loaded on edit (API does not return it); leave blank to keep existing
 
             if (string.IsNullOrWhiteSpace(EditingUserSignature?.SealImg))
             {

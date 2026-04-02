@@ -130,8 +130,27 @@ chown 1654:1654 /www/server/panel/data/compose/hcs/certs/openiddict.pfx
 chmod 600 /www/server/panel/data/compose/hcs/certs/openiddict.pfx
 
 
+
+
+docker cp /www/server/panel/data/compose/hcs/certs/openiddict.pfx hc-api:/app/certs/openiddict.pfx
+chown 1654:1654 /www/server/panel/data/compose/hcs/certs/openiddict.pfx
+chmod 600 /www/server/panel/data/compose/hcs/certs/openiddict.pfx
+
 chown -R 1654:1654 /www/server/panel/data/compose/hcs/certs
 chmod 700 /www/server/panel/data/compose/hcs/certs
+
+
+
+
+chmod -R 755 /www/server/panel/data/compose/hcs/fonts
+chown -R 1654:1654 /www/server/panel/data/compose/hcs/fonts
+docker cp /www/server/panel/data/compose/hcs/fonts hc-api:/app/fonts
+
+
+
+/app/fonts
+
+
 
 
 dotnet ef migrations add AddPdfPathToWorkflowTemplate -c HCDbContext

@@ -601,6 +601,7 @@
     "LayoutImg": "Layout Image",
     "TokenRefRequiredForDigitalSign": "Token Ref is required for digital signing",
     "SecretRequiredForDigitalSign": "Secret is required for digital signing",
+    "DigitalSignSecretLeaveBlankToKeep": "Leave blank to keep the current secret. Enter a new value only when rotating the secret.",
     "SealImgRequiredForDigitalSign": "Seal image is required for digital signing",
     "LayoutImgRequiredForDigitalSign": "Layout image is required when digital signing is enabled",
     "SignatureImage": "Signature Image",

@@ -8,7 +8,7 @@ services:
       - Kestrel__Certificates__Default__Password=StrongPass123
       - App__SelfUrl=https://dev.benhvien199.vn
       - App__HealthCheckUrl=http://hc-blazor:8080/health-status
-
+      - App__DisablePII=true  
       - AuthServer__RequireHttpsMetadata=false
       - AuthServer__Authority=https://auth-dev.benhvien199.vn
       - AuthServer__IsOnK8s=true
@@ -66,6 +66,7 @@ services:
       - Kestrel__Certificates__Default__Path=/app/certs/openiddict.pfx
       - Kestrel__Certificates__Default__Password=StrongPass123
       - App__SelfUrl=https://api-dev.benhvien199.vn
+      - App__DisablePII=true  
       - App__HealthCheckUrl=http://hc-api:8080/health-status
       - AuthServer__RequireHttpsMetadata=false
       - AuthServer__Authority=https://auth-dev.benhvien199.vn
@@ -113,6 +114,7 @@ services:
       - App__SelfUrl=https://auth-dev.benhvien199.vn
       - App__CorsOrigins=https://dev.benhvien199.vn,https://api-dev.benhvien199.vn,https://auth-dev.benhvien199.vn
       - App__RedirectAllowedUrls=https://dev.benhvien199.vn,https://api-dev.benhvien199.vn,https://auth-dev.benhvien199.vn
+      - App__DisablePII=true  
       - App__HealthCheckUrl=http://hc-authserver:8080/health-status
       - AuthServer__RequireHttpsMetadata=false
       - AuthServer__Authority=https://auth-dev.benhvien199.vn

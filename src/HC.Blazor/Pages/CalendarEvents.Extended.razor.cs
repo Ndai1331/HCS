@@ -318,8 +318,10 @@ public partial class CalendarEvents
             });
 
             await Task.WhenAll(membersTask, tasksTask);
-            ProjectMembersList = membersTask.Result.Items;
-            ProjectTasksList = tasksTask.Result.Items;
+            var membersResult = await membersTask;
+            var tasksResult = await tasksTask;
+            ProjectMembersList = membersResult.Items;
+            ProjectTasksList = tasksResult.Items;
 
             SelectedProjectDetailTab = "general";
             await ProjectDetailModal.Show();

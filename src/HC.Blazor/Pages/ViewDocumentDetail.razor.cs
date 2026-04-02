@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
+using Microsoft.Extensions.Logging;
 using Blazorise;
 using HC.Documents;
 using HC.DocumentFiles;
@@ -158,9 +159,9 @@ public partial class ViewDocumentDetail
                 }
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Ignore error checking revocation status
+            Logger.LogWarning(ex, "CheckDocumentRevocationAsync failed for document {DocumentId}", DocumentId);
             IsDocumentRevoked = false;
         }
     }
