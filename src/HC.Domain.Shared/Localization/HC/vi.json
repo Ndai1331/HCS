@@ -900,6 +900,7 @@
     "ConfirmNewPassword": "Xác nhận mật khẩu mới",
     "ChangePassword": "Đổi mật khẩu",
     "PasswordDoNotMatch": "Mật khẩu không khớp",
+    "PasswordsDoNotMatch": "Mật khẩu mới và xác nhận mật khẩu không trùng khớp.",
     "PasswordChangedSuccessfully": "Đổi mật khẩu thành công",
     "PasswordChangedFailed": "Đổi mật khẩu thất bại",
     "CurrentPasswordRequired": "Mật khẩu hiện tại là bắt buộc",
@@ -915,6 +916,7 @@
     "UpdateUserDepartment": "Cập nhật phòng ban",
     "DeleteUserDepartment": "Xóa phòng ban",
     "DeleteUserDepartmentConfirmationMessage": "Bạn có chắc chắn muốn xoá phòng ban {0}?",
+    "UserDepartmentDuplicateDepartment": "Phòng ban này đã được gán cho người dùng.",
     "NoDepartmentsAssigned": "Không có phòng ban nào được gán",
     "NoUserDepartmentsAssigned": "Không có phòng ban nào được gán cho người dùng này",
     "ShowInfoBox": "Hiển thị thông tin",
@@ -1282,6 +1284,8 @@
     "SignFilesSentToMe": "Tài liệu trình ký gửi tới tôi",
     "SignFilesSentByMe": "Tài liệu trình ký tôi gửi đi",
     "FromUser" : "Từ người gửi",
-    "PleaseSelectDocument": "Vui lòng chọn tài liệu"
+    "PleaseSelectDocument": "Vui lòng chọn tài liệu",
+    "NoImage": "Không có ảnh",
+    "UpdateUserSignature": "Cập nhật chữ ký"
   }
 }

@@ -7,7 +7,6 @@ using Volo.Abp.AuditLogging;
 using Volo.Abp.AuditLogging.Blazor.Pages.Shared.AverageExecutionDurationPerDayWidget;
 using Volo.Abp.AuditLogging.Blazor.Pages.Shared.ErrorRateWidget;
 using Volo.Abp.Authorization.Permissions;
-using Volo.Abp.BlazoriseUI;
 using Volo.Abp.Identity;
 using Volo.Saas.Host;
 using Volo.Saas.Host.Blazor.Pages.Shared.Components.SaasEditionPercentageWidget;
@@ -43,6 +42,12 @@ public partial class MyProfile
     
     [Inject]
     public Volo.Abp.Account.IAccountAppService ProfileAppService { get; set; } = default!;
+
+    [Inject]
+    public IProfileAppService PersonalProfileAppService { get; set; } = default!;
+
+    [Inject]
+    public NavigationManager NavigationManager { get; set; } = default!;
 
     [Inject]
     public IUserDepartmentsAppService UserDepartmentsAppService { get; set; } = default!;
@@ -122,8 +127,16 @@ public partial class MyProfile
     protected List<LookupDto<Guid>> SelectedDepartmentForCreate { get; set; } = new();
     protected List<LookupDto<Guid>> SelectedDepartmentForEdit { get; set; } = new();
 
+    /// <summary>
+    /// Bump when opening the create-department modal so Select2 remounts with a cleared selection.
+    /// </summary>
+    protected int CreateDepartmentSelect2RenderKey { get; set; }
+
     // Avatar upload
     protected string AvatarUrl { get; set; } = string.Empty;
+
+    /// <summary>Cache-buster for profile picture URL (sidebar / browser cache).</summary>
+    protected long ProfilePictureCacheBuster { get; set; }
     
     protected AuditLoggingErrorRateWidgetComponent? ErrorRateWidgetComponent;
 
@@ -168,8 +181,20 @@ public partial class MyProfile
             if (user != null)
             {
                 ProfileModel = ObjectMapper.Map<IdentityUserDto, IdentityUserUpdateDto>(user);
+                ProfilePictureCacheBuster = DateTime.UtcNow.Ticks;
             }
         }
+    }
+
+    protected virtual string GetSidebarProfileDisplayName()
+    {
+        var surname = ProfileModel.Surname?.Trim() ?? string.Empty;
+        var name = ProfileModel.Name?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(surname) && string.IsNullOrEmpty(name))
+        {
+            return CurrentUser.Name ?? CurrentUser.UserName ?? string.Empty;
+        }
+        return string.Join(' ', new[] { surname, name }.Where(static s => s.Length > 0));
     }
 
     protected virtual async Task LoadUserDepartmentsAsync()
@@ -193,8 +218,30 @@ public partial class MyProfile
         if (CurrentUser.Id.HasValue)
         {
             try{
-                await IdentityUserAppService.UpdateAsync(CurrentUser.Id.Value, ProfileModel);
+                // Account profile API refreshes the signed-in principal so navbar / claims stay in sync.
+                await PersonalProfileAppService.UpdateAsync(new UpdateProfileDto
+                {
+                    UserName = ProfileModel.UserName,
+                    Email = ProfileModel.Email,
+                    Name = ProfileModel.Name,
+                    Surname = ProfileModel.Surname,
+                    PhoneNumber = ProfileModel.PhoneNumber,
+                    ConcurrencyStamp = ProfileModel.ConcurrencyStamp,
+                });
+                await LoadUserProfileAsync();
                 await Message.Success(L["SuccessfullySaved"]);
+                var returnUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+                if (string.IsNullOrEmpty(returnUrl))
+                {
+                    returnUrl = "my-profile";
+                }
+                if (!returnUrl.StartsWith('/'))
+                {
+                    returnUrl = "/" + returnUrl;
+                }
+                NavigationManager.NavigateTo(
+                    $"/hc/auth/refresh-claims?returnUrl={Uri.EscapeDataString(returnUrl)}",
+                    forceLoad: true);
             }
             catch (Exception ex)
             {
@@ -211,10 +258,23 @@ public partial class MyProfile
             return;
         }
 
-        if (CurrentUser.Id.HasValue)
+        if (string.IsNullOrWhiteSpace(CurrentPassword))
         {
-            await IdentityUserAppService.UpdatePasswordAsync(CurrentUser.Id.Value, new IdentityUserUpdatePasswordInput
+            await Message.Error(L["CurrentPasswordRequired"]);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(NewPassword))
+        {
+            await Message.Error(L["NewPasswordRequired"]);
+            return;
+        }
+
+        try
+        {
+            await PersonalProfileAppService.ChangePasswordAsync(new ChangePasswordInput
             {
+                CurrentPassword = CurrentPassword,
                 NewPassword = NewPassword
             });
 
@@ -223,6 +283,10 @@ public partial class MyProfile
             ConfirmNewPassword = string.Empty;
 
             await Message.Success(L["PasswordChangedSuccessfully"]);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
         }
     }
 
@@ -641,11 +705,15 @@ public partial class MyProfile
         NewUserDepartment = new UserDepartmentCreateDto
         {
             UserId = CurrentUser.Id ?? Guid.Empty,
+            DepartmentId = default,
             IsPrimary = false,
             IsActive = true
         };
+        SelectedDepartmentForCreate = new List<LookupDto<Guid>>();
+        CreateDepartmentSelect2RenderKey++;
         await LoadDepartmentLookupAsync();
         await CreateUserDepartmentModal.Show();
+        await InvokeAsync(StateHasChanged);
     }
 
     protected virtual async Task CloseCreateUserDepartmentModalAsync()

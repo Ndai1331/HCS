@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
 using System.Threading.Tasks;
@@ -10,7 +12,10 @@ namespace HC.Blazor.Hubs;
 /// <summary>
 /// SignalR Hub for real-time chat messaging
 /// </summary>
-[Authorize]
+/// <remarks>
+/// Cookie for Blazor web; Bearer JWT for mobile/native — avoids OIDC challenge (302) on negotiate.
+/// </remarks>
+[Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme + "," + JwtBearerDefaults.AuthenticationScheme)]
 public class ChatHub : Hub
 {
     private readonly ILogger<ChatHub> _logger;

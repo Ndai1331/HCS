@@ -34,17 +34,17 @@
         padding: 0.5rem;
     }
 
-    .flatpickr-calendar.static {
+    @* .flatpickr-calendar.static {
         position: absolute;
         top: calc(80% + 2px);
-    }
+    } *@
 </style>
 <Row>
     <Column ColumnSize="ColumnSize.Is12.OnDesktop.Is3.OnWidescreen">
         <Card>
             <CardBody Class="text-center">
                 @{
-                    var srcImg = $"api/account/profile-picture-file/{CurrentUser.Id}";
+                    var srcImg = $"api/account/profile-picture-file/{CurrentUser.Id}?v={ProfilePictureCacheBuster}";
                 }
                 <div class="position-relative d-inline-block mb-3">
                     <Image Source="@srcImg" Class="lpx-avatar-img-lg"/>
@@ -57,9 +57,9 @@
                     <InputFile id="avatarFileInput" OnChange="HandleAvatarUploadAsync" accept="image/*" style="display: none;" />
                 </div>
                 <div class="border-bottom pb-3 mb-3">
-                      <h3 class="card-title mb-0">@CurrentUser.Name</h3>
-                      <small class="text-muted">@CurrentUser.UserName</small>
-                      <small class="text-muted"><i class="bi bi-geo-alt-fill"></i> @CurrentUser.PhoneNumber</small>
+                      <h3 class="card-title mb-0">@GetSidebarProfileDisplayName()</h3>
+                      <small class="text-muted">@(ProfileModel.UserName ?? CurrentUser.UserName)</small>
+                      <small class="text-muted"><i class="bi bi-geo-alt-fill"></i> @(ProfileModel.PhoneNumber ?? CurrentUser.PhoneNumber)</small>
                 </div>
                 <div class="row mt-2">
                     <div class="col-6 pe-1 d-flex">
@@ -327,7 +327,9 @@
                                             </DataGridColumn>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.SignatureImage"
-                                                    Caption="@L["SignatureImage"]">
+                                                    Caption="@L["SignatureImage"]"
+                                                    CellStyle="@((item) => "min-width: 180px")"
+                                                    Width="180px">
                                                 <DisplayTemplate>
                                                     @if (!string.IsNullOrEmpty(context.UserSignature.SignatureImage))
                                                     {
@@ -368,21 +370,27 @@
                                             </DataGridColumn>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.ValidFrom"
-                                                    Caption="@L["ValidFrom"]">
+                                                    Caption="@L["ValidFrom"]"
+                                                    CellStyle="@((item) => "min-width: 100px")"
+                                                    Width="100px">
                                                 <DisplayTemplate>
                                                     @(context.UserSignature.ValidFrom?.ToShortDateString() ?? "-")
                                                 </DisplayTemplate>
                                             </DataGridColumn>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.ValidTo"
-                                                    Caption="@L["ValidTo"]">
+                                                    Caption="@L["ValidTo"]"
+                                                    CellStyle="@((item) => "min-width: 100px")"
+                                                    Width="100px">
                                                 <DisplayTemplate>
                                                     @(context.UserSignature.ValidTo?.ToShortDateString() ?? "-")
                                                 </DisplayTemplate>
                                             </DataGridColumn>
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.IsActive"
-                                                    Caption="@L["IsActive"]">
+                                                    Caption="@L["IsActive"]"
+                                                    CellStyle="@((item) => "min-width: 100px")"
+                                                    Width="100px">
                                                 <DisplayTemplate>
                                                     @if (context.UserSignature.IsActive)
                                                     {
@@ -720,7 +728,7 @@
                                             ShowMode="FilePickerShowMode.List"
                                             MaxFileSize="52428800"
                                             Accept="image/*"
-                    FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
+                                            FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
                                     <ButtonsTemplate>
                                         <Buttons>
                                             <Button Clicked="@context.Clear" Color="Color.Warning">
@@ -755,7 +763,7 @@
                                         ShowMode="FilePickerShowMode.List"
                                         MaxFileSize="52428800"
                                         Accept="image/*"
-                    FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
+                                        FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
                                 <ButtonsTemplate>
                                     <Buttons>
                                         <Button Clicked="@context.Clear" Color="Color.Warning">
@@ -808,15 +816,17 @@
             <ModalBody>
                 <Field>
                     <FieldLabel>@L["Department"] *</FieldLabel>
-                    <Select2 IdSelector="c => c.Id.ToString()"
-                             TextSelector="c => c.DisplayName"
-                             FilterFunction="GetDepartmentCollectionLookupAsync"
-                             GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
-                             Datasource="DepartmentsCollection"
-                             Value="@SelectedDepartmentForCreate"
-                             OnValueChanged="OnDepartmentChangedForCreate"                
-                             Cache="MemoryCache"
-                             Multiselect="false" />
+                    <Div @key="@CreateDepartmentSelect2RenderKey">
+                        <Select2 IdSelector="c => c.Id.ToString()"
+                                 TextSelector="c => c.DisplayName"
+                                 FilterFunction="GetDepartmentCollectionLookupAsync"
+                                 GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
+                                 Datasource="DepartmentsCollection"
+                                 Value="@SelectedDepartmentForCreate"
+                                 OnValueChanged="OnDepartmentChangedForCreate"                
+                                 Cache="MemoryCache"
+                                 Multiselect="false" />
+                    </Div>
                 </Field>
                 <Field>
                     <Check TValue="bool" @bind-Checked="@NewUserDepartment.IsPrimary">@L["IsDepartmentPrimary"]</Check>

@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
 using System.Threading.Tasks;
@@ -10,7 +12,7 @@ namespace HC.Blazor.Hubs;
 /// <summary>
 /// SignalR Hub for real-time notifications
 /// </summary>
-[Authorize]
+[Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme + "," + JwtBearerDefaults.AuthenticationScheme)]
 public class NotificationHub : Hub
 {
     private readonly ILogger<NotificationHub> _logger;

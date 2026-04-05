@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
@@ -8,6 +9,7 @@ using Blazorise.RichTextEdit;
 using Medallion.Threading;
 using Medallion.Threading.Redis;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.AspNetCore.Builder;
@@ -65,6 +67,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using Volo.Abp.AspNetCore.Authentication.OpenIdConnect;
+using Volo.Abp.AspNetCore.Authentication.JwtBearer;
 using Volo.Abp.AspNetCore.Mvc.Client;
 using Volo.Abp.Caching;
 using Volo.Abp.Caching.StackExchangeRedis;
@@ -365,6 +368,68 @@ namespace HC.Blazor;
                 if (previousOnRedirectToIdentityProviderForSignOut != null)
                 {
                     await previousOnRedirectToIdentityProviderForSignOut(ctx);
+                }
+            };
+        })
+        // Same API access token as HC.HttpApi.Host — enables mobile SignalR on /chatHub without cookie/OIDC redirect
+        .AddAbpJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+        {
+            var authorityRaw = configuration["AuthServer:Authority"];
+            var authority = string.IsNullOrWhiteSpace(authorityRaw)
+                ? null
+                : authorityRaw.TrimEnd('/');
+
+            options.Authority = authority;
+            options.RequireHttpsMetadata = configuration.GetValue<bool>("AuthServer:RequireHttpsMetadata");
+            options.Audience = "HC";
+
+            if (!string.IsNullOrWhiteSpace(authority))
+            {
+                options.TokenValidationParameters.ValidIssuer = authority;
+            }
+
+            if (configuration.GetValue<bool>("AuthServer:IsOnK8s", false))
+            {
+                var metaAddressRaw = configuration["AuthServer:MetaAddress"];
+                var metaAddress = string.IsNullOrWhiteSpace(metaAddressRaw)
+                    ? null
+                    : metaAddressRaw.TrimEnd('/');
+
+                if (!string.IsNullOrWhiteSpace(metaAddress))
+                {
+                    options.MetadataAddress = metaAddress + "/.well-known/openid-configuration";
+
+                    if (!string.IsNullOrWhiteSpace(authority))
+                    {
+                        options.TokenValidationParameters.ValidIssuers = new[]
+                        {
+                            authority,
+                            metaAddress
+                        };
+                    }
+                    else
+                    {
+                        options.TokenValidationParameters.ValidIssuer = metaAddress;
+                    }
+                }
+            }
+
+            // WebSocket/SSE may not send Authorization; SignalR clients can pass access_token on the query string
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var path = context.HttpContext.Request.Path;
+                    if (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/notificationHub"))
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(accessToken))
+                        {
+                            context.Token = accessToken;
+                        }
+                    }
+
+                    return Task.CompletedTask;
                 }
             };
         });

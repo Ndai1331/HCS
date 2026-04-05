@@ -847,6 +847,7 @@
     "ConfirmNewPassword": "Confirm New Password",
     "ChangePassword": "Change Password",
     "PasswordDoNotMatch": "Password does not match",
+    "PasswordsDoNotMatch": "The new password and confirmation password do not match.",
     "PasswordChangedSuccessfully": "Password changed successfully",
     "PasswordChangedFailed": "Password changed failed",
     "CurrentPasswordRequired": "Current password is required",
@@ -861,6 +862,7 @@
     "UpdateUserDepartment": "Update User Department",
     "DeleteUserDepartment": "Delete User Department",
     "DeleteUserDepartmentConfirmationMessage": "Are you sure you want to delete user department {0}?",
+    "UserDepartmentDuplicateDepartment": "This department is already assigned to the user.",
     "NoDepartmentsAssigned": "No departments assigned",
     "NoUserDepartmentsAssigned": "No user departments assigned",
     "ShowInfoBox": "Show info box",
@@ -1218,6 +1220,8 @@
     "SignFilesAll": "All sign files",
     "SignFilesSentToMe": "Sign files sent to me",
     "SignFilesSentByMe": "Sign files sent by me",
-    "PleaseSelectDocument": "Please select a document"
+    "PleaseSelectDocument": "Please select a document",
+    "NoImage": "No image",
+    "UpdateUserSignature": "Update signature"
   }
 }

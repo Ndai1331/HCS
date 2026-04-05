@@ -58,7 +58,13 @@ public abstract class EfCoreUserDepartmentRepositoryBase : EfCoreRepository<HCDb
 
     protected virtual IQueryable<UserDepartmentWithNavigationProperties> ApplyFilter(IQueryable<UserDepartmentWithNavigationProperties> query, string? filterText, bool? isPrimary = null, bool? isActive = null, Guid? departmentId = null, Guid? userId = null)
     {
-        return query.WhereIf(!string.IsNullOrWhiteSpace(filterText), e => true).WhereIf(isPrimary.HasValue, e => e.UserDepartment.IsPrimary == isPrimary).WhereIf(isActive.HasValue, e => e.UserDepartment.IsActive == isActive).WhereIf(departmentId != null && departmentId != Guid.Empty, e => e.Department != null && e.Department.Id == departmentId).WhereIf(userId != null && userId != Guid.Empty, e => e.User != null && e.User.Id == userId);
+        // Filter by FK on UserDepartment so results are correct even if Department/User join is null or mismatched.
+        return query
+            .WhereIf(!string.IsNullOrWhiteSpace(filterText), e => true)
+            .WhereIf(isPrimary.HasValue, e => e.UserDepartment.IsPrimary == isPrimary)
+            .WhereIf(isActive.HasValue, e => e.UserDepartment.IsActive == isActive)
+            .WhereIf(departmentId.HasValue && departmentId.Value != Guid.Empty, e => e.UserDepartment.DepartmentId == departmentId!.Value)
+            .WhereIf(userId.HasValue && userId.Value != Guid.Empty, e => e.UserDepartment.UserId == userId!.Value);
     }
 
     public virtual async Task<List<UserDepartment>> GetListAsync(string? filterText = null, bool? isPrimary = null, bool? isActive = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)
