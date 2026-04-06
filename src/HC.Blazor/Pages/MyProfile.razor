@@ -34,10 +34,10 @@
         padding: 0.5rem;
     }
 
-    @* .flatpickr-calendar.static {
+     .flatpickr-calendar.static {
         position: absolute;
-        top: calc(80% + 2px);
-    } *@
+        top: unset; /*calc(80% + 2px);*/
+    } 
 </style>
 <Row>
     <Column ColumnSize="ColumnSize.Is12.OnDesktop.Is3.OnWidescreen">
@@ -92,6 +92,15 @@
                     </Items>
                     <Content>
                         <TabPanel Name="Profile" Class="mt-3">
+                            @if (IsLoadingProfileTab)
+                            {
+                                <div class="d-flex flex-column align-items-center justify-content-center py-5" style="min-height: 220px;">
+                                    <RadarSpinner />
+                                    <span class="text-muted mt-3">@L["Loading"]</span>
+                                </div>
+                            }
+                            else
+                            {
                            <!-- #region  -->
                            <Tabs RenderMode="TabsRenderMode.LazyLoad"
                                 TabPosition="TabPosition.Start"
@@ -194,8 +203,18 @@
                                 </TabPanel>
                             </Content>
                            </Tabs>
+                            }
                         </TabPanel>
                         <TabPanel Name="Department" Class="mt-3">
+                            @if (IsLoadingDepartmentTab)
+                            {
+                                <div class="d-flex flex-column align-items-center justify-content-center py-5" style="min-height: 220px;">
+                                    <RadarSpinner />
+                                    <span class="text-muted mt-3">@L["Loading"]</span>
+                                </div>
+                            }
+                            else
+                            {
                             <div class="d-flex justify-content-end mb-3">
                                 <Button Color="Color.Primary" Size="Size.Small" Clicked="OpenCreateUserDepartmentModalAsync">
                                     <Icon Name="IconName.Add" />
@@ -279,8 +298,18 @@
                                     </DataGrid>
                                 </CardBody>
                             </Card>
+                            }
                         </TabPanel>
                         <TabPanel Name="UserSignatures" Class="mt-3">
+                            @if (IsLoadingUserSignaturesTab)
+                            {
+                                <div class="d-flex flex-column align-items-center justify-content-center py-5" style="min-height: 220px;">
+                                    <RadarSpinner />
+                                    <span class="text-muted mt-3">@L["Loading"]</span>
+                                </div>
+                            }
+                            else
+                            {
                             <div class="d-flex justify-content-end mb-3">
                                 <Button Color="Color.Primary" Size="Size.Small" Clicked="OpenCreateUserSignatureModalAsync">
                                     <Icon Name="IconName.Add" />
@@ -371,8 +400,8 @@
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.ValidFrom"
                                                     Caption="@L["ValidFrom"]"
-                                                    CellStyle="@((item) => "min-width: 100px")"
-                                                    Width="100px">
+                                                    CellStyle="@((item) => "min-width: 150px")"
+                                                    Width="150px">
                                                 <DisplayTemplate>
                                                     @(context.UserSignature.ValidFrom?.ToShortDateString() ?? "-")
                                                 </DisplayTemplate>
@@ -380,8 +409,8 @@
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.ValidTo"
                                                     Caption="@L["ValidTo"]"
-                                                    CellStyle="@((item) => "min-width: 100px")"
-                                                    Width="100px">
+                                                    CellStyle="@((item) => "min-width: 150px")"
+                                                    Width="150px">
                                                 <DisplayTemplate>
                                                     @(context.UserSignature.ValidTo?.ToShortDateString() ?? "-")
                                                 </DisplayTemplate>
@@ -389,8 +418,8 @@
                                             <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto"
                                                     Field="UserSignature.IsActive"
                                                     Caption="@L["IsActive"]"
-                                                    CellStyle="@((item) => "min-width: 100px")"
-                                                    Width="100px">
+                                                    CellStyle="@((item) => "min-width: 150px")"
+                                                    Width="150px">
                                                 <DisplayTemplate>
                                                     @if (context.UserSignature.IsActive)
                                                     {
@@ -424,6 +453,7 @@
                                     </DataGrid>
                                 </CardBody>
                             </Card>
+                            }
                         </TabPanel>
                     </Content>
                 </Tabs>

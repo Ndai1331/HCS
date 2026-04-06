@@ -788,6 +788,7 @@
     "NoConversationSelected": "No conversation selected",
     "SearchInContacts": "Search in contacts",
     "StartConversation": "Start conversation",
+    "PleaseSelectUserToStartConversation": "Please select a user to start a conversation.",
     "NoMessageYetMessage": "No messages yet.",
     "SendOnEnter": "Send on enter",
     "TypeMessage": "Type message",

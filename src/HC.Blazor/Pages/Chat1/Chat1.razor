@@ -861,11 +861,17 @@
                                         GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
                                         Datasource="IdentityUsersCollection"
                                         Value="@SelectedDirectUser"
-                                        ValueChanged="@((List<LookupDto<Guid>> value) => SelectedDirectUser = value ?? new List<LookupDto<Guid>>())"
+                                        ValueChanged="OnSelectedDirectUserChanged"
                                         Cache="__MemoryCache"
                                         Multiselect="false" />
                             </div>
                         </Field>
+                        @if (ShowDirectUserRequiredMessage && !SelectedDirectUser.Any())
+                        {
+                            <div class="mt-2">
+                                <span class="text-danger small" role="alert">@L["PleaseSelectUserToStartConversation"]</span>
+                            </div>
+                        }
                     </div>
                 </div>
                 <div class="modal-footer">

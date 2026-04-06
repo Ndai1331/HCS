@@ -117,6 +117,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     
     // Modal states
     public bool ShowCreateDirectModal { get; set; }
+    public bool ShowDirectUserRequiredMessage { get; set; }
     public bool ShowCreateGroupModal { get; set; }
     
     // Image Viewer Modal
@@ -1323,8 +1324,15 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     private async Task ShowCreateDirectModalAsync()
     {
         ShowCreateDirectModal = true;
+        ShowDirectUserRequiredMessage = false;
         SelectedDirectUser.Clear();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSelectedDirectUserChanged(List<LookupDto<Guid>>? value)
+    {
+        SelectedDirectUser = value ?? new List<LookupDto<Guid>>();
+        ShowDirectUserRequiredMessage = false;
     }
     private async Task SendMessageToMemberAsync(ConversationMemberDto member)
     {
@@ -1394,6 +1402,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         {
             if (!SelectedDirectUser.Any())
             {
+                ShowDirectUserRequiredMessage = true;
+                await InvokeAsync(StateHasChanged);
                 return;
             }
 

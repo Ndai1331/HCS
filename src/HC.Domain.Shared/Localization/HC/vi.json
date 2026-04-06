@@ -840,6 +840,7 @@
     "NoConversationSelected": "Không có chat được chọn",
     "SearchInContacts": "Tìm kiếm trong danh bạ",
     "StartConversation": "Bắt đầu chat",
+    "PleaseSelectUserToStartConversation": "Vui lòng chọn người dùng để bắt đầu chat.",
     "NoMessageYetMessage": "Không có tin nhắn nào",
     "SendOnEnter": "Gửi khi nhấn Enter",
     "TypeMessage": "Nhập tin nhắn",

@@ -45,8 +45,6 @@ public partial class NotificationReceivers
 
     private bool CanDeleteNotificationReceiver { get; set; }
 
-    private bool IsMarkingAllAsRead { get; set; }
-
     private string FilterText { get; set; } = string.Empty;
 
     [Inject] private IHubContext<NotificationHub> HubContext { get; set; } = null!;
@@ -156,16 +154,24 @@ public partial class NotificationReceivers
 
     private async Task DownloadAsExcelAsync()
     {
-        var token = (await NotificationReceiversAppService.GetDownloadTokenAsync()).Token;
-        var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("HC") ?? await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-        var culture = CultureInfo.CurrentUICulture.Name ?? CultureInfo.CurrentCulture.Name;
-        if (!culture.IsNullOrEmpty())
+        await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+        try
         {
-            culture = "&culture=" + culture;
-        }
+            var token = (await NotificationReceiversAppService.GetDownloadTokenAsync()).Token;
+            var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("HC") ?? await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
+            var culture = CultureInfo.CurrentUICulture.Name ?? CultureInfo.CurrentCulture.Name;
+            if (!culture.IsNullOrEmpty())
+            {
+                culture = "&culture=" + culture;
+            }
 
-        await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-        NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/notification-receivers/as-excel-file?DownloadToken={token}&FilterText={HttpUtility.UrlEncode(Filter.FilterText)}{culture}&IsRead={Filter.IsRead}&ReadAtMin={Filter.ReadAtMin?.ToString("O")}&ReadAtMax={Filter.ReadAtMax?.ToString("O")}&NotificationId={Filter.NotificationId}&IdentityUserId={Filter.IdentityUserId}", forceLoad: true);
+            await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
+            NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/notification-receivers/as-excel-file?DownloadToken={token}&FilterText={HttpUtility.UrlEncode(Filter.FilterText)}{culture}&IsRead={Filter.IsRead}&ReadAtMin={Filter.ReadAtMin?.ToString("O")}&ReadAtMax={Filter.ReadAtMax?.ToString("O")}&NotificationId={Filter.NotificationId}&IdentityUserId={Filter.IdentityUserId}", forceLoad: true);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task OnDataGridReadAsync(DataGridReadDataEventArgs<NotificationReceiverWithNavigationPropertiesDto> e)
@@ -188,6 +194,7 @@ public partial class NotificationReceivers
 
     private async Task DeleteNotificationReceiverAsync(NotificationReceiverWithNavigationPropertiesDto input)
     {
+        await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
         try
         {
             await NotificationReceiversAppService.DeleteAsync(input.NotificationReceiver.Id);
@@ -196,6 +203,10 @@ public partial class NotificationReceivers
         catch (Exception ex)
         {
             await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
         }
     }
 
@@ -302,23 +313,35 @@ public partial class NotificationReceivers
             return;
         }
 
-        if (AllNotificationReceiversSelected)
+        await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+        try
         {
-            await NotificationReceiversAppService.DeleteAllAsync(Filter);
-        }
-        else
-        {
-            await NotificationReceiversAppService.DeleteByIdsAsync(SelectedNotificationReceivers.Select(x => x.NotificationReceiver.Id).ToList());
-        }
+            if (AllNotificationReceiversSelected)
+            {
+                await NotificationReceiversAppService.DeleteAllAsync(Filter);
+            }
+            else
+            {
+                await NotificationReceiversAppService.DeleteByIdsAsync(SelectedNotificationReceivers.Select(x => x.NotificationReceiver.Id).ToList());
+            }
 
-        SelectedNotificationReceivers.Clear();
-        AllNotificationReceiversSelected = false;
-        await GetNotificationReceiversAsync();
+            SelectedNotificationReceivers.Clear();
+            AllNotificationReceiversSelected = false;
+            await GetNotificationReceiversAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task MarkAllAsReadAsync()
     {
-        IsMarkingAllAsRead = true;
+        await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
         try
         {
             await NotificationReceiversAppService.MarkAllAsReadAsync(Filter.SourceType);
@@ -340,7 +363,7 @@ public partial class NotificationReceivers
         }
         finally
         {
-            IsMarkingAllAsRead = false;
+            await BlockUiService.UnBlock();
         }
     }
 

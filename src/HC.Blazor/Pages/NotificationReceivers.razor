@@ -20,7 +20,9 @@
 @using Volo.Abp.AspNetCore.Components
 @using Microsoft.AspNetCore.Components
 @using Volo.Abp.Http.Client
+@using Volo.Abp.AspNetCore.Components.BlockUi
 @inherits HCComponentBase
+@inject IBlockUiService BlockUiService
 @inject INotificationReceiversAppService NotificationReceiversAppService
 @inject IUiMessageService UiMessageService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
@@ -241,8 +243,11 @@
               <DataGridColumn TItem="NotificationReceiverWithNavigationPropertiesDto"
                       Field="IdentityUser.Name"
                       Caption="@L["IdentityUser"]"
-                      CellStyle="@((item) => "min-width: 150px")"
-                      Width="150px">
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
+                      <DisplayTemplate>
+                              @(context.IdentityUser != null ? $"{context.IdentityUser.Surname} {context.IdentityUser.Name}".Trim() : "-")
+                      </DisplayTemplate>
               </DataGridColumn>
                 <DataGridColumn TItem="NotificationReceiverWithNavigationPropertiesDto" Caption="@L["Actions"]">
                     <DisplayTemplate>

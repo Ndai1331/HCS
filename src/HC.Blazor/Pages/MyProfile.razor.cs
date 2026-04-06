@@ -156,6 +156,11 @@ public partial class MyProfile
 
     protected string SelectedTab { get; set; } = "Profile";
     protected string SelectedTabMyProfile { get; set; } = "Profile";
+
+    protected bool IsLoadingProfileTab { get; set; } = true;
+    protected bool IsLoadingDepartmentTab { get; set; } = true;
+    protected bool IsLoadingUserSignaturesTab { get; set; } = true;
+
     protected async override Task OnInitializedAsync()
     {
         StartDate = Clock.Now.AddMonths(-1).Date;
@@ -168,21 +173,32 @@ public partial class MyProfile
 
         _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
 
-        await LoadUserProfileAsync();
-        await LoadUserDepartmentsAsync();
-        await LoadUserSignaturesAsync();
+        await Task.WhenAll(
+            LoadUserProfileAsync(),
+            LoadUserDepartmentsAsync(),
+            LoadUserSignaturesAsync());
     }
 
     protected virtual async Task LoadUserProfileAsync()
     {
-        if (CurrentUser.Id.HasValue)
+        IsLoadingProfileTab = true;
+        await InvokeAsync(StateHasChanged);
+        try
         {
-            var user = await IdentityUserAppService.GetAsync(CurrentUser.Id.Value);
-            if (user != null)
+            if (CurrentUser.Id.HasValue)
             {
-                ProfileModel = ObjectMapper.Map<IdentityUserDto, IdentityUserUpdateDto>(user);
-                ProfilePictureCacheBuster = DateTime.UtcNow.Ticks;
+                var user = await IdentityUserAppService.GetAsync(CurrentUser.Id.Value);
+                if (user != null)
+                {
+                    ProfileModel = ObjectMapper.Map<IdentityUserDto, IdentityUserUpdateDto>(user);
+                    ProfilePictureCacheBuster = DateTime.UtcNow.Ticks;
+                }
             }
+        }
+        finally
+        {
+            IsLoadingProfileTab = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -199,17 +215,27 @@ public partial class MyProfile
 
     protected virtual async Task LoadUserDepartmentsAsync()
     {
-        if (CurrentUser.Id.HasValue)
+        IsLoadingDepartmentTab = true;
+        await InvokeAsync(StateHasChanged);
+        try
         {
-            var result = await UserDepartmentsAppService.GetListAsync(new GetUserDepartmentsInput
+            if (CurrentUser.Id.HasValue)
             {
-                UserId = CurrentUser.Id.Value,
-                MaxResultCount = 100,
-                SkipCount = 0,
-                Sorting = string.Empty
-            });
-            UserDepartments = result.Items.ToList();
-        }   
+                var result = await UserDepartmentsAppService.GetListAsync(new GetUserDepartmentsInput
+                {
+                    UserId = CurrentUser.Id.Value,
+                    MaxResultCount = 100,
+                    SkipCount = 0,
+                    Sorting = string.Empty
+                });
+                UserDepartments = result.Items.ToList();
+            }
+        }
+        finally
+        {
+            IsLoadingDepartmentTab = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     protected virtual async Task SaveProfileAsync()
@@ -365,16 +391,26 @@ public partial class MyProfile
     // UserSignature Methods
     protected virtual async Task LoadUserSignaturesAsync()
     {
-        if (CurrentUser.Id.HasValue)
+        IsLoadingUserSignaturesTab = true;
+        await InvokeAsync(StateHasChanged);
+        try
         {
-            var result = await UserSignaturesAppService.GetListAsync(new GetUserSignaturesInput
+            if (CurrentUser.Id.HasValue)
             {
-                IdentityUserId = CurrentUser.Id.Value,
-                MaxResultCount = 100,
-                SkipCount = 0,
-                Sorting = string.Empty
-            });
-            UserSignatures = result.Items.ToList();
+                var result = await UserSignaturesAppService.GetListAsync(new GetUserSignaturesInput
+                {
+                    IdentityUserId = CurrentUser.Id.Value,
+                    MaxResultCount = 100,
+                    SkipCount = 0,
+                    Sorting = string.Empty
+                });
+                UserSignatures = result.Items.ToList();
+            }
+        }
+        finally
+        {
+            IsLoadingUserSignaturesTab = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -426,6 +462,8 @@ public partial class MyProfile
             {
                 NewUserSignature.IdentityUserId = CurrentUser.Id.Value;
             }
+
+            ClearSealImageIfElectronicSignature(NewUserSignature);
 
             await UserSignaturesAppService.CreateAsync(NewUserSignature);
             await LoadUserSignaturesAsync();
@@ -552,6 +590,8 @@ public partial class MyProfile
                 }
             }
 
+            ClearSealImageIfElectronicSignature(EditingUserSignature);
+
             await UserSignaturesAppService.UpdateAsync(EditingUserSignatureId, EditingUserSignature);
             await LoadUserSignaturesAsync();
             await EditUserSignatureModal.Hide();
@@ -654,6 +694,10 @@ public partial class MyProfile
         NewSignType = value;
         CreateSignatureFieldErrors.Remove("SignType");
         SelectedSignatureSettingForCreate.Clear();
+        if (!IsDigitalSignType(value?.ToString()))
+        {
+            NewUserSignature.SealImg = string.Empty;
+        }
         await LoadSignatureSettingsLookupAsync(signType: value?.ToString());
         await InvokeAsync(StateHasChanged);
     }
@@ -663,6 +707,10 @@ public partial class MyProfile
         EditingSignType = value;
         EditSignatureFieldErrors.Remove("SignType");
         SelectedSignatureSettingForEdit.Clear();
+        if (!IsDigitalSignType(value?.ToString()))
+        {
+            EditingUserSignature.SealImg = string.Empty;
+        }
         await LoadSignatureSettingsLookupAsync(signType: value?.ToString());
         await InvokeAsync(StateHasChanged);
     }
@@ -670,6 +718,25 @@ public partial class MyProfile
     private static bool IsDigitalSignType(string? signType)
     {
         return string.Equals(signType, nameof(SignType.DIGITAL), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Electronic signatures do not use seal image; strip any stale path (e.g. after switching from DIGITAL).
+    /// </summary>
+    private static void ClearSealImageIfElectronicSignature(UserSignatureCreateDto dto)
+    {
+        if (!IsDigitalSignType(dto.SignType))
+        {
+            dto.SealImg = string.Empty;
+        }
+    }
+
+    private static void ClearSealImageIfElectronicSignature(UserSignatureUpdateDto dto)
+    {
+        if (!IsDigitalSignType(dto.SignType))
+        {
+            dto.SealImg = string.Empty;
+        }
     }
 
     // Department Methods
@@ -859,38 +926,56 @@ public partial class MyProfile
     // Signature Image Upload Methods
     protected virtual async Task OnCreateSignatureImageFileChanged(FileChangedEventArgs e)
     {
-        if (e.Files != null && e.Files.Any())
+        if (e.Files == null || !e.Files.Any())
         {
-            var file = e.Files.First();
-            await UploadSignatureImageFileAsync(file, isEditMode: false);
+            NewUserSignature.SignatureImage = string.Empty;
+            ResetSignatureImageUploadState();
+            CreateSignatureFieldErrors.Remove("SignatureImage");
+            await InvokeAsync(StateHasChanged);
+            return;
         }
+
+        await UploadSignatureImageFileAsync(e.Files.First(), isEditMode: false);
     }
 
     protected virtual async Task OnEditSignatureImageFileChanged(FileChangedEventArgs e)
     {
-        if (e.Files != null && e.Files.Any())
+        if (e.Files == null || !e.Files.Any())
         {
-            var file = e.Files.First();
-            await UploadSignatureImageFileAsync(file, isEditMode: true);
+            EditingUserSignature.SignatureImage = string.Empty;
+            ResetSignatureImageUploadState();
+            EditSignatureFieldErrors.Remove("SignatureImage");
+            await InvokeAsync(StateHasChanged);
+            return;
         }
+
+        await UploadSignatureImageFileAsync(e.Files.First(), isEditMode: true);
     }
 
     protected virtual async Task OnCreateSealImageFileChanged(FileChangedEventArgs e)
     {
-        if (e.Files != null && e.Files.Any())
+        if (e.Files == null || !e.Files.Any())
         {
-            var file = e.Files.First();
-            await UploadSealImageFileAsync(file, isEditMode: false);
+            NewUserSignature.SealImg = string.Empty;
+            CreateSignatureFieldErrors.Remove("SealImg");
+            await InvokeAsync(StateHasChanged);
+            return;
         }
+
+        await UploadSealImageFileAsync(e.Files.First(), isEditMode: false);
     }
 
     protected virtual async Task OnEditSealImageFileChanged(FileChangedEventArgs e)
     {
-        if (e.Files != null && e.Files.Any())
+        if (e.Files == null || !e.Files.Any())
         {
-            var file = e.Files.First();
-            await UploadSealImageFileAsync(file, isEditMode: true);
+            EditingUserSignature.SealImg = string.Empty;
+            EditSignatureFieldErrors.Remove("SealImg");
+            await InvokeAsync(StateHasChanged);
+            return;
         }
+
+        await UploadSealImageFileAsync(e.Files.First(), isEditMode: true);
     }
 
     protected virtual async Task UploadSignatureImageFileAsync(IFileEntry file, bool isEditMode)

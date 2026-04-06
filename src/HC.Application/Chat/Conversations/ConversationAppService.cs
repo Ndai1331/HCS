@@ -37,6 +37,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
     private readonly IBlobContainer _blobContainer;
     private readonly IDistributedEventBus _distributedEventBus;
     private readonly ILogger<ConversationAppService> _logger;
+    private const string ForwardedMessageEmptyCommentPlaceholder = "📤";
 
     public ConversationAppService(
         MessagingManager messagingManager,
@@ -1496,11 +1497,10 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             throw new BusinessException("HC.Chat:UserNotMember");
         }
         
-        // Use only the additional comment as the message body;
-        // the original text is preserved via the ForwardedFrom reference shown in the UI header.
+        // Optional user comment only; do not duplicate original text (UI shows it on ForwardedFromMessage).
         var forwardedText = !string.IsNullOrWhiteSpace(input.AdditionalComment)
             ? input.AdditionalComment
-            : originalMessage.Text;
+            : ForwardedMessageEmptyCommentPlaceholder;
         
         Message newMessage;
         List<Guid> memberUserIds;

@@ -1,6 +1,6 @@
 services:
   hc-blazor:
-    image: longnguyen1331/hc-blazor:latest
+    image: longnguyen1331/hc-blazor:latest01042026
     container_name: hc-blazor
     environment:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
@@ -58,7 +58,7 @@ services:
       - abp-network
 
   hc-api:
-    image: longnguyen1331/hc-api:latest
+    image: longnguyen1331/hc-api:latest01042026
     container_name: hc-api
     hostname: hc-api
     environment:
@@ -107,7 +107,7 @@ services:
       - abp-network
 
   hc-authserver:
-    image: longnguyen1331/hc-authserver:latest
+    image: longnguyen1331/hc-authserver:latest01042026
     container_name: hc-authserver
     environment:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
