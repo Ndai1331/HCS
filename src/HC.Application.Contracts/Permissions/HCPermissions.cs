@@ -196,6 +196,9 @@ public static class HCPermissions
         public const string Delete = Default + ".Delete";
         public const string SubmitForSigning = Default + ".SubmitForSigning";
         public const string Send = Default + ".Send";
+        public const string SubmitForApproval = Default + ".SubmitForApproval";
+        public const string RejectApproval = Default + ".RejectApproval";
+        public const string ApproveWithNote = Default + ".ApproveWithNote";
         public const string MyDocuments = Default + ".MyDocuments";
     }
 

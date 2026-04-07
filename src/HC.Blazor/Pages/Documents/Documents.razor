@@ -2,6 +2,7 @@
 @attribute [Authorize(HCPermissions.Documents.Default)]
 @using HC.Blazor.Services
 @using HC.Departments
+@using HC.DocumentHistories
 @using HC.Documents
 @using HC.MasterDatas
 @using HC.Localization
@@ -31,6 +32,7 @@
 
 @inherits HCComponentBase
 @inject IDocumentsAppService DocumentsAppService
+@inject IDocumentHistoriesAppService DocumentHistoriesAppService
 @inject IDocumentFilesAppService DocumentFilesAppService
 @inject HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService
 @inject IUiMessageService UiMessageService
@@ -369,7 +371,10 @@
                     <DataGridMultiSelectColumn TItem="DocumentWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
                 }
                 
-                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" Caption="@L["Actions"]" Width="120px">
+                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
+                                Caption="@L["Actions"]"
+                                Width="@(SelectedSourceType == DocumentSourceType.SentToMe ? "150px" : "120px")"
+                                CellStyle="@((item) => SelectedSourceType == DocumentSourceType.SentToMe ? "min-width: 150px" : "min-width: 120px")">
                     <DisplayTemplate>
                         <Div Class="d-flex gap-1">
                             @if (CanEditDocument && CanShowEditDocumentButton)
@@ -397,7 +402,7 @@
                                 </Button>
                             }
                             <Button
-                                @onclick="@(() => OpenDocumentPdfViewerModalAsync(context))"
+                                @onclick="@(() => HandleViewDocumentAsync(context))"
                                 Color="Color.Primary"
                                 Size="Size.Small"
                                 Outline
@@ -438,7 +443,19 @@
                                     Class="mb-1">
                                     <Icon Name="IconName.CheckSquare" />
                                 </Button>
-                            } 
+                            }
+                            @if (SelectedSourceType == DocumentSourceType.Archive && CanSubmitForApproval && !IsDocumentApproved(context))
+                            {
+                                <Button
+                                    @onclick="@(async () => await ShowSubmitApprovalModalAsync(context))"
+                                    Color="Color.Info"
+                                    Outline
+                                    Size="Size.Small"
+                                    Title="@L["SubmitForApproval"]"
+                                    Class="mb-1">
+                                    <Icon Name="IconName.Share" />
+                                </Button>
+                            }
                         </Div>
                     </DisplayTemplate>
                 </DataGridColumn>
@@ -661,6 +678,57 @@
     </ModalContent>
 </Modal>
 
+<Modal @ref="SubmitApprovalModal" Closing="@SubmitApprovalModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>Gửi lãnh đạo phê duyệt</ModalTitle>
+            <CloseButton Clicked="CloseSubmitApprovalModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @if (DocumentToSubmitApproval != null && DocumentToSubmitApproval.Document != null)
+            {
+                <Alert Color="Color.Info" Visible="true" Class="mb-3">
+                    <AlertMessage>Văn bản</AlertMessage>
+                    <AlertDescription>
+                        @DocumentToSubmitApproval.Document.Title - #@DocumentToSubmitApproval.Document.No
+                    </AlertDescription>
+                </Alert>
+                <div class="mb-3">
+                    <strong>@L["FromUser"]:</strong> @(DocumentToSubmitApproval.FromUserDisplayName ?? CurrentUser.Name ?? CurrentUser.UserName ?? "—")
+                </div>
+            }
+
+            <Field>
+                <FieldLabel>Lãnh đạo phê duyệt</FieldLabel>
+                <div class="hc-select2-full">
+                    <Select2 IdSelector="c => c.Id.ToString()"
+                             TextSelector="c => c.DisplayName"
+                             FilterFunction="GetLeaderUserLookupAsync"
+                             GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
+                             Datasource="LeaderUsersCollection"
+                             Value="@SelectedLeaderUser"
+                             OnValueChanged="OnLeaderUserChanged"
+                             Cache="__MemoryCache"
+                             Placeholder="Tìm kiếm người phê duyệt..."
+                             Multiselect="false" />
+                </div>
+            </Field>
+
+            <Field Class="mt-3">
+                <FieldLabel>Ghi chú gửi duyệt</FieldLabel>
+                <MemoEdit Rows="3"
+                          Text="@SubmitApprovalMessage"
+                          TextChanged="@((string v) => SubmitApprovalMessage = v)"
+                          Placeholder="Nhập ghi chú..." />
+            </Field>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseSubmitApprovalModalAsync">@L["Cancel"]</Button>
+            <Button Color="Color.Primary" Clicked="SubmitApprovalAsync">Gửi phê duyệt</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
 <Modal @ref="DeleteOrRevokeModal" Closing="@DeleteOrRevokeModal.CancelClosingModalWhenFocusLost">
     <ModalContent Centered="true" Size="ModalSize.Default">
         <ModalHeader>
@@ -732,11 +800,153 @@
                     <PdfViewerToolbar ShowDownloading="false" />
                     <PdfViewer Source="@DocumentPdfFileUrl" />
                 </PdfViewerContainer>
+
+                <div class="mt-3">
+                    <h6 class="mb-2">
+                        <Icon Name="IconName.History" Class="me-2" />@L["DocumentHistories"]
+                    </h6>
+                    @if (PreviewDocumentHistories.Any())
+                    {
+                        <div style="max-height: 18rem; overflow: auto;">
+                            <Table Hoverable="true" Bordered="true" Striped="true" Size="TableSize.Small">
+                                <thead>
+                                    <tr>
+                                        <th>@L["Action"]</th>
+                                        <th>@L["From"]</th>
+                                        <th>@L["To"]</th>
+                                        <th>@L["Comment"]</th>
+                                        <th>@L["CreationTime"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var history in PreviewDocumentHistories)
+                                    {
+                                        <tr>
+                                            <td><small class="badge bg-info">@GetLocalizedHistoryAction(history.DocumentHistory.Action)</small></td>
+                                            <td><small>@GetHistoryUserDisplayName(history.FromUser)</small></td>
+                                            <td><small>@GetHistoryUserDisplayName(history.ToUser)</small></td>
+                                            <td><small>@history.DocumentHistory.Comment</small></td>
+                                            <td><small>@history.DocumentHistory.CreationTime.ToString("dd/MM/yyyy HH:mm")</small></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </Table>
+                        </div>
+                    }
+                    else
+                    {
+                        <Alert Color="Color.Info" Dismissible="false" Class="mb-0">
+                            <AlertMessage>@L["NoHistoryAvailable"]</AlertMessage>
+                        </Alert>
+                    }
+                </div>
             }
         </ModalBody>
         <PdfViewerTaskActionsFooter OnClose="CloseDocumentPdfViewerModalAsync"
                                     OnAssignTask="AssignTaskFromDocumentPdfViewerAsync"
                                     DisableAssignTask="@(!CurrentDocumentPdfDocumentId.HasValue)" />
+    </ModalContent>
+</Modal>
+
+<Modal @ref="ApprovalReviewModal"  Class="pdf-viewer-modal">
+    <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
+        <ModalHeader>
+            <ModalTitle>@L["ApproveDocument"]</ModalTitle>
+            <CloseButton Clicked="CloseApprovalReviewModalAsync" />
+        </ModalHeader>
+        <ModalBody Class="pdf-viewer-modal-body">
+            @if (ApprovalReviewDocument != null && ApprovalReviewDocument.Document != null)
+            {
+                <Alert Color="Color.Info" Visible="true" Class="mb-3">
+                    <AlertMessage>@L["Document"]:</AlertMessage>
+                    <AlertDescription>
+                        @ApprovalReviewDocument.Document.Title - #@ApprovalReviewDocument.Document.No
+                    </AlertDescription>
+                </Alert>
+            }
+
+            <Row>
+                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    <h6>@L["ViewDocumentQuickly"]</h6>
+                    @if (IsApprovalPdfFile && !string.IsNullOrWhiteSpace(ApprovalPdfFileUrl))
+                    {
+                        <PdfViewerContainer Height="Height.Rem(22)">
+                            <PdfViewerToolbar ShowDownloading="false" />
+                            <PdfViewer Source="@ApprovalPdfFileUrl" />
+                        </PdfViewerContainer>
+                    }
+
+                    <div class="mt-3">
+                        <h6 class="mb-2">
+                            <Icon Name="IconName.History" Class="me-2" />@L["DocumentHistories"]
+                        </h6>
+                        @if (PreviewDocumentHistories.Any())
+                        {
+                            <div style="max-height: 12rem; overflow: auto;">
+                                <Table Hoverable="true" Bordered="true" Striped="true" Size="TableSize.Small">
+                                    <thead>
+                                        <tr>
+                                            <th>@L["Action"]</th>
+                                            <th>@L["From"]</th>
+                                            <th>@L["To"]</th>
+                                            <th>@L["Comment"]</th>
+                                            <th>@L["CreationTime"]</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var history in PreviewDocumentHistories)
+                                        {
+                                            <tr>
+                                                <td><small class="badge bg-info">@GetLocalizedHistoryAction(history.DocumentHistory.Action)</small></td>
+                                                <td><small>@GetHistoryUserDisplayName(history.FromUser)</small></td>
+                                                <td><small>@GetHistoryUserDisplayName(history.ToUser)</small></td>
+                                                <td><small>@history.DocumentHistory.Comment</small></td>
+                                                <td><small>@history.DocumentHistory.CreationTime.ToString("dd/MM/yyyy HH:mm")</small></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </Table>
+                            </div>
+                        }
+                        else
+                        {
+                            <Alert Color="Color.Info" Dismissible="false" Class="mb-0">
+                                <AlertMessage>@L["NoHistoryAvailable"]</AlertMessage>
+                            </Alert>
+                        }
+                    </div>
+                </Column>
+
+                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">@L["SelectNotePosition"]</h6>
+                        <Button Color="Color.Light" Size="Size.Small" Clicked="InitializeApprovalPdfPickerAsync">
+                            <Icon Name="IconName.Edit" Class="me-1" />
+                            @L["SelectNotePosition"]
+                        </Button>
+                    </div>
+                    <div id="approval-review-pdf-pick-container"
+                         style="height: 28rem; overflow: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: .5rem; background: #fafafa;">
+                    </div>
+                    <small class="text-muted">
+                        @L["Page"]: @PickedPageNumber, @L["X"]: @PickedPdfX.ToString("0.##"), @L["Y"]: @PickedPdfY.ToString("0.##")
+                    </small>
+                </Column>
+            </Row>
+
+            <Field Class="mt-3">
+                <FieldLabel>@L["ApprovalNote"]</FieldLabel>
+                <MemoEdit Rows="3"
+                          Text="@ApprovalActionNote"
+                          TextChanged="@((string v) => ApprovalActionNote = v)"
+                          Placeholder="@L["EnterApprovalNote"]" />
+            </Field>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseApprovalReviewModalAsync">@L["Cancel"]</Button>
+            <Button Color="Color.Warning" Clicked="RejectSelectedDocumentAsync" Disabled="@(!CanRejectApproval)">@L["Reject"]</Button>
+            <Button Color="Color.Success" Clicked="ApproveSelectedDocumentAsync" Disabled="@(!CanApproveWithNote)">@L["Approve"]</Button>
+        </ModalFooter>
     </ModalContent>
 </Modal>
 

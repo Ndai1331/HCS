@@ -40,6 +40,7 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
     // Watermark opacity (0-255, lower = more transparent / fainter)
     private const int WatermarkAlpha = 48;
     private const double WatermarkFontSize = 18;
+    private const double NoteFontSize = 9.5;
     private const double DiagonalAngleDegrees = -45;
     private static readonly string[] WatermarkFontCandidates =
     {
@@ -152,16 +153,31 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
 
             var page = document.Pages[pageIndex];
             using var gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append);
-            var font = ResolveWatermarkFont() ?? new XFont("Helvetica", 11);
+            var font = ResolveNoteFont() ?? new XFont("Helvetica", NoteFontSize);
+
+            // pdf.js returns PDF coordinates in a bottom-left origin system.
+            // PdfSharp draws using a top-left origin, so Y must be inverted.
+            var normalizedY = page.Height.Point - pdfY;
 
             // Keep marker inside page boundaries.
             var safeX = Math.Clamp(pdfX, 8, page.Width.Point - 8);
-            var safeY = Math.Clamp(pdfY, 12, page.Height.Point - 12);
+            var safeY = Math.Clamp(normalizedY, 12, page.Height.Point - 12);
 
-            var pen = new XPen(XColors.DarkRed, 1);
-            var brush = XBrushes.DarkRed;
+            var inkColor = XColor.FromArgb(34, 83, 185);
+            var pen = new XPen(inkColor, 0.9);
+            var brush = new XSolidBrush(inkColor);
             gfx.DrawEllipse(pen, brush, safeX - 2, safeY - 2, 4, 4);
-            gfx.DrawString(noteContent.Trim(), font, XBrushes.Black, safeX + 6, safeY - 6, XStringFormats.TopLeft);
+
+            var textX = Math.Min(safeX + 6, page.Width.Point - 24);
+            var textY = Math.Max(safeY - 4, 12);
+            var maxTextWidth = Math.Max(80, page.Width.Point - textX - 12);
+            var lineHeight = gfx.MeasureString("Ag", font).Height + 1.5;
+            var noteLines = WrapNoteLines(gfx, font, noteContent, maxTextWidth);
+
+            for (var i = 0; i < noteLines.Count; i++)
+            {
+                gfx.DrawString(noteLines[i], font, brush, textX, textY + (i * lineHeight), XStringFormats.TopLeft);
+            }
 
             using var outputStream = new MemoryStream();
             document.Save(outputStream, false);
@@ -278,5 +294,66 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
         }
 
         return null;
+    }
+
+    private XFont? ResolveNoteFont()
+    {
+        foreach (var fontName in WatermarkFontCandidates)
+        {
+            try
+            {
+                return new XFont(fontName, NoteFontSize);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Note font '{FontName}' is unavailable.", fontName);
+            }
+        }
+
+        return null;
+    }
+
+    private static System.Collections.Generic.List<string> WrapNoteLines(XGraphics gfx, XFont font, string noteContent, double maxTextWidth)
+    {
+        var wrappedLines = new System.Collections.Generic.List<string>();
+        var paragraphs = noteContent
+            .Trim()
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Split('\n');
+
+        foreach (var paragraph in paragraphs)
+        {
+            if (string.IsNullOrWhiteSpace(paragraph))
+            {
+                wrappedLines.Add(string.Empty);
+                continue;
+            }
+
+            var words = paragraph.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 0)
+            {
+                wrappedLines.Add(string.Empty);
+                continue;
+            }
+
+            var currentLine = words[0];
+            for (var i = 1; i < words.Length; i++)
+            {
+                var candidate = $"{currentLine} {words[i]}";
+                if (gfx.MeasureString(candidate, font).Width <= maxTextWidth)
+                {
+                    currentLine = candidate;
+                    continue;
+                }
+
+                wrappedLines.Add(currentLine);
+                currentLine = words[i];
+            }
+
+            wrappedLines.Add(currentLine);
+        }
+
+        return wrappedLines;
     }
 }

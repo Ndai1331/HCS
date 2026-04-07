@@ -21,4 +21,10 @@ public class DocumentWithNavigationPropertiesDto : DocumentWithNavigationPropert
     /// When true, hide &quot;Submit for signing&quot; on manage-documents (parent has workflow copy IN_PROGRESS or COMPLETED).
     /// </summary>
     public bool HideSubmitForSigningButton { get; set; }
+
+    /// <summary>
+    /// True when current user has a pending approval task for this document.
+    /// Used by SentToMe list to open approve/reject modal instead of read-only viewer.
+    /// </summary>
+    public bool HasPendingApprovalTask { get; set; }
 }

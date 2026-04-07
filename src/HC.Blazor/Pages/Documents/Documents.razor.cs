@@ -7,6 +7,7 @@ using System.IO;
 using System.Web;
 using Blazorise;
 using Blazorise.DataGrid;
+using HC.DocumentHistories;
 using Volo.Abp.BlazoriseUI.Components;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Application.Dtos;
@@ -24,11 +25,15 @@ using Excubo.Blazor.TreeViews;
 using Microsoft.AspNetCore.Components.Web;
 using HC.MasterDatas;
 using Volo.Abp.AspNetCore.Components.Messages;
+using Microsoft.JSInterop;
+using Volo.Abp.Identity;
 
 namespace HC.Blazor.Pages.Documents;
 
 public partial class Documents : IDisposable
 {
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+
     // Dynamic page title based on sourceType
     protected string PageTitle { get; set; } = string.Empty;
 
@@ -56,6 +61,9 @@ public partial class Documents : IDisposable
     private bool CanDeleteDocument { get; set; }
     private bool CanSendDocument { get; set; }
     private bool CanSubmitForSigning { get; set; }
+    private bool CanSubmitForApproval { get; set; }
+    private bool CanRejectApproval { get; set; }
+    private bool CanApproveWithNote { get; set; }
 
     private GetDocumentsInput Filter { get; set; } = new GetDocumentsInput();
     private string FieldFilterValue { get; set; } = string.Empty;
@@ -88,6 +96,8 @@ public partial class Documents : IDisposable
     private bool CanShowEditDocumentButton => SelectedSourceType != DocumentSourceType.SentToMe;
 
     private Modal SendDocumentModal { get; set; } = new();
+    private Modal SubmitApprovalModal { get; set; } = new();
+    private Modal ApprovalReviewModal { get; set; } = new();
 
     // Submit for Signing Modal (reusable component)
     private HC.Blazor.Components.SubmitWorkflowModal.SubmitWorkflowModal SubmitWorkflowModalRef { get; set; } = default!;
@@ -97,7 +107,16 @@ public partial class Documents : IDisposable
     private string? DocumentPdfFileUrl { get; set; }
     private bool IsDocumentPdfFile { get; set; }
     private Guid? CurrentDocumentPdfDocumentId { get; set; }
+    private IReadOnlyList<DocumentHistoryWithNavigationPropertiesDto> PreviewDocumentHistories { get; set; } = new List<DocumentHistoryWithNavigationPropertiesDto>();
+    private string? ApprovalPdfFileUrl { get; set; }
+    private bool IsApprovalPdfFile { get; set; }
+    private int PickedPageNumber { get; set; }
+    private double PickedPdfX { get; set; }
+    private double PickedPdfY { get; set; }
+    private bool IsInitializingPdfPicker { get; set; }
+    private string ApprovalActionNote { get; set; } = string.Empty;
     private HC.Blazor.Components.ProjectTaskCreateModal.ProjectTaskCreateModal CreateTaskModalRef { get; set; } = default!;
+    private DotNetObjectReference<Documents>? DotNetRef { get; set; }
 
     private CancellationTokenSource? SearchDebounceCts { get; set; }
 
@@ -386,6 +405,9 @@ public partial class Documents : IDisposable
         CanEditDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Edit);
         CanSendDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Send);
         CanSubmitForSigning = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.SubmitForSigning);
+        CanSubmitForApproval = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.SubmitForApproval);
+        CanRejectApproval = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.RejectApproval);
+        CanApproveWithNote = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.ApproveWithNote);
         CanDeleteDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Delete);
     }
 
@@ -694,6 +716,11 @@ public partial class Documents : IDisposable
         return materialized;
     }
 
+    private static bool IsDocumentApproved(DocumentWithNavigationPropertiesDto item)
+    {
+        return string.Equals(item.Status?.Code, DocumentStatusCode.DA_PHE_DUYET.GetCode(), StringComparison.OrdinalIgnoreCase);
+    }
+
     private Task SelectAllItems()
     {
         AllDocumentsSelected = true;
@@ -786,9 +813,15 @@ public partial class Documents : IDisposable
     private bool IsPersonal { get; set; } = false;
     private IReadOnlyList<LookupDto<Guid>> RecipientsCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> DepartmentsCollection { get; set; } = new List<LookupDto<Guid>>();
+    private IReadOnlyList<LookupDto<Guid>> LeaderUsersCollection { get; set; } = new List<LookupDto<Guid>>();
     private List<LookupDto<Guid>> SelectedRecipients { get; set; } = new();
+    private List<LookupDto<Guid>> SelectedLeaderUser { get; set; } = new();
     private List<DepartmentTreeView> SelectedDepartments { get; set; } = new();
     private DepartmentTreeView SelectedItem { get; set; } = new();
+    private Guid? SelectedLeaderUserId { get; set; }
+    private string SubmitApprovalMessage { get; set; } = string.Empty;
+    private DocumentWithNavigationPropertiesDto DocumentToSubmitApproval { get; set; } = new();
+    private DocumentWithNavigationPropertiesDto ApprovalReviewDocument { get; set; } = new();
 
     // Delete or Revoke Document Modal
     private Modal DeleteOrRevokeModal { get; set; } = new();
@@ -849,9 +882,99 @@ public partial class Documents : IDisposable
         return result.Items.ToList();
     }
 
+    private async Task<List<LookupDto<Guid>>> GetLeaderUserLookupAsync(
+        IReadOnlyList<LookupDto<Guid>> source,
+        string search,
+        CancellationToken cancellationToken)
+    {
+        var result = await DocumentsAppService.GetIdentityUserLookupAsync(
+            new LookupRequestDto
+            {
+                Filter = search,
+                MaxResultCount = DocumentLookupPageSize,
+                SkipCount = 0
+            });
+
+        LeaderUsersCollection = result.Items;
+        return result.Items.ToList();
+    }
+
+    private void OnLeaderUserChanged()
+    {
+        SelectedLeaderUserId = SelectedLeaderUser.FirstOrDefault()?.Id;
+    }
+
     private async Task CloseSendDocumentModalAsync()
     {
         await InvokeAsync(SendDocumentModal.Hide);
+    }
+
+    private async Task ShowSubmitApprovalModalAsync(DocumentWithNavigationPropertiesDto document)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            DocumentToSubmitApproval = document;
+            SelectedLeaderUser.Clear();
+            SelectedLeaderUserId = null;
+            SubmitApprovalMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            await InvokeAsync(SubmitApprovalModal.Show);
+        }
+    }
+
+    private async Task CloseSubmitApprovalModalAsync()
+    {
+        await SubmitApprovalModal.Hide();
+        DocumentToSubmitApproval = new();
+        SelectedLeaderUser.Clear();
+        SelectedLeaderUserId = null;
+        SubmitApprovalMessage = string.Empty;
+    }
+
+    private async Task SubmitApprovalAsync()
+    {
+        try
+        {
+            if (DocumentToSubmitApproval?.Document?.Id == Guid.Empty)
+            {
+                return;
+            }
+
+            if (!SelectedLeaderUserId.HasValue || SelectedLeaderUserId.Value == Guid.Empty)
+            {
+                await UiMessageService.Warn("Vui lòng chọn người phê duyệt.");
+                return;
+            }
+
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await DocumentsAppService.SubmitForApprovalAsync(new SubmitDocumentForApprovalInput
+            {
+                DocumentId = DocumentToSubmitApproval.Document.Id,
+                LeaderUserId = SelectedLeaderUserId.Value,
+                Message = string.IsNullOrWhiteSpace(SubmitApprovalMessage) ? null : SubmitApprovalMessage.Trim()
+            });
+
+            await UiMessageService.Success("Đã gửi văn bản chờ lãnh đạo phê duyệt.");
+            await CloseSubmitApprovalModalAsync();
+            await GetDocumentsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
     }
 
     private async Task SendDocumentAsync()
@@ -1037,6 +1160,186 @@ public partial class Documents : IDisposable
     
     #endregion Send Document
 
+    #region Approval Review
+
+    private async Task HandleViewDocumentAsync(DocumentWithNavigationPropertiesDto context)
+    {
+        if (SelectedSourceType == DocumentSourceType.SentToMe && context.HasPendingApprovalTask)
+        {
+            await OpenApprovalReviewModalAsync(context);
+            return;
+        }
+
+        await OpenDocumentPdfViewerModalAsync(context);
+    }
+
+    private async Task OpenApprovalReviewModalAsync(DocumentWithNavigationPropertiesDto context)
+    {
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            ApprovalReviewDocument = context;
+            ApprovalActionNote = string.Empty;
+            PickedPageNumber = 0;
+            PickedPdfX = 0;
+            PickedPdfY = 0;
+
+            var pdfFileUrl = await LoadPdfDataUrlAsync(context.Document.Id);
+            if (string.IsNullOrWhiteSpace(pdfFileUrl))
+            {
+                await UiMessageService.Warn(L["NoPdfAvailable"]);
+                return;
+            }
+
+            ApprovalPdfFileUrl = pdfFileUrl;
+            IsApprovalPdfFile = true;
+            await LoadPreviewDocumentHistoriesAsync(context.Document.Id);
+            await ApprovalReviewModal.Show();
+            await InitializeApprovalPdfPickerAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    private async Task CloseApprovalReviewModalAsync()
+    {
+        if (ApprovalReviewModal != null)
+        {
+            await ApprovalReviewModal.Hide();
+        }
+
+        ApprovalReviewDocument = new();
+        ApprovalPdfFileUrl = null;
+        IsApprovalPdfFile = false;
+        PreviewDocumentHistories = new List<DocumentHistoryWithNavigationPropertiesDto>();
+        ApprovalActionNote = string.Empty;
+        PickedPageNumber = 0;
+        PickedPdfX = 0;
+        PickedPdfY = 0;
+    }
+
+    private async Task InitializeApprovalPdfPickerAsync()
+    {
+        if (IsInitializingPdfPicker || string.IsNullOrWhiteSpace(ApprovalPdfFileUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            IsInitializingPdfPicker = true;
+            DotNetRef?.Dispose();
+            DotNetRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("pdfPick.init", DotNetRef, ApprovalPdfFileUrl, "approval-review-pdf-pick-container");
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsInitializingPdfPicker = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    [JSInvokable]
+    public Task OnPdfClick(int pageNumber, double pdfX, double pdfY, double cssX, double cssY)
+    {
+        PickedPageNumber = pageNumber;
+        PickedPdfX = pdfX;
+        PickedPdfY = pdfY;
+        return Task.CompletedTask;
+    }
+
+    private async Task ApproveSelectedDocumentAsync()
+    {
+        try
+        {
+            if (ApprovalReviewDocument?.Document?.Id == Guid.Empty)
+            {
+                return;
+            }
+
+            if (PickedPageNumber <= 0)
+            {
+                await UiMessageService.Warn("Vui lòng chọn vị trí note trên PDF.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(ApprovalActionNote))
+            {
+                await UiMessageService.Warn("Vui lòng nhập note trước khi phê duyệt.");
+                return;
+            }
+
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await DocumentsAppService.ApproveWithNoteAsync(new ApproveDocumentWithNoteInput
+            {
+                DocumentId = ApprovalReviewDocument.Document.Id,
+                PageNumber = PickedPageNumber,
+                PdfX = PickedPdfX,
+                PdfY = PickedPdfY,
+                NoteContent = ApprovalActionNote.Trim()
+            });
+
+            await UiMessageService.Success("Đã phê duyệt văn bản.");
+            await CloseApprovalReviewModalAsync();
+            await GetDocumentsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    private async Task RejectSelectedDocumentAsync()
+    {
+        try
+        {
+            if (ApprovalReviewDocument?.Document?.Id == Guid.Empty)
+            {
+                return;
+            }
+
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await DocumentsAppService.RejectApprovalAsync(new RejectDocumentApprovalInput
+            {
+                DocumentId = ApprovalReviewDocument.Document.Id,
+                Reason = string.IsNullOrWhiteSpace(ApprovalActionNote)
+                    ? "Lãnh đạo từ chối phê duyệt."
+                    : ApprovalActionNote.Trim()
+            });
+
+            await UiMessageService.Success("Đã từ chối văn bản.");
+            await CloseApprovalReviewModalAsync();
+            await GetDocumentsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    #endregion Approval Review
+
     #region Delete or Revoke Document
 
     private async Task ShowDeleteOrRevokeModalAsync(DocumentWithNavigationPropertiesDto document)
@@ -1154,22 +1457,8 @@ public partial class Documents : IDisposable
             }
 
             CurrentDocumentPdfDocumentId = context.Document.Id;
-
-            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-            {
-                DocumentId = context.Document.Id,
-                MaxResultCount = 100,
-                SkipCount = 0
-            });
-
-            var pdfFile = documentFilesResult.Items
-                .FirstOrDefault(f => f.DocumentFile != null
-                    && !string.IsNullOrEmpty(f.DocumentFile.Path)
-                    && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(f.DocumentFile.Name));
-
-            var pdfFilePath = pdfFile?.DocumentFile?.Path;
-
-            if (string.IsNullOrEmpty(pdfFilePath))
+            var pdfFileUrl = await LoadPdfDataUrlAsync(context.Document.Id);
+            if (string.IsNullOrEmpty(pdfFileUrl))
             {
                 await UiMessageService.Warn(L["NoPdfAvailable"],
                     options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
@@ -1177,14 +1466,9 @@ public partial class Documents : IDisposable
                 return;
             }
 
-            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
-            {
-                BlobPath = pdfFilePath,
-                WatermarkAction = "view"
-            });
-            var base64 = Convert.ToBase64String(fileBytes);
-            DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
+            DocumentPdfFileUrl = pdfFileUrl;
             IsDocumentPdfFile = true;
+            await LoadPreviewDocumentHistoriesAsync(context.Document.Id);
             await DocumentPdfViewerModal.Show();
         }
         catch (Exception ex)
@@ -1208,6 +1492,7 @@ public partial class Documents : IDisposable
         DocumentPdfFileUrl = null;
         IsDocumentPdfFile = false;
         CurrentDocumentPdfDocumentId = null;
+        PreviewDocumentHistories = new List<DocumentHistoryWithNavigationPropertiesDto>();
     }
 
     private async Task AssignTaskFromDocumentPdfViewerAsync()
@@ -1227,6 +1512,74 @@ public partial class Documents : IDisposable
         return GetDocumentsAsync();
     }
 
+    private async Task<string?> LoadPdfDataUrlAsync(Guid documentId)
+    {
+        var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
+        {
+            DocumentId = documentId,
+            MaxResultCount = 100,
+            SkipCount = 0
+        });
+
+        var pdfFile = documentFilesResult.Items
+            .FirstOrDefault(f => f.DocumentFile != null
+                && !string.IsNullOrEmpty(f.DocumentFile.Path)
+                && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(f.DocumentFile.Name));
+
+        var pdfFilePath = pdfFile?.DocumentFile?.Path;
+        if (string.IsNullOrEmpty(pdfFilePath))
+        {
+            return null;
+        }
+
+        var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
+        {
+            BlobPath = pdfFilePath,
+            WatermarkAction = "view"
+        });
+
+        var base64 = Convert.ToBase64String(fileBytes);
+        return $"data:application/pdf;base64,{base64}";
+    }
+
+    private async Task LoadPreviewDocumentHistoriesAsync(Guid documentId)
+    {
+        var result = await DocumentHistoriesAppService.GetHistoryByDocumentIdAsync(new GetDocumentHistoriesInput
+        {
+            DocumentId = documentId,
+            SkipCount = 0,
+            MaxResultCount = 20
+        });
+
+        PreviewDocumentHistories = result.Items;
+    }
+
+    private string GetLocalizedHistoryAction(string? action)
+    {
+        if (string.IsNullOrWhiteSpace(action))
+        {
+            return string.Empty;
+        }
+
+        var localized = L[action];
+        return string.Equals(localized.Value, action, StringComparison.Ordinal)
+            ? action.Replace("_", " ")
+            : localized.Value;
+    }
+
+    private string GetHistoryUserDisplayName(IdentityUserDto? user)
+    {
+        if (user == null)
+        {
+            return "—";
+        }
+
+        var fullName = $"{user.Surname} {user.Name}".Trim();
+        return string.IsNullOrWhiteSpace(fullName)
+            ? (user.UserName ?? "—")
+            : fullName;
+    }
+
     #endregion PDF Viewer
 
     /// <summary>
@@ -1236,6 +1589,7 @@ public partial class Documents : IDisposable
     {
         SearchDebounceCts?.Cancel();
         SearchDebounceCts?.Dispose();
+        DotNetRef?.Dispose();
         NavigationManager.LocationChanged -= OnLocationChanged;
         base.Dispose(disposing);
     }

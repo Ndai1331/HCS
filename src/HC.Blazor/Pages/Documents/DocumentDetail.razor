@@ -52,42 +52,6 @@
 <Card>
     <CardBody>
         <Form id="DocumentDetailForm" style="position: relative;">
-            @if (CurrentDocument != null && CurrentDocument.Document.SourceType == DocumentSourceType.Archive)
-            {
-                <Card Class="mb-3 border-info">
-                    <CardHeader>
-                        <strong>Flow lãnh đạo duyệt (sourceType = 0)</strong>
-                    </CardHeader>
-                    <CardBody>
-                        <Row>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
-                                <Field>
-                                    <FieldLabel>Leader UserId</FieldLabel>
-                                    <TextEdit Text="@(SelectedLeaderUserId?.ToString() ?? string.Empty)"
-                                              TextChanged="@((string value) => SelectedLeaderUserId = Guid.TryParse(value, out var g) ? g : null)"
-                                              Placeholder="Nhập Guid user lãnh đạo" />
-                                </Field>
-                            </Column>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
-                                <Field>
-                                    <FieldLabel>Ghi chú gửi duyệt</FieldLabel>
-                                    <TextEdit Text="@SubmitApprovalMessage" TextChanged="@((string v) => SubmitApprovalMessage = v)" />
-                                </Field>
-                            </Column>
-                            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
-                                <Field>
-                                    <FieldLabel>Lý do từ chối</FieldLabel>
-                                    <TextEdit Text="@RejectReason" TextChanged="@((string v) => RejectReason = v)" />
-                                </Field>
-                            </Column>
-                        </Row>
-                        <p class="text-muted mb-0">
-                            Luồng phê duyệt dùng Blazorise PDF Viewer để xem nhanh và PDF.js (`pdfPick`) để chọn vị trí note.
-                        </p>
-                    </CardBody>
-                </Card>
-            }
-
             @if (DocumentUpdateData != null)
             {
                 @if (!string.IsNullOrWhiteSpace(EditDocumentValidationErrorKey))
@@ -759,7 +723,7 @@
                                         Caption="@L["Action"]" 
                                         Width="150px">
                             <DisplayTemplate>
-                                <span class="badge bg-info">@L[context.DocumentHistory.Action]</span>
+                                <span class="badge bg-info">@GetLocalizedHistoryAction(context.DocumentHistory.Action)</span>
                             </DisplayTemplate>
                         </DataGridColumn>
                         
@@ -767,7 +731,7 @@
                                         Caption="@L["From"]" 
                                         Width="200px">
                             <DisplayTemplate>
-                                @context.FromUser?.Name
+                                @GetHistoryUserDisplayName(context.FromUser)
                             </DisplayTemplate>
                         </DataGridColumn>
                         
@@ -775,7 +739,7 @@
                                         Caption="@L["To"]" 
                                         Width="200px">
                             <DisplayTemplate>
-                                @context.ToUser.Name 
+                                @GetHistoryUserDisplayName(context.ToUser)
                             </DisplayTemplate>
                         </DataGridColumn>
                         
@@ -805,47 +769,6 @@
         </CardBody>
     </Card>
 }
-
-<Modal @ref="ApprovalModal" Size="ModalSize.ExtraLarge" Centered="true" Class="pdf-viewer-modal">
-    <ModalContent>
-        <ModalHeader>
-            <ModalTitle>Phê duyệt văn bản và chọn vị trí note</ModalTitle>
-            <CloseButton Clicked="@(async () => await ApprovalModal.Hide())" />
-        </ModalHeader>
-        <ModalBody Class="pdf-viewer-modal-body">
-            <Row>
-                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                    <h6>View nhanh (Blazorise PdfViewer)</h6>
-                    <PdfViewerContainer Height="Height.Rem(28)">
-                        <PdfViewerToolbar ShowDownloading="false" />
-                        <PdfViewer Source="@PdfFileUrl" />
-                    </PdfViewerContainer>
-                </Column>
-                <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                    <h6>Chọn vị trí note (PDF.js)</h6>
-                    <div id="approval-pdf-pick-container"
-                         style="height: 28rem; overflow: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: .5rem; background: #fafafa;">
-                    </div>
-                    <small class="text-muted">
-                        Page: @PickedPageNumber, X: @PickedPdfX.ToString("0.##"), Y: @PickedPdfY.ToString("0.##")
-                    </small>
-                </Column>
-            </Row>
-            <Field Class="mt-3">
-                <FieldLabel>Nội dung note duyệt</FieldLabel>
-                <MemoEdit Rows="3"
-                          Text="@ApprovalNote"
-                          TextChanged="@((string v) => ApprovalNote = v)"
-                          Placeholder="Nhập ghi chú lãnh đạo..." />
-            </Field>
-        </ModalBody>
-        <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="@(async () => await ApprovalModal.Hide())">Đóng</Button>
-            <Button Color="Color.Success" Clicked="ApproveWithNoteAsync">Đồng ý phê duyệt</Button>
-        </ModalFooter>
-    </ModalContent>
-</Modal>
-
 
 <style>
     /* PDF Viewer Modal - Ensure it stays within modal */

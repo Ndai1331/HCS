@@ -76,6 +76,39 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         return unit == null ? null : ObjectMapper.Map<HC.Units.Unit, LookupDto<Guid>>(unit);
     }
 
+    public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetIdentityUserLookupAsync(LookupRequestDto input)
+    {
+        var filter = input.Filter?.Trim();
+        var query = await _identityUserRepository.GetQueryableAsync();
+
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            query = query.Where(x =>
+                (x.UserName != null && x.UserName.Contains(filter)) ||
+                (x.Name != null && x.Name.Contains(filter)) ||
+                (x.Surname != null && x.Surname.Contains(filter)) ||
+                (x.Email != null && x.Email.Contains(filter)));
+        }
+
+        var totalCount = await AsyncExecuter.CountAsync(query);
+        var users = await AsyncExecuter.ToListAsync(
+            query.OrderBy(x => x.Surname)
+                 .ThenBy(x => x.Name)
+                 .ThenBy(x => x.UserName)
+                 .Skip(input.SkipCount)
+                 .Take(input.MaxResultCount));
+
+        return new PagedResultDto<LookupDto<Guid>>
+        {
+            TotalCount = totalCount,
+            Items = users.Select(x => new LookupDto<Guid>
+            {
+                Id = x.Id,
+                DisplayName = GetIdentityUserFullDisplayName(x)
+            }).ToList()
+        };
+    }
+
     public override async Task<PagedResultDto<DocumentWithNavigationPropertiesDto>> GetListAsync(GetDocumentsInput input)
     {
         if (input.SourceType == DocumentSourceType.SentToMe)
@@ -148,6 +181,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             var dtos = ObjectMapper.Map<List<DocumentWithNavigationProperties>, List<DocumentWithNavigationPropertiesDto>>(items);
             await PopulateSentToMeDisplayNamesAsync(dtos);
             await ApplySubmitSigningButtonVisibilityAsync(dtos);
+            await ApplyPendingApprovalFlagsAsync(dtos);
 
             return new PagedResultDto<DocumentWithNavigationPropertiesDto>
             {
@@ -158,6 +192,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
 
         var page = await base.GetListAsync(input);
         await ApplySubmitSigningButtonVisibilityAsync(page.Items);
+        await ApplyPendingApprovalFlagsAsync(page.Items);
         return page;
     }
 
@@ -165,6 +200,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
     {
         var dto = await base.GetWithNavigationPropertiesAsync(id);
         await ApplySubmitSigningButtonVisibilityAsync(new List<DocumentWithNavigationPropertiesDto> { dto });
+        await ApplyPendingApprovalFlagsAsync(new List<DocumentWithNavigationPropertiesDto> { dto });
         return dto;
     }
 
@@ -225,6 +261,38 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         foreach (var item in items.Where(i => i.Document.SourceType != DocumentSourceType.Workflow))
         {
             item.HideSubmitForSigningButton = hideParentIds.Contains(item.Document.Id);
+        }
+    }
+
+    private async Task ApplyPendingApprovalFlagsAsync(IReadOnlyList<DocumentWithNavigationPropertiesDto>? items)
+    {
+        if (items == null || items.Count == 0 || !CurrentUser.Id.HasValue)
+        {
+            return;
+        }
+
+        var documentIds = items.Select(x => x.Document.Id).Distinct().ToList();
+        if (documentIds.Count == 0)
+        {
+            return;
+        }
+
+        var processAction = DocumentAssignmentActionType.PROCESS.ToString();
+        var assignmentQuery = await _documentAssignmentRepository.GetQueryableAsync();
+        var pendingApprovalIds = await AsyncExecuter.ToListAsync(
+            assignmentQuery.Where(x => documentIds.Contains(x.DocumentId)
+                                       && x.WorkflowStepTemplateId == null
+                                       && x.ActionType == processAction
+                                       && x.Status == DocumentAssignmentStatus.PENDING.ToString()
+                                       && x.IsCurrent
+                                       && x.ReceiverUserId == CurrentUser.Id.Value)
+                           .Select(x => x.DocumentId)
+                           .Distinct());
+
+        var pendingSet = pendingApprovalIds.ToHashSet();
+        foreach (var item in items)
+        {
+            item.HasPendingApprovalTask = pendingSet.Contains(item.Document.Id);
         }
     }
 
@@ -356,13 +424,16 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         var assignmentQ = await _documentAssignmentRepository.GetQueryableAsync();
         var docQ = await _documentRepository.GetQueryableAsync();
         var viewAction = DocumentAssignmentActionType.VIEW.ToString();
+        var processAction = DocumentAssignmentActionType.PROCESS.ToString();
 
         var fromAssignmentsQuery = assignmentQ
             .Where(a => a.ReceiverUserId == userId
-                        && a.ActionType == viewAction
                         && a.WorkflowStepTemplateId == null
                         && a.IsCurrent
-                        && a.Status != nameof(DocumentAssignmentStatus.REVOKE))
+                        && ((a.ActionType == viewAction
+                             && a.Status != nameof(DocumentAssignmentStatus.REVOKE))
+                            || (a.ActionType == processAction
+                                && a.Status == nameof(DocumentAssignmentStatus.PENDING))))
             .Join(docQ.Where(d => d.SourceType != DocumentSourceType.Workflow),
                 a => a.DocumentId,
                 d => d.Id,
@@ -405,7 +476,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         }
 
         var userIds = dtos
-            .Select(d => d.Document.FromUserId)
+            .Select(d => d.Document.FromUserId ?? d.Document.CreatorId)
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
             .Distinct()
@@ -439,7 +510,8 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
 
         foreach (var dto in dtos)
         {
-            if (dto.Document.FromUserId.HasValue && userDict.TryGetValue(dto.Document.FromUserId.Value, out var fn))
+            var fromUserId = dto.Document.FromUserId ?? dto.Document.CreatorId;
+            if (fromUserId.HasValue && userDict.TryGetValue(fromUserId.Value, out var fn))
             {
                 dto.FromUserDisplayName = fn;
             }
@@ -777,7 +849,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         }
     }
 
-    [Authorize(HCPermissions.Documents.Send)]
+    [Authorize(HCPermissions.Documents.SubmitForApproval)]
     public async Task<bool> SubmitForApprovalAsync(SubmitDocumentForApprovalInput input)
     {
         if (input.DocumentId == Guid.Empty || input.LeaderUserId == Guid.Empty)
@@ -826,10 +898,15 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             processAction,
             DocumentAssignmentStatus.PENDING.ToString(),
             DateTime.Now,
-            null,
+            DateTime.Now,
             true);
         approvalAssignment.TenantId = CurrentTenant.Id;
         await _documentAssignmentRepository.InsertAsync(approvalAssignment);
+
+        document.FromUserId = currentUserId;
+        document.ReceiverUserId = input.LeaderUserId;
+        document.DepartmentId = null;
+        await _documentRepository.UpdateAsync(document);
 
         await UpdateDocumentStatusAsync(input.DocumentId, DocumentStatusCode.CHO_PHE_DUYET);
 
@@ -873,7 +950,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         return true;
     }
 
-    [Authorize(HCPermissions.Documents.Default)]
+    [Authorize(HCPermissions.Documents.RejectApproval)]
     public async Task<bool> RejectApprovalAsync(RejectDocumentApprovalInput input)
     {
         if (input.DocumentId == Guid.Empty || string.IsNullOrWhiteSpace(input.Reason))
@@ -895,7 +972,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             GuidGenerator.Create(),
             input.DocumentId,
             currentUserId,
-            document.CreatorId,
+            document.CreatorId.Value,
             DocumentStatusCode.TU_CHOI.GetCode(),
             input.Reason.Trim());
         history.TenantId = CurrentTenant.Id;
@@ -905,7 +982,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         return true;
     }
 
-    [Authorize(HCPermissions.Documents.Default)]
+    [Authorize(HCPermissions.Documents.ApproveWithNote)]
     public async Task<bool> ApproveWithNoteAsync(ApproveDocumentWithNoteInput input)
     {
         if (input.DocumentId == Guid.Empty || input.PageNumber <= 0 || string.IsNullOrWhiteSpace(input.NoteContent))
@@ -963,7 +1040,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             GuidGenerator.Create(),
             input.DocumentId,
             currentUserId,
-            document.CreatorId,
+            document.CreatorId.Value,
             DocumentStatusCode.DA_PHE_DUYET.GetCode(),
             approvalComment);
         history.TenantId = CurrentTenant.Id;

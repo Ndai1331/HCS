@@ -53,6 +53,13 @@ public abstract class DocumentControllerBase : AbpController
     }
 
     [HttpGet]
+    [Route("identity-user-lookup")]
+    public virtual Task<PagedResultDto<LookupDto<Guid>>> GetIdentityUserLookupAsync(LookupRequestDto input)
+    {
+        return _documentsAppService.GetIdentityUserLookupAsync(input);
+    }
+
+    [HttpGet]
     [Route("unit-lookup")]
     public virtual Task<PagedResultDto<LookupDto<Guid>>> GetUnitLookupAsync(LookupRequestDto input)
     {

@@ -1,13 +1,20 @@
 ﻿window.pdfPick = (function () {
     const PATHS = {
-        pdf: '/lib/pdfjs/pdf.min.js',
-        worker: '/lib/pdfjs/pdf.worker.min.js'
+        pdf: [
+            '/lib/pdfjs/pdf.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+        ],
+        worker: [
+            '/lib/pdfjs/pdf.worker.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+        ]
     };
 
     function loadScriptOnce(src) {
         return new Promise((resolve, reject) => {
+            const normalizedSrc = new URL(src, window.location.origin).href;
             // Already loaded?
-            if ([...document.scripts].some(s => s.src === src)) return resolve();
+            if ([...document.scripts].some(s => s.src === normalizedSrc || s.src === src)) return resolve();
             const s = document.createElement('script');
             s.src = src;
             s.async = true;
@@ -17,15 +24,35 @@
         });
     }
 
+    async function loadFirstAvailableScript(candidates) {
+        let lastError = null;
+
+        for (const candidate of candidates) {
+            try {
+                await loadScriptOnce(candidate);
+                return candidate;
+            } catch (err) {
+                lastError = err;
+                console.warn('[pdfPick] Unable to load script:', candidate, err);
+            }
+        }
+
+        throw lastError ?? new Error('No PDF.js script candidates available.');
+    }
+
     async function ensurePdfJsLoaded() {
         if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
             return;
         }
-        await loadScriptOnce(PATHS.pdf);
+
+        const loadedPdfScript = await loadFirstAvailableScript(PATHS.pdf);
         // pdfjsLib globally available now
         if (!window.pdfjsLib) throw new Error('pdfjsLib not found after loading.');
-        // Set worker (local file) to avoid warning
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PATHS.worker;
+
+        const loadedFromCdn = loadedPdfScript.startsWith('http');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = loadedFromCdn
+            ? PATHS.worker[1]
+            : PATHS.worker[0];
     }
 
     async function init(dotnetRef, url, containerId) {

@@ -14,6 +14,7 @@ public partial interface IDocumentsAppService : IApplicationService
     Task<DocumentWithNavigationPropertiesDto> GetWithNavigationPropertiesAsync(Guid id);
     Task<DocumentDto> GetAsync(Guid id);
     Task<PagedResultDto<LookupDto<Guid>>> GetMasterDataLookupAsync(LookupRequestDto input);
+    Task<PagedResultDto<LookupDto<Guid>>> GetIdentityUserLookupAsync(LookupRequestDto input);
     Task<PagedResultDto<LookupDto<Guid>>> GetUnitLookupAsync(LookupRequestDto input);
     Task<PagedResultDto<LookupDto<Guid>>> GetWorkflowLookupAsync(LookupRequestDto input);
     Task DeleteAsync(Guid id);

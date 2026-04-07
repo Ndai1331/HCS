@@ -32,4 +32,25 @@ public class DocumentController : DocumentControllerBase, IDocumentsAppService
     {
         return _documentsAppService.RevokeDocumentAsync(input);
     }
+
+    [HttpPost]
+    [Route("submit-for-approval")]
+    public virtual Task<bool> SubmitForApprovalAsync(SubmitDocumentForApprovalInput input)
+    {
+        return _documentsAppService.SubmitForApprovalAsync(input);
+    }
+
+    [HttpPost]
+    [Route("reject-approval")]
+    public virtual Task<bool> RejectApprovalAsync(RejectDocumentApprovalInput input)
+    {
+        return _documentsAppService.RejectApprovalAsync(input);
+    }
+
+    [HttpPost]
+    [Route("approve-with-note")]
+    public virtual Task<bool> ApproveWithNoteAsync(ApproveDocumentWithNoteInput input)
+    {
+        return _documentsAppService.ApproveWithNoteAsync(input);
+    }
 }

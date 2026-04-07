@@ -30,6 +30,6 @@
   - capture coordinates via `OnPdfClick` JS interop callback
 
 ## Pending
-- [ ] Replace temporary `LeaderUserId` GUID textbox with searchable user lookup (Select2).
-- [ ] Add dedicated permission keys for approval actions (if business wants separate control from `Documents.Send`).
+- [x] Replace temporary `LeaderUserId` GUID textbox with searchable user lookup (Select2).
+- [x] Add dedicated permission keys for approval actions (if business wants separate control from `Documents.Send`).
 - [ ] Add integration tests once .NET SDK/runtime is available in CI/runner.
