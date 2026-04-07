@@ -26,6 +26,11 @@ public interface IPdfStampingService
     /// <param name="action">"view" or "download" for audit trail</param>
     /// <returns>PDF bytes with watermark on each page</returns>
     byte[] AddWatermark(byte[] pdfBytes, string userDisplayName, DateTime actionTime, string action);
+
+    /// <summary>
+    /// Add a free-text note to a specific page and coordinate in a PDF.
+    /// </summary>
+    byte[] AddTextNote(byte[] pdfBytes, int pageNumber, double pdfX, double pdfY, string noteContent);
 }
 
 public class PdfStampingService : IPdfStampingService, ITransientDependency
@@ -117,6 +122,54 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to add watermark to PDF. Returning original.");
+            return pdfBytes;
+        }
+    }
+
+    public byte[] AddTextNote(byte[] pdfBytes, int pageNumber, double pdfX, double pdfY, string noteContent)
+    {
+        if (pdfBytes == null || pdfBytes.Length == 0)
+        {
+            return pdfBytes ?? Array.Empty<byte>();
+        }
+
+        if (pageNumber <= 0 || string.IsNullOrWhiteSpace(noteContent))
+        {
+            return pdfBytes;
+        }
+
+        try
+        {
+            using var inputStream = new MemoryStream(pdfBytes);
+            var document = PdfReader.Open(inputStream, PdfDocumentOpenMode.Modify);
+
+            var pageIndex = pageNumber - 1;
+            if (pageIndex < 0 || pageIndex >= document.PageCount)
+            {
+                _logger.LogWarning("AddTextNote invalid pageNumber={PageNumber}, pageCount={PageCount}", pageNumber, document.PageCount);
+                return pdfBytes;
+            }
+
+            var page = document.Pages[pageIndex];
+            using var gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append);
+            var font = ResolveWatermarkFont() ?? new XFont("Helvetica", 11);
+
+            // Keep marker inside page boundaries.
+            var safeX = Math.Clamp(pdfX, 8, page.Width.Point - 8);
+            var safeY = Math.Clamp(pdfY, 12, page.Height.Point - 12);
+
+            var pen = new XPen(XColors.DarkRed, 1);
+            var brush = XBrushes.DarkRed;
+            gfx.DrawEllipse(pen, brush, safeX - 2, safeY - 2, 4, 4);
+            gfx.DrawString(noteContent.Trim(), font, XBrushes.Black, safeX + 6, safeY - 6, XStringFormats.TopLeft);
+
+            using var outputStream = new MemoryStream();
+            document.Save(outputStream, false);
+            return outputStream.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add text note to PDF. Returning original.");
             return pdfBytes;
         }
     }

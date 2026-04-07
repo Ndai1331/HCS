@@ -26,9 +26,10 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using System.Text.Json;
 using Volo.Abp.AspNetCore.Components.Messages;
 using Blazorise.DataGrid;
+using Volo.Abp.AspNetCore.Components.Web;
 namespace HC.Blazor.Pages.Documents;
 
-public partial class DocumentDetail : HCComponentBase
+public partial class DocumentDetail : HCComponentBase, IDisposable
 {
     private const int DocumentLookupPageSize = 200;
 
@@ -49,6 +50,7 @@ public partial class DocumentDetail : HCComponentBase
     private bool CanCreateDocument { get; set; }
     private bool CanDeleteDocumentFile { get; set; }
     private bool CanDeleteDocument { get; set; }
+    private bool CanSendForApproval { get; set; }
 
 
     // Document data
@@ -114,6 +116,17 @@ public partial class DocumentDetail : HCComponentBase
 
     // PDF Viewer Modal
     private Modal? PdfViewerModal { get; set; }
+    private Modal? ApprovalModal { get; set; }
+
+    private Guid? SelectedLeaderUserId { get; set; }
+    private string SubmitApprovalMessage { get; set; } = string.Empty;
+    private string RejectReason { get; set; } = string.Empty;
+    private string ApprovalNote { get; set; } = string.Empty;
+    private int PickedPageNumber { get; set; }
+    private double PickedPdfX { get; set; }
+    private double PickedPdfY { get; set; }
+    private bool IsInitializingPdfPicker { get; set; }
+    private DotNetObjectReference<DocumentDetail>? DotNetRef { get; set; }
 
     // DatePicker refs
     private DatePicker<DateTime>? EditIncommingDateDatePicker { get; set; }
@@ -203,6 +216,7 @@ public partial class DocumentDetail : HCComponentBase
         CanEditDocument = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.Documents.Edit);
         CanDeleteDocumentFile = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.DocumentFiles.Delete);
         CanDeleteDocument = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.Documents.Delete);
+        CanSendForApproval = await HasRoleHelper.HasRoleAsync(AuthorizationService, HCPermissions.Documents.Send);
     }
     protected virtual ValueTask SetToolbarItemsAsync()
     {
@@ -229,6 +243,19 @@ public partial class DocumentDetail : HCComponentBase
             && CurrentDocument.Document.SourceType == DocumentSourceType.Archive)
         {
             Toolbar.AddButton(L["Delete"], DeleteDocumentAsync, IconName.Delete, Color.Danger);
+        }
+
+        if (CurrentDocument != null
+            && CurrentDocument.Document.SourceType == DocumentSourceType.Archive
+            && CanSendForApproval)
+        {
+            Toolbar.AddButton("Gửi lãnh đạo duyệt", SubmitForApprovalAsync, IconName.Share, Color.Info);
+        }
+
+        if (CurrentDocument != null && CurrentDocument.Document.SourceType == DocumentSourceType.Archive)
+        {
+            Toolbar.AddButton("Từ chối duyệt", RejectApprovalAsync, IconName.Ban, Color.Warning);
+            Toolbar.AddButton("Phê duyệt + note", OpenApprovalModalAsync, IconName.Check, Color.Success);
         }
         return ValueTask.CompletedTask;
     }
@@ -792,6 +819,182 @@ public partial class DocumentDetail : HCComponentBase
         }
     }
 
+    private async Task SubmitForApprovalAsync()
+    {
+        if (CurrentDocument == null)
+        {
+            return;
+        }
+
+        if (!SelectedLeaderUserId.HasValue || SelectedLeaderUserId.Value == Guid.Empty)
+        {
+            await UiMessageService.Warn("Vui lòng nhập Leader UserId trước khi gửi duyệt.");
+            return;
+        }
+
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await DocumentsAppService.SubmitForApprovalAsync(new SubmitDocumentForApprovalInput
+            {
+                DocumentId = CurrentDocument.Document.Id,
+                LeaderUserId = SelectedLeaderUserId.Value,
+                Message = string.IsNullOrWhiteSpace(SubmitApprovalMessage) ? null : SubmitApprovalMessage.Trim()
+            });
+
+            await UiMessageService.Success("Đã gửi văn bản tới lãnh đạo chờ phê duyệt.");
+            await LoadDocumentAsync();
+            await SetToolbarItemsAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RejectApprovalAsync()
+    {
+        if (CurrentDocument == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(RejectReason))
+        {
+            await UiMessageService.Warn("Vui lòng nhập lý do từ chối.");
+            return;
+        }
+
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await DocumentsAppService.RejectApprovalAsync(new RejectDocumentApprovalInput
+            {
+                DocumentId = CurrentDocument.Document.Id,
+                Reason = RejectReason.Trim()
+            });
+
+            RejectReason = string.Empty;
+            await UiMessageService.Success("Đã từ chối phê duyệt.");
+            await LoadDocumentAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OpenApprovalModalAsync()
+    {
+        if (ApprovalModal == null || CurrentDocument == null || string.IsNullOrWhiteSpace(PdfFileUrl))
+        {
+            await UiMessageService.Warn("Không thể mở màn hình chọn vị trí note. Vui lòng kiểm tra file PDF.");
+            return;
+        }
+
+        PickedPageNumber = 0;
+        PickedPdfX = 0;
+        PickedPdfY = 0;
+
+        await ApprovalModal.Show();
+        await InitializePdfPickerAsync();
+    }
+
+    private async Task InitializePdfPickerAsync()
+    {
+        if (IsInitializingPdfPicker || string.IsNullOrWhiteSpace(PdfFileUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            IsInitializingPdfPicker = true;
+            DotNetRef?.Dispose();
+            DotNetRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("pdfPick.init", DotNetRef, PdfFileUrl, "approval-pdf-pick-container");
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsInitializingPdfPicker = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    [JSInvokable]
+    public Task OnPdfClick(int pageNumber, double pdfX, double pdfY, double cssX, double cssY)
+    {
+        PickedPageNumber = pageNumber;
+        PickedPdfX = pdfX;
+        PickedPdfY = pdfY;
+        return Task.CompletedTask;
+    }
+
+    private async Task ApproveWithNoteAsync()
+    {
+        if (CurrentDocument == null)
+        {
+            return;
+        }
+
+        if (PickedPageNumber <= 0)
+        {
+            await UiMessageService.Warn("Vui lòng chọn vị trí note trên PDF trước khi phê duyệt.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(ApprovalNote))
+        {
+            await UiMessageService.Warn("Vui lòng nhập nội dung note.");
+            return;
+        }
+
+        try
+        {
+            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            await DocumentsAppService.ApproveWithNoteAsync(new ApproveDocumentWithNoteInput
+            {
+                DocumentId = CurrentDocument.Document.Id,
+                PageNumber = PickedPageNumber,
+                PdfX = PickedPdfX,
+                PdfY = PickedPdfY,
+                NoteContent = ApprovalNote.Trim()
+            });
+
+            ApprovalNote = string.Empty;
+            await UiMessageService.Success("Đã phê duyệt và chèn note vào PDF.");
+            if (ApprovalModal != null)
+            {
+                await ApprovalModal.Hide();
+            }
+
+            await LoadDocumentAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     private bool ValidateCreateDocument()
     {
         CreateValidation.Reset();
@@ -916,6 +1119,11 @@ public partial class DocumentDetail : HCComponentBase
         {
             await BlockUiService.UnBlock();
         }
+    }
+
+    public void Dispose()
+    {
+        DotNetRef?.Dispose();
     }
 
     private async Task DeleteFileAsync(DocumentFileWithNavigationPropertiesDto file)

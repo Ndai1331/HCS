@@ -25,4 +25,7 @@ public partial interface IDocumentsAppService : IApplicationService
     Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync();
     Task<bool> SendDocumentAsync(SendDocumentInput input);
     Task<bool> RevokeDocumentAsync(RevokeDocumentInput input);
+    Task<bool> SubmitForApprovalAsync(SubmitDocumentForApprovalInput input);
+    Task<bool> RejectApprovalAsync(RejectDocumentApprovalInput input);
+    Task<bool> ApproveWithNoteAsync(ApproveDocumentWithNoteInput input);
 }

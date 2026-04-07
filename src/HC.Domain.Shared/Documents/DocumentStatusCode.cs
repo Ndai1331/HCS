@@ -7,6 +7,9 @@ namespace HC.Documents;
 /// </summary>
 public enum DocumentStatusCode
 {
+    /// <summary>Chờ phê duyệt</summary>
+    CHO_PHE_DUYET,
+
     /// <summary>Đã gửi</summary>
     DA_GUI,
 
@@ -23,7 +26,10 @@ public enum DocumentStatusCode
     TRA_VE,
 
     /// <summary>Từ chối (ISSUE-03 FIX: used when document is rejected)</summary>
-    TU_CHOI
+    TU_CHOI,
+
+    /// <summary>Đã phê duyệt</summary>
+    DA_PHE_DUYET
 }
 
 /// <summary>
@@ -38,12 +44,14 @@ public static class DocumentStatusCodeExtensions
     {
         return statusCode switch
         {
+            DocumentStatusCode.CHO_PHE_DUYET => "CHO_PHE_DUYET",
             DocumentStatusCode.DA_GUI => "DA_GUI",
             DocumentStatusCode.DANG_XU_LY => "DANG_XU_LY",
             DocumentStatusCode.HT => "HT",
             DocumentStatusCode.DA_HUY => "DA_HUY",
             DocumentStatusCode.TRA_VE => "TRA_VE",
             DocumentStatusCode.TU_CHOI => "TU_CHOI",
+            DocumentStatusCode.DA_PHE_DUYET => "DA_PHE_DUYET",
             _ => throw new System.ArgumentOutOfRangeException(nameof(statusCode), statusCode, "Unknown DocumentStatusCode")
         };
     }
