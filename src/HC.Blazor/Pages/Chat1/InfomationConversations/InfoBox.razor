@@ -13,7 +13,6 @@
 @using HC.Shared
 @using HC.Projects
 @using HC.ProjectTasks
-@using HC.ProjectMembers
 @using HC.ProjectTaskAssignments
 @using Microsoft.Extensions.Caching.Memory
 @using HC.Chat.Users
@@ -28,7 +27,6 @@
 @inject IMemoryCache __MemoryCache
 @inject IProjectsAppService ProjectsAppService
 @inject IProjectTasksAppService ProjectTasksAppService
-@inject IProjectMembersAppService ProjectMembersAppService
 @inject IUiMessageService UiMessageService
 @inject IBlockUiService BlockUiService
 
@@ -512,7 +510,7 @@
                                             <small class="text-muted d-block">@L["ForwardedFrom"]: 
                                                 @if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderName))
                                                 {
-                                                    <span>@message.ForwardedFromMessage.SenderName @message.ForwardedFromMessage.SenderSurname</span>
+                                                    <span>@message.ForwardedFromMessage.SenderSurname @message.ForwardedFromMessage.SenderName</span>
                                                 }
                                                 else if (!string.IsNullOrWhiteSpace(message.ForwardedFromMessage.SenderUsername))
                                                 {

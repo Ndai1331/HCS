@@ -16,9 +16,9 @@ public interface IChatHubConnectionService
 
     Task OnDeletedMessageAsync(Func<Guid, Task> func);
 
-    Task DeletedConversationAsync(Guid userId);
+    Task DeletedConversationAsync(ChatDeletedConversationEto eventData);
 
-    Task OnDeletedConversationAsync(Func<Guid, Task> func);
+    Task OnDeletedConversationAsync(Func<ChatDeletedConversationEto, Task> func);
 
     Task ConversationCreatedAsync(object conversationData);
 

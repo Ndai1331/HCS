@@ -24,7 +24,23 @@ public partial class ProjectTaskCreateModal
     [Parameter] public Guid? ProjectId { get; set; }
     [Parameter] public EventCallback OnTaskCreated { get; set; }
 
+    public sealed class CreateProjectTaskModalOptions
+    {
+        public Guid? ProjectId { get; init; }
+        public string? Title { get; init; }
+        public string? Description { get; init; }
+        public string? ParentTaskId { get; init; }
+        public ProjectTaskPriority? Priority { get; init; }
+        public ProjectTaskStatus? Status { get; init; }
+        public int? ProgressPercent { get; init; }
+        public DateTime? StartDate { get; init; }
+        public DateTime? DueDate { get; init; }
+        public bool RequireAtLeastOneAssignee { get; init; } = true;
+    }
+
     private Modal CreateProjectTaskModal { get; set; } = new();
+    private Guid? EffectiveProjectId { get; set; }
+    private bool RequireAtLeastOneAssignee { get; set; } = true;
     protected string SelectedCreateTab = "general";
     protected bool IsNavigatingTab { get; set; }
     private bool IsSavingGeneralInformation { get; set; } = false;
@@ -85,9 +101,9 @@ public partial class ProjectTaskCreateModal
         var currentProjectId = Guid.Empty;
         
         // Priority 1: From component parameter (when opened from ProjectDetail page)
-        if (ProjectId.HasValue && ProjectId.Value != Guid.Empty)
+        if (EffectiveProjectId.HasValue && EffectiveProjectId.Value != Guid.Empty)
         {
-            currentProjectId = ProjectId.Value;
+            currentProjectId = EffectiveProjectId.Value;
         }
         // Priority 2: From NewProjectTask DTO (already set)
         else if (NewProjectTask.ProjectId != Guid.Empty)
@@ -194,31 +210,55 @@ public partial class ProjectTaskCreateModal
     }
 
     
-    public async Task OpenCreateProjectTaskModalAsync(Guid? primaryDocumentId = null)
+    public Task OpenCreateProjectTaskModalAsync(Guid? primaryDocumentId = null)
+    {
+        return OpenCreateProjectTaskModalInternalAsync(primaryDocumentId, null);
+    }
+
+    public Task OpenCreateProjectTaskModalAsync(CreateProjectTaskModalOptions options, Guid? primaryDocumentId = null)
+    {
+        return OpenCreateProjectTaskModalInternalAsync(primaryDocumentId, options);
+    }
+
+    private async Task OpenCreateProjectTaskModalInternalAsync(Guid? primaryDocumentId, CreateProjectTaskModalOptions? options)
     {
         PendingPrimaryDocumentId = primaryDocumentId;
 
+        EffectiveProjectId = options?.ProjectId ?? ProjectId;
+        RequireAtLeastOneAssignee = options?.RequireAtLeastOneAssignee ?? true;
+
+        var startDate = options?.StartDate ?? DateTime.Now;
+        var dueDate = options?.DueDate ?? startDate;
+        var priority = options?.Priority ?? ProjectTaskPriority.LOW;
+        var status = options?.Status ?? ProjectTaskStatus.TODO;
+
         NewProjectTask = new ProjectTaskDto
         {
-            StartDate = DateTime.Now,
-            DueDate = DateTime.Now,
-            Priority = ProjectTaskPriority.LOW.ToString(),
-            Status = ProjectTaskStatus.TODO.ToString(),
+            Title = options?.Title ?? string.Empty,
+            Description = options?.Description ?? string.Empty,
+            ParentTaskId = options?.ParentTaskId,
+            ProgressPercent = options?.ProgressPercent ?? 0,
+            StartDate = startDate,
+            DueDate = dueDate,
+            Priority = priority.ToString(),
+            Status = status.ToString(),
             Code = await GenerateNextProjectTaskCodeAsync(), // Auto-generate code
         };
 
-        // If ProjectId is provided (when called from ProjectDetail page)
-        if (ProjectId.HasValue && ProjectId.Value != Guid.Empty)
+        // If ProjectId is provided by parameter or open options.
+        if (EffectiveProjectId.HasValue && EffectiveProjectId.Value != Guid.Empty)
         {
-            NewProjectTask.ProjectId = ProjectId.Value;
+            NewProjectTask.ProjectId = EffectiveProjectId.Value;
         }
 
         // Defaults for enum-backed selects.
-        NewProjectTaskPriority = ProjectTaskPriority.LOW;
-        NewProjectTaskStatus = ProjectTaskStatus.TODO;
+        NewProjectTaskPriority = priority;
+        NewProjectTaskStatus = status;
 
         SelectedNewProjectTaskProject = new List<LookupDto<Guid>>();
         SelectedNewProjectTaskParentTask = new List<ParentTaskSelectItem>();
+        ParentTasksCollection = new List<ParentTaskSelectItem>();
+        ParentTaskSelectKey = Guid.NewGuid();
 
         CreateWizardProjectTaskId = Guid.Empty;
         CreateGeneralValidationErrorKey = null;
@@ -233,15 +273,15 @@ public partial class ProjectTaskCreateModal
         SelectedCreateTab = "general";
 
         // Only load projects if ProjectId is not provided
-        if (!ProjectId.HasValue || ProjectId.Value == Guid.Empty)
+        if (!EffectiveProjectId.HasValue || EffectiveProjectId.Value == Guid.Empty)
         {
             await GetProjectCollectionLookupAsync();
         }
         else
         {
-            // Pre-select the project when opening from ProjectDetail
+            // Pre-select the project when opening from ProjectDetail or a custom open option
             var projectLookup = await ProjectTasksAppService.GetProjectLookupAsync(new LookupRequestDto { MaxResultCount = 200 });
-            var currentProject = projectLookup.Items.FirstOrDefault(p => p.Id == ProjectId.Value);
+            var currentProject = projectLookup.Items.FirstOrDefault(p => p.Id == EffectiveProjectId.Value);
             if (currentProject != null)
             {
                 ProjectsCollection = projectLookup.Items;
@@ -325,6 +365,8 @@ public partial class ProjectTaskCreateModal
 
     private async Task CloseCreateProjectTaskModalAsync()
     {
+        EffectiveProjectId = ProjectId;
+        RequireAtLeastOneAssignee = true;
         NewProjectTask = new ProjectTaskDto
         {
             StartDate = DateTime.Now,
@@ -485,7 +527,6 @@ public partial class ProjectTaskCreateModal
             isValid = false;
         }
 
-        // Required: Priority/Status are strings on DTO (enum-backed selects fill them).
         if (string.IsNullOrWhiteSpace(NewProjectTask.Priority))
         {
             CreateFieldErrors["Priority"] = L["PriorityRequired"];
@@ -544,7 +585,7 @@ public partial class ProjectTaskCreateModal
         {
             await InvokeAsync(StateHasChanged);
 
-            if (CreateAssignmentsList.Count < 1)
+            if (RequireAtLeastOneAssignee && CreateAssignmentsList.Count < 1)
             {
                 await UiMessageService.Error(L["CreateWizard:AtLeastOneAssigneeRequired"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
@@ -608,7 +649,6 @@ public partial class ProjectTaskCreateModal
 
         CreateDocumentsList = result.Items;
         
-        // Cache PDF file info for each document
         await CacheDocumentPdfInfoAsync(CreateDocumentsList);
     }
 
@@ -627,7 +667,6 @@ public partial class ProjectTaskCreateModal
 
     protected void OnCreateAssignmentUserChanged()
     {
-        // Select2 (single-select) uses list; force rerender so Add button enables.
         InvokeAsync(StateHasChanged);
     }
 

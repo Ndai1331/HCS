@@ -14,7 +14,7 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
 {
      private readonly List<Func<ChatMessageRdto, Task>> _messageReceived;
      private readonly List<Func<Guid, Task>> _messageDeleted;
-     private readonly List<Func<Guid, Task>> _conversationDeleted;
+     private readonly List<Func<ChatDeletedConversationEto, Task>> _conversationDeleted;
      private readonly List<Func<object, Task>> _conversationCreated;
      private readonly List<Func<Task>> _chatUnreadCountChanged;  // NEW
      private readonly ILogger<ChatHubConnectionService> _logger;
@@ -26,7 +26,7 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
      {
           _messageReceived = new List<Func<ChatMessageRdto, Task>>();
           _messageDeleted = new List<Func<Guid, Task>>();
-          _conversationDeleted = new List<Func<Guid, Task>>();
+          _conversationDeleted = new List<Func<ChatDeletedConversationEto, Task>>();
           _conversationCreated = new List<Func<object, Task>>();
           _chatUnreadCountChanged = new List<Func<Task>>();  // NEW
           _logger = logger;
@@ -77,18 +77,18 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
           return Task.CompletedTask;
      }
 
-     public async Task DeletedConversationAsync(Guid userId)
+     public async Task DeletedConversationAsync(ChatDeletedConversationEto eventData)
      {
           // Create a snapshot to avoid "Collection was modified" errors
           var callbacks = _conversationDeleted.ToList();
           
           foreach (var func in callbacks)
           {
-               await func(userId);
+               await func(eventData);
           }
      }
 
-     public Task OnDeletedConversationAsync(Func<Guid, Task> func)
+     public Task OnDeletedConversationAsync(Func<ChatDeletedConversationEto, Task> func)
      {
           _conversationDeleted.Add(func);
           return Task.CompletedTask;
@@ -356,9 +356,22 @@ public class ChatHubConnectionService : IChatHubConnectionService, IScopedDepend
      }
 
      [JSInvokable]
-     public async Task OnConversationDeleted(Guid userId)
+     public async Task OnConversationDeleted(JsonElement deletedConversationData)
      {
-          await DeletedConversationAsync(userId);
+          var eventData = JsonSerializer.Deserialize<ChatDeletedConversationEto>(
+               deletedConversationData.GetRawText(),
+               new JsonSerializerOptions
+               {
+                    PropertyNameCaseInsensitive = true
+               });
+
+          if (eventData == null)
+          {
+               _logger.LogWarning("ChatHubConnectionService: Failed to deserialize deleted conversation data");
+               return;
+          }
+
+          await DeletedConversationAsync(eventData);
      }
 
      [JSInvokable]

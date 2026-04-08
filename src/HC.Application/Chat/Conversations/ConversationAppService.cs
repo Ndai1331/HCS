@@ -153,6 +153,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         {
             Id = message.Id,
             ConversationId = input.ConversationId,
+            ConversationType = conversation.Type.ToString(),
+            ConversationName = conversation.Name,
             SenderName = senderUser.Name,
             SenderSurname = senderUser.Surname,
             SenderUserId = senderUser.Id,
@@ -176,6 +178,30 @@ public class ConversationAppService : ChatAppService, IConversationAppService
  
     public virtual async Task DeleteMessageAsync(DeleteMessageInput input)
     {
+        var message = await _messageRepository.GetAsync(input.MessageId);
+        if (message?.ConversationId.HasValue == true)
+        {
+            var conversation = await _conversationRepository.GetWithMembersAsync(message.ConversationId.Value);
+            if (conversation == null)
+            {
+                throw new BusinessException("HC.Chat:ConversationNotFound");
+            }
+
+            var currentUserId = CurrentUser.GetId();
+            var currentMember = conversation.Members.FirstOrDefault(m => m.UserId == currentUserId && m.IsActive);
+            if (currentMember == null)
+            {
+                throw new BusinessException("HC.Chat:UserNotMember");
+            }
+
+            var isOwnMessage = message.CreatorId.HasValue && message.CreatorId.Value == currentUserId;
+            var isAdmin = string.Equals(currentMember.Role, "ADMIN", StringComparison.OrdinalIgnoreCase);
+            if (conversation.Type != ConversationType.User && !isOwnMessage && !isAdmin)
+            {
+                throw new BusinessException("HC.Chat:OnlyAdminCanDeleteOthersMessages");
+            }
+        }
+
         await _messagingManager.DeleteMessage(input.MessageId, CurrentUser.GetId(), input.TargetUserId);
         
         await _realTimeChatMessageSender.DeleteMessageAsync(
@@ -290,7 +316,22 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                 throw new BusinessException("HC.Chat:OnlyAdminCanDeleteConversation");
             }
 
+            var membersToNotify = activeMembers
+                .Where(m => m.UserId != currentUserId)
+                .Select(m => m.UserId)
+                .Distinct()
+                .ToList();
+
             await _conversationRepository.DeleteAsync(conversation);
+
+            foreach (var memberUserId in membersToNotify)
+            {
+                await _realTimeChatMessageSender.DeleteConversationAsync(
+                    memberUserId,
+                    currentUserId,
+                    conversation.Id
+                );
+            }
         }
         else
         {
@@ -298,7 +339,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
 
             await _realTimeChatMessageSender.DeleteConversationAsync(
                 input.TargetUserId,
-                CurrentUser.GetId()
+                CurrentUser.GetId(),
+                null
             );
         }
     }
@@ -721,6 +763,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                         {
                             existingMember.Activate();
                             await _conversationMemberRepository.UpdateAsync(existingMember);
+                            await BackfillConversationHistoryForMemberAsync(conversation, userId);
                         }
                         continue;
                     }
@@ -741,6 +784,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                         CurrentTenant.Id
                     );
                     await _conversationMemberRepository.InsertAsync(member);
+                    await BackfillConversationHistoryForMemberAsync(conversation, userId);
                     
                 }
                 
@@ -752,6 +796,48 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             errorMessage = ex.Message;
         }   
         return errorMessage;
+    }
+
+    private async Task BackfillConversationHistoryForMemberAsync(Conversation conversation, Guid userId)
+    {
+        var messages = await _messageRepository.GetByConversationIdAsync(conversation.Id);
+        if (messages.Count == 0)
+        {
+            return;
+        }
+
+        var existingMessageIds = await _userMessageRepository.GetMessageIdsByConversationIdAsync(conversation.Id, userId);
+        var targetUserId = conversation.Members
+            .Where(m => m.IsActive && m.UserId != userId)
+            .Select(m => m.UserId)
+            .FirstOrDefault();
+
+        var missingUserMessages = new List<UserMessage>();
+        foreach (var message in messages)
+        {
+            if (existingMessageIds.Contains(message.Id))
+            {
+                continue;
+            }
+
+            var side = message.CreatorId == userId ? ChatMessageSide.Sender : ChatMessageSide.Receiver;
+            var userMessage = new UserMessage(
+                GuidGenerator.Create(),
+                userId,
+                message.Id,
+                side,
+                targetUserId == Guid.Empty ? userId : targetUserId,
+                CurrentTenant.Id);
+
+            // Historical messages should be visible immediately without inflating unread counts.
+            userMessage.MarkAsRead(Clock.Now);
+            missingUserMessages.Add(userMessage);
+        }
+
+        if (missingUserMessages.Count > 0)
+        {
+            await _userMessageRepository.InsertManyAsync(missingUserMessages);
+        }
     }
     
     public virtual async Task RemoveMemberAsync(RemoveMemberInput input)
@@ -1009,6 +1095,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         
         Message message;
         Guid targetUserId;
+        string conversationType = ConversationType.User.ToString();
+        string? conversationName = null;
         
         if (input.ConversationId.HasValue)
         {
@@ -1029,6 +1117,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             // For group conversations, we need to create UserMessage for all members
             // For now, use first member as target (this needs to be improved)
             targetUserId = conversation.Members.FirstOrDefault(m => m.UserId != currentUserId && m.IsActive)?.UserId ?? currentUserId;
+            conversationType = conversation.Type.ToString();
+            conversationName = conversation.Name;
         }
         else
         {
@@ -1132,6 +1222,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             {
                 Id = message.Id,
                 ConversationId = input.ConversationId,
+                ConversationType = conversationType,
+                ConversationName = conversationName,
                 SenderName = senderUser.Name,
                 SenderSurname = senderUser.Surname,
                 SenderUserId = senderUser.Id,
@@ -1195,6 +1287,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         // First create the message
         Message message;
         Guid targetUserId;
+        string conversationType = ConversationType.User.ToString();
+        string? conversationName = null;
         
         if (input.ConversationId.HasValue)
         {
@@ -1212,6 +1306,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             }
             
             targetUserId = conversation.Members.FirstOrDefault(m => m.UserId != currentUserId && m.IsActive)?.UserId ?? currentUserId;
+            conversationType = conversation.Type.ToString();
+            conversationName = conversation.Name;
         }
         else
         {
@@ -1293,6 +1389,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             {
                 Id = message.Id,
                 ConversationId = input.ConversationId,
+                ConversationType = conversationType,
+                ConversationName = conversationName,
                 SenderName = senderUser.Name,
                 SenderSurname = senderUser.Surname,
                 SenderUserId = senderUser.Id,
@@ -1550,6 +1648,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             {
                 Id = newMessage.Id,
                 ConversationId = input.TargetConversationId,
+                ConversationType = targetConversation.Type.ToString(),
+                ConversationName = targetConversation.Name,
                 SenderName = senderUser.Name,
                 SenderSurname = senderUser.Surname,
                 SenderUserId = senderUser.Id,

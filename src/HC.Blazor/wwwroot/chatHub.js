@@ -86,8 +86,17 @@ window.chatHub = {
         });
 
         // Register ConversationDeleted handler
-        window.baseHub.registerEventHandler("chat", "ConversationDeleted", async (helper, userId) => {
-            await helper.invokeMethodAsync("OnConversationDeleted", userId)
+        // Only the chat page helper handles conversation deletion updates.
+        window.baseHub.registerEventHandler("chat", "ConversationDeleted", async (helper, deletedConversationData) => {
+            const isNotificationBarHelper = helper._isNotificationBarHelper === true;
+            const isNotificationToastHelper = window._chatNotificationHelper && helper === window._chatNotificationHelper;
+            const isChatHubServiceHelper = !isNotificationBarHelper && !isNotificationToastHelper;
+
+            if (!isChatHubServiceHelper) {
+                return;
+            }
+
+            await helper.invokeMethodAsync("OnConversationDeleted", deletedConversationData)
                 .catch(err => {
                     window.hcLogger.error("Chat Hub: Error calling OnConversationDeleted:", err);
                     // Disposal handled by baseHub
@@ -95,17 +104,35 @@ window.chatHub = {
         });
 
         // Register ConversationCreated handler
-        // Only ChatHubConnectionService has OnConversationCreated - Notification component does not
+        // Notification.razor only needs unread count updates.
+        // ChatHubConnectionService expects the raw object, while NotificationToast
+        // expects a JSON string payload.
         window.baseHub.registerEventHandler("chat", "ConversationCreated", async (helper, conversationData) => {
             window.hcLogger.log("Chat Hub: ConversationCreated event received", conversationData);
 
-            if (helper === window._chatNotificationHelper) {
+            const isNotificationBarHelper = helper._isNotificationBarHelper === true;
+            const isNotificationToastHelper = window._chatNotificationHelper && helper === window._chatNotificationHelper;
+
+            if (isNotificationBarHelper) {
+                window.hcLogger.log("Chat Hub: Skipping OnConversationCreated for notification bar helper");
                 return;
             }
+
             try {
-                await helper.invokeMethodAsync("OnConversationCreated", conversationData);
+                if (isNotificationToastHelper) {
+                    const conversationJson = JSON.stringify(conversationData);
+                    await helper.invokeMethodAsync("OnConversationCreated", conversationJson);
+                } else {
+                    await helper.invokeMethodAsync("OnConversationCreated", conversationData);
+                }
             } catch (err) {
                 window.hcLogger.error("Chat Hub: Error calling OnConversationCreated:", err);
+                if (err.message && err.message.includes("DotNetObjectReference instance was already disposed")) {
+                    window.hcLogger.log("Chat Hub: ConversationCreated helper was disposed, cleaning up...");
+                    if (helper === window._chatNotificationHelper) {
+                        window._chatNotificationHelper = null;
+                    }
+                }
             }
         });
 

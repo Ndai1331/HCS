@@ -20,6 +20,7 @@ public interface IUserMessageRepository : IBasicRepository<UserMessage, Guid>
     Task<MessageWithDetails> GetLastMessageAsync(Guid userId, Guid targetUserId, CancellationToken cancellationToken = default);
 
     Task<List<Guid>> GetAllMessageIdsAsync(Guid userId, Guid targetUserId, CancellationToken cancellationToken = default);
+    Task<HashSet<Guid>> GetMessageIdsByConversationIdAsync(Guid conversationId, Guid userId, CancellationToken cancellationToken = default);
 
     Task DeleteAllMessages(Guid userId, Guid targetUserId, CancellationToken cancellationToken = default);
 }

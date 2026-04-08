@@ -27,6 +27,9 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     [Inject]
     public IJSRuntime JsRuntime { get; set; }
 
+    [Inject]
+    public IContactAppService ContactAppService { get; set; } = default!;
+
     [Parameter]
     public ChatContactDto CurrentChatContact { get; set; }
 
@@ -268,11 +271,14 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
     private async Task<List<LookupDto<Guid>>> GetIdentityUserCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
-        var allUsers = (await ProjectMembersAppService.GetIdentityUserLookupAsync(new LookupRequestDto { Filter = filter })).Items;
-        var currentUserId = CurrentUser.Id ?? Guid.Empty;
-        var filteredUsers = allUsers.Where(u => u.Id != currentUserId).ToList();
-        IdentityUsersCollection = filteredUsers;
-        return filteredUsers;
+        IdentityUsersCollection = (await ContactAppService.GetUserLookupAsync(new LookupRequestDto
+        {
+            Filter = filter,
+            MaxResultCount = 20,
+            SkipCount = 0
+        })).Items;
+
+        return IdentityUsersCollection.ToList();
     }
 
     private async Task RemoveMemberFromInfoBoxAsync(RemoveMemberInput input) =>

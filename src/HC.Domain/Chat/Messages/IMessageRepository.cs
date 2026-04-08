@@ -17,6 +17,7 @@ public interface IMessageRepository : IBasicRepository<Message, Guid>
     Task<Message> GetWithReplyAsync(Guid messageId, CancellationToken cancellationToken = default);
     
     Task<List<Message>> GetRepliesAsync(Guid messageId, CancellationToken cancellationToken = default);
+    Task<List<Message>> GetByConversationIdAsync(Guid conversationId, CancellationToken cancellationToken = default);
     Task<List<Message>> GetMessagesInConversationAsync(Guid conversationId, string messageText, int maxResultCount = 10, int skipCount = 0, CancellationToken cancellationToken = default);
 
 

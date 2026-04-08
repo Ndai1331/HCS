@@ -268,6 +268,7 @@ public class MessagingManager : DomainService
         var conversation = await _conversationRepository.GetWithMembersAsync(conversationId);
         if (conversation != null)
         {
+            await EnsureConversationHistoryVisibleAsync(conversation, currentUserId);
             // TODO: Update per-user read status in ConversationMember
             await _conversationRepository.UpdateAsync(conversation);
         }
@@ -302,6 +303,59 @@ public class MessagingManager : DomainService
         }
 
         return messages;
+    }
+
+    private async Task EnsureConversationHistoryVisibleAsync(Conversation conversation, Guid currentUserId)
+    {
+        var isMember = conversation.Members.Any(m => m.UserId == currentUserId && m.IsActive);
+        if (!isMember)
+        {
+            return;
+        }
+
+        var messages = await _messageRepository.GetByConversationIdAsync(conversation.Id);
+        if (messages.Count == 0)
+        {
+            return;
+        }
+
+        var existingMessageIds = await _userMessageRepository.GetMessageIdsByConversationIdAsync(conversation.Id, currentUserId);
+        if (existingMessageIds.Count == messages.Count)
+        {
+            return;
+        }
+
+        var targetUserId = conversation.Members
+            .Where(m => m.IsActive && m.UserId != currentUserId)
+            .Select(m => m.UserId)
+            .FirstOrDefault();
+
+        var missingUserMessages = new List<UserMessage>();
+        foreach (var message in messages)
+        {
+            if (existingMessageIds.Contains(message.Id))
+            {
+                continue;
+            }
+
+            var side = message.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver;
+            var userMessage = new UserMessage(
+                GuidGenerator.Create(),
+                currentUserId,
+                message.Id,
+                side,
+                targetUserId == Guid.Empty ? currentUserId : targetUserId,
+                CurrentTenant.Id);
+
+            // Historical messages should be visible immediately without being treated as unread.
+            userMessage.MarkAsRead(Clock.Now);
+            missingUserMessages.Add(userMessage);
+        }
+
+        if (missingUserMessages.Count > 0)
+        {
+            await _userMessageRepository.InsertManyAsync(missingUserMessages);
+        }
     }
 
     protected virtual async Task CheckDeletingMessageSetting(Message message)

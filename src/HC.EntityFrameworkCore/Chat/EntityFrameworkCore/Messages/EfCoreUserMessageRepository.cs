@@ -62,6 +62,17 @@ public class EfCoreUserMessageRepository : EfCoreRepository<IChatDbContext, User
             .Select(message => message.ChatMessageId)
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
+
+    public virtual async Task<HashSet<Guid>> GetMessageIdsByConversationIdAsync(Guid conversationId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var dbContext = await GetDbContextAsync();
+
+        return await (from userMessage in (await GetDbSetAsync())
+                      join message in dbContext.ChatMessages on userMessage.ChatMessageId equals message.Id
+                      where userMessage.UserId == userId && message.ConversationId == conversationId
+                      select userMessage.ChatMessageId)
+            .ToHashSetAsync(GetCancellationToken(cancellationToken));
+    }
     
     public async Task DeleteAllMessages(Guid userId, Guid targetUserId, CancellationToken cancellationToken = default)
     {

@@ -850,6 +850,8 @@
     "SearchInContacts": "Tìm kiếm trong danh bạ",
     "StartConversation": "Bắt đầu chat",
     "PleaseSelectUserToStartConversation": "Vui lòng chọn người dùng để bắt đầu chat.",
+    "PleaseEnterGroupName": "Vui lòng nhập tên nhóm chat.",
+    "PleaseSelectGroupMembers": "Vui lòng chọn ít nhất một thành viên.",
     "NoMessageYetMessage": "Không có tin nhắn nào",
     "SendOnEnter": "Gửi khi nhấn Enter",
     "TypeMessage": "Nhập tin nhắn",
@@ -882,6 +884,8 @@
     "UnknownUser": "Người dùng",
     "Chat:NewMessage": "Tin nhắn mới",
     "Chat:MessageFrom": "Có tin nhắn mới từ {0}",
+    "Chat:DirectMessageFrom": "Bạn có tin nhắn từ {0}",
+    "Chat:GroupMessageFrom": "Bạn có tin nhắn từ nhóm {0}",
     "Chat:NewConversation": "Cuộc trò chuyện mới",
     "Chat:ConversationFrom": "Cuộc trò chuyện từ {0}",
     "Chat:NewUserConversation": "{0} đã tạo cuộc trò chuyện với bạn",
@@ -1287,6 +1291,7 @@
     "RemoveMember": "Xoá thành viên",
     "MustTransferAdminBeforeLeaving" : "Cần chuyển quyền admin trước khi rời nhóm",
     "OnlyAdminCanDeleteConversation" : "Chỉ admin mới có quyền xóa nhóm",
+    "OnlyAdminCanDeleteOthersMessages": "Chỉ admin mới có quyền xóa tin nhắn của người khác",
     "EndTimeMustBeAfterStartTime": "Thời gian kết thúc phải lớn hơn thời gian bắt đầu",
     "ReadyToUpload": "Sẵn sàng tải lên",
     "UploadedSuccessfully": "Tải lên thành công",
@@ -1310,6 +1315,8 @@
     "Page": "Trang",
     "X": "X",
     "Y": "Y",
-    "SubmitForApproval": "Gửi lãnh đạo duyệt"
+    "SubmitForApproval": "Gửi lãnh đạo duyệt",
+    "RemoveAdmin": "Xóa admin",
+    "User": "Người dùng"
   }
 }

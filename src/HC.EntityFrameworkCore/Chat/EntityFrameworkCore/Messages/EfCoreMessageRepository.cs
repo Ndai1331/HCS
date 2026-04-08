@@ -48,6 +48,14 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
 
+    public virtual async Task<List<Message>> GetByConversationIdAsync(Guid conversationId, CancellationToken cancellationToken = default)
+    {
+        return await (await GetDbSetAsync())
+            .Where(x => x.ConversationId == conversationId)
+            .OrderBy(x => x.CreationTime)
+            .ToListAsync(GetCancellationToken(cancellationToken));
+    }
+
     public virtual async Task<List<Message>> GetMessagesInConversationAsync(Guid conversationId, string messageText, int maxResultCount = 10, int skipCount = 0, CancellationToken cancellationToken = default)
     {
         return await (await GetDbSetAsync())

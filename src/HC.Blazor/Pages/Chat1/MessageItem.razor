@@ -49,8 +49,8 @@
                                 @if (!string.IsNullOrWhiteSpace(Message.ForwardedFromMessage.SenderName))
                                 {
                                     <span>
-                                        @Message.ForwardedFromMessage.SenderName
                                         @Message.ForwardedFromMessage.SenderSurname
+                                        @Message.ForwardedFromMessage.SenderName
                                     </span>
                                 }
                                 else if (!string.IsNullOrWhiteSpace(Message.ForwardedFromMessage.SenderUsername))
@@ -213,6 +213,12 @@
     flex-direction: column;
 }
 
+.chat-actions {
+    align-self: center;
+    display: flex;
+    align-items: center;
+}
+
 .message-bubble {
     max-width: 100%;
     min-width: 120px;
@@ -286,7 +292,7 @@
 
     private string GetSenderName(ChatMessageDto m)
         => !string.IsNullOrEmpty(m.SenderName) || !string.IsNullOrEmpty(m.SenderSurname)
-            ? $"{m.SenderName} {m.SenderSurname}".Trim()
+            ? $"{m.SenderSurname} {m.SenderName}".Trim()
             : m.SenderUsername ?? "Unknown";
 
     private string GetMessageBoxClass()

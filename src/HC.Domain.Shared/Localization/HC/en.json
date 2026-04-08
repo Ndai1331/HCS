@@ -798,6 +798,8 @@
     "SearchInContacts": "Search in contacts",
     "StartConversation": "Start conversation",
     "PleaseSelectUserToStartConversation": "Please select a user to start a conversation.",
+    "PleaseEnterGroupName": "Please enter a group chat name.",
+    "PleaseSelectGroupMembers": "Please select at least one member.",
     "NoMessageYetMessage": "No messages yet.",
     "SendOnEnter": "Send on enter",
     "TypeMessage": "Type message",
@@ -830,6 +832,8 @@
     "UnknownUser": "Unknown User",
     "Chat:NewMessage": "New chat message",
     "Chat:MessageFrom": "Message from {0}",
+    "Chat:DirectMessageFrom": "You have a message from {0}",
+    "Chat:GroupMessageFrom": "You have a message from group {0}",
     "Chat:NewConversation": "New conversation",
     "Chat:ConversationFrom": "Conversation from {0}",
     "Chat:NewUserConversation": "{0} started a conversation with you",
@@ -1226,6 +1230,7 @@
     "RemoveMember": "Remove member",
     "MustTransferAdminBeforeLeaving": "Must transfer admin before leaving",
     "OnlyAdminCanDeleteConversation": "Only admin can delete conversation",
+    "OnlyAdminCanDeleteOthersMessages": "Only admin can delete other users' messages",
     "EndTimeMustBeAfterStartTime": "End time must be after start time",
     "ReadyToUpload": "Ready to upload",
     "UploadedSuccessfully": "Uploaded successfully",
@@ -1246,6 +1251,7 @@
     "X": "X",
     "Y": "Y",
     "SubmitForApproval": "Submit For Approval",
-    "ApprovalNote": "Approval Note"
+    "ApprovalNote": "Approval Note",
+    "RemoveAdmin": "Remove Admin"
   }
 }

@@ -58,6 +58,8 @@ public class ChatEventHandler :
             {
                 Id = eventData.MessageId,
                 ConversationId = eventData.ConversationId,
+                ConversationType = eventData.ConversationType,
+                ConversationName = eventData.ConversationName,
                 SenderUserId = eventData.SenderUserId,
                 SenderUsername = eventData.SenderUserName,
                 SenderName = eventData.SenderName,
@@ -140,28 +142,31 @@ public class ChatEventHandler :
         try
         {
             _logger.LogInformation(
-                "Handling ChatDeletedConversationEto: UserId={UserId}, TargetUserId={TargetUserId}",
+                "Handling ChatDeletedConversationEto: UserId={UserId}, TargetUserId={TargetUserId}, ConversationId={ConversationId}",
                 eventData.UserId,
-                eventData.TargetUserId);
+                eventData.TargetUserId,
+                eventData.ConversationId);
 
             var targetUserIdString = eventData.TargetUserId.ToString();
 
             // Send delete conversation notification to target user via SignalR
             await _hubContext.Clients
                 .User(targetUserIdString)
-                .SendAsync("ConversationDeleted", eventData.UserId);
+                .SendAsync("ConversationDeleted", eventData);
 
             _logger.LogInformation(
-                "Successfully sent delete conversation notification: TargetUserId={TargetUserId}, UserId={UserId}",
+                "Successfully sent delete conversation notification: TargetUserId={TargetUserId}, UserId={UserId}, ConversationId={ConversationId}",
                 targetUserIdString,
-                eventData.UserId);
+                eventData.UserId,
+                eventData.ConversationId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "Error handling ChatDeletedConversationEto: UserId={UserId}, TargetUserId={TargetUserId}",
+                "Error handling ChatDeletedConversationEto: UserId={UserId}, TargetUserId={TargetUserId}, ConversationId={ConversationId}",
                 eventData.UserId,
-                eventData.TargetUserId);
+                eventData.TargetUserId,
+                eventData.ConversationId);
         }
     }
 

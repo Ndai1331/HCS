@@ -171,13 +171,25 @@
         {
             // Format sender name: "Surname Name"
             var senderName = $"{messageData.SenderSurname} {messageData.SenderName}".Trim();
+            if (string.IsNullOrWhiteSpace(senderName))
+            {
+                senderName = messageData.SenderUsername ?? string.Empty;
+            }
+
+            var isDirectMessage = string.Equals(messageData.ConversationType, "User", StringComparison.OrdinalIgnoreCase);
+            var conversationName = string.IsNullOrWhiteSpace(messageData.ConversationName)
+                ? senderName
+                : messageData.ConversationName;
+            var content = isDirectMessage
+                ? $"Chat:DirectMessageFrom|{senderName}"
+                : $"Chat:GroupMessageFrom|{conversationName}";
             
             // Create a fake NotificationDto for chat message
             var notification = new NotificationDto
             {
                 Id = Guid.NewGuid(),
                 Title = "Chat:NewMessage",
-                Content = $"Chat:MessageFrom|{senderName}",
+                Content = content,
                 Priority = "NORMAL",
                 CreationTime = Clock.Now,
                 RelatedId = messageData.ConversationId?.ToString(),
@@ -219,6 +231,8 @@
     {
         public Guid Id { get; set; }
         public Guid? ConversationId { get; set; }
+        public string? ConversationType { get; set; }
+        public string? ConversationName { get; set; }
         public Guid SenderUserId { get; set; }
         public string? SenderUsername { get; set; }
         public string? SenderName { get; set; }

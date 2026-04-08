@@ -15,7 +15,8 @@ public abstract class HCComponentBase : AbpComponentBase
     private static readonly Dictionary<string, string> BusinessErrorLocalizationMap = new(StringComparer.OrdinalIgnoreCase)
     {
         ["HC.Chat:MustTransferAdminBeforeLeaving"] = "MustTransferAdminBeforeLeaving",
-        ["HC.Chat:OnlyAdminCanDeleteConversation"] = "OnlyAdminCanDeleteConversation"
+        ["HC.Chat:OnlyAdminCanDeleteConversation"] = "OnlyAdminCanDeleteConversation",
+        ["HC.Chat:OnlyAdminCanDeleteOthersMessages"] = "OnlyAdminCanDeleteOthersMessages"
     };
 
     [Microsoft.AspNetCore.Components.Inject]

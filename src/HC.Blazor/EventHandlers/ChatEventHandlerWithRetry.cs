@@ -96,6 +96,8 @@ public class ChatEventHandlerWithRetry :
             {
                 Id = eventData.MessageId,
                 ConversationId = eventData.ConversationId,
+                ConversationType = eventData.ConversationType,
+                ConversationName = eventData.ConversationName,
                 SenderUserId = eventData.SenderUserId,
                 SenderUsername = eventData.SenderUserName,
                 SenderName = eventData.SenderName,
@@ -174,9 +176,10 @@ public class ChatEventHandlerWithRetry :
             try
             {
                 _logger.LogInformation(
-                    "Handling ChatDeletedConversationEto: UserId={UserId}, TargetUserId={TargetUserId}",
+                    "Handling ChatDeletedConversationEto: UserId={UserId}, TargetUserId={TargetUserId}, ConversationId={ConversationId}",
                     eventData.UserId,
-                    eventData.TargetUserId);
+                    eventData.TargetUserId,
+                    eventData.ConversationId);
 
                 await _circuitBreaker.ExecuteAsync(
                     async () => await _retryPolicy.ExecuteAsync(
@@ -185,8 +188,9 @@ public class ChatEventHandlerWithRetry :
                     "DeleteConversation");
 
                 _logger.LogInformation(
-                    "Successfully sent delete conversation notification: UserId={UserId}",
-                    eventData.UserId);
+                    "Successfully sent delete conversation notification: UserId={UserId}, ConversationId={ConversationId}",
+                    eventData.UserId,
+                    eventData.ConversationId);
             }
             catch (CircuitBreakerOpenException ex)
             {
@@ -206,7 +210,7 @@ public class ChatEventHandlerWithRetry :
 
         await _hubContext.Clients
             .User(targetUserIdString)
-            .SendAsync("ConversationDeleted", eventData.UserId);
+            .SendAsync("ConversationDeleted", eventData);
     }
 
         public async Task HandleEventAsync(ConversationCreatedEto eventData)

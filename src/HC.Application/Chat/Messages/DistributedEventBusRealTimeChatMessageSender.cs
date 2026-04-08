@@ -26,6 +26,8 @@ public class DistributedEventBusRealTimeChatMessageSender : IRealTimeChatMessage
                 SenderSurname = message.SenderSurname,
                 TargetUserId = targetUserId,
                 ConversationId = message.ConversationId,
+                ConversationType = message.ConversationType,
+                ConversationName = message.ConversationName,
                 Message = message.Text,
                 MessageId = message.Id
             }
@@ -43,13 +45,14 @@ public class DistributedEventBusRealTimeChatMessageSender : IRealTimeChatMessage
         );
     }
     
-    public async Task DeleteConversationAsync(Guid targetUserId, Guid userId)
+    public async Task DeleteConversationAsync(Guid targetUserId, Guid userId, Guid? conversationId)
     {
         await DistributedEventBus.PublishAsync(
             new ChatDeletedConversationEto
             {
                 TargetUserId = targetUserId,
-                UserId = userId
+                UserId = userId,
+                ConversationId = conversationId
             }
         );
     }

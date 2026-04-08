@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
+using Volo.Abp.Application.Dtos;
 using HC.Chat.Users;
+using HC.Shared;
 
 namespace HC.Chat.Users;
 
@@ -29,5 +32,12 @@ public class ContactController : ChatController, IContactAppService
     public Task<int> GetTotalUnreadMessageCountAsync()
     {
         return _contactAppService.GetTotalUnreadMessageCountAsync();
+    }
+
+    [HttpGet]
+    [Route("user-lookup")]
+    public Task<PagedResultDto<LookupDto<Guid>>> GetUserLookupAsync([FromQuery] LookupRequestDto input)
+    {
+        return _contactAppService.GetUserLookupAsync(input);
     }
 }

@@ -66,7 +66,7 @@
                                 </Alert>
                             }
                             @* Only show Project selector if ProjectId is not provided *@
-                            @if (!ProjectId.HasValue || ProjectId.Value == Guid.Empty)
+                            @if (!EffectiveProjectId.HasValue || EffectiveProjectId.Value == Guid.Empty)
                             {
                                 <Row Class="g-1">
                                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">

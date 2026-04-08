@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Features;
 using Volo.Abp.PermissionManagement;
 using Volo.Abp.Users;
@@ -11,6 +12,7 @@ using HC.Chat.Authorization;
 using HC.Chat.Conversations;
 using HC.Chat;
 using HC.Chat.Messages;
+using HC.Shared;
 
 namespace HC.Chat.Users;
 
@@ -245,5 +247,41 @@ public class ContactAppService : ChatAppService, IContactAppService
             Logger?.LogError(ex, "Error in GetTotalUnreadMessageCountAsync");
             return 0;
         }
+    }
+
+    public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetUserLookupAsync(LookupRequestDto input)
+    {
+        var filter = input.Filter ?? string.Empty;
+        var maxResultCount = input.MaxResultCount > 0 ? input.MaxResultCount : 20;
+        var skipCount = input.SkipCount < 0 ? 0 : input.SkipCount;
+        var currentUserId = CurrentUser.Id ?? Guid.Empty;
+
+        var users = await _chatUserLookupService.SearchAsync(
+            nameof(ChatUser.UserName),
+            filter,
+            maxResultCount: maxResultCount);
+
+        static string GetDisplayName(IUserData user)
+        {
+            var fullName = string.Join(" ", new[] { user.Surname, user.Name }.Where(v => !string.IsNullOrWhiteSpace(v))).Trim();
+            return string.IsNullOrWhiteSpace(fullName) ? user.UserName : fullName;
+        }
+
+        var filteredUsers = users
+            .Where(x => x != null && x.Id != currentUserId)
+            .Skip(skipCount)
+            .Take(maxResultCount)
+            .Select(x => new LookupDto<Guid>
+            {
+                Id = x.Id,
+                DisplayName = GetDisplayName(x)
+            })
+            .ToList();
+
+        return new PagedResultDto<LookupDto<Guid>>
+        {
+            TotalCount = filteredUsers.Count,
+            Items = filteredUsers
+        };
     }
 }

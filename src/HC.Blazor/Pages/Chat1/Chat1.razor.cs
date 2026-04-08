@@ -100,6 +100,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     private const int ConversationsPageSize = 10;
     private bool _isLoadingMoreConversations = false;
     private bool _hasMoreConversations = true;
+    private bool _hasActivatedRouteConversation;
     
     // Flag to update avatar after render
     private bool _shouldUpdateAvatar = false;
@@ -119,6 +120,9 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     public bool ShowCreateDirectModal { get; set; }
     public bool ShowDirectUserRequiredMessage { get; set; }
     public bool ShowCreateGroupModal { get; set; }
+    public bool ShowGroupNameRequiredMessage { get; set; }
+    public bool ShowGroupMembersRequiredMessage { get; set; }
+    public bool IsCreatingGroupConversation { get; set; }
     
     // Image Viewer Modal
     public bool ShowImageViewerModal { get; set; }
@@ -520,14 +524,41 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 await InvokeAsync(StateHasChanged);
             });
             
-            await ChatHubConnectionService.OnDeletedConversationAsync(async userId =>
+            await ChatHubConnectionService.OnDeletedConversationAsync(async deletedConversation =>
             {
-                if (userId == CurrentChatContact.UserId)
+                var deletedContacts = ChatContactDtos
+                    .Where(contact =>
+                        deletedConversation.ConversationId.HasValue
+                            ? contact.ConversationId == deletedConversation.ConversationId
+                            : contact.Type == ConversationType.User && contact.UserId == deletedConversation.UserId)
+                    .ToList();
+
+                var isDeletingCurrentConversation = CurrentChatContact != null &&
+                    (deletedConversation.ConversationId.HasValue
+                        ? CurrentChatContact.ConversationId == deletedConversation.ConversationId
+                        : CurrentChatContact.Type == ConversationType.User && CurrentChatContact.UserId == deletedConversation.UserId);
+
+                foreach (var deletedContact in deletedContacts)
+                {
+                    ChatContactsActive.Remove(deletedContact);
+                    CanvasElementReferences.Remove(deletedContact);
+                }
+
+                if (deletedContacts.Any())
+                {
+                    ChatContactDtos.RemoveAll(contact => deletedContacts.Contains(contact));
+                }
+
+                if (isDeletingCurrentConversation)
                 {
                     CanvasElementReferences.Clear();
                     ChatConversationDto = null;
-                    ChatContactDtos.RemoveAll(contact => contact.UserId == userId);
+                    CurrentChatContact = null;
+                    CurrentConversationId = null;
+                    ShowInfoBox = false;
+                    SyncConversationUrl(null);
                 }
+
                 await InvokeAsync(StateHasChanged);
             });
 
@@ -636,6 +667,12 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 }
             }
             await BlockUiService.UnBlock();
+
+            if (RedirectToConversationId.HasValue && !_hasActivatedRouteConversation)
+            {
+                _hasActivatedRouteConversation = true;
+                await ActivateConversationFromRouteAsync(RedirectToConversationId.Value);
+            }
         }
 
         // Create snapshot to avoid "Collection was modified" errors
@@ -929,6 +966,19 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             }
         }
 
+        if (CurrentChatContact?.Type != ConversationType.User)
+        {
+            var currentUserId = CurrentUser.Id;
+            var isOwnMessage = (currentUserId.HasValue && message.SenderUserId.HasValue && message.SenderUserId.Value == currentUserId.Value)
+                || message.Side == ChatMessageSide.Sender;
+            var isAdmin = string.Equals(CurrentChatContact.MemberRole, "ADMIN", StringComparison.OrdinalIgnoreCase);
+
+            if (!isOwnMessage && !isAdmin)
+            {
+                return false;
+            }
+        }
+
         return true;
     }
     
@@ -1160,6 +1210,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                     MaxResultCount = MessagesPageSize
                 });
                 CurrentConversationId = conversationId;
+                SyncConversationUrl(CurrentConversationId);
                 
                 if (ChatConversationDto?.Messages != null && ChatConversationDto.Messages.Count < MessagesPageSize)
                 {
@@ -1185,6 +1236,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 if (CurrentChatContact.ConversationId.HasValue)
                 {
                     CurrentConversationId = CurrentChatContact.ConversationId.Value;
+                    SyncConversationUrl(CurrentConversationId);
                 }
                 else
                 {
@@ -1208,6 +1260,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                     Messages = new List<ChatMessageDto>()
                 };
                 CurrentConversationId = null;
+                SyncConversationUrl(null);
             }
             
             IsLoadingMessages = false;
@@ -1336,68 +1389,37 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     }
     private async Task SendMessageToMemberAsync(ConversationMemberDto member)
     {
+        ChatContactDto? targetContact = null;
+
         try
         {
             await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
-            var conversation = await ConversationAppService.FindConversationAsync(new FindConversationInput
-            {
-                    UserIds = new List<Guid> { member.UserId, CurrentUser.Id!.Value  },
-                    Type = ConversationType.User,
-            });
-
-            if (conversation == null)
-            { 
-                //tạo conversation mới với user
-                var newConversation = await ConversationAppService.CreateUserConversationAsync(new CreateUserConversationInput
-                {
-                    TargetUserId = member.UserId,
-                });
-                conversation = newConversation;
-            }
-
-            await GetContactsAsync(
-                includeOtherContacts: false,
-                preserveCurrentContact: true,
-                loadMore: false,
-                isSetActive: false);
-
-            var targetContact = ChatContactDtos.FirstOrDefault(c =>
-                c.Type == ConversationType.User &&
-                ((c.ConversationId.HasValue && c.ConversationId.Value == conversation.Id) || c.UserId == member.UserId));
-
-            if (targetContact == null)
-            {
-                var userInfo = member.UserInfo ?? conversation.TargetUserInfo;
-                targetContact = new ChatContactDto
-                {
-                    ConversationId = conversation.Id,
-                    Type = ConversationType.User,
-                    UserId = member.UserId,
-                    Name = userInfo?.Name ?? conversation.Name,
-                    Surname = userInfo?.Surname,
-                    Username = userInfo?.Username,
-                    HasChatPermission = true,
-                };
-                var pinnedInsertIdx = ChatContactDtos.Count(c => c.IsPinned);
-                ChatContactDtos.Insert(pinnedInsertIdx, targetContact);
-                ChatContactsActive[targetContact] = "";
-            }
-            // Do NOT SetActiveAsync - user must click to select
-       }
-       catch (Exception ex)
-       {
+            targetContact = await ResolveDirectConversationContactAsync(
+                member.UserId,
+                member.UserInfo?.Username,
+                member.UserInfo);
+        }
+        catch (Exception ex)
+        {
             await UiMessageService.Error(L["FailedToSendMessage"]  + " :"+  ex.Message,
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-       }
-       finally
-       {
+        }
+        finally
+        {
             await BlockUiService.UnBlock();
             await InvokeAsync(StateHasChanged);
-       }
+        }
+
+        if (targetContact != null)
+        {
+            await SetActiveAsync(targetContact);
+        }
     }
 
     private async Task CreateDirectConversationAsync()
     {
+        ChatContactDto? targetContact = null;
+
         try
         {
             if (!SelectedDirectUser.Any())
@@ -1415,35 +1437,16 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 return;
             }
 
-            var existingContact = ChatContactDtos.FirstOrDefault(c => c.Type == ConversationType.User && c.UserId == targetUserId);
-            if (existingContact != null)
-            {
-                // Do NOT SetActiveAsync - user must click to select
-                ShowCreateDirectModal = false;
-                SelectedDirectUser.Clear();
-                return;
-            }
-
             await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
             try
             {
-                var conversation = await ConversationAppService.CreateUserConversationAsync(new CreateUserConversationInput
-                {
-                    TargetUserId = targetUserId,
-                    Name = SelectedDirectUser.First().DisplayName
-                });
+                var selectedUser = SelectedDirectUser.First();
+                targetContact = await ResolveDirectConversationContactAsync(
+                    targetUserId,
+                    selectedUser.DisplayName);
 
                 ShowCreateDirectModal = false;
                 SelectedDirectUser.Clear();
-
-                await GetContactsAsync(
-                    includeOtherContacts: false,
-                    preserveCurrentContact: false,
-                    loadMore: false,
-                    isSetActive: false);
-
-                // Do NOT SetActiveAsync - user must click to select
-                await InvokeAsync(StateHasChanged);
             }
             finally
             {
@@ -1455,6 +1458,107 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             try { await BlockUiService.UnBlock(); } catch { }
             await HandleErrorAsync(ex);
         }
+
+        if (targetContact != null)
+        {
+            await SetActiveAsync(targetContact);
+        }
+    }
+
+    private async Task<ChatContactDto> ResolveDirectConversationContactAsync(
+        Guid targetUserId,
+        string? fallbackDisplayName = null,
+        ChatTargetUserInfo? fallbackUserInfo = null)
+    {
+        var currentUserId = CurrentUser.Id ?? Guid.Empty;
+        if (currentUserId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Current user is not available.");
+        }
+
+        var conversation = await ConversationAppService.FindConversationAsync(new FindConversationInput
+        {
+            UserIds = new List<Guid> { targetUserId, currentUserId },
+            Type = ConversationType.User,
+        });
+
+        if (conversation == null)
+        {
+            conversation = await ConversationAppService.CreateUserConversationAsync(new CreateUserConversationInput
+            {
+                TargetUserId = targetUserId,
+                Name = fallbackDisplayName
+            });
+        }
+
+        await GetContactsAsync(
+            includeOtherContacts: false,
+            preserveCurrentContact: true,
+            loadMore: false,
+            isSetActive: false);
+
+        var targetContact = ChatContactDtos.FirstOrDefault(c =>
+            c.Type == ConversationType.User &&
+            ((c.ConversationId.HasValue && c.ConversationId.Value == conversation.Id) || c.UserId == targetUserId));
+
+        if (targetContact != null)
+        {
+            return targetContact;
+        }
+
+        var userInfo = conversation.TargetUserInfo ?? fallbackUserInfo;
+        targetContact = new ChatContactDto
+        {
+            ConversationId = conversation.Id,
+            Type = ConversationType.User,
+            UserId = targetUserId,
+            Name = userInfo?.Name ?? fallbackDisplayName ?? conversation.Name,
+            Surname = userInfo?.Surname,
+            Username = userInfo?.Username ?? fallbackDisplayName,
+            HasChatPermission = true,
+        };
+
+        var pinnedInsertIdx = ChatContactDtos.Count(c => c.IsPinned);
+        ChatContactDtos.Insert(pinnedInsertIdx, targetContact);
+        ChatContactsActive[targetContact] = "";
+
+        return targetContact;
+    }
+
+    private async Task ActivateConversationFromRouteAsync(Guid conversationId)
+    {
+        var targetContact = ChatContactDtos.FirstOrDefault(c => c.ConversationId == conversationId);
+        if (targetContact == null)
+        {
+            _logger.LogWarning("Chat1: Could not find contact for route conversation {ConversationId}", conversationId);
+            return;
+        }
+
+        if (CurrentChatContact?.ConversationId == conversationId)
+        {
+            return;
+        }
+
+        await SetActiveAsync(targetContact);
+    }
+
+    private void SyncConversationUrl(Guid? conversationId)
+    {
+        var targetUrl = conversationId.HasValue
+            ? $"/Chat/{conversationId.Value}"
+            : "/Chat";
+
+        var currentRelativePath = Navigation.ToBaseRelativePath(Navigation.Uri)
+            .Split('?', '#')[0]
+            .Trim('/');
+        var targetRelativePath = targetUrl.Trim('/');
+
+        if (string.Equals(currentRelativePath, targetRelativePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        Navigation.NavigateTo(targetUrl, replace: true);
     }
     
     private async Task ShowCreateGroupModalAsync()
@@ -1463,19 +1567,63 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         NewGroupName = "";
         NewGroupDescription = "";
         SelectedMembers.Clear();
+        ShowGroupNameRequiredMessage = false;
+        ShowGroupMembersRequiredMessage = false;
+        IsCreatingGroupConversation = false;
         await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnGroupNameChanged(ChangeEventArgs e)
+    {
+        NewGroupName = e.Value?.ToString() ?? string.Empty;
+        ShowGroupNameRequiredMessage = false;
+    }
+
+    private void OnSelectedGroupMembersChanged(List<LookupDto<Guid>>? value)
+    {
+        SelectedMembers = value ?? new List<LookupDto<Guid>>();
+        ShowGroupMembersRequiredMessage = false;
+    }
+
+    private void CloseCreateGroupModal()
+    {
+        if (IsCreatingGroupConversation)
+        {
+            return;
+        }
+
+        ShowCreateGroupModal = false;
+        ShowGroupNameRequiredMessage = false;
+        ShowGroupMembersRequiredMessage = false;
+    }
+
+    private bool CanCreateGroupConversation()
+    {
+        return !IsCreatingGroupConversation
+            && !string.IsNullOrWhiteSpace(NewGroupName)
+            && SelectedMembers.Any();
     }
     
     
     private async Task CreateGroupConversationAsync()
     {
+        if (IsCreatingGroupConversation)
+        {
+            return;
+        }
+
         try
         {
-            if (string.IsNullOrWhiteSpace(NewGroupName) || !SelectedMembers.Any())
+            ShowGroupNameRequiredMessage = string.IsNullOrWhiteSpace(NewGroupName);
+            ShowGroupMembersRequiredMessage = !SelectedMembers.Any();
+
+            if (ShowGroupNameRequiredMessage || ShowGroupMembersRequiredMessage)
             {
+                await InvokeAsync(StateHasChanged);
                 return;
             }
 
+            IsCreatingGroupConversation = true;
             await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
             try
             {
@@ -1491,6 +1639,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
                 NewGroupName = "";
                 NewGroupDescription = "";
                 SelectedMembers.Clear();
+                ShowGroupNameRequiredMessage = false;
+                ShowGroupMembersRequiredMessage = false;
 
                 await GetContactsAsync(
                     includeOtherContacts: false,
@@ -1529,12 +1679,15 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     }
    
     // Select2 lookup methods
-    private async Task<List<LookupDto<Guid>>> GetIdentityUserCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    private async Task<List<LookupDto<System.Guid>>> GetIdentityUserCollectionLookupAsync(IReadOnlyList<LookupDto<System.Guid>> dbset, string filter, CancellationToken token)
     {
-        var allUsers = (await ProjectMembersAppService.GetIdentityUserLookupAsync(new LookupRequestDto { Filter = filter })).Items;
-        var currentUserId = CurrentUser.Id ?? Guid.Empty;
-        // Filter out current user
-        IdentityUsersCollection = allUsers.Where(u => u.Id != currentUserId).ToList();
+        IdentityUsersCollection = (await ContactAppService.GetUserLookupAsync(new LookupRequestDto
+        {
+            Filter = filter,
+            MaxResultCount = 20,
+            SkipCount = 0
+        })).Items;
+
         return IdentityUsersCollection.ToList();
     }
     
@@ -1620,7 +1773,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         try
         {
-            if (input == null || input.ConversationId == null)
+            if (input == null || input.ConversationId == Guid.Empty)
             {
                 await UiMessageService.Error(L["ConversationNotFound"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
@@ -1692,7 +1845,9 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         finally
         {
+            IsCreatingGroupConversation = false;
             try { await BlockUiService.UnBlock(); } catch { }
+            await InvokeAsync(StateHasChanged);
         }
     }
     private async Task ReplyToMessageAsync(ChatMessageDto message)

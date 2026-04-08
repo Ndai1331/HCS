@@ -9,5 +9,5 @@ public interface IRealTimeChatMessageSender
     
     Task DeleteMessageAsync(Guid targetUserId, Guid messageId);
 
-    Task DeleteConversationAsync(Guid targetUserId, Guid userId);
+    Task DeleteConversationAsync(Guid targetUserId, Guid userId, Guid? conversationId);
 }
