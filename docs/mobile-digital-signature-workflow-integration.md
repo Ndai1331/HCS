@@ -52,6 +52,11 @@ Tôi chưa thấy REST API public tổng quát để mobile upload raw file/sign
 
 Phần này là blocker kỹ thuật nếu app mobile cần upload file trực tiếp.
 
+Ghi chú thêm theo code hiện tại:
+
+- có API upload file của module Chat (`/api/chat/conversations/files/upload`, `/api/chat/files/upload`) nhưng đây là nghiệp vụ chat, không tạo `DocumentFile` cho module trình ký
+- vì vậy mobile tích hợp trình ký vẫn cần API upload riêng cho document/signature nếu muốn upload binary trực tiếp
+
 ---
 
 ## 3. Base URL và authentication
@@ -254,6 +259,7 @@ Body mẫu:
 
 Rule xử lý backend:
 
+- **`useTemplateFile` hiện chưa được backend sử dụng trong `SubmitToWorkflowAsync`** (field tồn tại trong DTO nhưng logic backend quyết định theo `useWorkflowTemplateFile`, `documentId`, `documentFileId`)
 - validate workflow có step runnable
 - validate step đầu tiên có assignee
 - nếu `PARALLEL` thì mọi step active đều phải có assignee
@@ -716,6 +722,8 @@ Response:
 }
 ```
 
+Lưu ý đúng theo code mới: API này **chỉ kiểm tra (read-only)**, không tự cập nhật trạng thái huỷ. Việc huỷ quá hạn do `WorkflowOverdueBackgroundWorker` xử lý nền.
+
 ---
 
 ## 7.3 Action approve / return / reject
@@ -1064,6 +1072,29 @@ Flow giống web:
 Hiện tại website đang lưu `ProviderCode`, không lưu `SignatureSettingId` trong `UserSignature`.
 
 ---
+
+## 8.5 Master data bắt buộc để mobile tích hợp ổn định
+
+Ngoài `LOAI_KY`, flow trình ký hiện tại còn phụ thuộc các master data sau ở backend:
+
+1. **`TRANG_THAI_VB` (status văn bản)**
+   - bắt buộc có các code backend đang set trong flow: `DA_GUI`, `DANG_XU_LY`, `HT`, `DA_HUY`, `TRA_VE`, `TU_CHOI`
+   - nếu thiếu 1 trong các code này, backend có thể không cập nhật trạng thái document đúng sau submit/approve/return/reject/overdue
+
+2. **`LOAI_VB` (DocumentType)**
+3. **`MUC_DO_KHAN` (UrgencyLevel)**
+4. **`MUC_DO_MAT` (SecrecyLevel)**
+   - 3 loại trên được dùng khi backend tự tạo document workflow từ template (`UseWorkflowTemplateFile = true`)
+   - backend lấy record đầu tiên theo `SortOrder` làm default; nếu không có dữ liệu sẽ lỗi `NoDefaultMasterDataFound`
+
+5. **`LOAI_KY` (signing methods)**
+   - khuyến nghị tối thiểu có 2 code để giống webapp: `ELECTRONIC`, `DIGITAL`
+   - khi `APPROVE`, nếu chọn mã khác thì workflow vẫn duyệt, nhưng backend không áp dụng strategy ký tương ứng
+
+Khuyến nghị cho mobile team khi go-live tenant mới:
+
+- kiểm tra đủ bộ master data ở trên trước khi bật chức năng submit/approve trên mobile
+- nếu thiếu dữ liệu, hiển thị cảnh báo cấu hình thay vì cho user thao tác rồi fail runtime
 
 ## 9. Rule nghiệp vụ mobile phải tuân thủ
 
