@@ -111,7 +111,7 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
     private int DocumentHistoriesCurrentPage { get; set; } = 1;
 
     // PDF viewer
-    private string? PdfFileUrl { get; set; } = "https://pdfobject.com/pdf/sample.pdf";
+    private string? PdfFileUrl { get; set; }
     private bool IsPdfFile { get; set; }
 
     // PDF Viewer Modal
@@ -658,7 +658,7 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
             else
             {
                 IsPdfFile = false;
-                PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";
+                PdfFileUrl = null;
             }
             await UiMessageService.Success(L["FileUploadedSuccessfully"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
@@ -669,7 +669,7 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
             await HandleErrorAsync(ex);
             UploadedFilePath = string.Empty;
             FilePickerProgress = 0;
-            PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";
+            PdfFileUrl = null;
             IsPdfFile = false;
         }
         finally
@@ -688,6 +688,8 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+
+            NormalizeDocumentNumbers();
             
             if (DocumentUpdateData != null)
             {
@@ -698,10 +700,26 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
                     await InvokeAsync(StateHasChanged);
                     return;
                 }
+
+                if (!await ValidateDuplicateFieldsAsync())
+                {
+                    await UiMessageService.Warn(L[EditDocumentValidationErrorKey ?? "ValidationError"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
             }
             else if (DocumentCreateData != null)
             {
                 if (!ValidateCreateDocument())
+                {
+                    await UiMessageService.Warn(L[CreateDocumentValidationErrorKey ?? "ValidationError"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+
+                if (!await ValidateDuplicateFieldsAsync())
                 {
                     await UiMessageService.Warn(L[CreateDocumentValidationErrorKey ?? "ValidationError"],
                     options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
@@ -952,6 +970,8 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
 
             await DocumentFilesAppService.DeleteAsync(file.DocumentFile.Id);
 
+            await ResetUploadedFileStateAsync();
+
             await LoadDocumentFilesAsync();
             
             await LoadPdfUrlAsync();
@@ -1019,7 +1039,7 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
     // Load PDF URL for viewer
     private async Task LoadPdfUrlAsync()
     {
-        PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";;
+        PdfFileUrl = null;
         IsPdfFile = false;
 
         // Check if there's a file in DocumentFilesList
@@ -1056,8 +1076,91 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
         {
             Logger.LogError(ex, $"Error loading PDF URL for file: {firstFile.DocumentFile.Path}");
             IsPdfFile = false;
-            PdfFileUrl = "https://pdfobject.com/pdf/sample.pdf";;
+            PdfFileUrl = null;
         }
+    }
+
+    private void NormalizeDocumentNumbers()
+    {
+        if (DocumentCreateData != null)
+        {
+            DocumentCreateData.No = DocumentCreateData.No?.Trim();
+            DocumentCreateData.StorageNumber = DocumentCreateData.StorageNumber?.Trim() ?? string.Empty;
+        }
+
+        if (DocumentUpdateData != null)
+        {
+            DocumentUpdateData.No = DocumentUpdateData.No?.Trim();
+            DocumentUpdateData.StorageNumber = DocumentUpdateData.StorageNumber?.Trim() ?? string.Empty;
+        }
+    }
+
+    private async Task<bool> ValidateDuplicateFieldsAsync()
+    {
+        if (DocumentCreateData != null)
+        {
+            return await ValidateDuplicateFieldsAsync(
+                DocumentCreateData.No,
+                DocumentCreateData.StorageNumber,
+                null,
+                CreateValidation);
+        }
+
+        if (DocumentUpdateData != null)
+        {
+            return await ValidateDuplicateFieldsAsync(
+                DocumentUpdateData.No,
+                DocumentUpdateData.StorageNumber,
+                DocumentId == Guid.Empty ? null : DocumentId,
+                EditValidation);
+        }
+
+        return true;
+    }
+
+    private async Task<bool> ValidateDuplicateFieldsAsync(
+        string? documentNumber,
+        string? storageNumber,
+        Guid? excludeDocumentId,
+        ValidationHelper validation)
+    {
+        var hasError = false;
+
+        if (!string.IsNullOrWhiteSpace(documentNumber)
+            && await DocumentsAppService.IsDocumentNumberDuplicateAsync(documentNumber, excludeDocumentId))
+        {
+            validation.ValidateCustom("DocumentNumber", false, "DocumentNumberAlreadyExists", () => L["DocumentNumberAlreadyExists"]);
+            hasError = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(storageNumber)
+            && await DocumentsAppService.IsStorageNumberDuplicateAsync(storageNumber, excludeDocumentId))
+        {
+            validation.ValidateCustom("StorageNumber", false, "StorageNumberAlreadyExists", () => L["StorageNumberAlreadyExists"]);
+            hasError = true;
+        }
+
+        return !hasError;
+    }
+
+    private async Task ResetUploadedFileStateAsync()
+    {
+        ResetUploadedFileState();
+
+        if (DocumentFilePicker != null)
+        {
+            await DocumentFilePicker.Clear();
+        }
+    }
+
+    private void ResetUploadedFileState()
+    {
+        SelectedFile = null;
+        UploadedFilePath = string.Empty;
+        UploadedFileHash = string.Empty;
+        FilePickerProgress = 0;
+        IsPdfFile = false;
+        PdfFileUrl = null;
     }
 
 

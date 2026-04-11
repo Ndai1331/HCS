@@ -76,6 +76,40 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         return unit == null ? null : ObjectMapper.Map<HC.Units.Unit, LookupDto<Guid>>(unit);
     }
 
+    public virtual async Task<bool> IsDocumentNumberDuplicateAsync(string no, Guid? excludeDocumentId = null)
+    {
+        var normalizedNo = no?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedNo))
+        {
+            return false;
+        }
+
+        var normalizedNoLower = normalizedNo.ToLower();
+        var query = await _documentRepository.GetQueryableAsync();
+
+        return await AsyncExecuter.AnyAsync(
+            query.Where(x => x.No != null)
+                .WhereIf(excludeDocumentId.HasValue && excludeDocumentId.Value != Guid.Empty, x => x.Id != excludeDocumentId!.Value)
+                .Where(x => x.No!.Trim().ToLower() == normalizedNoLower));
+    }
+
+    public virtual async Task<bool> IsStorageNumberDuplicateAsync(string storageNumber, Guid? excludeDocumentId = null)
+    {
+        var normalizedStorageNumber = storageNumber?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedStorageNumber))
+        {
+            return false;
+        }
+
+        var normalizedStorageNumberLower = normalizedStorageNumber.ToLower();
+        var query = await _documentRepository.GetQueryableAsync();
+
+        return await AsyncExecuter.AnyAsync(
+            query.Where(x => x.StorageNumber != null)
+                .WhereIf(excludeDocumentId.HasValue && excludeDocumentId.Value != Guid.Empty, x => x.Id != excludeDocumentId!.Value)
+                .Where(x => x.StorageNumber.Trim().ToLower() == normalizedStorageNumberLower));
+    }
+
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetIdentityUserLookupAsync(LookupRequestDto input)
     {
         var filter = input.Filter?.Trim();

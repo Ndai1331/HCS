@@ -292,15 +292,8 @@
                                 </Column>
                             </Row> *@
                             
-                            <!-- Row 7: Trạng thái hiện tại | File upload (6-6) -->
+                            <!-- Row 7: File upload -->
                             <Row>
-                                <Column ColumnSize="ColumnSize.Is12">
-                                    <Field>
-                                        <FieldLabel>@L["CurrentStatus"]</FieldLabel>
-                                        <TextEdit @bind-Text="@DocumentUpdateData.CurrentStatus" MaxLength="DocumentConsts.CurrentStatusMaxLength"  />
-                                    </Field>
-                                </Column>
-
                                 <Column ColumnSize="ColumnSize.Is12">
                                         @if (!DocumentFilesList.Any())
                                         {
@@ -394,10 +387,19 @@
                         
                         <!-- Right Column: File Upload and PDF Viewer (6 columns) -->
                         <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                            <PdfViewerContainer Height="Height.Rem(50)">
-                                <PdfViewerToolbar ShowDownloading="false" />
-                                <PdfViewer Source="@PdfFileUrl"  @ref="@EditPdfViewerRef" />
-                            </PdfViewerContainer>
+                            @if (!string.IsNullOrWhiteSpace(PdfFileUrl))
+                            {
+                                <PdfViewerContainer Height="Height.Rem(50)">
+                                    <PdfViewerToolbar ShowDownloading="false" />
+                                    <PdfViewer Source="@PdfFileUrl"  @ref="@EditPdfViewerRef" />
+                                </PdfViewerContainer>
+                            }
+                            else
+                            {
+                                <Alert Color="Color.Light" Dismissible="false">
+                                    @L["NoPdfAvailable"]
+                                </Alert>
+                            }
                         </Column>
                     </Row>
             }
@@ -688,10 +690,19 @@
                     
                     <!-- Right Column: File Upload and PDF Viewer (6 columns) -->
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
-                        <PdfViewerContainer Height="Height.Rem(50)">
-                            <PdfViewerToolbar ShowDownloading="false" />
-                            <PdfViewer Source="@PdfFileUrl"  @ref="@CreatePdfViewerRef" />
-                        </PdfViewerContainer>
+                        @if (!string.IsNullOrWhiteSpace(PdfFileUrl))
+                        {
+                            <PdfViewerContainer Height="Height.Rem(50)">
+                                <PdfViewerToolbar ShowDownloading="false" />
+                                <PdfViewer Source="@PdfFileUrl"  @ref="@CreatePdfViewerRef" />
+                            </PdfViewerContainer>
+                        }
+                        else
+                        {
+                            <Alert Color="Color.Light" Dismissible="false">
+                                @L["NoPdfAvailable"]
+                            </Alert>
+                        }
                     </Column>
                 </Row>
             }

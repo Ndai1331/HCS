@@ -53,4 +53,18 @@ public class DocumentController : DocumentControllerBase, IDocumentsAppService
     {
         return _documentsAppService.ApproveWithNoteAsync(input);
     }
+
+    [HttpGet]
+    [Route("check-duplicate-document-number")]
+    public virtual Task<bool> IsDocumentNumberDuplicateAsync(string no, Guid? excludeDocumentId = null)
+    {
+        return _documentsAppService.IsDocumentNumberDuplicateAsync(no, excludeDocumentId);
+    }
+
+    [HttpGet]
+    [Route("check-duplicate-storage-number")]
+    public virtual Task<bool> IsStorageNumberDuplicateAsync(string storageNumber, Guid? excludeDocumentId = null)
+    {
+        return _documentsAppService.IsStorageNumberDuplicateAsync(storageNumber, excludeDocumentId);
+    }
 }
