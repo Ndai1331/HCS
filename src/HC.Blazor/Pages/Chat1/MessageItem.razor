@@ -10,7 +10,7 @@
 @inherits HCComponentBase
 
 
-<div class="chat-row d-flex mb-2
+<div id="msg-@Message.Id" class="chat-row d-flex mb-2
      @(Message.Side == ChatMessageSide.Sender ? "" : "justify-content-start")">
 
     <div class="chat-item d-flex align-items-start
@@ -69,7 +69,7 @@
             @* Reply preview *@
             @if (Message.ReplyToMessage != null)
             {
-                <div class="reply-box mb-1">
+                <div class="reply-box mb-1" @onclick="OnJumpToReplyAsync">
                     <div class="d-flex align-items-start">
                         <i class="bi bi-reply-fill text-primary reply-icon me-2"></i>
                         <div class="flex-grow-1">
@@ -285,6 +285,7 @@
     [Parameter] public EventCallback<ChatMessageDto> OnForward { get; set; }
     [Parameter] public EventCallback<ChatMessageDto> OnCreateTask { get; set; }
     [Parameter] public EventCallback<ChatMessageDto> OnDelete { get; set; }
+    [Parameter] public EventCallback<Guid> OnJumpToMessage { get; set; }
     [Parameter] public EventCallback<Guid> OnDownloadFile { get; set; }
     [Parameter] public bool IsDeletingEnabled { get; set; }
     [Parameter] public Func<string, string> GetImageUrl { get; set; } = null!;
@@ -305,6 +306,13 @@
     private async Task OnForwardAsync() => await OnForward.InvokeAsync(Message);
     private async Task OnCreateTaskAsync() => await OnCreateTask.InvokeAsync(Message);
     private async Task OnDeleteAsync() => await OnDelete.InvokeAsync(Message);
+    private async Task OnJumpToReplyAsync()
+    {
+        if (Message.ReplyToMessageId.HasValue)
+        {
+            await OnJumpToMessage.InvokeAsync(Message.ReplyToMessageId.Value);
+        }
+    }
     private async Task OnDownloadFileAsync(Guid id) => await OnDownloadFile.InvokeAsync(id);
 
     private async Task OnOpenImageViewerAsync(MessageFileDto file)

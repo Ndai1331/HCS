@@ -49,6 +49,8 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     [Parameter]
     public Func<Guid, Task> DownloadFileAsync { get; set; } = null!;
     [Parameter]
+    public Func<Guid, Task> JumpToMessageAsync { get; set; } = null!;
+    [Parameter]
     public Func<AddMemberInput, Task> AddMembersAsync { get; set; } = null!;
     [Parameter]
     public Func<RemoveMemberInput, Task> RemoveMemberAsync { get; set; } = null!;
@@ -414,6 +416,14 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
         await InvokeAsync(StateHasChanged);
         await BlockUiService.UnBlock();
+    }
+
+    private async Task OpenFoundMessageAsync(Guid messageId)
+    {
+        if (JumpToMessageAsync != null)
+        {
+            await JumpToMessageAsync.Invoke(messageId);
+        }
     }
 
     private async Task SearchMediaAndFileAsync(FileMediaType fileType)
