@@ -19,7 +19,17 @@ public interface IMessageRepository : IBasicRepository<Message, Guid>
     Task<List<Message>> GetRepliesAsync(Guid messageId, CancellationToken cancellationToken = default);
     Task<List<Message>> GetByConversationIdAsync(Guid conversationId, CancellationToken cancellationToken = default);
     Task<List<Message>> GetMessagesInConversationAsync(Guid conversationId, string messageText, int maxResultCount = 10, int skipCount = 0, CancellationToken cancellationToken = default);
-
-
+    Task<(Message? Anchor, List<Message> Before, List<Message> After, bool HasMoreBefore, bool HasMoreAfter)> GetMessageContextAsync(
+        Guid conversationId,
+        Guid messageId,
+        int beforeCount,
+        int afterCount,
+        CancellationToken cancellationToken = default);
+    Task<List<MessageSearchHit>> SearchInConversationAsync(
+        Guid conversationId,
+        string keyword,
+        int maxResultCount = 20,
+        int skipCount = 0,
+        CancellationToken cancellationToken = default);
 
 }

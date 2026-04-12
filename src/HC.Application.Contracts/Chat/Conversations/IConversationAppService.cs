@@ -80,6 +80,10 @@ public interface IConversationAppService : IApplicationService
 
     Task<List<ChatMessageDto>> FindMessagesInConversationAsync(FindMessageInConversationInput input);
 
+    Task<MessageContextDto> GetMessageContextAsync(GetMessageContextInput input);
+
+    Task<List<MessageSearchResultDto>> SearchMessagesAsync(SearchConversationMessagesInput input);
+
     Task<List<MessageFileDto>> FindMediaAndFileInConversationAsync(FindMediaAndFileInConversationInput input);
     Task<ConversationDto> FindConversationByProjectIdAsync(Guid projectId);
     

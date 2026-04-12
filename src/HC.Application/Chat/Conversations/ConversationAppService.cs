@@ -1716,6 +1716,69 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         return messDto;
     }
 
+    public virtual async Task<MessageContextDto> GetMessageContextAsync(GetMessageContextInput input)
+    {
+        var currentUserId = CurrentUser.GetId();
+        var isMember = await _conversationRepository.IsUserMemberAsync(input.ConversationId, currentUserId);
+        if (!isMember)
+        {
+            throw new BusinessException("HC.Chat:UserNotMember");
+        }
+
+        var context = await _messageRepository.GetMessageContextAsync(
+            input.ConversationId,
+            input.MessageId,
+            input.BeforeCount,
+            input.AfterCount);
+
+        var result = new MessageContextDto
+        {
+            HasMoreBefore = context.HasMoreBefore,
+            HasMoreAfter = context.HasMoreAfter
+        };
+
+        if (context.Anchor != null)
+        {
+            result.AnchorMessage = await MapToChatMessageDtoAsync(context.Anchor, context.Anchor.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver, currentUserId);
+        }
+
+        foreach (var message in context.Before)
+        {
+            result.BeforeMessages.Add(await MapToChatMessageDtoAsync(message, message.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver, currentUserId));
+        }
+
+        foreach (var message in context.After)
+        {
+            result.AfterMessages.Add(await MapToChatMessageDtoAsync(message, message.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver, currentUserId));
+        }
+
+        return result;
+    }
+
+    public virtual async Task<List<MessageSearchResultDto>> SearchMessagesAsync(SearchConversationMessagesInput input)
+    {
+        var currentUserId = CurrentUser.GetId();
+        var isMember = await _conversationRepository.IsUserMemberAsync(input.ConversationId, currentUserId);
+        if (!isMember)
+        {
+            throw new BusinessException("HC.Chat:UserNotMember");
+        }
+
+        var hits = await _messageRepository.SearchInConversationAsync(
+            input.ConversationId,
+            input.Keyword,
+            input.MaxResultCount,
+            input.SkipCount);
+
+        return hits.Select(x => new MessageSearchResultDto
+        {
+            MessageId = x.MessageId,
+            ConversationId = x.ConversationId,
+            CreationTime = x.CreationTime,
+            Snippet = x.Snippet.TruncateWithPostfix(120, "...")
+        }).ToList();
+    }
+
 
 
     public virtual async Task<List<MessageFileDto>> FindMediaAndFileInConversationAsync(FindMediaAndFileInConversationInput input)

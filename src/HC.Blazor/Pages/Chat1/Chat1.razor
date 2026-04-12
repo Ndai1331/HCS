@@ -37,6 +37,17 @@
         padding: 0.5rem;
     }
 
+    .message-jump-highlight {
+        animation: jumpHighlight 2s ease;
+        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.45);
+        border-radius: 8px;
+    }
+
+    @@keyframes jumpHighlight {
+        0% { background-color: rgba(13, 110, 253, 0.22); }
+        100% { background-color: transparent; }
+    }
+
     /* Keep conversation action menu above sibling list items */
     .contract-list .chat-contact {
         position: relative;
@@ -401,6 +412,7 @@
                                                         OnForward="@ForwardMessageAsync"
                                                         OnCreateTask="@CreateTaskFromMessageAsync"
                                                         OnDelete="@DeleteMessageAsync"
+                                                        OnJumpToMessage="@JumpToMessageAsync"
                                                         OnDownloadFile="@DownloadFileAsync"
                                                         GetImageUrl="@GetImageUrl"
                                                         OnOpenImageViewer="@OpenImageViewerAsync"
@@ -489,6 +501,7 @@
                                     RemoveMemberAsync="@RemoveMemberAsync"
                                     LeaveConversationAsync="@LeaveConversationAsync"
                                     DownloadFileAsync ="@DownloadFileAsync"
+                                    JumpToMessageAsync="@JumpToMessageAsync"
                                     SendMessageToMemberAsync="@SendMessageToMemberAsync"
                                     GetImageUrl="@GetImageUrl"
                                     OnOpenImageViewer="@OpenImageViewerAsync"
@@ -741,6 +754,7 @@
                                                 OnForward="@ForwardMessageAsync"
                                                 OnCreateTask="@CreateTaskFromMessageAsync"
                                                 OnDelete="@DeleteMessageAsync"
+                                                OnJumpToMessage="@JumpToMessageAsync"
                                                 OnDownloadFile="@DownloadFileAsync"
                                                 GetImageUrl="@GetImageUrl"
                                                 OnOpenImageViewer="@OpenImageViewerAsync"
@@ -827,6 +841,7 @@
                         RemoveMemberAsync="@RemoveMemberAsync"
                         LeaveConversationAsync="@LeaveConversationAsync"
                         DownloadFileAsync ="@DownloadFileAsync"
+                        JumpToMessageAsync="@JumpToMessageAsync"
                         SendMessageToMemberAsync="@SendMessageToMemberAsync"
                         GetImageUrl="@GetImageUrl"
                         OnOpenImageViewer="@OpenImageViewerAsync"
@@ -1107,4 +1122,3 @@
         </ModalFooter>
     </ModalContent>
 </Modal>
-
