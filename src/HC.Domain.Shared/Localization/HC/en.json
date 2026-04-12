@@ -803,6 +803,7 @@
     "PleaseEnterGroupName": "Please enter a group chat name.",
     "PleaseSelectGroupMembers": "Please select at least one member.",
     "NoMessageYetMessage": "No messages yet.",
+    "SearchingMessage": "Searching for message...",
     "SendOnEnter": "Send on enter",
     "TypeMessage": "Type message",
     "Volo.Chat:010001": "Message should not be empty!",

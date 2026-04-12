@@ -94,6 +94,7 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     private const int MessagesPageSize = 10;
     private bool _isLoadingMoreMessages = false;
     private bool _hasMoreMessages = true;
+    private bool _isJumpingToMessage = false;
     
     // Pagination for conversations
     private int _conversationsSkipCount = 0;
@@ -2207,6 +2208,9 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
             return;
         }
 
+        _isJumpingToMessage = true;
+        await InvokeAsync(StateHasChanged);
+
         try
         {
             var context = await ConversationAppService.GetMessageContextAsync(new GetMessageContextInput
@@ -2250,18 +2254,25 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         {
             _logger.LogWarning(ex, "JumpToMessageAsync failed for {MessageId}", messageId);
         }
+        finally
+        {
+            _isJumpingToMessage = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task ScrollToMessageAsync(Guid messageId)
     {
         var elementId = $"msg-{messageId}";
         var script =
-            "const el = document.getElementById('" + elementId + "');" +
-            "if (!el) return false;" +
-            "el.scrollIntoView({ block: 'center', behavior: 'smooth' });" +
-            "el.classList.add('message-jump-highlight');" +
-            "setTimeout(() => el.classList.remove('message-jump-highlight'), 2000);" +
-            "return true;";
+            "(function() {" +
+            "  const el = document.getElementById('" + elementId + "');" +
+            "  if (!el) return false;" +
+            "  el.scrollIntoView({ block: 'center', behavior: 'smooth' });" +
+            "  el.classList.add('message-jump-highlight');" +
+            "  setTimeout(() => el.classList.remove('message-jump-highlight'), 2000);" +
+            "  return true;" +
+            "})()";
 
         await JsRuntime.SafeInvokeAsync<object>("eval", script);
     }

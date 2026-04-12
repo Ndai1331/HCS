@@ -855,6 +855,7 @@
     "PleaseEnterGroupName": "Vui lòng nhập tên nhóm chat.",
     "PleaseSelectGroupMembers": "Vui lòng chọn ít nhất một thành viên.",
     "NoMessageYetMessage": "Không có tin nhắn nào",
+    "SearchingMessage": "Đang tìm tin nhắn...",
     "SendOnEnter": "Gửi khi nhấn Enter",
     "TypeMessage": "Nhập tin nhắn",
     "Volo.Chat:010001": "Tin nhắn không được để trống!",

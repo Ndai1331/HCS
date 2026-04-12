@@ -394,30 +394,41 @@
                                             <p>@L["NoMessageYetMessage"].Value</p>
                                         </div>
                                     }else{
-                                        <div id="chat_conversation_wrapper" class="chat-box mb-2" style="flex: 1; overflow-y: auto; min-height: 0;" @onscroll="OnConversationScroll">
-                                            <div class="chat-box-container" id="chat_conversation">
-                                                @if (_isLoadingMoreMessages)
-                                                {
-                                                    <div class="text-center py-2">
-                                                        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+                                        <div style="position: relative; flex: 1; overflow: hidden; min-height: 0; display: flex; flex-direction: column;">
+                                            @if (_isJumpingToMessage)
+                                            {
+                                                <div style="position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.7);">
+                                                    <div class="text-center">
+                                                        <span class="spinner-border text-primary" role="status" aria-hidden="true"></span>
+                                                        <p class="mt-2 mb-0 text-muted small">@L["SearchingMessage"]</p>
                                                     </div>
-                                                }
-                                                @foreach (var message in GetMessagesSnapshot())
-                                                {
-                                                    <MessageItem
-                                                        Message="@message"
-                                                        CurrentChatContact="@CurrentChatContact"
-                                                        OnReply="@ReplyToMessageAsync"
-                                                        OnTogglePin="@TogglePinMessageAsync"
-                                                        OnForward="@ForwardMessageAsync"
-                                                        OnCreateTask="@CreateTaskFromMessageAsync"
-                                                        OnDelete="@DeleteMessageAsync"
-                                                        OnJumpToMessage="@JumpToMessageAsync"
-                                                        OnDownloadFile="@DownloadFileAsync"
-                                                        GetImageUrl="@GetImageUrl"
-                                                        OnOpenImageViewer="@OpenImageViewerAsync"
-                                                        IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
-                                                }
+                                                </div>
+                                            }
+                                            <div id="chat_conversation_wrapper" class="chat-box mb-2" style="flex: 1; overflow-y: auto; min-height: 0;" @onscroll="OnConversationScroll">
+                                                <div class="chat-box-container" id="chat_conversation">
+                                                    @if (_isLoadingMoreMessages)
+                                                    {
+                                                        <div class="text-center py-2">
+                                                            <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+                                                        </div>
+                                                    }
+                                                    @foreach (var message in GetMessagesSnapshot())
+                                                    {
+                                                        <MessageItem
+                                                            Message="@message"
+                                                            CurrentChatContact="@CurrentChatContact"
+                                                            OnReply="@ReplyToMessageAsync"
+                                                            OnTogglePin="@TogglePinMessageAsync"
+                                                            OnForward="@ForwardMessageAsync"
+                                                            OnCreateTask="@CreateTaskFromMessageAsync"
+                                                            OnDelete="@DeleteMessageAsync"
+                                                            OnJumpToMessage="@JumpToMessageAsync"
+                                                            OnDownloadFile="@DownloadFileAsync"
+                                                            GetImageUrl="@GetImageUrl"
+                                                            OnOpenImageViewer="@OpenImageViewerAsync"
+                                                            IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
+                                                    }
+                                                </div>
                                             </div>
                                         </div>
                                     }
@@ -736,30 +747,41 @@
                                     <p>@L["NoMessageYetMessage"].Value</p>
                                 </div>
                             }else{
-                                <div id="chat_conversation_wrapper" class="chat-box mb-2" style="flex: 1; overflow-y: auto; min-height: 0;" @onscroll="OnConversationScroll">
-                                    <div class="chat-box-container" id="chat_conversation">
-                                        @if (_isLoadingMoreMessages)
-                                        {
-                                            <div class="text-center py-2">
-                                                <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+                                <div style="position: relative; flex: 1; overflow: hidden; min-height: 0; display: flex; flex-direction: column;">
+                                    @if (_isJumpingToMessage)
+                                    {
+                                        <div style="position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.7);">
+                                            <div class="text-center">
+                                                <span class="spinner-border text-primary" role="status" aria-hidden="true"></span>
+                                                <p class="mt-2 mb-0 text-muted small">@L["SearchingMessage"]</p>
                                             </div>
-                                        }
-                                        @foreach (var message in GetMessagesSnapshot())
-                                        {
-                                            <MessageItem 
-                                                Message="@message"
-                                                CurrentChatContact="@CurrentChatContact"
-                                                OnReply="@ReplyToMessageAsync"
-                                                OnTogglePin="@TogglePinMessageAsync"
-                                                OnForward="@ForwardMessageAsync"
-                                                OnCreateTask="@CreateTaskFromMessageAsync"
-                                                OnDelete="@DeleteMessageAsync"
-                                                OnJumpToMessage="@JumpToMessageAsync"
-                                                OnDownloadFile="@DownloadFileAsync"
-                                                GetImageUrl="@GetImageUrl"
-                                                OnOpenImageViewer="@OpenImageViewerAsync"
-                                                IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
-                                        }
+                                        </div>
+                                    }
+                                    <div id="chat_conversation_wrapper" class="chat-box mb-2" style="flex: 1; overflow-y: auto; min-height: 0;" @onscroll="OnConversationScroll">
+                                        <div class="chat-box-container" id="chat_conversation">
+                                            @if (_isLoadingMoreMessages)
+                                            {
+                                                <div class="text-center py-2">
+                                                    <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+                                                </div>
+                                            }
+                                            @foreach (var message in GetMessagesSnapshot())
+                                            {
+                                                <MessageItem 
+                                                    Message="@message"
+                                                    CurrentChatContact="@CurrentChatContact"
+                                                    OnReply="@ReplyToMessageAsync"
+                                                    OnTogglePin="@TogglePinMessageAsync"
+                                                    OnForward="@ForwardMessageAsync"
+                                                    OnCreateTask="@CreateTaskFromMessageAsync"
+                                                    OnDelete="@DeleteMessageAsync"
+                                                    OnJumpToMessage="@JumpToMessageAsync"
+                                                    OnDownloadFile="@DownloadFileAsync"
+                                                    GetImageUrl="@GetImageUrl"
+                                                    OnOpenImageViewer="@OpenImageViewerAsync"
+                                                    IsDeletingEnabled="@IsDeletingMessageEnabled(message)" />
+                                            }
+                                        </div>
                                     </div>
                                 </div>
                             }
