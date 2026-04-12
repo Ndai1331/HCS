@@ -436,11 +436,13 @@ namespace HC.TenantMigrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ConversationId");
-
                     b.HasIndex("ForwardedFromMessageId");
 
                     b.HasIndex("ReplyToMessageId");
+
+                    b.HasIndex("ConversationId", "CreationTime", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("IX_ChatMessages_ConversationId_CreationTime_Id");
 
                     b.ToTable("ChatMessages", (string)null);
                 });
@@ -1235,6 +1237,10 @@ namespace HC.TenantMigrations
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("DeletionTime");
 
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DepartmentId");
+
                     b.Property<string>("ExtraProperties")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1242,6 +1248,10 @@ namespace HC.TenantMigrations
 
                     b.Property<Guid?>("FieldId")
                         .HasColumnType("uuid");
+
+                    b.Property<Guid?>("FromUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("FromUserId");
 
                     b.Property<DateTime>("IncommingDate")
                         .HasColumnType("timestamp without time zone")
@@ -1266,11 +1276,20 @@ namespace HC.TenantMigrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("No");
 
+                    b.Property<Guid?>("ParentDocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ParentDocumentId");
+
+                    b.Property<Guid?>("ReceiverUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ReceiverUserId");
+
                     b.Property<Guid>("SecrecyLevelId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("SourceType")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("SourceType");
 
                     b.Property<Guid?>("StatusId")
                         .HasColumnType("uuid");
@@ -1304,9 +1323,19 @@ namespace HC.TenantMigrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DepartmentId");
+
                     b.HasIndex("FieldId");
 
+                    b.HasIndex("FromUserId");
+
+                    b.HasIndex("ParentDocumentId");
+
+                    b.HasIndex("ReceiverUserId");
+
                     b.HasIndex("SecrecyLevelId");
+
+                    b.HasIndex("SourceType");
 
                     b.HasIndex("StatusId");
 
@@ -4667,9 +4696,29 @@ namespace HC.TenantMigrations
 
             modelBuilder.Entity("HC.Documents.Document", b =>
                 {
+                    b.HasOne("HC.Departments.Department", null)
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("HC.MasterDatas.MasterData", null)
                         .WithMany()
                         .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Volo.Abp.Identity.IdentityUser", null)
+                        .WithMany()
+                        .HasForeignKey("FromUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("HC.Documents.Document", null)
+                        .WithMany()
+                        .HasForeignKey("ParentDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Volo.Abp.Identity.IdentityUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReceiverUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("HC.MasterDatas.MasterData", null)

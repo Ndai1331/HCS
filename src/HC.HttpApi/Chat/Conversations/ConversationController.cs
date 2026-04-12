@@ -281,6 +281,20 @@ public class ConversationController : ChatController, IConversationAppService
     }
 
     [HttpPost]
+    [Route("message-context")]
+    public Task<MessageContextDto> GetMessageContextAsync([FromBody] GetMessageContextInput input)
+    {
+        return _conversationAppService.GetMessageContextAsync(input);
+    }
+
+    [HttpPost]
+    [Route("search-messages")]
+    public Task<List<MessageSearchResultDto>> SearchMessagesAsync([FromBody] SearchConversationMessagesInput input)
+    {
+        return _conversationAppService.SearchMessagesAsync(input);
+    }
+
+    [HttpPost]
     [Route("find-media-and-file-in-conversation")]
     public Task<List<MessageFileDto>> FindMediaAndFileInConversationAsync([FromBody] FindMediaAndFileInConversationInput input)
     {

@@ -1,5 +1,7 @@
 -- Chat message search/jump performance indexes (PostgreSQL)
--- Run this script manually in production during low traffic.
+-- Host DB: applied by EF migration AddChatMessagePerformanceIndexes (HCDbContext) via DbMigrator.
+-- Tenant DB: same migration exists under TenantMigrations (HCTenantDbContext).
+-- Use this script for CONCURRENTLY builds or when applying indexes outside EF (e.g. production DBA runbook).
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 

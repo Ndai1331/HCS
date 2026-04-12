@@ -399,6 +399,9 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.Property(x => x.FromUserId).HasColumnName(nameof(Document.FromUserId));
             b.Property(x => x.ReceiverUserId).HasColumnName(nameof(Document.ReceiverUserId));
             b.Property(x => x.DepartmentId).HasColumnName(nameof(Document.DepartmentId));
+            b.Property(x => x.ParentDocumentId).HasColumnName(nameof(Document.ParentDocumentId));
+            b.HasIndex(x => x.ParentDocumentId);
+            b.HasOne<Document>().WithMany().HasForeignKey(x => x.ParentDocumentId).OnDelete(DeleteBehavior.Restrict);
             b.HasIndex(x => x.SourceType);
             b.HasIndex(x => x.FromUserId);
             b.HasIndex(x => x.ReceiverUserId);

@@ -50,9 +50,11 @@ public static class ChatDbContextModelCreatingExtensions
                 .WithMany(x => x.Replies)
                 .HasForeignKey(x => x.ReplyToMessageId)
                 .OnDelete(DeleteBehavior.Restrict);
-            
-            // Index for ConversationId for better query performance
-            b.HasIndex(x => x.ConversationId);
+
+            // Anchor jump + keyset pagination: filter by conversation, order by CreationTime desc, tie-break by Id desc
+            b.HasIndex(e => new { e.ConversationId, e.CreationTime, e.Id })
+                .IsDescending(false, true, true)
+                .HasDatabaseName("IX_ChatMessages_ConversationId_CreationTime_Id");
 
             b.ApplyObjectExtensionMappings();
         });
