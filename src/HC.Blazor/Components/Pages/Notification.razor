@@ -73,39 +73,6 @@
                 <span class="lpx-badge ms-2">@(_unreadCount > 99 ? "99+" : _unreadCount.ToString())</span>
             </div>
         </div>
-
-        @* Tabs *@
-        @* <div class="border-bottom notification-tabs">
-            <Tabs SelectedTab="@_selectedTab" SelectedTabChanged="@OnTabChanged" Pills="true" FullWidth="true">
-                <Items>
-                    <Tab Name="DOCUMENT">
-                        <Icon Name="IconName.File"/>
-                        @L["Tab:Document"]
-                    </Tab>
-                    <Tab Name="PROJECT">
-                        <Icon Name="IconName.Folder"/>
-                        @L["Tab:Project"]
-                    </Tab>
-                    <Tab Name="TASK">
-                        <Icon Name="IconName.CheckSquare"/>
-                        @L["Tab:Task"]
-                    </Tab>
-                    <Tab Name="WORKFLOW">
-                        <Icon Name="IconName.CheckSquare"/>
-                        @L["Tab:Workflow"]
-                    </Tab>
-                    <Tab Name="CALENDAR">
-                        <Icon Name="IconName.CalendarDay"/>
-                        @L["Tab:Calendar"]
-                    </Tab>
-                    <Tab Name="CHAT">
-                        <Icon Name="IconName.Comment"/>
-                        @L["Tab:Chat"]
-                    </Tab>
-                </Items>
-            </Tabs>
-        </div> *@
-
         @* Notifications List *@
         <div class="flex-grow-1 overflow-auto" style="max-height: 400px;"> 
             @if (_isLoading)
@@ -210,11 +177,7 @@
         if (firstRender && CurrentUser.IsAuthenticated)
         {
             _objRef = DotNetObjectReference.Create(this);
-            // Initialize notification hub connection from JavaScript (browser-side)
-            // This ensures cookies are sent correctly with the connection
             await JSRuntime.InvokeVoidAsync("notificationHub.start", _objRef);
-            
-            // Also initialize chat hub to receive chat unread count updates
             await JSRuntime.InvokeVoidAsync("chatHub.startForNotificationBar", _objRef);
         }
     }
@@ -240,7 +203,6 @@
     {
         try
         {
-            // Keep notification bell data in sync when a new notification arrives via SignalR.
             await LoadUnreadCountAsync();
             await LoadNotificationsAsync();
             await LoadChatUnreadCountAsync();
@@ -258,7 +220,6 @@
         try
         {
             await LoadChatUnreadCountAsync();
-            // Force UI update - must use InvokeAsync to ensure it runs on the UI thread
             await InvokeAsync(StateHasChanged);
         }
         catch
@@ -332,7 +293,6 @@
                 _notifications.Clear();
             }
 
-            @* var sourceType = GetSourceTypeForTab(_selectedTab); *@
             var input = new GetNotificationReceiversInput
             {
                 IdentityUserId = CurrentUser.Id,
@@ -400,7 +360,6 @@
 
     private async Task ViewNotificationDetail(NotificationDto notification, bool isUnread)
     {
-        // Mark notification as read only if it's unread
         if (isUnread)
         {
             await MarkNotificationAsReadAsync(notification.Id);
@@ -415,37 +374,18 @@
             NavigationManager.NavigateTo(url);
         }
     }
-
     private async Task MarkNotificationAsReadAsync(Guid notificationId)
     {
         try
         {
             await NotificationReceiversAppService.MarkAsReadAsync(notificationId);
-
-            // Refresh notifications list to update UI
             await LoadNotificationsAsync();
-
-            // Update unread count
             await LoadUnreadCountAsync();
         }
         catch
         {
             // Log error if needed
         }
-    }
-
-    private string? GetSourceTypeForTab(string tab)
-    {
-        return tab switch
-        {
-            "DOCUMENT" => "DOCUMENT", // Văn bản uses DOCUMENT source type
-            "PROJECT" => "PROJECT",
-            "TASK" => "TASK",
-            "WORKFLOW" => "WORKFLOW",
-            "CALENDAR" => "CALENDAR",
-            "CHAT" => "CHAT",
-            _ => null
-        };
     }
 
     private IconName GetSourceTypeIcon(string sourceType)
@@ -461,8 +401,6 @@
             _ => IconName.Bell
         };
     }
-
-    
     private string GetSourceTypeColor(string sourceType)
     {
         return sourceType switch
@@ -476,8 +414,6 @@
             _ => "bg-primary"
         };
     }
-
-
     private string GetLocalizedTitle(NotificationDto notification)
     {
         if (string.IsNullOrEmpty(notification.Title))
@@ -492,7 +428,6 @@
             return notification.Title;
         }
     }
-
     private string GetLocalizedContent(NotificationDto notification)
     {
         if (string.IsNullOrEmpty(notification.Content))
@@ -530,7 +465,6 @@
             }
         }
     }
-
     private string GetRelatedUrl(NotificationDto notification)
     {
         if (string.IsNullOrEmpty(notification.RelatedId) || string.IsNullOrEmpty(notification.RelatedType))

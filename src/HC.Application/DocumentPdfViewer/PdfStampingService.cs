@@ -30,7 +30,14 @@ public interface IPdfStampingService
     /// <summary>
     /// Add a free-text note to a specific page and coordinate in a PDF.
     /// </summary>
-    byte[] AddTextNote(byte[] pdfBytes, int pageNumber, double pdfX, double pdfY, string noteContent);
+    byte[] AddTextNote(
+        byte[] pdfBytes,
+        int pageNumber,
+        double pdfX,
+        double pdfY,
+        string noteContent,
+        byte[]? signatureImageBytes = null,
+        string? signerFullName = null);
 }
 
 public class PdfStampingService : IPdfStampingService, ITransientDependency
@@ -41,6 +48,11 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
     private const int WatermarkAlpha = 48;
     private const double WatermarkFontSize = 18;
     private const double NoteFontSize = 9.5;
+    private const double SignerNameFontSize = 8.5;
+    private const double SignatureTopSpacing = 6;
+    private const double SignatureBottomSpacing = 3;
+    private const double SignatureMaxWidth = 110;
+    private const double SignatureMaxHeight = 42;
     private const double DiagonalAngleDegrees = -45;
     private static readonly string[] WatermarkFontCandidates =
     {
@@ -127,7 +139,14 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
         }
     }
 
-    public byte[] AddTextNote(byte[] pdfBytes, int pageNumber, double pdfX, double pdfY, string noteContent)
+    public byte[] AddTextNote(
+        byte[] pdfBytes,
+        int pageNumber,
+        double pdfX,
+        double pdfY,
+        string noteContent,
+        byte[]? signatureImageBytes = null,
+        string? signerFullName = null)
     {
         if (pdfBytes == null || pdfBytes.Length == 0)
         {
@@ -153,7 +172,8 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
 
             var page = document.Pages[pageIndex];
             using var gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append);
-            var font = ResolveNoteFont() ?? new XFont("Helvetica", NoteFontSize);
+            var font = ResolveNoteFont(NoteFontSize) ?? new XFont("Helvetica", NoteFontSize);
+            var signerNameFont = ResolveNoteFont(SignerNameFontSize) ?? new XFont("Helvetica", SignerNameFontSize);
 
             // pdf.js returns PDF coordinates in a bottom-left origin system.
             // PdfSharp draws using a top-left origin, so Y must be inverted.
@@ -177,6 +197,53 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
             for (var i = 0; i < noteLines.Count; i++)
             {
                 gfx.DrawString(noteLines[i], font, brush, textX, textY + (i * lineHeight), XStringFormats.TopLeft);
+            }
+
+            var renderedNoteHeight = Math.Max(1, noteLines.Count) * lineHeight;
+            var signatureStartY = textY + renderedNoteHeight + SignatureTopSpacing;
+            var signerName = signerFullName?.Trim();
+            var signerNameHeight = string.IsNullOrWhiteSpace(signerName)
+                ? 0
+                : gfx.MeasureString(signerName, signerNameFont).Height;
+            var remainingHeight = page.Height.Point - signatureStartY - 12;
+            var remainingWidth = Math.Max(24, Math.Min(SignatureMaxWidth, maxTextWidth));
+            var signerNameX = textX;
+            var signerNameWidth = remainingWidth;
+
+            if (signatureImageBytes is { Length: > 0 })
+            {
+                var heightReservedForName = signerNameHeight > 0
+                    ? signerNameHeight + SignatureBottomSpacing
+                    : 0;
+                var maxImageHeight = Math.Min(SignatureMaxHeight, Math.Max(0, remainingHeight - heightReservedForName));
+
+                if (maxImageHeight >= 12)
+                {
+                    using var imgStream = new MemoryStream(signatureImageBytes);
+                    using var signatureImage = XImage.FromStream(imgStream);
+
+                    var imageAspect = (double)signatureImage.PixelWidth / Math.Max(signatureImage.PixelHeight, 1);
+                    var imageWidth = remainingWidth;
+                    var imageHeight = imageWidth / imageAspect;
+
+                    if (imageHeight > maxImageHeight)
+                    {
+                        imageHeight = maxImageHeight;
+                        imageWidth = imageHeight * imageAspect;
+                    }
+
+                    gfx.DrawImage(signatureImage, textX, signatureStartY, imageWidth, imageHeight);
+                    signerNameX = textX;
+                    signerNameWidth = imageWidth;
+                    signatureStartY += imageHeight + SignatureBottomSpacing;
+                    remainingHeight = page.Height.Point - signatureStartY - 12;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(signerName) && remainingHeight >= signerNameHeight)
+            {
+                var signerNameRect = new XRect(signerNameX, signatureStartY, signerNameWidth, signerNameHeight + 2);
+                gfx.DrawString(signerName, signerNameFont, XBrushes.Black, signerNameRect, XStringFormats.TopCenter);
             }
 
             using var outputStream = new MemoryStream();
@@ -296,13 +363,13 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
         return null;
     }
 
-    private XFont? ResolveNoteFont()
+    private XFont? ResolveNoteFont(double fontSize)
     {
         foreach (var fontName in WatermarkFontCandidates)
         {
             try
             {
-                return new XFont(fontName, NoteFontSize);
+                return new XFont(fontName, fontSize);
             }
             catch (Exception ex)
             {

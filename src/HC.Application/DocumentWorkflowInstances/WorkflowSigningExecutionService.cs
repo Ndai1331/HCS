@@ -416,6 +416,10 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         {
             signatureImageBytes = await ResolveSignatureImageBytesAsync(signature.SignatureImage);
         }
+        catch (UserFriendlyException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[ELECTRONIC_SIGN] Error resolving signature image for user {UserId}", currentUserId);
@@ -529,8 +533,28 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         catch (Exception ex)
         {
             _logger.LogError(ex, "[SIGNING] Error reading signature image from blob storage. Path={Path}", signatureImage);
-            throw new UserFriendlyException(_localizer["ErrorReadingSignatureImage"]);
+            throw new UserFriendlyException(_localizer[GetImageReadErrorLocalizationKey(signatureImage)]);
         }
+    }
+
+    private static string GetImageReadErrorLocalizationKey(string imagePath)
+    {
+        if (imagePath.StartsWith("signature-layout-images/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "DigitalSignatureLayoutImageNotFound";
+        }
+
+        if (imagePath.StartsWith("user-seal-images/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "DigitalSignatureSealImageNotFound";
+        }
+
+        if (imagePath.StartsWith("user-signature-images/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "SignatureImageBlobNotFound";
+        }
+
+        return "ErrorReadingSignatureImage";
     }
 
     private async Task<(UserSignature Signature, IdentityUser User, string FullName)> GetValidatedElectronicSignatureAsync(

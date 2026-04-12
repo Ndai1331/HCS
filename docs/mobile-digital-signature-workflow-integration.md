@@ -35,7 +35,6 @@ Flow hiện tại của website:
   - tạo file signed mới
   - cập nhật `DocumentAssignment.DocumentFileResultId`
 
-Nếu mobile muốn tự ký native trên thiết bị, code hiện tại chưa hỗ trợ flow đó.
 
 ### 2.2 Có một khoảng trống API upload file
 
@@ -49,14 +48,6 @@ Tôi chưa thấy REST API public tổng quát để mobile upload raw file/sign
 
 - nếu mobile chỉ dùng các `DocumentFileId` có sẵn trong hệ thống thì tích hợp được ngay
 - nếu mobile cần upload file đính kèm mới, ảnh chữ ký, ảnh con dấu, file ký lại mới từ thiết bị thì nên bổ sung API upload riêng
-
-Phần này là blocker kỹ thuật nếu app mobile cần upload file trực tiếp.
-
-Ghi chú thêm theo code hiện tại:
-
-- có API upload file của module Chat (`/api/chat/conversations/files/upload`, `/api/chat/files/upload`) nhưng đây là nghiệp vụ chat, không tạo `DocumentFile` cho module trình ký
-- vì vậy mobile tích hợp trình ký vẫn cần API upload riêng cho document/signature nếu muốn upload binary trực tiếp
-
 ---
 
 ## 3. Base URL và authentication

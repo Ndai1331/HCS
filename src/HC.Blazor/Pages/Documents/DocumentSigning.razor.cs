@@ -693,6 +693,7 @@ public partial class DocumentSigning
 
     private async Task ConfirmWorkflowActionAsync()
     {
+        var isBlocked = false;
         try
         {
             if (SelectedDocumentForAction == null || string.IsNullOrEmpty(SelectedAction))
@@ -739,19 +740,7 @@ public partial class DocumentSigning
             if (!confirmed) return;
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-
-            // Show signing-in-progress message for APPROVE with signing method
-            if (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && SelectedSigningMethodId.HasValue)
-            {
-                // Show signing-in-progress message for supported signing methods
-                var selectedMethod = SigningMethods.FirstOrDefault(m => m.Id == SelectedSigningMethodId.Value);
-                if (selectedMethod != null &&
-                    (selectedMethod.Code == nameof(SignType.ELECTRONIC) || selectedMethod.Code == nameof(SignType.DIGITAL)))
-                {
-                    await UiMessageService.Info(L["SigningInProgress"],
-                        options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                }
-            }
+            isBlocked = true;
 
             // Blazor binding updates on blur; get note from editor to ensure we have latest content for <<NoteContentXX>>
             var actionNote = ActionNote?.Trim();
@@ -785,6 +774,9 @@ public partial class DocumentSigning
                 _ => L["ActionCompletedSuccessfully"]
             };
 
+            await BlockUiService.UnBlock();
+            isBlocked = false;
+
             await UiMessageService.Success(successMessage,
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await HideWorkflowActionModalAsync();
@@ -793,11 +785,20 @@ public partial class DocumentSigning
         }
         catch (Exception ex)
         {
+            if (isBlocked)
+            {
+                await BlockUiService.UnBlock();
+                isBlocked = false;
+            }
+
             await HandleErrorAsync(ex);
         }
         finally
         {
-            await BlockUiService.UnBlock();
+            if (isBlocked)
+            {
+                await BlockUiService.UnBlock();
+            }
         }
     }
 

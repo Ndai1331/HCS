@@ -304,7 +304,6 @@ public partial class Index
 
             var result = await CalendarEventsAppService.GetListAsync(input);
 
-            // Only keep calendar events where current user is an assigned participant.
             var participantsResult = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
             {
                 IdentityUserId = CurrentUser.Id,
