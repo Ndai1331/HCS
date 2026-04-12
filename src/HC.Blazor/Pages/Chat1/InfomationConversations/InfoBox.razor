@@ -364,7 +364,8 @@
                             @foreach(var message in FoundMessages)
                             {
                                 <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2
-                                bg-white shadow rounded py-1 px-2 mb-1 position-relative">
+                                bg-white shadow rounded py-1 px-2 mb-1 position-relative"
+                                   @onclick="async () => await OpenFoundMessageAsync(message.Id)">
                                     <div class="media">
                                         <div class="media-body ms-2">
                                             <div class="d-flex align-items-center justify-content-between mb-1">

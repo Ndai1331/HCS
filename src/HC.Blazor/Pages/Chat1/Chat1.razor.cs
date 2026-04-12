@@ -2193,6 +2193,79 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         // Send to server in background (fire-and-forget pattern)
         _ = SendToServerAsync(messageText, uploadedFiles, replyingTo, optimisticMessage);
     }
+
+    private async Task JumpToMessageAsync(Guid messageId)
+    {
+        if (CurrentConversationId == null || ChatConversationDto?.Messages == null)
+        {
+            return;
+        }
+
+        if (ChatConversationDto.Messages.Any(x => x.Id == messageId))
+        {
+            await ScrollToMessageAsync(messageId);
+            return;
+        }
+
+        try
+        {
+            var context = await ConversationAppService.GetMessageContextAsync(new GetMessageContextInput
+            {
+                ConversationId = CurrentConversationId.Value,
+                MessageId = messageId,
+                BeforeCount = 20,
+                AfterCount = 20
+            });
+
+            if (context.AnchorMessage == null)
+            {
+                return;
+            }
+
+            var existing = ChatConversationDto.Messages.ToDictionary(x => x.Id, x => x);
+            foreach (var message in context.BeforeMessages)
+            {
+                existing[message.Id] = message;
+            }
+
+            existing[context.AnchorMessage.Id] = context.AnchorMessage;
+
+            foreach (var message in context.AfterMessages)
+            {
+                existing[message.Id] = message;
+            }
+
+            ChatConversationDto.Messages = existing.Values
+                .OrderBy(x => x.MessageDate)
+                .ThenBy(x => x.Id)
+                .ToList();
+
+            _messagesSkipCount = ChatConversationDto.Messages.Count;
+
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(50);
+            await ScrollToMessageAsync(messageId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "JumpToMessageAsync failed for {MessageId}", messageId);
+        }
+    }
+
+    private async Task ScrollToMessageAsync(Guid messageId)
+    {
+        var elementId = $"msg-{messageId}";
+        var script =
+            "const el = document.getElementById('" + elementId + "');" +
+            "if (!el) return false;" +
+            "el.scrollIntoView({ block: 'center', behavior: 'smooth' });" +
+            "el.classList.add('message-jump-highlight');" +
+            "setTimeout(() => el.classList.remove('message-jump-highlight'), 2000);" +
+            "return true;";
+
+        await JsRuntime.SafeInvokeAsync<object>("eval", script);
+    }
+
     private async Task ScrollToBottomAsync()
     {
         try
