@@ -1,7 +1,7 @@
 server {
     listen 80;
     listen 443 ssl http2;
-    server_name chiso.bvlevanthinh.vn;
+    server_name qldh.bvlevanthinh.vn;
 
     # ===============================
     # Force HTTPS
@@ -13,8 +13,8 @@ server {
     # ===============================
     # SSL
     # ===============================
-    ssl_certificate     /www/server/panel/vhost/cert/chiso.bvlevanthinh.vn/fullchain.pem;
-    ssl_certificate_key /www/server/panel/vhost/cert/chiso.bvlevanthinh.vn/privkey.pem;
+    ssl_certificate     /www/server/panel/vhost/cert/qldh.bvlevanthinh.vn/fullchain.pem;
+    ssl_certificate_key /www/server/panel/vhost/cert/qldh.bvlevanthinh.vn/privkey.pem;
 
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
@@ -26,8 +26,8 @@ server {
     # ===============================
     # Logs
     # ===============================
-    access_log /www/wwwlogs/chiso.bvlevanthinh.vn.log;
-    error_log  /www/wwwlogs/chiso.bvlevanthinh.vn.error.log;
+    access_log /www/wwwlogs/qldh.bvlevanthinh.vn.log;
+    error_log  /www/wwwlogs/qldh.bvlevanthinh.vn.error.log;
 
     # ===============================
     # ACME / Well-known

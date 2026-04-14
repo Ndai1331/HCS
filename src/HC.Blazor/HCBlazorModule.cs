@@ -316,8 +316,6 @@ namespace HC.Blazor;
             options.Authority = configuration["AuthServer:Authority"];
             options.RequireHttpsMetadata = configuration.GetValue<bool>("AuthServer:RequireHttpsMetadata");
             options.ResponseType = OpenIdConnectResponseType.CodeIdToken;
-            // options.ResponseType = OpenIdConnectResponseType.Code;
-            // options.UsePkce = true;
             options.ClientId = configuration["AuthServer:ClientId"];
             options.ClientSecret = configuration["AuthServer:ClientSecret"];
             options.SaveTokens = true;

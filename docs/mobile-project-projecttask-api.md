@@ -35,12 +35,12 @@ Ngoài CRUD, tài liệu cũng liệt kê:
 ## 3. Base URL và authentication
 
 - Tất cả API bên dưới đang nằm dưới nhóm `api/app/...`.
-- Ví dụ local API host theo AGENTS: `https://chiso.bvlevanthinh.vn`.
+- Ví dụ local API host theo AGENTS: `https://qldh.bvlevanthinh.vn`.
 - Mobile chỉ cần ghép: `{baseUrl}` + `{route}`.
 
 Ví dụ:
-- `GET https://chiso.bvlevanthinh.vn/api/app/projects`
-- `GET https://chiso.bvlevanthinh.vn/api/app/project-tasks`
+- `GET https://qldh.bvlevanthinh.vn/api/app/projects`
+- `GET https://qldh.bvlevanthinh.vn/api/app/project-tasks`
 
 Tài liệu này tập trung vào contract API; phần auth/token có thể dùng cùng cơ chế mà mobile đang dùng cho các API khác của hệ thống.
 

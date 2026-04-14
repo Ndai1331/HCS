@@ -154,10 +154,10 @@ public class OpenIddictDataSeedContributor : OpenIddictDataSeedContributorBase, 
         //     // Build redirect URIs list - ensure both formats are included
         //     var redirectUris = new List<string> { $"{blazorServerRootUrl}signin-oidc" };
         //     // Also add common production URL
-        //     redirectUris.Add("https://chiso.bvlevanthinh.vn/signin-oidc");
+        //     redirectUris.Add("https://qldh.bvlevanthinh.vn/signin-oidc");
 
         //     var postLogoutRedirectUris = new List<string> { $"{blazorServerRootUrl}signout-callback-oidc" };
-        //     postLogoutRedirectUris.Add("https://chiso.bvlevanthinh.vn/signout-callback-oidc");
+        //     postLogoutRedirectUris.Add("https://qldh.bvlevanthinh.vn/signout-callback-oidc");
 
         //     await CreateOrUpdateApplicationAsync(
         //         applicationType: OpenIddictConstants.ApplicationTypes.Web,
@@ -183,7 +183,7 @@ public class OpenIddictDataSeedContributor : OpenIddictDataSeedContributorBase, 
 
         // // Blazor Server Production Client
         // var blazorServerProdClientId = configurationSection["HC_BlazorServer_Prod:ClientId"] ?? "HC_BlazorServer_Prod";
-        // var blazorServerProdRootUrl = configurationSection["HC_BlazorServer_Prod:RootUrl"]?.EnsureEndsWith('/') ?? "https://chiso.bvlevanthinh.vn/";
+        // var blazorServerProdRootUrl = configurationSection["HC_BlazorServer_Prod:RootUrl"]?.EnsureEndsWith('/') ?? "https://qldh.bvlevanthinh.vn/";
 
         // await CreateOrUpdateApplicationAsync(
         //     applicationType: OpenIddictConstants.ApplicationTypes.Web,
@@ -205,15 +205,15 @@ public class OpenIddictDataSeedContributor : OpenIddictDataSeedContributorBase, 
         //     redirectUris: new List<string> 
         //     { 
         //         $"{blazorServerProdRootUrl}signin-oidc",
-        //         "https://chiso.bvlevanthinh.vn/signin-oidc",
+        //         "https://qldh.bvlevanthinh.vn/signin-oidc",
         //         // Allow HTTP in case reverse proxy terminates TLS before reaching AuthServer
-        //         "http://chiso.bvlevanthinh.vn/signin-oidc"
+        //         "http://qldh.bvlevanthinh.vn/signin-oidc"
         //     },
         //     postLogoutRedirectUris: new List<string> 
         //     { 
         //         $"{blazorServerProdRootUrl}signout-callback-oidc",
-        //         "https://chiso.bvlevanthinh.vn/signout-callback-oidc",
-        //         "http://chiso.bvlevanthinh.vn/signout-callback-oidc"
+        //         "https://qldh.bvlevanthinh.vn/signout-callback-oidc",
+        //         "http://qldh.bvlevanthinh.vn/signout-callback-oidc"
         //     },
         //     clientUri: blazorServerProdRootUrl,
         //     logoUri: "/images/clients/blazor.svg"
