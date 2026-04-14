@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using HC.BnnSoftSigns;
 using HC.DocumentAssignments;
 using HC.DocumentFiles;
+using HC.DocumentPdfViewer;
 using HC.Localization;
 using HC.SignatureSettings;
 using HC.UserSignatures;
@@ -883,7 +884,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                     case "PREPARED_SIGN":
                         if (signatureImageBytes != null && signatureImageBytes.Length > 0)
                         {
-                            using var imgStream = new MemoryStream(signatureImageBytes);
+                            var opaquePrepBytes = SignatureImageHelper.FlattenTransparency(signatureImageBytes);
+                            using var imgStream = new MemoryStream(opaquePrepBytes);
                             var img = PdfSharpDrawing.XImage.FromStream(imgStream);
                             var imgAspect = (double)img.PixelWidth / img.PixelHeight;
                             var fitWidth = w;
@@ -990,7 +992,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 case "PREPARED_SIGN":
                     if (signatureImageBytes != null && signatureImageBytes.Length > 0)
                     {
-                        using var imgStream = new MemoryStream(signatureImageBytes);
+                        var opaqueSignBytes = SignatureImageHelper.FlattenTransparency(signatureImageBytes);
+                        using var imgStream = new MemoryStream(opaqueSignBytes);
                         var img = PdfSharpDrawing.XImage.FromStream(imgStream);
                         var imgAspect = (double)img.PixelWidth / img.PixelHeight;
                         var fitWidth = w;

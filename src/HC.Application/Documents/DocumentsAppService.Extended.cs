@@ -496,13 +496,10 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         return fromAssignments.Union(fromExplicit).Distinct().ToList();
     }
 
-    /// <summary>
-    /// Prefer Name + Surname (full name); fall back to UserName / Email.
-    /// </summary>
     private static string GetIdentityUserFullDisplayName(IdentityUser user)
     {
-        var parts = new[] { user.Surname, user.Name }.Where(s => !string.IsNullOrWhiteSpace(s));
-        var full = string.Join(' ', parts).Trim();
+        // var parts = new[] { user.Surname, user.Name }.Where(s => !string.IsNullOrWhiteSpace(s));
+        var full = user.Surname + " " + user.Name;
         return string.IsNullOrWhiteSpace(full)
             ? (user.UserName ?? user.Email ?? user.Id.ToString())
             : full;
@@ -1135,44 +1132,63 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             var signature = await AsyncExecuter.FirstOrDefaultAsync(signatureQuery);
             if (signature == null)
             {
-                _logger.LogInformation(
-                    "No active electronic signature found for approval stamping. UserId={UserId}",
-                    currentUserId);
+                _logger.LogWarning(
+                    "[APPROVAL-STAMP] No active ELECTRONIC signature found. UserId={UserId}, SignerName={SignerName}",
+                    currentUserId, signerFullName);
                 return (null, signerFullName);
             }
+
+            _logger.LogInformation(
+                "[APPROVAL-STAMP] Found signature. SignatureId={SignatureId}, UserId={UserId}, " +
+                "SignType={SignType}, IsActive={IsActive}, ValidFrom={ValidFrom}, ValidTo={ValidTo}, " +
+                "ImagePath={ImagePath}",
+                signature.Id, currentUserId, signature.SignType, signature.IsActive,
+                signature.ValidFrom, signature.ValidTo,
+                string.IsNullOrWhiteSpace(signature.SignatureImage)
+                    ? "(empty)"
+                    : signature.SignatureImage.Length > 80
+                        ? signature.SignatureImage[..80] + "..."
+                        : signature.SignatureImage);
 
             if (signature.ValidFrom.HasValue && signature.ValidFrom.Value > now)
             {
                 _logger.LogWarning(
-                    "Electronic signature is not valid yet for approval stamping. SignatureId={SignatureId}",
-                    signature.Id);
+                    "[APPROVAL-STAMP] Signature not valid yet. SignatureId={SignatureId}, ValidFrom={ValidFrom}, Now={Now}",
+                    signature.Id, signature.ValidFrom, now);
                 return (null, signerFullName);
             }
 
             if (signature.ValidTo.HasValue && signature.ValidTo.Value < now)
             {
                 _logger.LogWarning(
-                    "Electronic signature expired for approval stamping. SignatureId={SignatureId}",
-                    signature.Id);
+                    "[APPROVAL-STAMP] Signature expired. SignatureId={SignatureId}, ValidTo={ValidTo}, Now={Now}",
+                    signature.Id, signature.ValidTo, now);
                 return (null, signerFullName);
             }
 
             if (string.IsNullOrWhiteSpace(signature.SignatureImage))
             {
                 _logger.LogWarning(
-                    "Electronic signature image is empty for approval stamping. SignatureId={SignatureId}",
+                    "[APPROVAL-STAMP] SignatureImage field is empty. SignatureId={SignatureId}",
                     signature.Id);
                 return (null, signerFullName);
             }
 
             var signatureImageBytes = await _workflowSigningExecutionService.ResolveSignatureImageBytesAsync(signature.SignatureImage);
+
+            _logger.LogInformation(
+                "[APPROVAL-STAMP] Resolved signature image successfully. SignatureId={SignatureId}, " +
+                "ImageBytesLength={Length}",
+                signature.Id, signatureImageBytes?.Length ?? 0);
+
             return (signatureImageBytes, signerFullName);
         }
         catch (UserFriendlyException ex)
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 ex,
-                "Could not resolve approval signature image. Falling back to signer name only. UserId={UserId}",
+                "[APPROVAL-STAMP] Failed to resolve signature image (UserFriendlyException). " +
+                "Falling back to signer name only. UserId={UserId}",
                 currentUserId);
             return (null, signerFullName);
         }
@@ -1180,7 +1196,8 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         {
             _logger.LogError(
                 ex,
-                "Unexpected error while loading approval signature stamp. UserId={UserId}",
+                "[APPROVAL-STAMP] Unexpected error loading signature stamp. " +
+                "Falling back to signer name only. UserId={UserId}",
                 currentUserId);
             return (null, signerFullName);
         }

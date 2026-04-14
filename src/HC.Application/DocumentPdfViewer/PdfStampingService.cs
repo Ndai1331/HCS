@@ -212,31 +212,41 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
 
             if (signatureImageBytes is { Length: > 0 })
             {
-                var heightReservedForName = signerNameHeight > 0
-                    ? signerNameHeight + SignatureBottomSpacing
-                    : 0;
-                var maxImageHeight = Math.Min(SignatureMaxHeight, Math.Max(0, remainingHeight - heightReservedForName));
-
-                if (maxImageHeight >= 12)
+                try
                 {
-                    using var imgStream = new MemoryStream(signatureImageBytes);
-                    using var signatureImage = XImage.FromStream(imgStream);
-
-                    var imageAspect = (double)signatureImage.PixelWidth / Math.Max(signatureImage.PixelHeight, 1);
-                    var imageWidth = remainingWidth;
-                    var imageHeight = imageWidth / imageAspect;
-
-                    if (imageHeight > maxImageHeight)
+                    var heightReservedForName = signerNameHeight > 0
+                        ? signerNameHeight + SignatureBottomSpacing
+                        : 0;
+                    var maxImageHeight = Math.Min(SignatureMaxHeight, Math.Max(0, remainingHeight - heightReservedForName));
+                    if (maxImageHeight >= 12)
                     {
-                        imageHeight = maxImageHeight;
-                        imageWidth = imageHeight * imageAspect;
-                    }
+                        var opaqueBytes = SignatureImageHelper.FlattenTransparency(signatureImageBytes);
+                        using var imgStream = new MemoryStream(opaqueBytes);
+                        using var signatureImage = XImage.FromStream(imgStream);
 
-                    gfx.DrawImage(signatureImage, textX, signatureStartY, imageWidth, imageHeight);
-                    signerNameX = textX;
-                    signerNameWidth = imageWidth;
-                    signatureStartY += imageHeight + SignatureBottomSpacing;
-                    remainingHeight = page.Height.Point - signatureStartY - 12;
+                        var imageAspect = (double)signatureImage.PixelWidth / Math.Max(signatureImage.PixelHeight, 1);
+                        var imageWidth = remainingWidth;
+                        var imageHeight = imageWidth / imageAspect;
+
+                        if (imageHeight > maxImageHeight)
+                        {
+                            imageHeight = maxImageHeight;
+                            imageWidth = imageHeight * imageAspect;
+                        }
+
+                        gfx.DrawImage(signatureImage, textX, signatureStartY, imageWidth, imageHeight);
+                        signerNameX = textX;
+                        signerNameWidth = imageWidth;
+                        signatureStartY += imageHeight + SignatureBottomSpacing;
+                        remainingHeight = page.Height.Point - signatureStartY - 12;
+                    }
+                }
+                catch (Exception imgEx)
+                {
+                    _logger.LogError(imgEx,
+                        "Failed to render signature image ({Length} bytes) in AddTextNote. " +
+                        "Text note and signer name will still be rendered.",
+                        signatureImageBytes.Length);
                 }
             }
 

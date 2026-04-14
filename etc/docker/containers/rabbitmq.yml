@@ -1,7 +1,7 @@
 volumes:
   hc_rabbitmq:
 networks:
-  hc:
+  hc-network:
     external: true
 
 services:
@@ -14,7 +14,7 @@ services:
     volumes:
       - hc_rabbitmq:/var/lib/rabbitmq
     networks:
-      - hc
+      - hc-network
     ports:
       - "15672:15672"  # Management UI
       - "5672:5672"    # AMQP port

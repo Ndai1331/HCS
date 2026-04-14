@@ -171,14 +171,12 @@ public abstract class DocumentHistoriesAppServiceBase : HCAppService
         {
             throw new UserFriendlyException("DocumentId is required");
         }
-        Logger.LogInformation($"GetHistoryByDocumentIdAsync called with documentId: {input.DocumentId.Value}, skipCount: {input.SkipCount}, maxResultCount: {input.MaxResultCount}");
         var histories = await _documentHistoryRepository.GetHistoryByDocumentIdAsync(
             input.DocumentId.Value,
             input.SkipCount,
             input.MaxResultCount);
 
         var totalCount = await _documentHistoryRepository.GetCountByDocumentIdAsync(input.DocumentId.Value);
-        Logger.LogInformation($"GetHistoryByDocumentIdAsync completed with totalCount: {totalCount}");
 
         return new PagedResultDto<DocumentHistoryWithNavigationPropertiesDto>
         {

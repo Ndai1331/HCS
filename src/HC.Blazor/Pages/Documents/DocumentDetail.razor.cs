@@ -1192,7 +1192,6 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
             DocumentHistoriesList = result.Items;
             DocumentHistoriesTotalCount = (int)result.TotalCount;
             DocumentHistoriesCurrentPage = 1;
-            Logger.LogInformation($"LoadDocumentHistoriesAsync: Loaded {DocumentHistoriesList.Count} history items, TotalCount: {DocumentHistoriesTotalCount}");
         }
         catch (Exception ex)
         {

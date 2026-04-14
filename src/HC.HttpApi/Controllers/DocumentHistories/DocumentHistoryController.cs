@@ -119,7 +119,6 @@ public abstract class DocumentHistoryControllerBase : AbpController
         {
             throw new UserFriendlyException("DocumentId is required");
         }
-        Logger.LogInformation($"GetHistoryByDocumentIdAsync called with documentId: {input.DocumentId.Value}, skipCount: {input.SkipCount}, maxResultCount: {input.MaxResultCount}");
         return await _documentHistoriesAppService.GetHistoryByDocumentIdAsync(input);
     }
 }
