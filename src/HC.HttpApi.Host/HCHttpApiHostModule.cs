@@ -182,7 +182,7 @@ public class HCHttpApiHostModule : AbpModule
                         {
                             options.TokenValidationParameters.ValidIssuers = new[]
                             {
-                                authority,    // Without trailing slash: 'https://auth-dev.benhvien199.vn'
+                                authority,    // Without trailing slash: 'https://chisoaut.bvlevanthinh.vn'
                                 metaAddress   // Internal URL without trailing slash
                             };
                         }

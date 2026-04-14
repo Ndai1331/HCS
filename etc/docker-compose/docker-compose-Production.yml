@@ -6,19 +6,19 @@ services:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
       - Kestrel__Certificates__Default__Path=/app/certs/openiddict.pfx
       - Kestrel__Certificates__Default__Password=StrongPass123
-      - App__SelfUrl=https://dev.benhvien199.vn
+      - App__SelfUrl=https://chiso.bvlevanthinh.vn
       - App__HealthCheckUrl=http://hc-blazor:8080/health-status
       - App__DisablePII=true  
       - AuthServer__RequireHttpsMetadata=false
-      - AuthServer__Authority=https://auth-dev.benhvien199.vn
+      - AuthServer__Authority=https://chisoaut.bvlevanthinh.vn
       - AuthServer__IsOnK8s=true
       - AuthServer__MetaAddress=http://hc-authserver:8080
       - AuthServer__ClientId=HC_BlazorServer
       - AuthServer__ClientSecret=1q2w3e*
 
       - RemoteServices__AbpAccountPublic__BaseUrl=http://hc-authserver:8080
-      - RemoteServices__Default__BaseUrl=https://api-dev.benhvien199.vn
-      - RemoteServices__BlobFiles__BaseUrl=https://api-dev.benhvien199.vn
+      - RemoteServices__Default__BaseUrl=https://chisoapi.bvlevanthinh.vn
+      - RemoteServices__BlobFiles__BaseUrl=https://chisoapi.bvlevanthinh.vn
       - Redis__Configuration=redis
       - App__Cookie__SecurePolicy=Always
       - App__Cookie__SameSite=None
@@ -65,11 +65,11 @@ services:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
       - Kestrel__Certificates__Default__Path=/app/certs/openiddict.pfx
       - Kestrel__Certificates__Default__Password=StrongPass123
-      - App__SelfUrl=https://api-dev.benhvien199.vn
+      - App__SelfUrl=https://chisoapi.bvlevanthinh.vn
       - App__DisablePII=true  
       - App__HealthCheckUrl=http://hc-api:8080/health-status
       - AuthServer__RequireHttpsMetadata=false
-      - AuthServer__Authority=https://auth-dev.benhvien199.vn
+      - AuthServer__Authority=https://chisoaut.bvlevanthinh.vn
       - AuthServer__MetaAddress=http://hc-authserver:8080
       - AuthServer__IsOnK8s=true
       - AuthServer__ClientId=HC_Swagger_Prod
@@ -111,13 +111,13 @@ services:
     container_name: hc-authserver
     environment:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
-      - App__SelfUrl=https://auth-dev.benhvien199.vn
-      - App__CorsOrigins=https://dev.benhvien199.vn,https://api-dev.benhvien199.vn,https://auth-dev.benhvien199.vn
-      - App__RedirectAllowedUrls=https://dev.benhvien199.vn,https://api-dev.benhvien199.vn,https://auth-dev.benhvien199.vn
+      - App__SelfUrl=https://chisoaut.bvlevanthinh.vn
+      - App__CorsOrigins=https://chiso.bvlevanthinh.vn,https://chisoapi.bvlevanthinh.vn,https://chisoaut.bvlevanthinh.vn
+      - App__RedirectAllowedUrls=https://chiso.bvlevanthinh.vn,https://chisoapi.bvlevanthinh.vn,https://chisoaut.bvlevanthinh.vn
       - App__DisablePII=true  
       - App__HealthCheckUrl=http://hc-authserver:8080/health-status
       - AuthServer__RequireHttpsMetadata=false
-      - AuthServer__Authority=https://auth-dev.benhvien199.vn
+      - AuthServer__Authority=https://chisoaut.bvlevanthinh.vn
       - Kestrel__Certificates__Default__Path=/app/certs/openiddict.pfx
       - Kestrel__Certificates__Default__Password=StrongPass123
       - ConnectionStrings__Default=User ID=postgres;Password=Bv199;Host=113.160.232.208;Port=5400;Database=AxisHCS;Pooling=false;
