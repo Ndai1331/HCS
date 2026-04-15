@@ -154,10 +154,10 @@ public class OpenIddictDataSeedContributor : OpenIddictDataSeedContributorBase, 
         //     // Build redirect URIs list - ensure both formats are included
         //     var redirectUris = new List<string> { $"{blazorServerRootUrl}signin-oidc" };
         //     // Also add common production URL
-        //     redirectUris.Add("https://dev.benhvien199.vn/signin-oidc");
+        //     redirectUris.Add("https://hanhchinhso.benhvien199.vn/signin-oidc");
 
         //     var postLogoutRedirectUris = new List<string> { $"{blazorServerRootUrl}signout-callback-oidc" };
-        //     postLogoutRedirectUris.Add("https://dev.benhvien199.vn/signout-callback-oidc");
+        //     postLogoutRedirectUris.Add("https://hanhchinhso.benhvien199.vn/signout-callback-oidc");
 
         //     await CreateOrUpdateApplicationAsync(
         //         applicationType: OpenIddictConstants.ApplicationTypes.Web,
@@ -183,7 +183,7 @@ public class OpenIddictDataSeedContributor : OpenIddictDataSeedContributorBase, 
 
         // // Blazor Server Production Client
         // var blazorServerProdClientId = configurationSection["HC_BlazorServer_Prod:ClientId"] ?? "HC_BlazorServer_Prod";
-        // var blazorServerProdRootUrl = configurationSection["HC_BlazorServer_Prod:RootUrl"]?.EnsureEndsWith('/') ?? "https://dev.benhvien199.vn/";
+        // var blazorServerProdRootUrl = configurationSection["HC_BlazorServer_Prod:RootUrl"]?.EnsureEndsWith('/') ?? "https://hanhchinhso.benhvien199.vn/";
 
         // await CreateOrUpdateApplicationAsync(
         //     applicationType: OpenIddictConstants.ApplicationTypes.Web,
@@ -205,15 +205,15 @@ public class OpenIddictDataSeedContributor : OpenIddictDataSeedContributorBase, 
         //     redirectUris: new List<string> 
         //     { 
         //         $"{blazorServerProdRootUrl}signin-oidc",
-        //         "https://dev.benhvien199.vn/signin-oidc",
+        //         "https://hanhchinhso.benhvien199.vn/signin-oidc",
         //         // Allow HTTP in case reverse proxy terminates TLS before reaching AuthServer
-        //         "http://dev.benhvien199.vn/signin-oidc"
+        //         "http://hanhchinhso.benhvien199.vn/signin-oidc"
         //     },
         //     postLogoutRedirectUris: new List<string> 
         //     { 
         //         $"{blazorServerProdRootUrl}signout-callback-oidc",
-        //         "https://dev.benhvien199.vn/signout-callback-oidc",
-        //         "http://dev.benhvien199.vn/signout-callback-oidc"
+        //         "https://hanhchinhso.benhvien199.vn/signout-callback-oidc",
+        //         "http://hanhchinhso.benhvien199.vn/signout-callback-oidc"
         //     },
         //     clientUri: blazorServerProdRootUrl,
         //     logoUri: "/images/clients/blazor.svg"

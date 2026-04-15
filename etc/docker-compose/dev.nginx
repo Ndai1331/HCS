@@ -1,7 +1,7 @@
 server {
     listen 80;
     listen 443 ssl http2;
-    server_name dev.benhvien199.vn;
+    server_name hanhchinhso.benhvien199.vn;
 
     # ===============================
     # Force HTTPS
@@ -13,8 +13,8 @@ server {
     # ===============================
     # SSL
     # ===============================
-    ssl_certificate     /www/server/panel/vhost/cert/dev.benhvien199.vn/fullchain.pem;
-    ssl_certificate_key /www/server/panel/vhost/cert/dev.benhvien199.vn/privkey.pem;
+    ssl_certificate     /www/server/panel/vhost/cert/hanhchinhso.benhvien199.vn/fullchain.pem;
+    ssl_certificate_key /www/server/panel/vhost/cert/hanhchinhso.benhvien199.vn/privkey.pem;
 
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
@@ -26,8 +26,8 @@ server {
     # ===============================
     # Logs
     # ===============================
-    access_log /www/wwwlogs/dev.benhvien199.vn.log;
-    error_log  /www/wwwlogs/dev.benhvien199.vn.error.log;
+    access_log /www/wwwlogs/hanhchinhso.benhvien199.vn.log;
+    error_log  /www/wwwlogs/hanhchinhso.benhvien199.vn.error.log;
 
     # ===============================
     # ACME / Well-known

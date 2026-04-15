@@ -6,7 +6,7 @@ services:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
       - Kestrel__Certificates__Default__Path=/app/certs/openiddict.pfx
       - Kestrel__Certificates__Default__Password=StrongPass123
-      - App__SelfUrl=https://dev.benhvien199.vn
+      - App__SelfUrl=https://hanhchinhso.benhvien199.vn
       - App__HealthCheckUrl=http://hc-blazor:8080/health-status
       - App__DisablePII=true  
       - AuthServer__RequireHttpsMetadata=false
@@ -112,8 +112,8 @@ services:
     environment:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
       - App__SelfUrl=https://auth-dev.benhvien199.vn
-      - App__CorsOrigins=https://dev.benhvien199.vn,https://api-dev.benhvien199.vn,https://auth-dev.benhvien199.vn
-      - App__RedirectAllowedUrls=https://dev.benhvien199.vn,https://api-dev.benhvien199.vn,https://auth-dev.benhvien199.vn
+      - App__CorsOrigins=https://hanhchinhso.benhvien199.vn,https://api-dev.benhvien199.vn,https://auth-dev.benhvien199.vn
+      - App__RedirectAllowedUrls=https://hanhchinhso.benhvien199.vn,https://api-dev.benhvien199.vn,https://auth-dev.benhvien199.vn
       - App__DisablePII=true  
       - App__HealthCheckUrl=http://hc-authserver:8080/health-status
       - AuthServer__RequireHttpsMetadata=false

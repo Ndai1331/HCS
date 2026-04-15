@@ -59,8 +59,8 @@ Tôi chưa thấy REST API public tổng quát để mobile upload raw file/sign
 
 Ví dụ:
 
-- `GET https://dev.benhvien199.vn/api/app/document-workflow-instances/document-signing-list`
-- `POST https://dev.benhvien199.vn/api/app/document-workflow-instances/process-workflow-action`
+- `GET https://hanhchinhso.benhvien199.vn/api/app/document-workflow-instances/document-signing-list`
+- `POST https://hanhchinhso.benhvien199.vn/api/app/document-workflow-instances/process-workflow-action`
 
 Tài liệu này tập trung vào contract API và workflow ký. Phần login/token dùng cùng cơ chế auth hiện có của hệ thống OpenIddict.
 
