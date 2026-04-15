@@ -35,7 +35,7 @@
             {
                 <Row>
                     @* Column 8: General Information Card *@
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Style="padding-right: 0px !important;">
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop">
                         <Card>
                             <CardHeader>
                                 <Heading Size="HeadingSize.Is5" Class="fw-bolder"><Icon Name="IconName.Info" Class="me-1" /> @L["Tab:GeneralInformation"]</Heading>
@@ -204,6 +204,10 @@
             }
         </ModalBody>
         <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseModalAsync">
+                    <i aria-hidden="true" class="fa fa-times me-1"></i>
+                    @L["Close"]
+                </Button>
             <Button Color="Color.Success" Clicked="CompleteTaskAsync" Disabled="IsCompleting">
                 @if (IsCompleting)
                 {
@@ -217,12 +221,10 @@
                 {
                     <span class="spinner-border spinner-border-sm me-1"></span>
                 }
-                <Icon Name="IconName.Save" Class="me-1" />
+                <Icon Name="IconName.Save" />
                 @L["Update"]
             </Button>
-            <Button Color="Color.Secondary" Clicked="CloseModalAsync">
-                @L["Close"]
-            </Button>
+            
         </ModalFooter>
     </ModalContent>
 </Modal>

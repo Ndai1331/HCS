@@ -607,3 +607,25 @@
     --bs-btn-disabled-border-color: #f72585;
     --bs-gradient: none;
 }
+
+/*
+ * Mobile: rules like `padding: 0 0 0 16px` on .form-control zero out vertical padding,
+ * which squishes text against the top/bottom border. Restore comfortable padding while
+ * keeping a 16px left inset.
+ */
+@media only screen and (max-width: 767px) {
+    .form-control {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        padding-right: 0.75rem;
+        padding-left: 16px;
+    }
+
+    .form-control:not(textarea):not([type="file"]) {
+        min-height: 2.75rem;
+    }
+}
+
+.flex-flow-no-wrap {
+    flex-flow: nowrap !important;
+}

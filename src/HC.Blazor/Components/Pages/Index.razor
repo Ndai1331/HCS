@@ -73,7 +73,7 @@
             <CardBody>
                 <Row Class="align-items-center">
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
-                        <label class="fw-bold">@L["FilterByDateRange"]</label>
+                        <label class="fw-bold mb-2 mb-md-0">@L["FilterByDateRange"]</label>
                     </Column>
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                         <DatePicker TValue="DateTime?"
@@ -87,7 +87,7 @@
                     </Column>
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is3.OnDesktop">
                         <Button Color="Color.Primary"
-                                Class="w-100"
+                                Class="w-100 mt-2 mt-md-0"
                                 Clicked="OnDateRangeFilterChangedAsync"
                                 Disabled="IsLoading">
                             <Icon Name="IconName.Search" Class="me-1" />
@@ -874,8 +874,8 @@
 </Modal>
 
 @* ************************* NOTIFICATION DETAIL MODAL ************************* *@
-<Modal @ref="NotificationDetailModal" Centered="true">
-    <ModalContent>
+<Modal @ref="NotificationDetailModal">
+    <ModalContent Centered="true">
         <ModalHeader>
             <ModalTitle>@L["Detail"]</ModalTitle>
             <CloseButton Clicked="CloseNotificationDetailModalAsync" />
@@ -925,7 +925,7 @@
             {
                 <Row>
                     @* Column 8: General Information *@
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Style="padding-right: 0px !important;">
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop">
                         <Card>
                             <CardHeader>
                                 <Heading Size="HeadingSize.Is5" Class="fw-bolder">
@@ -1056,7 +1056,7 @@
             {
                 <Row>
                     @* Column 8: General Information *@
-                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop" Style="padding-right: 0px !important;">
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop">
                         <Card Class="h-100">
                             @* <CardHeader>
                                 <Heading Size="HeadingSize.Is5" Class="fw-bolder">
@@ -1209,13 +1209,15 @@
             }
         </ModalBody>
         <ModalFooter>
+              <Button Color="Color.Secondary" Clicked="CloseProjectDetailModalAsync">
+                <i aria-hidden="true" class="fa fa-times me-1"></i>
+                @L["Close"]
+            </Button>
             <Button Color="Color.Primary" Clicked="@(() => Navigation.NavigateTo($"/project-detail/{ViewingProject?.Id}"))">
                 <Icon Name="IconName.Eye" Class="me-1" />
                 @L["ViewDetail"]
             </Button>
-            <Button Color="Color.Secondary" Clicked="CloseProjectDetailModalAsync">
-                @L["Close"]
-            </Button>
+          
         </ModalFooter>
     </ModalContent>
 </Modal>

@@ -41,7 +41,9 @@
                 <CloseButton Clicked="CancelCreateWizardAsync" />
             </ModalHeader>
             <ModalBody>
-                <Tabs SelectedTab="@SelectedCreateTab" SelectedTabChanged="@(async (name) => await OnSelectedCreateTabChanged(name))">
+                <Tabs SelectedTab="@SelectedCreateTab" 
+                Class="d-flex flex-flow-no-wrap"
+                SelectedTabChanged="@(async (name) => await OnSelectedCreateTabChanged(name))">
                     <Items>
                         <Tab Name="general">
                             <Icon Name="IconName.Info" Class="me-1" />
