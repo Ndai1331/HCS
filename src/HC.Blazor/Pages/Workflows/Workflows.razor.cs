@@ -158,7 +158,7 @@ public partial class Workflows
         Filter.SkipCount = (CurrentPage - 1) * PageSize;
         Filter.Sorting = CurrentSorting;
         var result = await WorkflowsAppService.GetListAsync(Filter);
-        WorkflowList = result.Items;
+        WorkflowList = result.Items ?? new List<WorkflowWithNavigationPropertiesDto>();
         TotalCount = (int)result.TotalCount;
         await ClearSelection();
     }
@@ -394,14 +394,15 @@ public partial class Workflows
 
     private async Task GetWorkflowDefinitionCollectionLookupAsync(string? newValue = null)
     {
-        WorkflowDefinitionsCollection = (await WorkflowsAppService.GetWorkflowDefinitionLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
+        WorkflowDefinitionsCollection = (await WorkflowsAppService.GetWorkflowDefinitionLookupAsync(new LookupRequestDto { Filter = newValue })).Items
+            ?? new List<LookupDto<Guid>>();
     }
 
     private async Task<List<LookupDto<Guid>>> GetWorkflowDefinitionCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
         var result = await WorkflowsAppService.GetWorkflowDefinitionLookupAsync(new LookupRequestDto { Filter = filter });
-        WorkflowDefinitionsCollection = result.Items;
-        return result.Items.ToList();
+        WorkflowDefinitionsCollection = result.Items ?? new List<LookupDto<Guid>>();
+        return WorkflowDefinitionsCollection.ToList();
     }
 
     private void OnNewWorkflowDefinitionChanged()

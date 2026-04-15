@@ -8,5 +8,5 @@ namespace HC.Workflows;
 public abstract class WorkflowWithNavigationPropertiesDtoBase
 {
     public WorkflowDto Workflow { get; set; } = null!;
-    public WorkflowDefinitionDto WorkflowDefinition { get; set; } = null!;
+    public WorkflowDefinitionDto? WorkflowDefinition { get; set; }
 }

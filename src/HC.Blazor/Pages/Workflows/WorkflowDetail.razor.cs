@@ -1082,14 +1082,15 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     // Lookup methods
     private async Task GetWorkflowDefinitionCollectionLookupAsync(string? newValue = null)
     {
-        WorkflowDefinitionsCollection = (await WorkflowsAppService.GetWorkflowDefinitionLookupAsync(new LookupRequestDto { Filter = newValue })).Items;
+        WorkflowDefinitionsCollection = (await WorkflowsAppService.GetWorkflowDefinitionLookupAsync(new LookupRequestDto { Filter = newValue })).Items
+            ?? new List<LookupDto<Guid>>();
     }
 
     private async Task<List<LookupDto<Guid>>> GetWorkflowDefinitionCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
         var result = await WorkflowsAppService.GetWorkflowDefinitionLookupAsync(new LookupRequestDto { Filter = filter });
-        WorkflowDefinitionsCollection = result.Items;
-        return result.Items.ToList();
+        WorkflowDefinitionsCollection = result.Items ?? new List<LookupDto<Guid>>();
+        return WorkflowDefinitionsCollection.ToList();
     }
 
     private async Task LoadWorkflowStepTemplateLookupAsync()
