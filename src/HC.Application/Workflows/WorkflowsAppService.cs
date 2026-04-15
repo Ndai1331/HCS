@@ -18,6 +18,7 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
+using Volo.Abp.Domain.Entities;
 using HC.Shared;
 
 namespace HC.Workflows;
@@ -46,13 +47,19 @@ public abstract class WorkflowsAppServiceBase : HCAppService
         return new PagedResultDto<WorkflowWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,
-            Items = ObjectMapper.Map<List<WorkflowWithNavigationProperties>, List<WorkflowWithNavigationPropertiesDto>>(items)
+            Items = ObjectMapper.Map<List<WorkflowWithNavigationProperties>, List<WorkflowWithNavigationPropertiesDto>>(items ?? new List<WorkflowWithNavigationProperties>())
         };
     }
 
     public virtual async Task<WorkflowWithNavigationPropertiesDto> GetWithNavigationPropertiesAsync(Guid id)
     {
-        return ObjectMapper.Map<WorkflowWithNavigationProperties, WorkflowWithNavigationPropertiesDto>(await _workflowRepository.GetWithNavigationPropertiesAsync(id));
+        var entity = await _workflowRepository.GetWithNavigationPropertiesAsync(id);
+        if (entity == null)
+        {
+            throw new EntityNotFoundException(typeof(Workflow), id);
+        }
+
+        return ObjectMapper.Map<WorkflowWithNavigationProperties, WorkflowWithNavigationPropertiesDto>(entity);
     }
 
     public virtual async Task<WorkflowDto> GetAsync(Guid id)
@@ -66,11 +73,12 @@ public abstract class WorkflowsAppServiceBase : HCAppService
         .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => (x.Code != null && x.Code.Contains(input.Filter)) || (x.Name != null && x.Name.Contains(input.Filter)))
         .WhereIf(input.IsActive.HasValue, x => x.IsActive == input.IsActive);
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.WorkflowDefinitions.WorkflowDefinition>();
-        var totalCount = query.Count();
+        var rows = lookupData ?? new List<HC.WorkflowDefinitions.WorkflowDefinition>();
+        var totalCount = (long)await AsyncExecuter.CountAsync(query);
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,
-            Items = ObjectMapper.Map<List<HC.WorkflowDefinitions.WorkflowDefinition>, List<LookupDto<Guid>>>(lookupData)
+            Items = ObjectMapper.Map<List<HC.WorkflowDefinitions.WorkflowDefinition>, List<LookupDto<Guid>>>(rows)
         };
     }
 

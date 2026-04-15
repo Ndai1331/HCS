@@ -150,7 +150,7 @@
                 }
               </p>
             <div>
-                @if ((SelectedWorkflows.Count == PageSize || SelectedWorkflows.Count == WorkflowList.Count) && TotalCount > SelectedWorkflows.Count)
+                @if (WorkflowList != null && (SelectedWorkflows.Count == PageSize || SelectedWorkflows.Count == WorkflowList.Count) && TotalCount > SelectedWorkflows.Count)
                 {
                     if (!AllWorkflowsSelected)
                     {
@@ -196,7 +196,7 @@
                 </Row>
             </EmptyTemplate>   
             <DataGridColumns>
-                @if (CanDeleteWorkflow && WorkflowList.Any())
+                @if (CanDeleteWorkflow && WorkflowList is { Count: > 0 })
                 {
                     <DataGridMultiSelectColumn TItem="WorkflowWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
                 }
@@ -209,8 +209,10 @@
                       Caption="@L["Name"]">
               </DataGridColumn>
               <DataGridColumn TItem="WorkflowWithNavigationPropertiesDto"
-                      Field="WorkflowDefinition.Code"
                       Caption="@L["WorkflowDefinitions"]">
+                    <DisplayTemplate>
+                        @(context.WorkflowDefinition?.Code)
+                    </DisplayTemplate>
               </DataGridColumn>
               <DataGridColumn TItem="WorkflowWithNavigationPropertiesDto"
                       Field="Workflow.Description"
