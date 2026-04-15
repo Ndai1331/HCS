@@ -2,6 +2,10 @@ cd /Users/nguyenlong/Documents/Projects/HCS && chmod +x build-api-blazor-linux-a
 cd /Users/nguyenlong/Documents/Projects/HCS && pwsh -File build-api-blazor-linux-amd64.ps1 -version latestlvt -ClearDockerCache
 
 
+cd /Users/nguyenlong/Documents/Projects/HCS && chmod +x build-api-blazor-linux-amd64.ps1
+cd /Users/nguyenlong/Documents/Projects/HCS && pwsh -File build-api-blazor-linux-amd64.ps1 -version latest01042026 -ClearDockerCache
+
+
 
 cd /Users/nguyenlong/Documents/Projects/HCS && pwsh -File build-api-blazor-linux-amd64.ps1 -version latest01042026 -BuildBase -BaseTag libreoffice-v1 -ClearDockerCache
 

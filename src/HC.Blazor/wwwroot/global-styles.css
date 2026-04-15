@@ -624,6 +624,15 @@
     .form-control:not(textarea):not([type="file"]) {
         min-height: 2.75rem;
     }
+
+    .input-group input ~ button {
+        height: 44px !important;
+    }
+
+    #AdvancedFilterSectionToggler,
+    #AdvancedFilterSectionTogglerKanban{
+        margin-top: 0.5rem !important;
+    }
 }
 
 .flex-flow-no-wrap {
