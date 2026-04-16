@@ -61,19 +61,19 @@
            </div>
         <div style="display: @(!ShowAdvancedFilters ? "none" : "block")"  class="mt-3">
             <Row>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Title"]</FieldLabel>
                         <TextEdit Text="@Filter.FilterText" TextChanged="@OnFilterTextChangedAsync" />                      
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Action"]</FieldLabel>
                         <TextEdit Text="@Filter.Action" TextChanged="@OnActionChangedAsync" />                      
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Comment"]</FieldLabel>
                         <TextEdit Text="@Filter.Comment" TextChanged="@OnCommentChangedAsync" />                      

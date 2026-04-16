@@ -43,8 +43,6 @@ public class HCApplicationModule : AbpModule
     {
         context.Services.AddMapperlyObjectMapper<HCApplicationModule>();
 
-        // Register custom font resolver for PDFsharp (required on non-Windows platforms)
-        // Maps Helvetica -> Arial and searches system font directories
         if (GlobalFontSettings.FontResolver == null || GlobalFontSettings.FontResolver is not CustomFontResolver)
         {
             GlobalFontSettings.FontResolver = new CustomFontResolver();

@@ -358,13 +358,11 @@ else
                             <Row Class="g-2 mb-2 align-items-center">
                                 <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
                                     <div class="hc-select2-full @(IsMemberRoleEditMode ? "hc-disabled" : string.Empty)">
-                                        <Select2 IdSelector="c => c.Id.ToString()"
-                                                 TextSelector="c => c.DisplayName"
-                                                 FilterFunction="GetIdentityUserCollectionLookupAsync"
+                                        <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
                                                  GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
                                                  Datasource="IdentityUsersCollection"
                                                  Value="@MembersToAdd"
-                                                 OnValueChanged="OnMembersToAddChanged"
+                                                 ValueChanged="@((List<LookupDto<Guid>> v) => { MembersToAdd = v ?? new(); OnMembersToAddChanged(); })"
                                                  Cache="__MemoryCache"
                                                  Multiselect="false" />
                                     </div>

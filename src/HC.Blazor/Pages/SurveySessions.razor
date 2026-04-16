@@ -69,25 +69,25 @@
        </div>
         <div style="display: @(!ShowAdvancedFilters ? "none" : "block")"  class="mt-3">
             <Row>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["FullName"]</FieldLabel>
                         <TextEdit Text="@Filter.FullName" TextChanged="@OnFullNameChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["PhoneNumber"]</FieldLabel>
                         <TextEdit Text="@Filter.PhoneNumber" TextChanged="@OnPhoneNumberChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["PatientCode"]</FieldLabel>
                         <TextEdit Text="@Filter.PatientCode" TextChanged="@OnPatientCodeChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MinSurveyTime"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -99,7 +99,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MaxSurveyTime"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -111,7 +111,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["DeviceType"]</FieldLabel>
                         <Select TValue="DeviceType?" SelectedValue="@Filter.DeviceType" SelectedValueChanged="@OnDeviceTypeChangedAsync">
@@ -125,19 +125,19 @@
                         </Select>                   
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Note"]</FieldLabel>
                         <TextEdit Text="@Filter.Note" TextChanged="@OnNoteChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["SessionDisplay"]</FieldLabel>
                         <TextEdit Text="@Filter.SessionDisplay" TextChanged="@OnSessionDisplayChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["SurveyLocation"]</FieldLabel>
                         <Select TValue="Guid?"

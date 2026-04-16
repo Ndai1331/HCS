@@ -93,6 +93,8 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.Layout;
 using Microsoft.AspNetCore.Authentication;
 using HC.Blazor.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using System.Collections.Generic;
+using Volo.Abp.AspNetCore.Components.Web.LeptonXTheme.Navigation;
 // using Volo.Forms.Web;
 
 namespace HC.Blazor;
@@ -628,8 +630,33 @@ namespace HC.Blazor;
         Configure<LeptonXThemeBlazorOptions>(options =>
         {
             options.Layout = LeptonXBlazorLayouts.TopMenu;
-            options.MobileMenuSelector = items => 
-            items.Where(x => x.MenuItem.Name == HCMenus.Home || x.MenuItem.Name == HCMenus.Chat);
+            options.MobileMenuSelector = items =>
+            {
+                var result = new List<MenuItemViewModel>();
+
+                void Find(IEnumerable<MenuItemViewModel> menus)
+                {
+                    foreach (var m in menus)
+                    {
+                        Console.WriteLine($"MENU: {m.MenuItem.Name}");
+
+                        if (m.MenuItem.Name == HCMenus.PersonalDocuments ||
+                            m.MenuItem.Name == HCMenus.DocumentSigning)
+                        {
+                            result.Add(m);
+                        }
+
+                        if (m.Items != null && m.Items.Any())
+                        {
+                            Find(m.Items);
+                        }
+                    }
+                }
+
+                Find(items);
+
+                return result;
+            };
         });
     }
 

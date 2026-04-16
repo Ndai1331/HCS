@@ -638,3 +638,7 @@
 .flex-flow-no-wrap {
     flex-flow: nowrap !important;
 }
+
+.lpx-mobile-nav-tabs .lpx-mobile-nav-tab:nth-child(3) {
+    display: none !important;
+}

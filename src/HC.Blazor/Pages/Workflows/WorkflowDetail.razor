@@ -834,13 +834,11 @@
                 <Field>
                     <FieldLabel>@L["IdentityUser"]</FieldLabel>
                     <div class="hc-select2-full">
-                        <Select2 IdSelector="c => c.Id.ToString()"
-                                 TextSelector="c => c.DisplayName"
-                                 FilterFunction="GetIdentityUserCollectionLookupAsync"
+                        <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
                                  GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
                                  Datasource="IdentityUsersCollection"
                                  Value="@SelectedNewIdentityUser"
-                                 OnValueChanged="@(() => OnNewIdentityUserChanged())"
+                                 ValueChanged="@(async (List<LookupDto<Guid>> v) => { SelectedNewIdentityUser = v ?? new(); await OnNewIdentityUserChanged(); })"
                                  Cache="__MemoryCache"
                                  Multiselect="false" />
                     </div>
@@ -911,13 +909,11 @@
                 <Field>
                     <FieldLabel>@L["IdentityUser"]</FieldLabel>
                     <div class="hc-select2-full">
-                        <Select2 IdSelector="c => c.Id.ToString()"
-                                 TextSelector="c => c.DisplayName"
-                                 FilterFunction="GetIdentityUserCollectionLookupAsync"
+                        <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
                                  GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
                                  Datasource="IdentityUsersCollection"
                                  Value="@SelectedEditIdentityUser"
-                                 OnValueChanged="@(() => OnEditIdentityUserChanged())"
+                                 ValueChanged="@(async (List<LookupDto<Guid>> v) => { SelectedEditIdentityUser = v ?? new(); await OnEditIdentityUserChanged(); })"
                                  Cache="__MemoryCache"
                                  Multiselect="false" />
                     </div>

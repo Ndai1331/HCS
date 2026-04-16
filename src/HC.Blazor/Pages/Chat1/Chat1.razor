@@ -891,9 +891,7 @@
                         <Field>
                             <FieldLabel>@L["User"] *</FieldLabel>
                             <div class="hc-select2-full">
-                                <Select2 IdSelector="c => c.Id.ToString()"
-                                        TextSelector="c => c.DisplayName"
-                                        FilterFunction="GetIdentityUserCollectionLookupAsync"
+                                <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
                                         GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
                                         Datasource="IdentityUsersCollection"
                                         Value="@SelectedDirectUser"
@@ -958,9 +956,7 @@
                         <Field>
                             <FieldLabel>@L["Members"] *</FieldLabel>
                             <div class="hc-select2-full">
-                                <Select2 IdSelector="c => c.Id.ToString()"
-                                        TextSelector="c => c.DisplayName"
-                                        FilterFunction="GetIdentityUserCollectionLookupAsync"
+                                <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
                                         GetElementById="async (items, id, token) => items.FirstOrDefault(x => x.Id.ToString() == id)!"
                                         Datasource="IdentityUsersCollection"
                                         Value="@SelectedMembers"

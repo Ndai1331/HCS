@@ -73,13 +73,13 @@
        </div>
         <div style="display: @(!ShowAdvancedFilters ? "none" : "block")"  class="mt-3">
             <Row>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Status"]</FieldLabel>
                         <TextEdit Text="@Filter.Status" TextChanged="@OnStatusChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MinStartedAt"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -91,7 +91,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MaxStartedAt"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -103,7 +103,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MinFinishedAt"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -115,7 +115,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MaxFinishedAt"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -127,7 +127,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Document"]</FieldLabel>
                         <Select TValue="Guid?"
@@ -143,7 +143,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Workflow"]</FieldLabel>
                         <Select TValue="Guid?"
@@ -159,7 +159,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["WorkflowTemplate"]</FieldLabel>
                         <Select TValue="Guid?"
@@ -175,7 +175,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["WorkflowStepTemplate"]</FieldLabel>
                         <Select TValue="Guid?"

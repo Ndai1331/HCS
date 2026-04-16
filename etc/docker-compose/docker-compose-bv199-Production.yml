@@ -17,8 +17,8 @@ services:
       - AuthServer__ClientSecret=1q2w3e*
 
       - RemoteServices__AbpAccountPublic__BaseUrl=http://hc-authserver:8080
-      - RemoteServices__Default__BaseUrl=https://api.benhvien199.vn
-      - RemoteServices__BlobFiles__BaseUrl=https://api.benhvien199.vn
+      - RemoteServices__Default__BaseUrl=https://api-hcs.benhvien199.vn
+      - RemoteServices__BlobFiles__BaseUrl=https://api-hcs.benhvien199.vn
       - Redis__Configuration=redis
       - App__Cookie__SecurePolicy=Always
       - App__Cookie__SameSite=None
@@ -65,7 +65,7 @@ services:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
       - Kestrel__Certificates__Default__Path=/app/certs/openiddict.pfx
       - Kestrel__Certificates__Default__Password=StrongPass123
-      - App__SelfUrl=https://api.benhvien199.vn
+      - App__SelfUrl=https://api-hcs.benhvien199.vn
       - App__DisablePII=true  
       - App__HealthCheckUrl=http://hc-api:8080/health-status
       - AuthServer__RequireHttpsMetadata=false
@@ -112,8 +112,8 @@ services:
     environment:
       - ASPNETCORE_URLS=https://+:8081;http://+:8080;
       - App__SelfUrl=https://auth.benhvien199.vn
-      - App__CorsOrigins=https://hanhchinhso.benhvien199.vn,https://api.benhvien199.vn,https://auth.benhvien199.vn
-      - App__RedirectAllowedUrls=https://hanhchinhso.benhvien199.vn,https://api.benhvien199.vn,https://auth.benhvien199.vn
+      - App__CorsOrigins=https://hanhchinhso.benhvien199.vn,https://api-hcs.benhvien199.vn,https://auth.benhvien199.vn
+      - App__RedirectAllowedUrls=https://hanhchinhso.benhvien199.vn,https://api-hcs.benhvien199.vn,https://auth.benhvien199.vn
       - App__DisablePII=true  
       - App__HealthCheckUrl=http://hc-authserver:8080/health-status
       - AuthServer__RequireHttpsMetadata=false

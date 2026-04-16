@@ -69,25 +69,25 @@
        </div>
         <div style="display: @(!ShowAdvancedFilters ? "none" : "block")"  class="mt-3">
             <Row>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Name"]</FieldLabel>
                         <TextEdit Text="@Filter.Name" TextChanged="@OnNameChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Path"]</FieldLabel>
                         <TextEdit Text="@Filter.Path" TextChanged="@OnPathChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Hash"]</FieldLabel>
                         <TextEdit Text="@Filter.Hash" TextChanged="@OnHashChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["IsSigned"]</FieldLabel>
                         <Select TValue="string"
@@ -99,7 +99,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MinUploadedAt"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -111,7 +111,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MaxUploadedAt"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -123,7 +123,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Document"]</FieldLabel>
                         <Select TValue="Guid?"

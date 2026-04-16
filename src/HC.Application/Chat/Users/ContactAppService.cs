@@ -274,7 +274,11 @@ public class ContactAppService : ChatAppService, IContactAppService
             .Select(x => new LookupDto<Guid>
             {
                 Id = x.Id,
-                DisplayName = GetDisplayName(x)
+                DisplayName = GetDisplayName(x),
+                UserName = x.UserName,
+                Surname = x.Surname,
+                Name = x.Name,
+                PhoneNumber = x.PhoneNumber
             })
             .ToList();
 

@@ -72,13 +72,13 @@
        </div>
         <div style="display: @(!ShowAdvancedFilters ? "none" : "block")"  class="mt-3">
             <Row>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["ProviderCode"]</FieldLabel>
                         <TextEdit Text="@Filter.ProviderCode" TextChanged="@OnProviderCodeChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["ProviderType"]</FieldLabel>
                         <Select TValue="string"
@@ -92,13 +92,13 @@
                         </Select>
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["ApiEndpoint"]</FieldLabel>
                         <TextEdit Text="@Filter.ApiEndpoint" TextChanged="@OnApiEndpointChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MinApiTimeout"]</FieldLabel>
                         <NumericEdit TValue="int?" 
@@ -106,7 +106,7 @@
              ValueChanged="@OnApiTimeoutMinChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MaxApiTimeout"]</FieldLabel>
                         <NumericEdit TValue="int?" 
@@ -114,7 +114,7 @@
              ValueChanged="@OnApiTimeoutMaxChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["DefaultSignType"]</FieldLabel>
                         <Select TValue="string"
@@ -128,7 +128,7 @@
                         </Select>
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["AllowElectronicSign"]</FieldLabel>
                         <Select TValue="string"
@@ -140,7 +140,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["AllowDigitalSign"]</FieldLabel>
                         <Select TValue="string"
@@ -152,7 +152,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["RequireOtp"]</FieldLabel>
                         <Select TValue="string"
@@ -164,7 +164,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MinSignWidth"]</FieldLabel>
                         <NumericEdit TValue="int?" 
@@ -172,7 +172,7 @@
              ValueChanged="@OnSignWidthMinChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MaxSignWidth"]</FieldLabel>
                         <NumericEdit TValue="int?" 
@@ -180,7 +180,7 @@
              ValueChanged="@OnSignWidthMaxChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MinSignHeight"]</FieldLabel>
                         <NumericEdit TValue="int?" 
@@ -188,7 +188,7 @@
              ValueChanged="@OnSignHeightMinChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MaxSignHeight"]</FieldLabel>
                         <NumericEdit TValue="int?" 
@@ -196,13 +196,13 @@
              ValueChanged="@OnSignHeightMaxChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["SignedFileSuffix"]</FieldLabel>
                         <TextEdit Text="@Filter.SignedFileSuffix" TextChanged="@OnSignedFileSuffixChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["KeepOriginalFile"]</FieldLabel>
                         <Select TValue="string"
@@ -214,7 +214,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["OverwriteSignedFile"]</FieldLabel>
                         <Select TValue="string"
@@ -226,7 +226,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["EnableSignLog"]</FieldLabel>
                         <Select TValue="string"
@@ -238,7 +238,7 @@
 </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["IsActive"]</FieldLabel>
                         <Select TValue="string"

@@ -78,6 +78,63 @@
         margin-left: auto;
         font-size: 15px;
     }
+
+    /* Rating distribution: mobile = chart row + details row; md+ = side by side */
+    .rating-distribution-layout {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        width: 100%;
+    }
+
+    .rating-distribution-layout .rating-dist-chart {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .rating-distribution-layout .rating-dist-chart > div {
+        max-width: min(100%, 400px);
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    @@media (min-width: 768px) {
+        .rating-distribution-layout {
+            flex-direction: row;
+            justify-content: center;
+            align-items: flex-start;
+        }
+    }
+
+    /* Mobile: legend rows flow horizontally instead of one long vertical list */
+    @@media (max-width: 767.98px) {
+        .rating-distribution-layout .stat-block {
+            min-width: 0;
+            width: 100%;
+        }
+
+        .rating-distribution-layout .stat-list.stat-list-mobile-flow {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px 14px;
+        }
+
+        .rating-distribution-layout .stat-list.stat-list-mobile-flow .stat-list-item {
+            flex: 1 1 calc(50% - 8px);
+            max-width: calc(50% - 8px);
+            margin-bottom: 4px;
+            box-sizing: border-box;
+        }
+
+        .rating-distribution-layout .stat-list.stat-list-mobile-flow .stat-value {
+            margin-left: 8px;
+        }
+    }
 </style>
 @* ************************* FILTER (same pattern as Projects.razor) ************************* *@
 <Card>
@@ -140,15 +197,17 @@ else
                                 </CardTitle>
                             </CardHeader>
                             <CardBody>
-                                <div class="d-flex justify-content-center">
-                                    <PieChart ChartId="@pieChartId"
-                                              Labels="@RatingDistributionLabels"
-                                              Data="@RatingDistributionData"
-                                              BackgroundColors="@RatingDistributionColors"
-                                              IsDoughnut="true" />
-                                    <div class="stat-block">
+                                <div class="rating-distribution-layout">
+                                    <div class="rating-dist-chart flex-shrink-0">
+                                        <PieChart ChartId="@pieChartId"
+                                                  Labels="@RatingDistributionLabels"
+                                                  Data="@RatingDistributionData"
+                                                  BackgroundColors="@RatingDistributionColors"
+                                                  IsDoughnut="true" />
+                                    </div>
+                                    <div class="stat-block flex-shrink-0">
                                         <div class="stat-title">@L["RatingDistributionTotal"]</div>
-                                        <ul class="stat-list">
+                                        <ul class="stat-list stat-list-mobile-flow">
                                             <li class="stat-list-item">
                                                 <span class="stat-dot dot-primary text-brand"></span>
                                                 @L["RatingDistributionTotal"]

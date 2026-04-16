@@ -392,19 +392,19 @@
        </div>
         <div style="display: @(!ShowAdvancedFilters ? "none" : "block")"  class="mt-3">
             <Row>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Title"]</FieldLabel>
                         <TextEdit Text="@Filter.Title" TextChanged="@OnTitleChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Description"]</FieldLabel>
                         <TextEdit Text="@Filter.Description" TextChanged="@OnDescriptionChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MinStartTime"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -416,7 +416,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MaxStartTime"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -428,7 +428,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MinEndTime"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -440,7 +440,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["MaxEndTime"]</FieldLabel>
                         <DatePicker TValue="DateTime?"
@@ -452,7 +452,7 @@
             Placeholder="@string.Empty" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["AllDay"]</FieldLabel>
                         <Select TValue="string" SelectedValue="@FilterAllDayValue" SelectedValueChanged="@OnAllDayChangedAsync">
@@ -462,7 +462,7 @@
                         </Select>                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["EventType"]</FieldLabel>
                         <Select TValue="string" SelectedValue="@FilterEventTypeValue" SelectedValueChanged="@OnFilterEventTypeChangedAsync">
@@ -476,13 +476,13 @@
                         </Select>
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Location"]</FieldLabel>
                         <TextEdit Text="@Filter.Location" TextChanged="@OnLocationChangedAsync" />                       
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["RelatedType"]</FieldLabel>
                         <Select TValue="string" SelectedValue="@FilterRelatedTypeValue" SelectedValueChanged="@OnFilterRelatedTypeChangedAsync">
@@ -496,7 +496,7 @@
                         </Select>
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["RelatedId"]</FieldLabel>
                        @if (FilterRelatedTypeValue == RelatedType.PROJECT.ToString())
@@ -529,7 +529,7 @@
                         }
                     </Field>
                 </Column>
-                <Column ColumnSize="ColumnSize.Is3">
+                <Column ColumnSize="ColumnSize.Is3.OnDesktop.Is6.OnMobile">
                     <Field>
                         <FieldLabel>@L["Visibility"]</FieldLabel>
                         <Select TValue="string" SelectedValue="@FilterVisibilityValue" SelectedValueChanged="@OnFilterVisibilityChangedAsync">
@@ -1036,13 +1036,11 @@
                                         <Field>
                                             <FieldLabel>@L["Participant"] *</FieldLabel>
                                             <div class="hc-select2-full">
-                                                <Select2 IdSelector="c => c.Id.ToString()"
-                                                        TextSelector="c => c.DisplayName"
-                                                        FilterFunction="GetParticipantIdentityUserLookupAsync"
+                                                <UserSelect2 FilterFunction="GetParticipantIdentityUserLookupAsync"
                                                         GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
                                                         Datasource="ParticipantIdentityUsersCollection"
                                                         Value="@CreateParticipantsUserToAdd"
-                                                        OnValueChanged="OnCreateParticipantUserChanged"
+                                                        ValueChanged="@((List<LookupDto<Guid>> v) => { CreateParticipantsUserToAdd = v ?? new(); OnCreateParticipantUserChanged(); })"
                                                         Cache="__MemoryCache"
                                                         Multiselect="false" />
                                             </div>
@@ -1371,13 +1369,11 @@
                                     <Field>
                                         <FieldLabel>@L["Participant"] *</FieldLabel>
                                         <div class="hc-select2-full">
-                                            <Select2 IdSelector="c => c.Id.ToString()"
-                                                    TextSelector="c => c.DisplayName"
-                                                    FilterFunction="GetParticipantIdentityUserLookupAsync"
+                                            <UserSelect2 FilterFunction="GetParticipantIdentityUserLookupAsync"
                                                     GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
                                                     Datasource="ParticipantIdentityUsersCollection"
                                                     Value="@EditParticipantsUserToAdd"
-                                                    OnValueChanged="OnEditParticipantUserChanged"
+                                                    ValueChanged="@((List<LookupDto<Guid>> v) => { EditParticipantsUserToAdd = v ?? new(); OnEditParticipantUserChanged(); })"
                                                     Cache="__MemoryCache"
                                                     Multiselect="false" />
                                         </div>

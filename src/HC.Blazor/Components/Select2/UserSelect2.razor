@@ -1,0 +1,154 @@
+<select id="@_selectId"
+        class="hc-user-select2 hc-user-select2-native form-select"
+        multiple="@Multiselect"
+        @attributes="AdditionalAttributes"></select>
+
+<style>
+    /* Scope to this picker only: Select2 inserts the container as the next sibling of the native select. */
+    select.hc-user-select2 + .select2-container {
+        width: 100% !important;
+    }
+
+    /* --- Single: auto height so name + phone + avatar fit (overrides global 44px / line-height 38px) --- */
+    select.hc-user-select2 + .select2-container .select2-selection--single {
+        height: auto !important;
+        min-height: 3.25rem;
+        padding: 0;
+        display: flex;
+        align-items: stretch;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 1.25 !important;
+        padding: 0.4rem 2.35rem 0.4rem 0.65rem !important;
+        width: 100%;
+        color: inherit;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--single .select2-selection__arrow {
+        height: auto !important;
+        min-height: 3rem;
+        top: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--single .select2-selection__clear {
+        height: auto;
+        line-height: 1;
+        margin-top: 0;
+        padding-right: 0.25rem;
+        padding-top: 0.75rem;
+        display: flex;
+        align-items: center;
+    }
+
+    /* --- Multiple: neutral chips (overrides global pink) --- */
+    select.hc-user-select2 + .select2-container .select2-selection--multiple {
+        height: auto !important;
+        min-height: 2.75rem;
+        padding: 0.2rem 0.35rem;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--multiple .select2-selection__rendered {
+        padding: 0.15rem !important;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--multiple .select2-search--inline {
+        margin-top: 0;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--multiple .select2-search--inline .select2-search__field {
+        margin-top: 0.15rem;
+        min-height: 1.75rem;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--multiple .select2-selection__choice {
+        background: linear-gradient(180deg, #f4f7fa 0%, #eef2f6 100%) !important;
+        border: 1px solid #d8e0e8 !important;
+        color: #243241 !important;
+        border-radius: 999px !important;
+        padding: 0.15rem 0.55rem 0.15rem 1.5rem !important;
+        margin: 0 !important;
+        font-size: 0.8125rem;
+        line-height: 1.2;
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        box-shadow: 0 1px 0 rgba(16, 24, 40, 0.04);
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--multiple .select2-selection__choice__remove {
+        color: #62748b !important;
+        font-weight: 700;
+        font-size: 1rem;
+        line-height: 1;
+        margin-right: 0.2rem;
+        border: none !important;
+        padding: 0 0.1rem !important;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--multiple .select2-selection__choice__remove:hover {
+        color: #c026d3 !important;
+        background: transparent !important;
+    }
+
+    /* --- Shared option layout (dropdown + selection) --- */
+    .hc-user-select2-option .hc-user-select2-avatar {
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--single .hc-user-select2-option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 2.5rem;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--single .hc-user-select2-option .hc-user-select2-avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--multiple .select2-selection__choice .hc-user-select2-option {
+        padding: 0;
+        gap: 0.4rem !important;
+        align-items: center;
+    }
+
+    select.hc-user-select2 + .select2-container .select2-selection--multiple .select2-selection__choice .hc-user-select2-option .hc-user-select2-avatar {
+        width: 22px;
+        height: 22px;
+    }
+
+    /* Chips: show name only (one line); phone in dropdown only */
+    select.hc-user-select2 + .select2-container .select2-selection--multiple .select2-selection__choice .hc-user-select2-option .small {
+        display: none;
+    }
+
+    /* Dropdown list rows */
+    .select2-dropdown .hc-user-select2-option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.15rem 0;
+    }
+
+    .select2-dropdown .hc-user-select2-option .hc-user-select2-avatar {
+        width: 36px;
+        height: 36px;
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] .hc-user-select2-option .fw-semibold {
+        color: #fff !important;
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] .hc-user-select2-option .text-muted {
+        color: rgba(255, 255, 255, 0.88) !important;
+    }
+</style>
