@@ -1756,6 +1756,50 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
     #endregion
 
+    /// <summary>
+    /// Exclude from tab "Gửi đi" when the user initiated the latest workflow run but already completed a signing assignment in that run (ký và chuyển bước).
+    /// </summary>
+    private async Task<HashSet<Guid>> GetSentByMeExcludeBecauseCreatorSignedAsync(
+        Guid currentUserId,
+        List<Guid> candidateDocumentIds)
+    {
+        var exclude = new HashSet<Guid>();
+        if (candidateDocumentIds.Count == 0)
+        {
+            return exclude;
+        }
+
+        var instanceQueryable = await _documentWorkflowInstanceRepository.GetQueryableAsync();
+        var instances = await AsyncExecuter.ToListAsync(
+            instanceQueryable.Where(i =>
+                candidateDocumentIds.Contains(i.DocumentId) && i.CreatorId == currentUserId));
+
+        var latestStartedByDoc = instances
+            .GroupBy(i => i.DocumentId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(x => x.StartedAt).ThenByDescending(x => x.Id).First().StartedAt);
+
+        var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
+        var signedAssignments = await AsyncExecuter.ToListAsync(
+            assignmentQueryable.Where(a =>
+                candidateDocumentIds.Contains(a.DocumentId)
+                && a.ReceiverUserId == currentUserId
+                && a.WorkflowStepTemplateId != null
+                && a.Status == nameof(DocumentAssignmentStatus.DONE)));
+
+        foreach (var a in signedAssignments)
+        {
+            if (latestStartedByDoc.TryGetValue(a.DocumentId, out var startedAt)
+                && a.CreationTime >= startedAt)
+            {
+                exclude.Add(a.DocumentId);
+            }
+        }
+
+        return exclude;
+    }
+
     #region GetDocumentSigningListAsync
 
     /// <summary>
@@ -1765,7 +1809,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     /// Logic:
     ///   All = Document where user is receiver (workflow step) OR initiator of workflow
     ///   SentToMe = DocumentAssignment.WorkflowStepTemplateId != null AND ReceiverUserId = currentUserId (real workflow steps only)
-    ///   SentByMe = DocumentWorkflowInstance.CreatorId = currentUserId AND sent to others via workflow assignments
+    ///   SentByMe = user INITIATED workflow (trình ký), sent to others, and has NOT yet signed a step on the latest instance (exclude "ký và chuyển bước").
     ///   Following = empty (no logic for now)
     /// </summary>
     public async Task<DocumentSigningPageResultDto> GetDocumentSigningListAsync(GetDocumentSigningListInput input)
@@ -1786,8 +1830,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             .Join(workflowDocumentQuery, a => a.DocumentId, d => d.Id, (a, d) => d.Id)
             .Distinct();
 
-        // SentByMe: documents where user INITIATED the workflow (trình ký) AND sent to others.
-        // Exclude "Tôi gửi đến tôi" (I sent to myself) - only count when sent to at least one other person.
+        // SentByMe candidates: user INITIATED the workflow AND sent to at least one other person (not only self).
         var initiatedDocIdQuery = instanceQueryable
             .Where(i => i.CreatorId == currentUserId)
             .Join(workflowDocumentQuery, i => i.DocumentId, d => d.Id, (i, d) => d.Id)
@@ -1796,10 +1839,16 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             .Where(a => a.ReceiverUserId != currentUserId && a.WorkflowStepTemplateId != null)
             .Join(workflowDocumentQuery, a => a.DocumentId, d => d.Id, (a, d) => d.Id)
             .Distinct();
-        var sentByMeDocIdQuery = initiatedDocIdQuery.Intersect(sentToOthersDocIdQuery);
+        var sentByMeCandidateQuery = initiatedDocIdQuery.Intersect(sentToOthersDocIdQuery);
 
-        // All = union of received + sentByMe (initiator)
-        var allDocIdQuery = receivedDocIdQuery.Union(sentByMeDocIdQuery);
+        var sentByMeCandidateList = await AsyncExecuter.ToListAsync(sentByMeCandidateQuery);
+        var excludeSentByMeBecauseCreatorSigned = await GetSentByMeExcludeBecauseCreatorSignedAsync(currentUserId, sentByMeCandidateList);
+        var sentByMeAllowedSet = sentByMeCandidateList
+            .Where(id => !excludeSentByMeBecauseCreatorSigned.Contains(id))
+            .ToHashSet();
+
+        // All = union of received + initiator candidates (still show in "All" after user signed a step)
+        var allDocIdQuery = receivedDocIdQuery.Union(sentByMeCandidateQuery);
 
         // ===== STEP 2: Build filtered document base query at DB level =====
         var baseDocQuery = documentQueryable.Where(d => allDocIdQuery.Contains(d.Id));
@@ -1831,8 +1880,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         int sentToMeCount = await AsyncExecuter.CountAsync(
             filteredDocIds.Where(id => receivedDocIdQuery.Contains(id)));
-        int sentByMeCount = await AsyncExecuter.CountAsync(
-            filteredDocIds.Where(id => sentByMeDocIdQuery.Contains(id)));
+        int sentByMeCount = sentByMeAllowedSet.Count == 0
+            ? 0
+            : await AsyncExecuter.CountAsync(
+                filteredDocIds.Where(id => sentByMeAllowedSet.Contains(id)));
         int followingCount = 0; // No logic for now
         int allCount = await AsyncExecuter.CountAsync(filteredDocIds);
 
@@ -1844,7 +1895,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 modeFilteredQuery = baseDocQuery.Where(d => receivedDocIdQuery.Contains(d.Id));
                 break;
             case DocumentSigningFilterMode.SentByMe:
-                modeFilteredQuery = baseDocQuery.Where(d => sentByMeDocIdQuery.Contains(d.Id));
+                modeFilteredQuery = sentByMeAllowedSet.Count == 0
+                    ? baseDocQuery.Where(d => false)
+                    : baseDocQuery.Where(d => sentByMeAllowedSet.Contains(d.Id));
                 break;
             case DocumentSigningFilterMode.Following:
                 // Return empty result for Following mode
@@ -1939,6 +1992,44 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             .GroupBy(s => s.WorkflowTemplateId)
             .ToDictionary(g => g.Key, g => g.Count());
 
+        var pageAssignments = await AsyncExecuter.ToListAsync(
+            assignmentQueryable.Where(a =>
+                pagedDocIds.Contains(a.DocumentId) &&
+                a.WorkflowStepTemplateId != null));
+
+        var latestInstancePerPagedDoc = allInstances
+            .GroupBy(i => i.DocumentId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.StartedAt).ThenByDescending(x => x.Id).First());
+
+        var pageWorkflowTemplateIds = latestInstancePerPagedDoc.Values
+            .Select(i => i.WorkflowTemplateId)
+            .Distinct()
+            .ToList();
+        var workflowTemplatesForPage = pageWorkflowTemplateIds.Any()
+            ? await _workflowTemplateRepository.GetListAsync(x => pageWorkflowTemplateIds.Contains(x.Id))
+            : new List<WorkflowTemplate>();
+        var workflowTemplateDictForPage = workflowTemplatesForPage.ToDictionary(t => t.Id, t => t);
+
+        var committedStepIdsForPage = new HashSet<Guid>();
+        foreach (var inst in latestInstancePerPagedDoc.Values)
+        {
+            var cIds = TryDeserializeCommittedStepTemplateIds(inst.CommittedStepTemplateIdsJson);
+            if (cIds == null)
+            {
+                continue;
+            }
+
+            foreach (var sid in cIds)
+            {
+                committedStepIdsForPage.Add(sid);
+            }
+        }
+
+        var committedStepTemplatesForPage = committedStepIdsForPage.Any()
+            ? await _workflowStepTemplateRepository.GetListAsync(x => committedStepIdsForPage.Contains(x.Id))
+            : new List<WorkflowStepTemplate>();
+        var committedStepTemplateDictForPage = committedStepTemplatesForPage.ToDictionary(s => s.Id, s => s);
+
         // ===== STEP 7: BUILD ITEMS (no more DB calls in loop) =====
         var items = new List<DocumentSigningItemDto>();
         foreach (var doc in pagedDocuments)
@@ -1975,6 +2066,38 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 totalSteps = GetTotalStepsForDisplay(docInstance, totalStepsDict);
             }
 
+            int? parallelSignDone = null;
+            int? parallelSignTotal = null;
+            if (docInstance != null
+                && workflowTemplateDictForPage.TryGetValue(docInstance.WorkflowTemplateId, out var wtForParallel)
+                && string.Equals(wtForParallel.SignMode, nameof(SignMode.PARALLEL), StringComparison.OrdinalIgnoreCase))
+            {
+                var committedIds = TryDeserializeCommittedStepTemplateIds(docInstance.CommittedStepTemplateIdsJson);
+                if (committedIds is { Count: > 0 })
+                {
+                    var signStepIds = committedIds
+                        .Where(sid => committedStepTemplateDictForPage.TryGetValue(sid, out var st)
+                            && string.Equals(st.Type, nameof(WorkflowStepType.SIGN), StringComparison.OrdinalIgnoreCase))
+                        .ToHashSet();
+                    var totalSignSteps = signStepIds.Count;
+                    if (totalSignSteps > 0)
+                    {
+                        var doneSignSteps = pageAssignments
+                            .Where(a =>
+                                a.DocumentId == doc.Id
+                                && a.CreationTime >= docInstance.StartedAt
+                                && a.WorkflowStepTemplateId.HasValue
+                                && signStepIds.Contains(a.WorkflowStepTemplateId.Value)
+                                && a.Status == nameof(DocumentAssignmentStatus.DONE))
+                            .Select(a => a.WorkflowStepTemplateId!.Value)
+                            .Distinct()
+                            .Count();
+                        parallelSignDone = doneSignSteps;
+                        parallelSignTotal = totalSignSteps;
+                    }
+                }
+            }
+
             items.Add(new DocumentSigningItemDto
             {
                 DocumentId = doc.Id,
@@ -1990,6 +2113,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 CurrentStepName = currentStepName,
                 CurrentStepOrder = currentStepOrder,
                 TotalSteps = totalSteps,
+                ParallelSignStepsCompleted = parallelSignDone,
+                ParallelSignStepsTotal = parallelSignTotal,
                 WorkflowStartedAt = docInstance?.StartedAt,
                 MyAssignmentStatus = myDocAssignment?.Status,
                 CanAct = myDocAssignment != null && myDocAssignment.Status == nameof(DocumentAssignmentStatus.PENDING),

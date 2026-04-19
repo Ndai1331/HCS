@@ -788,11 +788,21 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
 
             await UiMessageService.Success(L["SuccessfullySaved"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+
             var effectiveSourceType = SourceType
                 ?? (CurrentDocument != null ? (int?)CurrentDocument.Document.SourceType : null)
-                ?? (DocumentCreateData != null ? (int?)DocumentCreateData.SourceType : null);
+                ?? (int?)savedDocument.SourceType;
             var sourceTypeParam = effectiveSourceType.HasValue ? $"?sourceType={effectiveSourceType.Value}" : "";
-            NavigationManager.NavigateTo($"/document-detail/{savedDocument.Id}{sourceTypeParam}", true);
+
+            // After creating a new document, return to the list for the same sourceType (archive / personal / etc.)
+            if (DocumentCreateData != null)
+            {
+                NavigationManager.NavigateTo("/manage-documents" + sourceTypeParam, true);
+            }
+            else
+            {
+                NavigationManager.NavigateTo($"/document-detail/{savedDocument.Id}{sourceTypeParam}", true);
+            }
         }
         catch (Exception ex)
         {

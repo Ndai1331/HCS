@@ -721,6 +721,14 @@ public partial class Documents : IDisposable
         return string.Equals(item.Status?.Code, DocumentStatusCode.DA_PHE_DUYET.GetCode(), StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Submit-for-approval is only for documents whose status display name is "tạo mới" (master data label).
+    /// </summary>
+    private static bool IsDocumentStatusTextCreateNew(DocumentWithNavigationPropertiesDto item)
+    {
+        return string.Equals(item.Status?.Code, DocumentStatusCode.MOI.GetCode(), StringComparison.OrdinalIgnoreCase);
+    }
+
     private Task SelectAllItems()
     {
         AllDocumentsSelected = true;

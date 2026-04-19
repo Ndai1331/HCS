@@ -29,7 +29,8 @@ public enum DocumentStatusCode
     TU_CHOI,
 
     /// <summary>Đã phê duyệt</summary>
-    DA_PHE_DUYET
+    DA_PHE_DUYET,
+    MOI
 }
 
 /// <summary>
@@ -52,6 +53,7 @@ public static class DocumentStatusCodeExtensions
             DocumentStatusCode.TRA_VE => "TRA_VE",
             DocumentStatusCode.TU_CHOI => "TU_CHOI",
             DocumentStatusCode.DA_PHE_DUYET => "DA_PHE_DUYET",
+            DocumentStatusCode.MOI => "MOI",
             _ => throw new System.ArgumentOutOfRangeException(nameof(statusCode), statusCode, "Unknown DocumentStatusCode")
         };
     }

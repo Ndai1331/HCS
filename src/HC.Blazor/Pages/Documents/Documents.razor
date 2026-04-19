@@ -484,7 +484,7 @@
                                      <i class="fa fa-pencil-square-o fs-6" aria-hidden="true"></i>
                                 </Button>
                             }
-                            @if (SelectedSourceType == DocumentSourceType.Archive && CanSubmitForApproval && !IsDocumentApproved(context))
+                            @if (SelectedSourceType == DocumentSourceType.Archive && CanSubmitForApproval && !IsDocumentApproved(context) && IsDocumentStatusTextCreateNew(context))
                             {
                                 <Button
                                     @onclick="@(async () => await ShowSubmitApprovalModalAsync(context))"

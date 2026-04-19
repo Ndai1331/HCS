@@ -199,13 +199,28 @@ public class CustomFontResolver : IFontResolver
             }
         }
 
+        // Helvetica maps to Arial; Arial is often absent on Linux (proprietary). Use common free substitutes.
+        if (normalizedFamily == "arial")
+        {
+            var substitute = FindFontPath("dejavu sans", isBold, isItalic)
+                ?? FindFontPath("liberation sans", isBold, isItalic)
+                ?? FindFontPath("noto sans", isBold, isItalic);
+            if (substitute != null)
+            {
+                _pathCache.TryAdd(cacheKey, substitute);
+                return substitute;
+            }
+        }
+
         // Last resort: try any font as ultimate fallback
-        if (normalizedFamily != "arial" && normalizedFamily != "dejavu sans" && normalizedFamily != "liberation sans")
+        if (normalizedFamily != "arial" && normalizedFamily != "dejavu sans" && normalizedFamily != "liberation sans"
+            && normalizedFamily != "noto sans")
         {
             // Try Arial, then DejaVu Sans, then Liberation Sans as fallbacks
             var fallback = FindFontPath("arial", isBold, isItalic)
                 ?? FindFontPath("dejavu sans", isBold, isItalic)
-                ?? FindFontPath("liberation sans", isBold, isItalic);
+                ?? FindFontPath("liberation sans", isBold, isItalic)
+                ?? FindFontPath("noto sans", isBold, isItalic);
             _pathCache.TryAdd(cacheKey, fallback);
             return fallback;
         }
@@ -237,6 +252,7 @@ public class CustomFontResolver : IFontResolver
             "courier new" => "Courier New",
             "dejavu sans" => "DejaVuSans",
             "liberation sans" => "LiberationSans",
+            "noto sans" => "NotoSans",
             _ => normalizedFamily
         };
 

@@ -90,6 +90,17 @@ public class DocumentSigningItemDto
     public string? CurrentStepName { get; set; }
     public int? CurrentStepOrder { get; set; }
     public int? TotalSteps { get; set; }
+
+    /// <summary>
+    /// PARALLEL workflows only: number of SIGN steps that have at least one DONE assignment in the current instance run.
+    /// </summary>
+    public int? ParallelSignStepsCompleted { get; set; }
+
+    /// <summary>
+    /// PARALLEL workflows only: total SIGN steps in the committed template (expected signatures).
+    /// </summary>
+    public int? ParallelSignStepsTotal { get; set; }
+
     public DateTime? WorkflowStartedAt { get; set; }
 
     /// <summary>

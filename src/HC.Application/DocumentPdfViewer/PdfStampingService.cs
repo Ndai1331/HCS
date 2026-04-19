@@ -54,12 +54,14 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
     private const double SignatureMaxWidth = 110;
     private const double SignatureMaxHeight = 42;
     private const double DiagonalAngleDegrees = -45;
+    /// <summary>PDFsharp family name; resolves to LiberationSans-*.ttf via CustomFontResolver (e.g. LiberationSans-Regular.ttf on Linux).</summary>
+    private const string PrimaryPdfFontFamily = "Liberation Sans";
     private static readonly string[] WatermarkFontCandidates =
     {
+        PrimaryPdfFontFamily,
         "Helvetica",
         "Arial",
         "DejaVu Sans",
-        "Liberation Sans",
         "Noto Sans",
         "FreeSans"
     };
@@ -172,8 +174,8 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
 
             var page = document.Pages[pageIndex];
             using var gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append);
-            var font = ResolveNoteFont(NoteFontSize) ?? new XFont("Helvetica", NoteFontSize);
-            var signerNameFont = ResolveNoteFont(SignerNameFontSize) ?? new XFont("Helvetica", SignerNameFontSize);
+            var font = ResolveNoteFont(NoteFontSize) ?? new XFont(PrimaryPdfFontFamily, NoteFontSize);
+            var signerNameFont = ResolveNoteFont(SignerNameFontSize) ?? new XFont(PrimaryPdfFontFamily, SignerNameFontSize);
 
             // pdf.js returns PDF coordinates in a bottom-left origin system.
             // PdfSharp draws using a top-left origin, so Y must be inverted.

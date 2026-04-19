@@ -1167,6 +1167,7 @@
     "CHO_PHE_DUYET": "Pending Approval",
     "DA_PHE_DUYET": "Approved",
     "TU_CHOI": "Rejected",
+    "MOI": "New",
     "Initiator": "Initiator",
     "Processor": "Processor",
     "WorkflowOverdue": "Processing Overdue",

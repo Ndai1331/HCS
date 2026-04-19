@@ -51,6 +51,9 @@ public interface IWorkflowSigningExecutionService
 
 public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionService, ITransientDependency
 {
+    /// <summary>PDFsharp family name; resolves to LiberationSans-*.ttf via CustomFontResolver (e.g. LiberationSans-Regular.ttf on Linux).</summary>
+    private const string PdfPlaceholderTextFontFamily = "Liberation Sans";
+
     private readonly IDocumentAssignmentRepository _documentAssignmentRepository;
     private readonly IRepository<DocumentFile, Guid> _documentFileRepository;
     private readonly IUserSignatureRepository _userSignatureRepository;
@@ -903,32 +906,32 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                         break;
 
                     case "PREPARED_FULLNAME":
-                        var preparedNameFont = new PdfSharpDrawing.XFont("Helvetica", pos.FontSize);
+                        var preparedNameFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, pos.FontSize);
                         gfx.DrawString(fullName, preparedNameFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "HTML_CONTENT":
-                        var preparedContentFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8));
+                        var preparedContentFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize - 1, 8));
                         var plainText = StripHtmlTags(htmlContent ?? string.Empty);
                         gfx.DrawString(plainText, preparedContentFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "CURRENT_DAY":
-                        var dayFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                        var dayFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
                         gfx.DrawString(currentDate.ToString("dd"), dayFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "CURRENT_MONTH":
-                        var monthFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                        var monthFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
                         gfx.DrawString(currentDate.ToString("MM"), monthFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "CURRENT_YEAR":
-                        var yearFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                        var yearFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
                         gfx.DrawString(currentDate.ToString("yyyy"), yearFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
@@ -1012,7 +1015,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
                 case "FULLNAME":
                 case "PREPARED_FULLNAME":
-                    var nameFont = new PdfSharpDrawing.XFont("Helvetica", pos.FontSize);
+                    var nameFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, pos.FontSize);
                     gfx.DrawString(fullName, nameFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
@@ -1020,31 +1023,31 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 case "NOTE":
                     // Match ContentToBeApproved: strip HTML, preserve line breaks (same as trình ký)
                     var notePlainText = HtmlToPlainWithLineBreaks(noteContent ?? string.Empty);
-                    var noteFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8));
+                    var noteFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize - 1, 8));
                     gfx.DrawString(notePlainText, noteFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.TopLeft);
                     break;
 
                 case "HTML_CONTENT":
-                    var htmlContentFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize - 1, 8));
+                    var htmlContentFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize - 1, 8));
                     gfx.DrawString(noteContent, htmlContentFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "CURRENT_DAY":
-                    var dayFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                    var dayFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
                     gfx.DrawString(currentDate?.ToString("dd") ?? string.Empty, dayFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "CURRENT_MONTH":
-                    var monthFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                    var monthFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
                     gfx.DrawString(currentDate?.ToString("MM") ?? string.Empty, monthFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "CURRENT_YEAR":
-                    var yearFont = new PdfSharpDrawing.XFont("Helvetica", Math.Max(pos.FontSize, 8));
+                    var yearFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
                     gfx.DrawString(currentDate?.ToString("yyyy") ?? string.Empty, yearFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;

@@ -266,9 +266,18 @@
                                     <div>
                                         <span>@context.CurrentStepName</span>
                                         <br />
-                                        <small class="text-muted">
-                                            @L["Step"] @context.CurrentStepOrder / @context.TotalSteps
-                                        </small>
+                                        @if (context.ParallelSignStepsCompleted.HasValue && context.ParallelSignStepsTotal.HasValue)
+                                        {
+                                            <small class="text-muted">
+                                                @L["Signed"]: @context.ParallelSignStepsCompleted / @context.ParallelSignStepsTotal
+                                            </small>
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">
+                                                @L["Step"] @context.CurrentStepOrder / @context.TotalSteps
+                                            </small>
+                                        }
                                     </div>
                                 }
                             </DisplayTemplate>
