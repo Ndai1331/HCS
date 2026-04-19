@@ -244,12 +244,12 @@
                                     <tr class="@(notification.NotificationReceiver.IsRead ? "" : "notification-unread")">
                                         <td>
                                             <div>
-                                                <h6 class="mb-0">@GetLocalizedTitle(notification.Notification)</h6>
+                                                <h6 class="mb-0">@notification.Notification.Title</h6>
                                                 <small class="text-muted">@notification.NotificationReceiver.CreationTime.ToString("dd/MM/yyyy")</small>
                                                 @if (!string.IsNullOrEmpty(notification.Notification.Content))
                                                 {
                                                     <br />
-                                                    <small class="text-black">@GetLocalizedContent(notification.Notification).Substring(0, Math.Min(70, @GetLocalizedContent(notification.Notification).Length))...</small>
+                                                    <small class="text-black">@notification.Notification.Content.Substring(0, Math.Min(70, notification.Notification.Content.Length))...</small>
                                                 }
                                             </div>
                                         </td>
@@ -884,11 +884,11 @@
             @if (SelectedNotification != null)
             {
                 <div>
-                    <h5>@GetLocalizedTitle(SelectedNotification.Notification)</h5>
+                    <h5>@SelectedNotification.Notification.Title</h5>
                     <p class="text-muted mb-3">
                         <small>@SelectedNotification.NotificationReceiver.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
                     </p>
-                    <p>@GetLocalizedContent(SelectedNotification.Notification)</p>
+                    <p>@SelectedNotification.Notification.Content</p>
                 </div>
             }
         </ModalBody>

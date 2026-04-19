@@ -3,9 +3,9 @@
 @using HC.NotificationReceivers
 @using HC.Notifications
 @using Blazorise
-@using System.Linq
 @using Microsoft.AspNetCore.Components
 @using HC.Chat.Conversations
+@using System.Globalization
 
 <style>
     .notification-tabs .nav-pills{
@@ -104,13 +104,13 @@
                             </div>
                             <div class="flex-grow-1">
                                 <div class="d-flex justify-content-between align-items-start mb-1">
-                                    <h6 class="mb-0 small @(isUnread ? "fw-bold" : "")">@GetLocalizedTitle(notification)</h6>
+                                    <h6 class="mb-0 small @(isUnread ? "fw-bold" : "")">@notification.Title</h6>
                                     @if (isUnread)
                                     {
                                         <span class="badge bg-primary rounded-pill" style="font-size: 0.6rem;"></span>
                                     }
                                 </div>
-                                <p class="mb-1 small text-muted">@GetLocalizedContent(notification)</p>
+                                <p class="mb-1 small text-muted">@notification.Content</p>
                                 @* <div class="d-flex justify-content-between align-items-center">
                                     <small class="text-muted">@notification.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
                                     @if (!string.IsNullOrEmpty(notification.RelatedId))
@@ -150,7 +150,7 @@
 
 @code {
     private string _selectedTab = "DOCUMENT"; // Default to "DOCUMENT" (Văn bản) - maps to SourceType.DOCUMENT
-    private List<NotificationReceiverWithNavigationPropertiesDto> _notifications = new();
+    private List<NotificationReceiverWithLocalizedNotificationDto> _notifications = new();
     private int _unreadCount = 0;
     private int _totalChatUnreadCount = 0; // Total unread chat messages
     private bool _isLoading = false;
@@ -293,17 +293,15 @@
                 _notifications.Clear();
             }
 
-            var input = new GetNotificationReceiversInput
+            var input = new GetMyNotificationsInput
             {
-                IdentityUserId = CurrentUser.Id,
+                Culture = CultureInfo.CurrentUICulture.Name,
                 MaxResultCount = _pageSize,
                 SkipCount = _skipCount,
                 Sorting = "Notification.CreationTime DESC"
-                @* SourceType = sourceType ?? "" *@
             };
 
-            // Filter by SourceType if needed
-            var result = await NotificationReceiversAppService.GetListAsync(input);
+            var result = await NotificationReceiversAppService.GetMyListWithLocalizedMessagesAsync(input);
             
             // Filter by SourceType on client side
             @* var filteredItems = result.Items
@@ -413,57 +411,6 @@
             "CHAT" => "bg-danger",
             _ => "bg-primary"
         };
-    }
-    private string GetLocalizedTitle(NotificationDto notification)
-    {
-        if (string.IsNullOrEmpty(notification.Title))
-            return string.Empty;
-        try
-        {
-            var localized = L[notification.Title];
-            return localized?.Value ?? notification.Title;
-        }
-        catch
-        {
-            return notification.Title;
-        }
-    }
-    private string GetLocalizedContent(NotificationDto notification)
-    {
-        if (string.IsNullOrEmpty(notification.Content))
-            return string.Empty;
-
-        var parts = notification.Content.Split('|');
-        if (parts.Length > 1)
-        {
-            var key = parts[0];
-            var parameters = parts.Skip(1).ToArray();
-            try
-            {
-                var localizedString = L[key]?.Value;
-                if (string.IsNullOrEmpty(localizedString))
-                {
-                    return notification.Content;
-                }
-                return string.Format(localizedString, parameters);
-            }
-            catch
-            {
-                return notification.Content;
-            }
-        }
-        else
-        {
-            try
-            {
-                var localized = L[notification.Content];
-                return localized?.Value ?? notification.Content;
-            }
-            catch
-            {
-                return notification.Content;
-            }
-        }
     }
     private string GetRelatedUrl(NotificationDto notification)
     {

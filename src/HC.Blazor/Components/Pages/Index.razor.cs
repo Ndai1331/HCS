@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using System;
+using System.Globalization;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -398,9 +399,9 @@ public partial class Index
     {
         try
         {
-            var input = new GetNotificationReceiversInput
+            var input = new GetMyNotificationsInput
             {
-                IdentityUserId = CurrentUser.Id,
+                Culture = CultureInfo.CurrentUICulture.Name,
                 MaxResultCount = 10,
                 SkipCount = 0,
                 Sorting = "NotificationReceiver.CreationTime DESC"
@@ -416,10 +417,9 @@ public partial class Index
                 input.CreationTimeMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
             }
 
-            // Get notifications for current user
-            var result = await NotificationReceiversAppService.GetListAsync(input);
+            var result = await NotificationReceiversAppService.GetMyListWithLocalizedMessagesAsync(input);
 
-            RecentNotificationsList = result.Items.ToList();
+            RecentNotificationsList = result.Items.Select(x => (NotificationReceiverWithNavigationPropertiesDto)x).ToList();
             LastNotificationTimeAgo = result.Items.Any() ? result.Items.Last().NotificationReceiver.CreationTime.Humanize() : string.Empty;
         }
         catch (Exception ex)
@@ -492,60 +492,6 @@ public partial class Index
             await HandleErrorAsync(ex);
         }
     }
-
-    private string GetLocalizedTitle(NotificationDto notification)
-    {
-        if (string.IsNullOrEmpty(notification.Title))
-            return string.Empty;
-        try
-        {
-            var localized = L[notification.Title];
-            return localized?.Value ?? notification.Title;
-        }
-        catch
-        {
-            return notification.Title;
-        }
-    }
-
-    private string GetLocalizedContent(NotificationDto notification)
-    {
-        if (string.IsNullOrEmpty(notification.Content))
-            return string.Empty;
-
-        var parts = notification.Content.Split('|');
-        if (parts.Length > 1)
-        {
-            var key = parts[0];
-            var parameters = parts.Skip(1).ToArray();
-            try
-            {
-                var localizedString = L[key]?.Value;
-                if (string.IsNullOrEmpty(localizedString))
-                {
-                    return notification.Content;
-                }
-                return string.Format(localizedString, parameters);
-            }
-            catch
-            {
-                return notification.Content;
-            }
-        }
-        else
-        {
-            try
-            {
-                var localized = L[notification.Content];
-                return localized?.Value ?? notification.Content;
-            }
-            catch
-            {
-                return notification.Content;
-            }
-        }
-    }
-
 
     // Helper method to calculate project progress based on status
     private int CalculateProjectProgress(ProjectStatus status)

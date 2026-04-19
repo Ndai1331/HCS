@@ -20,6 +20,7 @@ using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using Volo.Abp.Users;
+using Volo.Abp.Localization;
 
 namespace HC.NotificationReceivers;
 
@@ -128,6 +129,145 @@ public class NotificationReceiversAppService : NotificationReceiversAppServiceBa
             notificationReceiver.NotificationReceiver.IsRead = true;
             notificationReceiver.NotificationReceiver.ReadAt = DateTime.UtcNow;
             await _notificationReceiverRepository.UpdateAsync(notificationReceiver.NotificationReceiver);
+        }
+    }
+
+    public virtual async Task<PagedResultDto<NotificationReceiverWithLocalizedNotificationDto>> GetMyListWithLocalizedMessagesAsync(
+        GetMyNotificationsInput input)
+    {
+        var userId = CurrentUser.Id;
+        if (userId == null)
+        {
+            return new PagedResultDto<NotificationReceiverWithLocalizedNotificationDto> { TotalCount = 0, Items = new List<NotificationReceiverWithLocalizedNotificationDto>() };
+        }
+
+        async Task<PagedResultDto<NotificationReceiverWithLocalizedNotificationDto>> QueryAndMapAsync()
+        {
+            var listInput = new GetNotificationReceiversInput
+            {
+                FilterText = input.FilterText,
+                IsRead = input.IsRead,
+                SourceType = input.SourceType,
+                ReadAtMin = input.ReadAtMin,
+                ReadAtMax = input.ReadAtMax,
+                NotificationId = input.NotificationId,
+                IdentityUserId = userId,
+                CreationTimeMin = input.CreationTimeMin,
+                CreationTimeMax = input.CreationTimeMax,
+                Sorting = input.Sorting,
+                MaxResultCount = input.MaxResultCount,
+                SkipCount = input.SkipCount
+            };
+
+            var totalCount = await _notificationReceiverRepository.GetCountAsync(
+                listInput.FilterText,
+                listInput.IsRead,
+                listInput.ReadAtMin,
+                listInput.ReadAtMax,
+                listInput.NotificationId,
+                listInput.IdentityUserId,
+                listInput.SourceType,
+                listInput.CreationTimeMin,
+                listInput.CreationTimeMax);
+
+            var items = await _notificationReceiverRepository.GetListWithNavigationPropertiesAsync(
+                listInput.FilterText,
+                listInput.IsRead,
+                listInput.ReadAtMin,
+                listInput.ReadAtMax,
+                listInput.NotificationId,
+                listInput.IdentityUserId,
+                listInput.Sorting,
+                listInput.MaxResultCount,
+                listInput.SkipCount,
+                listInput.SourceType,
+                listInput.CreationTimeMin,
+                listInput.CreationTimeMax);
+
+            var dtos = new List<NotificationReceiverWithLocalizedNotificationDto>(items.Count);
+            foreach (var item in items)
+            {
+                var row = ObjectMapper.Map<NotificationReceiverWithNavigationProperties, NotificationReceiverWithNavigationPropertiesDto>(item);
+                row.Notification.Title = LocalizeNotificationTitle(row.Notification.Title);
+                row.Notification.Content = LocalizeNotificationContent(row.Notification.Content);
+                dtos.Add(new NotificationReceiverWithLocalizedNotificationDto
+                {
+                    NotificationReceiver = row.NotificationReceiver,
+                    Notification = row.Notification,
+                    IdentityUser = row.IdentityUser
+                });
+            }
+
+            return new PagedResultDto<NotificationReceiverWithLocalizedNotificationDto>
+            {
+                TotalCount = totalCount,
+                Items = dtos
+            };
+        }
+
+        if (!string.IsNullOrWhiteSpace(input.Culture) && CultureHelper.IsValidCultureCode(input.Culture))
+        {
+            using (CultureHelper.Use(input.Culture!, input.Culture!))
+            {
+                return await QueryAndMapAsync();
+            }
+        }
+
+        return await QueryAndMapAsync();
+    }
+
+    private string LocalizeNotificationTitle(string? title)
+    {
+        if (string.IsNullOrEmpty(title))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return L[title]?.Value ?? title;
+        }
+        catch
+        {
+            return title;
+        }
+    }
+
+    private string LocalizeNotificationContent(string? content)
+    {
+        if (string.IsNullOrEmpty(content))
+        {
+            return string.Empty;
+        }
+
+        var parts = content.Split('|');
+        if (parts.Length > 1)
+        {
+            var key = parts[0];
+            var parameters = parts.Skip(1).ToArray();
+            try
+            {
+                var localizedString = L[key]?.Value;
+                if (string.IsNullOrEmpty(localizedString))
+                {
+                    return content;
+                }
+
+                return string.Format(localizedString, parameters);
+            }
+            catch
+            {
+                return content;
+            }
+        }
+
+        try
+        {
+            return L[content]?.Value ?? content;
+        }
+        catch
+        {
+            return content;
         }
     }
 }

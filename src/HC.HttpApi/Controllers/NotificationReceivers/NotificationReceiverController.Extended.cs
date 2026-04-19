@@ -18,4 +18,15 @@ public class NotificationReceiverController : NotificationReceiverControllerBase
     public NotificationReceiverController(INotificationReceiversAppService notificationReceiversAppService) : base(notificationReceiversAppService)
     {
     }
+
+    /// <summary>
+    /// Current user's notifications with Title/Content already localized (optional culture query).
+    /// </summary>
+    [HttpGet]
+    [Route("my-localized")]
+    public virtual Task<PagedResultDto<NotificationReceiverWithLocalizedNotificationDto>> GetMyListWithLocalizedMessagesAsync(
+        [FromQuery] GetMyNotificationsInput input)
+    {
+        return _notificationReceiversAppService.GetMyListWithLocalizedMessagesAsync(input);
+    }
 }
