@@ -156,3 +156,7 @@ docker cp /www/server/panel/data/compose/hcs/fonts hc-api:/app/fonts
 sudo apt-get update
 sudo apt-get install -y fontconfig fonts-dejavu-core fonts-liberation
 fc-cache -f -v
+
+
+docker compose down
+docker compose up -d --build

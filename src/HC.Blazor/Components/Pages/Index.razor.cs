@@ -1078,10 +1078,19 @@ public partial class Index
 
     private string GetRelatedUrl(NotificationDto notification)
     {
-        if (string.IsNullOrEmpty(notification.RelatedId) || string.IsNullOrEmpty(notification.RelatedType))
+        if (string.IsNullOrEmpty(notification.RelatedId))
             return "#";
 
-        var url = notification.RelatedType.ToUpper() switch
+        var related = notification.RelatedType?.ToUpperInvariant() ?? string.Empty;
+        if (related == "APPROVAL_DOCUMENT")
+        {
+            return $"/manage-documents?sourceType={(int)DocumentSourceType.SentToMe}&relatedId={Uri.EscapeDataString(notification.RelatedId)}";
+        }
+
+        if (string.IsNullOrEmpty(notification.RelatedType))
+            return "#";
+
+        var url = related switch
         {
             "TASK" => $"/project-task-detail/{notification.RelatedId}",
             "PROJECT" => $"/project-detail/{notification.RelatedId}",

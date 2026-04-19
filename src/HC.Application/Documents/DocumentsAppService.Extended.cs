@@ -466,6 +466,8 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         var viewAction = DocumentAssignmentActionType.VIEW.ToString();
         var processAction = DocumentAssignmentActionType.PROCESS.ToString();
 
+        // SentToMe inbox: VIEW assignments (non-revoked) + PROCESS (approval) assignments in any terminal state except REVOKE,
+        // so leaders still see documents after approval/rejection (read-only in UI when not PENDING).
         var fromAssignmentsQuery = assignmentQ
             .Where(a => a.ReceiverUserId == userId
                         && a.WorkflowStepTemplateId == null
@@ -473,7 +475,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                         && ((a.ActionType == viewAction
                              && a.Status != nameof(DocumentAssignmentStatus.REVOKE))
                             || (a.ActionType == processAction
-                                && a.Status == nameof(DocumentAssignmentStatus.PENDING))))
+                                && a.Status != nameof(DocumentAssignmentStatus.REVOKE))))
             .Join(docQ.Where(d => d.SourceType != DocumentSourceType.Workflow),
                 a => a.DocumentId,
                 d => d.Id,
@@ -967,7 +969,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             $"DocumentApprovalRequestedMessage|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? "System"}",
             SourceType.DOCUMENT.ToString(),
             EventType.DOCUMENT_SENT.ToString(),
-            RelatedType.DOCUMENT.ToString(),
+            RelatedType.APPROVAL_DOCUMENT.ToString(),
             "NORMAL",
             document.Id.ToString());
         notification.TenantId = CurrentTenant.Id;

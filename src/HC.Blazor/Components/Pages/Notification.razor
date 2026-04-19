@@ -2,6 +2,7 @@
 @implements IDisposable
 @using HC.NotificationReceivers
 @using HC.Notifications
+@using HC.Documents
 @using Blazorise
 @using Microsoft.AspNetCore.Components
 @using HC.Chat.Conversations
@@ -366,7 +367,7 @@
         if (string.IsNullOrEmpty(notification.RelatedId))
             return;
 
-        var url = GetRelatedUrl(notification);
+        var url = GetNotificationDetailUrl(notification);
         if (url != "#")
         {
             NavigationManager.NavigateTo(url);
@@ -391,6 +392,7 @@
         return sourceType switch
         {   
             "DOCUMENT" => IconName.File,
+            "APPROVAL_DOCUMENT" => IconName.Check,
             "WORKFLOW" => IconName.ChartLine,
             "PROJECT" => IconName.Folder,
             "TASK" => IconName.CheckSquare,
@@ -404,6 +406,7 @@
         return sourceType switch
         {   
             "DOCUMENT" => "bg-primary",
+            "APPROVAL_DOCUMENT" => "bg-info",
             "WORKFLOW" => "bg-secondary",
             "PROJECT" => "bg-success",
             "TASK" => "bg-info",
@@ -412,12 +415,29 @@
             _ => "bg-primary"
         };
     }
-    private string GetRelatedUrl(NotificationDto notification)
-    {
-        if (string.IsNullOrEmpty(notification.RelatedId) || string.IsNullOrEmpty(notification.RelatedType))
-            return "#";
 
-        var url = notification.RelatedType.ToUpper() switch
+    /// <summary>
+    /// Absolute in-app URL for notification deep link (Blazor navigation).
+    /// </summary>
+    private string GetNotificationDetailUrl(NotificationDto notification)
+    {
+        if (string.IsNullOrEmpty(notification.RelatedId))
+        {
+            return "#";
+        }
+
+        var related = notification.RelatedType?.ToUpperInvariant() ?? string.Empty;
+        if (related == "APPROVAL_DOCUMENT")
+        {
+            return $"/manage-documents?sourceType={(int)DocumentSourceType.SentToMe}&relatedId={Uri.EscapeDataString(notification.RelatedId)}";
+        }
+
+        if (string.IsNullOrEmpty(notification.RelatedType))
+        {
+            return "#";
+        }
+
+        var url = related switch
         {
             "WORKFLOW" => $"/document-signing/{notification.RelatedId}",
             "TASK" => $"/project-task-detail/{notification.RelatedId}",

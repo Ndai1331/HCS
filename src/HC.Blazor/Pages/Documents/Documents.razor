@@ -972,8 +972,8 @@
         </ModalBody>
         <ModalFooter>
             <Button Color="Color.Secondary" Clicked="CloseApprovalReviewModalAsync">@L["Cancel"]</Button>
-            <Button Color="Color.Warning" Clicked="RejectSelectedDocumentAsync" Disabled="@(!CanRejectApproval)">@L["Reject"]</Button>
-            <Button Color="Color.Success" Clicked="ApproveSelectedDocumentAsync" Disabled="@(!CanApproveWithNote)">@L["Approve"]</Button>
+            <Button Color="Color.Warning" Clicked="RejectSelectedDocumentAsync" Disabled="@(!CanRejectApproval || !ApprovalReviewDocument.HasPendingApprovalTask)">@L["Reject"]</Button>
+            <Button Color="Color.Success" Clicked="ApproveSelectedDocumentAsync" Disabled="@(!CanApproveWithNote || !ApprovalReviewDocument.HasPendingApprovalTask)">@L["Approve"]</Button>
         </ModalFooter>
     </ModalContent>
 </Modal>

@@ -129,6 +129,8 @@ public partial class Documents : IDisposable
     /// </summary>
     private bool _documentListHydrated;
 
+    private bool _processingApprovalReviewDeepLink;
+
     public Documents()
     {
         DepartmentList = new List<DepartmentDto>();
@@ -242,11 +244,14 @@ public partial class Documents : IDisposable
                 // Force UI refresh
                 await InvokeAsync(StateHasChanged);
                 Logger.LogInformation("LocationChanged: UI updated successfully");
+                await TryProcessApprovalReviewDeepLinkAsync();
             }
             else
             {
                 previousAbsoluteUrl = currentUrl;
                 Logger.LogInformation("LocationChanged: sourceType unchanged, no update needed");
+                await TryProcessApprovalReviewDeepLinkAsync();
+                await InvokeAsync(StateHasChanged);
             }
         }
         catch (Exception ex)
@@ -316,6 +321,7 @@ public partial class Documents : IDisposable
                     // URL changed but sourceType didn't, just update previous URL
                     previousAbsoluteUrl = currentUrl;
                     Logger.LogInformation("URL changed but sourceType is the same, no update needed");
+                    await TryProcessApprovalReviewDeepLinkAsync();
                 }
             }
         }
@@ -514,6 +520,7 @@ public partial class Documents : IDisposable
             _documentListHydrated = true;
         }
 
+        await TryProcessApprovalReviewDeepLinkAsync();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -1169,6 +1176,69 @@ public partial class Documents : IDisposable
     #endregion Send Document
 
     #region Approval Review
+
+    /// <summary>
+    /// Opens approval review modal when URL is <c>/manage-documents?sourceType=2&amp;relatedId=...</c> (e.g. from notification).
+    /// </summary>
+    private async Task TryProcessApprovalReviewDeepLinkAsync()
+    {
+        if (_processingApprovalReviewDeepLink || SelectedSourceType != DocumentSourceType.SentToMe)
+        {
+            return;
+        }
+
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (!query.TryGetValue("relatedId", out var relatedIdValue))
+        {
+            return;
+        }
+
+        if (!Guid.TryParse(relatedIdValue.ToString(), out var documentId))
+        {
+            return;
+        }
+
+        _processingApprovalReviewDeepLink = true;
+        try
+        {
+            var dto = await DocumentsAppService.GetWithNavigationPropertiesAsync(documentId);
+            await OpenApprovalReviewModalAsync(dto);
+            ReplaceUrlRemoveQueryKey("relatedId");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Approval review deep link failed for document {DocumentId}", documentId);
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            _processingApprovalReviewDeepLink = false;
+        }
+    }
+
+    private void ReplaceUrlRemoveQueryKey(string keyToRemove)
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var path = uri.GetLeftPart(UriPartial.Path);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        var pairs = new List<KeyValuePair<string, string?>>();
+        foreach (var kv in query)
+        {
+            if (string.Equals(kv.Key, keyToRemove, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foreach (var value in kv.Value)
+            {
+                pairs.Add(new KeyValuePair<string, string?>(kv.Key, value));
+            }
+        }
+
+        var newUrl = pairs.Count == 0 ? path : Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(path, pairs);
+        NavigationManager.NavigateTo(newUrl, replace: true);
+    }
 
     /// <summary>
     /// Opens the read-only PDF viewer. For SentToMe (sourceType=2), approval is a separate grid column.

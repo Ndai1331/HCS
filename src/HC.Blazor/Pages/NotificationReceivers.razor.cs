@@ -13,6 +13,7 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.NotificationReceivers;
 using HC.Notifications;
+using HC.Documents;
 using HC.Permissions;
 using HC.Shared;
 using Microsoft.AspNetCore.Components.Forms;
@@ -460,10 +461,19 @@ public partial class NotificationReceivers
 
     private string GetRelatedUrl(NotificationDto notification)
     {
-        if (string.IsNullOrEmpty(notification.RelatedId) || string.IsNullOrEmpty(notification.RelatedType))
+        if (string.IsNullOrEmpty(notification.RelatedId))
             return "#";
 
-        var url = notification.RelatedType.ToUpper() switch
+        var related = notification.RelatedType?.ToUpperInvariant() ?? string.Empty;
+        if (related == "APPROVAL_DOCUMENT")
+        {
+            return $"/manage-documents?sourceType={(int)DocumentSourceType.SentToMe}&relatedId={Uri.EscapeDataString(notification.RelatedId)}";
+        }
+
+        if (string.IsNullOrEmpty(notification.RelatedType))
+            return "#";
+
+        var url = related switch
         {
             "TASK" => $"/project-task-detail/{notification.RelatedId}",
             "PROJECT" => $"/project-detail/{notification.RelatedId}",

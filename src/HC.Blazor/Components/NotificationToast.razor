@@ -1,6 +1,7 @@
 @inherits HCComponentBase
 @implements IAsyncDisposable
 @using HC.Notifications
+@using HC.Documents
 @using HC.Blazor.Extensions
 @using Microsoft.AspNetCore.Components
 @using Microsoft.Extensions.Logging
@@ -529,10 +530,19 @@
 
     private string GetRelatedUrl(NotificationDto notification)
     {
-        if (string.IsNullOrEmpty(notification.RelatedId) || string.IsNullOrEmpty(notification.RelatedType))
+        if (string.IsNullOrEmpty(notification.RelatedId))
             return "#";
 
-        return notification.RelatedType.ToUpper() switch
+        var related = notification.RelatedType?.ToUpperInvariant() ?? string.Empty;
+        if (related == "APPROVAL_DOCUMENT")
+        {
+            return $"/manage-documents?sourceType={(int)DocumentSourceType.SentToMe}&relatedId={Uri.EscapeDataString(notification.RelatedId)}";
+        }
+
+        if (string.IsNullOrEmpty(notification.RelatedType))
+            return "#";
+
+        return related switch
         {
             "TASK" => $"/project-task-detail/{notification.RelatedId}",
             "PROJECT" => $"/project-detail/{notification.RelatedId}",
