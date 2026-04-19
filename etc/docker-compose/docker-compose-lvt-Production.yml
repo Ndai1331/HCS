@@ -91,6 +91,11 @@ services:
       # Fonts for PDF watermarking (container/distroless safe)
       - HC_FONT_DIRS=/app/fonts
 
+      # LibreOffice (Word → PDF on submit / SUBMIT_PREPARE); image must be built from Dockerfile.local + hc-api-base
+      - LibreOffice__SofficePath=soffice
+      - LibreOffice__UnoconvPath=unoconv
+      - LibreOffice__UnoPort=2002
+
     ports:
       - "44379:8081"
       - "8083:8080"

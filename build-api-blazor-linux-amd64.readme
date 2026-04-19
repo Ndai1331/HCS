@@ -1,6 +1,12 @@
 
 cd /Users/nguyenlong/Documents/Projects/HCS && chmod +x build-api-blazor-linux-amd64.ps1
+
+# Blazor + API (API dùng hc-api-base có LibreOffice). Lần đầu hoặc đổi base: thêm -BuildBase
+cd /Users/nguyenlong/Documents/Projects/HCS && pwsh -File build-api-blazor-linux-amd64.ps1 -version latest01042026 -BuildBase -BaseTag libreoffice-v1 -ClearDockerCache
+
+# Các lần sau (base đã có trên registry), chỉ cần:
 cd /Users/nguyenlong/Documents/Projects/HCS && pwsh -File build-api-blazor-linux-amd64.ps1 -version latest01042026 -ClearDockerCache
+
 cd /Users/nguyenlong/Documents/Projects/HCS && chmod +x build-api-blazor-linux-amd64.ps1
 cd /Users/nguyenlong/Documents/Projects/HCS && pwsh -File build-api-blazor-linux-amd64.ps1 -version latestlvt -ClearDockerCache
 
@@ -19,4 +25,5 @@ docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t lon
 Luu y:
 - Script se xoa thu muc publish cu truoc khi `dotnet publish`.
 - Blazor image duoc build truc tiep tu thu muc `src/HC.Blazor/bin/Release/net10.0/publish` (khong build tu context project root nua).
+- API image build tu `src/HC.HttpApi.Host` voi `Dockerfile.local` (FROM hc-api-base:libreoffice-v1).
 - Nen dung tag version moi moi lan build (vi du: `latest-20260305-1`) thay vi chi dung `latest`.

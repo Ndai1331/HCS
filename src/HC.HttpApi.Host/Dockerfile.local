@@ -1,10 +1,9 @@
-  FROM mcr.microsoft.com/dotnet/sdk:10.0
-  RUN echo "BUILD AT: $(date)"
+FROM longnguyen1331/hc-api-base:libreoffice-v1
 
-  USER $APP_UID
-  EXPOSE 8080
-  EXPOSE 8081
+USER $APP_UID
+EXPOSE 8080
+EXPOSE 8081
 
-  COPY bin/Release/net10.0/publish/ app/
-  WORKDIR /app
-  ENTRYPOINT ["dotnet", "HC.HttpApi.Host.dll"]
+COPY bin/Release/net10.0/publish/ app/
+WORKDIR /app
+ENTRYPOINT ["dotnet", "HC.HttpApi.Host.dll"]

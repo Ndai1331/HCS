@@ -8,7 +8,9 @@ param (
 $currentFolder = $PSScriptRoot
 $slnFolder = $currentFolder
 $blazorBaseImage = "longnguyen1331/hc-blazor-base:$BaseTag"
+$apiBaseImage = "longnguyen1331/hc-api-base:$BaseTag"
 $blazorAppImage = "longnguyen1331/hc-blazor"
+$apiAppImage = "longnguyen1331/hc-api"
 
 if ($ClearDockerCache) {
     Write-Host "Clearing safe Docker cache (preserve buildx cache for base images)..." -ForegroundColor Yellow
@@ -127,6 +129,21 @@ if ($BuildBase) {
         exit 1
     }
     Write-Host "Blazor base image built and pushed successfully ($blazorBaseImage)" -ForegroundColor Green
+
+    $apiBaseFolder = Join-Path $slnFolder "src/HC.HttpApi.Host"
+    Set-Location $apiBaseFolder
+    Write-Host "Building API base image ($apiBaseImage)..." -ForegroundColor Yellow
+    try {
+        docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.base -t $apiBaseImage . --push
+        if (-not $?) {
+            throw "docker api base build failed"
+        }
+    } catch {
+        Write-Host "ERROR: Docker base image build failed for HttpApi.Host" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "API base image built and pushed successfully ($apiBaseImage)" -ForegroundColor Green
+    Set-Location $blazorFolder
 }
 
 Write-Host "Publishing Blazor..." -ForegroundColor Yellow
@@ -190,7 +207,57 @@ ENTRYPOINT ["dotnet", "HC.Blazor.dll"]
 }
 Write-Host "Docker image built and pushed successfully for Blazor (tags: $version, latest)" -ForegroundColor Green
 
-Write-Host "********* BUILD COMPLETED *********" -ForegroundColor Green
+Write-Host "********* BUILDING API (HC.HttpApi.Host, LibreOffice base) *********" -ForegroundColor Green
+$apiFolder = Join-Path $slnFolder "src/HC.HttpApi.Host"
+Set-Location $apiFolder
+
+Write-Host "Publishing API..." -ForegroundColor Yellow
+try {
+    $apiPublishDir = Join-Path $apiFolder "bin/Release/net10.0/publish"
+    if (Test-Path $apiPublishDir) {
+        Remove-Item $apiPublishDir -Recurse -Force
+    }
+    $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
+    if (-not $?) {
+        throw "dotnet publish failed"
+    }
+} catch {
+    Write-Host "ERROR: dotnet publish failed for API" -ForegroundColor Red
+    Write-Host $result -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+
+Start-Sleep -Seconds 1
+$apiPublishPathFull = [System.IO.Path]::GetFullPath((Join-Path $apiFolder "bin/Release/net10.0/publish"))
+if (-not (Test-Path $apiPublishPathFull)) {
+    Write-Host "ERROR: API publish folder not found: $apiPublishPathFull" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+
+$apiDll = Join-Path $apiPublishPathFull "HC.HttpApi.Host.dll"
+if (-not (Test-Path $apiDll)) {
+    Write-Host "ERROR: API publish output is invalid. Missing file: $apiDll" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+
+Write-Host "Publish successful. Output: $apiPublishPathFull" -ForegroundColor Green
+Write-Host "Building Docker image for API (linux/amd64, Dockerfile.local)..." -ForegroundColor Yellow
+try {
+    docker buildx build --pull --no-cache --platform linux/amd64 -f Dockerfile.local -t "${apiAppImage}:$version" -t "${apiAppImage}:latest" . --push
+    if (-not $?) {
+        throw "docker build failed"
+    }
+} catch {
+    Write-Host "ERROR: Docker build failed for API" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+Write-Host "Docker image built and pushed successfully for API (tags: $version, latest)" -ForegroundColor Green
+
+Write-Host "********* BUILD COMPLETED (Blazor + API with LibreOffice) *********" -ForegroundColor Green
 Set-Location $currentFolder
 exit 0
 

@@ -1133,6 +1133,10 @@ namespace HC.Migrations
                     b.Property<Guid>("CurrentStepId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CommittedStepTemplateIdsJson")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
+
                     b.Property<Guid?>("DeleterId")
                         .HasColumnType("uuid")
                         .HasColumnName("DeleterId");

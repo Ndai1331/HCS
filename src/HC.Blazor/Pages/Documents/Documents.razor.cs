@@ -1162,14 +1162,11 @@ public partial class Documents : IDisposable
 
     #region Approval Review
 
+    /// <summary>
+    /// Opens the read-only PDF viewer. For SentToMe (sourceType=2), approval is a separate grid column.
+    /// </summary>
     private async Task HandleViewDocumentAsync(DocumentWithNavigationPropertiesDto context)
     {
-        if (SelectedSourceType == DocumentSourceType.SentToMe && context.HasPendingApprovalTask)
-        {
-            await OpenApprovalReviewModalAsync(context);
-            return;
-        }
-
         await OpenDocumentPdfViewerModalAsync(context);
     }
 

@@ -78,7 +78,7 @@ public partial class Index
     // Documents data - combined personal docs + assigned docs for current user
     private List<RecentDocumentItem> RecentDocumentsList { get; set; } = new();
     private int WorkflowSignedCount { get; set; }
-    private int WorkflowSentCount { get; set; }
+    private int WorkflowUnsignedCount { get; set; }
     private int WorkflowReturnedOrRejectedCount { get; set; }
     private int WorkflowTotalCount { get; set; }
 
@@ -438,14 +438,14 @@ public partial class Index
             );
 
             WorkflowSignedCount = workflowStats.SignedCount;
+            WorkflowUnsignedCount = workflowStats.UnsignedCount;
             WorkflowReturnedOrRejectedCount = workflowStats.ReturnedOrRejectedCount;
-            WorkflowSentCount = workflowStats.SentCount;
             WorkflowTotalCount = workflowStats.TotalCount;
         }
         catch (Exception ex)
         {
             WorkflowSignedCount = 0;
-            WorkflowSentCount = 0;
+            WorkflowUnsignedCount = 0;
             WorkflowReturnedOrRejectedCount = 0;
             WorkflowTotalCount = 0;
             await HandleErrorAsync(ex);

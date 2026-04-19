@@ -829,6 +829,7 @@
     "ArchiveDocuments": "Tài liệu lưu trữ",
     "PersonalDocuments": "Tài liệu của tôi",
     "DocumentsSentToMe": "Tài liệu gửi tới tôi",
+    "DocumentsColumnApprove": "Phê duyệt",
     "DeleteRevokeOnlyInArchiveView": "Chỉ được xóa hoặc thu hồi tài liệu ở menu Văn thư lưu trữ (sourceType = 0).",
     "CreateGroupChat": "Tạo nhóm chat",
     "CreateProjectChat": "Tạo chat dự án",
@@ -1111,7 +1112,8 @@
     "Workflow:Signed": "Đã ký",
     "Workflow:Submitted": "Đang xử lý",
     "Workflow:Sent": "Đã gửi",
-    "Workflow:ReturnedOrRejected": "Từ chối/Trả về",
+    "Workflow:Unsigned": "Chưa ký",
+    "Workflow:ReturnedOrRejected": "Từ chối / Đã hủy",
     "Workflow:Cancelled": "Đã hủy",
 
     "Menu:DocumentSigning": "Ký duyệt",

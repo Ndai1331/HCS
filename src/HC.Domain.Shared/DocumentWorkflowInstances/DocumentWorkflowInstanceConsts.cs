@@ -10,4 +10,7 @@ public static class DocumentWorkflowInstanceConsts
     }
 
     public const int StatusMaxLength = 20;
+
+    /// <summary>JSON array of step template Ids (submission order) — frozen at submit/resubmit so template edits do not affect in-flight instances.</summary>
+    public const int CommittedStepTemplateIdsJsonMaxLength = 8000;
 }

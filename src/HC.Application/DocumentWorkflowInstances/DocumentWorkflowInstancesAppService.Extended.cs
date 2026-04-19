@@ -11,6 +11,7 @@ using HC.UserSignatures;
 using HC.SignatureSettings;
 using System;
 using System.IO;
+using System.Text.Json;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -458,6 +459,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             finishedAt
         );
 
+        instance.CommittedStepTemplateIdsJson = SerializeCommittedStepTemplateIds(
+            allStepsOrdered.Select(s => s.StepId).ToList());
+        await _documentWorkflowInstanceRepository.UpdateAsync(instance);
+
         // 2. Resolve the initial signing file (used as source for all assignments)
         Guid? signingFileId = templateDocumentFileId;
         if (signingFileId == null)
@@ -887,9 +892,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         else
         {
             // ===== SEQUENTIAL: Check if there's a next step =====
-            var allSteps = await _workflowStepTemplateRepository.GetListAsync(
-                x => x.WorkflowTemplateId == instance.WorkflowTemplateId && x.IsActive);
-            allSteps = allSteps.OrderBy(s => s.Order).ToList();
+            var allSteps = await LoadCommittedWorkflowStepsOrderedAsync(instance);
 
             var currentIndex = allSteps.FindIndex(s => s.Id == currentStep.Id);
             var isLastStep = currentIndex >= allSteps.Count - 1;
@@ -1161,9 +1164,12 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
 
         // Reset CurrentStepId to the first step so re-submit starts from step 1
-        var allSteps = await _workflowStepTemplateRepository.GetListAsync(
-            x => x.WorkflowTemplateId == instance.WorkflowTemplateId && x.IsActive);
-        var firstStep = allSteps.OrderBy(s => s.Order).First();
+        var allSteps = await LoadCommittedWorkflowStepsOrderedAsync(instance);
+        if (!allSteps.Any())
+        {
+            throw new UserFriendlyException(L["NoWorkflowStepsFound"]);
+        }
+        var firstStep = allSteps[0];
 
         instance.Status = nameof(DocumentWorkflowInstanceStatus.RETURNED);
         instance.CurrentStepId = firstStep.Id; // Reset to first step
@@ -1349,6 +1355,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         // 8. ISSUE-2 FIX: REUSE the same workflow instance instead of creating a new one.
         // This preserves all workflow logs history from previous submissions.
         returnedInstance.Status = nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS);
+        returnedInstance.WorkflowTemplateId = submitInfo.WorkflowTemplateId;
+        returnedInstance.CommittedStepTemplateIdsJson = SerializeCommittedStepTemplateIds(
+            allStepsOrdered.Select(s => s.StepId).ToList());
         returnedInstance.CurrentStepId = firstStep.StepId;
         returnedInstance.StartedAt = nowTime;
         returnedInstance.FinishedAt = finishedAt;
@@ -1602,10 +1611,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     {
         var instance = await _documentWorkflowInstanceRepository.GetAsync(workflowInstanceId);
 
-        // Get all steps for the workflow template
-        var allSteps = await _workflowStepTemplateRepository.GetListAsync(
-            x => x.WorkflowTemplateId == instance.WorkflowTemplateId && x.IsActive);
-        allSteps = allSteps.OrderBy(s => s.Order).ToList();
+        // Steps frozen at submit/resubmit — not the live template (may have extra steps later).
+        var allSteps = await LoadCommittedWorkflowStepsOrderedAsync(instance);
 
         // Get all step assignments (for step user info)
         var stepIds = allSteps.Select(s => s.Id).ToList();
@@ -1705,8 +1712,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             return null;
 
         var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
-        var allSteps = await _workflowStepTemplateRepository.GetListAsync(
-            x => x.WorkflowTemplateId == instance.WorkflowTemplateId && x.IsActive);
+        var allSteps = await LoadCommittedWorkflowStepsOrderedAsync(instance);
         var workflow = await _workflowRepository.GetAsync(instance.WorkflowId);
 
         // Check if current user has an assignment
@@ -1966,8 +1972,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                     currentStepOrder = step.Order;
                 }
 
-                totalStepsDict.TryGetValue(docInstance.WorkflowTemplateId, out var stepsCount);
-                totalSteps = stepsCount > 0 ? stepsCount : null;
+                totalSteps = GetTotalStepsForDisplay(docInstance, totalStepsDict);
             }
 
             items.Add(new DocumentSigningItemDto
@@ -2508,6 +2513,81 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     #endregion
 
     #region Helper Methods
+
+    private static string? SerializeCommittedStepTemplateIds(IReadOnlyList<Guid> orderedStepIds)
+    {
+        if (orderedStepIds == null || orderedStepIds.Count == 0)
+        {
+            return null;
+        }
+
+        return JsonSerializer.Serialize(orderedStepIds);
+    }
+
+    private static List<Guid>? TryDeserializeCommittedStepTemplateIds(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<Guid>>(json);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Ordered step templates for this instance: JSON snapshot first, else legacy active steps on template.
+    /// </summary>
+    private async Task<List<WorkflowStepTemplate>> LoadCommittedWorkflowStepsOrderedAsync(DocumentWorkflowInstance instance)
+    {
+        var orderedIds = TryDeserializeCommittedStepTemplateIds(instance.CommittedStepTemplateIdsJson);
+        if (orderedIds is { Count: > 0 })
+        {
+            var steps = await _workflowStepTemplateRepository.GetListAsync(x => orderedIds.Contains(x.Id));
+            var map = steps.ToDictionary(s => s.Id);
+            var ordered = new List<WorkflowStepTemplate>();
+            foreach (var id in orderedIds)
+            {
+                if (map.TryGetValue(id, out var st))
+                {
+                    ordered.Add(st);
+                }
+            }
+
+            if (ordered.Count > 0)
+            {
+                return ordered;
+            }
+        }
+
+        var legacy = await _workflowStepTemplateRepository.GetListAsync(
+            x => x.WorkflowTemplateId == instance.WorkflowTemplateId && x.IsActive);
+        return legacy.OrderBy(s => s.Order).ToList();
+    }
+
+    private static int? GetTotalStepsForDisplay(
+        DocumentWorkflowInstance instance,
+        IReadOnlyDictionary<Guid, int> legacyActiveStepCountByTemplateId)
+    {
+        var ids = TryDeserializeCommittedStepTemplateIds(instance.CommittedStepTemplateIdsJson);
+        if (ids is { Count: > 0 })
+        {
+            return ids.Count;
+        }
+
+        if (legacyActiveStepCountByTemplateId.TryGetValue(instance.WorkflowTemplateId, out var c) && c > 0)
+        {
+            return c;
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Returns true if the file path has .doc or .docx extension.

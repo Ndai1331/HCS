@@ -21,6 +21,7 @@ public static class WordPlaceholderReplacer
 {
     private const long ImageEmuWidth = 990000L;  // ~2.6cm
     private const long ImageEmuHeight = 792000L;  // ~2.1cm
+    private const string PreparedBySignPlaceholder = "<<PreparedBySign>>";
 
     /// <summary>
     /// Replace placeholders in Word document bytes. Returns modified .docx bytes.
@@ -207,74 +208,52 @@ public static class WordPlaceholderReplacer
         }
     }
 
+    /// <summary>
+    /// Replaces &lt;&lt;PreparedBySign&gt;&gt; with an inline image. Word often splits the tag across
+    /// multiple &lt;w:t&gt; nodes; per-run substring removal can leave fragments (e.g. &lt;&lt;PreparedBy
+    /// next to the image). This rebuilds the paragraph from concatenated text so the full tag is removed once.
+    /// </summary>
     private static void ReplaceImagePlaceholder(MainDocumentPart mainPart, OpenXmlElement root, byte[] imageBytes)
     {
-        // All possible substrings when placeholder is split across runs/paragraphs (longest first)
-        var toRemove = new[]
+        foreach (var paragraph in root.Descendants<Paragraph>().ToList())
         {
-            "<<PreparedBySign>>", "<<PreparedBySign", "PreparedBySign>>",
-            "<<PreparedBy", "BySign>>", "<<Prepared", "paredBySign>>",
-            "Sign>>", "<<Pre", "paredBy"
-        };
+            var allTexts = paragraph.Descendants<Text>().ToList();
+            if (allTexts.Count == 0) continue;
 
-        OpenXmlElement? insertBeforeElement = null;
-        OpenXmlElement? parentForInsert = null;
+            var fullText = string.Concat(allTexts.Select(t => t.Text ?? string.Empty));
+            var idx = fullText.IndexOf(PreparedBySignPlaceholder, StringComparison.Ordinal);
+            if (idx < 0) continue;
 
-        // Process ALL Text elements in the part (not just per-paragraph) to ensure we don't miss any
-        foreach (var textElem in root.Descendants<Text>().ToList())
-        {
-            var t = textElem.Text;
-            var hadPlaceholder = toRemove.Any(p => t.Contains(p));
-            if (!hadPlaceholder) continue;
+            var prefix = fullText.Substring(0, idx);
+            var suffix = fullText.Substring(idx + PreparedBySignPlaceholder.Length);
 
-            foreach (var p in toRemove)
+            var contentType = GetImageContentType(imageBytes);
+            var imagePart = mainPart.AddImagePart(contentType);
+            using (var imgStream = new MemoryStream(imageBytes))
             {
-                t = t.Replace(p, string.Empty);
+                imagePart.FeedData(imgStream);
             }
-            textElem.Text = t;
+            var relationshipId = mainPart.GetIdOfPart(imagePart);
+            var drawing = CreateInlineImageDrawing(relationshipId, contentType);
+            var imageRun = new Run(drawing);
 
-            // First Text that had placeholder: find its Run and paragraph for insertion
-            if (insertBeforeElement == null)
+            var toRemove = paragraph.ChildElements.Where(c => c is not ParagraphProperties).ToList();
+            foreach (var el in toRemove)
             {
-                var run = textElem.Parent as Run;
-                if (run != null)
-                {
-                    var para = run.Ancestors<Paragraph>().FirstOrDefault();
-                    if (para != null)
-                    {
-                        // Find direct child of paragraph (Run or Hyperlink) that contains this run
-                        OpenXmlElement directChild = run;
-                        while (directChild.Parent != null && directChild.Parent != para)
-                        {
-                            directChild = directChild.Parent;
-                        }
-                        parentForInsert = para;
-                        insertBeforeElement = directChild;
-                    }
-                }
+                el.Remove();
             }
-        }
 
-        if (parentForInsert == null) return;
+            if (!string.IsNullOrEmpty(prefix))
+            {
+                paragraph.AppendChild(new Run(new Text(prefix) { Space = SpaceProcessingModeValues.Preserve }));
+            }
+            paragraph.AppendChild(imageRun);
+            if (!string.IsNullOrEmpty(suffix))
+            {
+                paragraph.AppendChild(new Run(new Text(suffix) { Space = SpaceProcessingModeValues.Preserve }));
+            }
 
-        // Add image part and create Drawing
-        var contentType = GetImageContentType(imageBytes);
-        var imagePart = mainPart.AddImagePart(contentType);
-        using (var imgStream = new MemoryStream(imageBytes))
-        {
-            imagePart.FeedData(imgStream);
-        }
-        var relationshipId = mainPart.GetIdOfPart(imagePart);
-        var drawing = CreateInlineImageDrawing(relationshipId, contentType);
-
-        var imageRun = new Run(drawing);
-        if (insertBeforeElement != null)
-        {
-            parentForInsert.InsertBefore(imageRun, insertBeforeElement);
-        }
-        else
-        {
-            parentForInsert.AppendChild(imageRun);
+            return;
         }
     }
 

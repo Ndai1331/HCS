@@ -35,6 +35,13 @@ public abstract class DocumentWorkflowInstanceBase : FullAuditedAggregateRoot<Gu
 
     public Guid CurrentStepId { get; set; }
 
+    /// <summary>
+    /// JSON array of <see cref="WorkflowStepTemplate"/> Ids in submission order, captured at submit/resubmit.
+    /// Runtime and UI must use this instead of re-querying all active steps on <see cref="WorkflowTemplateId"/>.
+    /// </summary>
+    [CanBeNull]
+    public virtual string? CommittedStepTemplateIdsJson { get; set; }
+
     public ICollection<DocumentWorkflowInstanceFile> DocumentWorkflowInstanceFiles { get; private set; }
 
     public ICollection<DocumentWorkflowInstanceLogs> DocumentWorkflowInstanceLogss { get; private set; }

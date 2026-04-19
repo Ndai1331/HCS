@@ -660,8 +660,8 @@
     private List<WorkflowChartItem> WorkflowChartItems => new()
     {
         new WorkflowChartItem(L["Workflow:Signed"], GetWorkflowPercentage(WorkflowSignedCount), "#4fbf67"),
-        new WorkflowChartItem(L["Workflow:ReturnedOrRejected"], GetWorkflowPercentage(WorkflowReturnedOrRejectedCount), "#c00d49"),
-        new WorkflowChartItem(L["Workflow:Sent"], GetWorkflowPercentage(WorkflowSentCount), "#355dff")
+        new WorkflowChartItem(L["Workflow:Unsigned"], GetWorkflowPercentage(WorkflowUnsignedCount), "#355dff"),
+        new WorkflowChartItem(L["Workflow:ReturnedOrRejected"], GetWorkflowPercentage(WorkflowReturnedOrRejectedCount), "#c00d49")
     };
 
     private List<string> WorkflowChartLabels => WorkflowChartItems.Select(x => x.Label).ToList();
