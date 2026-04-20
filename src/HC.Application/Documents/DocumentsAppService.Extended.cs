@@ -972,7 +972,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         await UpdateDocumentStatusAsync(input.DocumentId, DocumentStatusCode.CHO_PHE_DUYET);
 
         var historyComment = string.IsNullOrWhiteSpace(input.Message)
-            ? "Van thu gui van ban toi lanh dao de phe duyet."
+            ? "Văn thư gửi văn bản tới lãnh đạo phê duyệt."
             : input.Message!;
 
         var history = new DocumentHistory(

@@ -371,15 +371,80 @@
                     <DataGridMultiSelectColumn TItem="DocumentWithNavigationPropertiesDto" DisplayOrder="-1" Width="30px"></DataGridMultiSelectColumn>
                 }
                 
-                @if (SelectedSourceType == DocumentSourceType.SentToMe)
-                {
-                    <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
-                                    Caption="@L["View"]"
-                                    Width="72px"
-                                    CellStyle="@((item) => "min-width: 72px; text-align: center")">
-                        <DisplayTemplate>
+                @* Keep all button columns ALWAYS declared (not wrapped in @if) so Blazorise
+                   registers them once in the intended order. Visibility is controlled by
+                   `Displayable`; otherwise conditional columns get appended to the end of the
+                   Columns collection on re-render and appear out of order. *@
+                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
+                                Displayable="@(SelectedSourceType == DocumentSourceType.SentToMe)"
+                                Caption="@L["View"]"
+                                Width="72px"
+                                CellStyle="@((item) => "min-width: 72px; text-align: center")">
+                    <DisplayTemplate>
+                        <Button
+                            @onclick="@(async () => await HandleViewDocumentAsync(context))"
+                            Color="Color.Primary"
+                            Size="Size.Small"
+                            Outline
+                            Class="mb-1"
+                            Title="@L["ViewFile"]">
+                            <Icon Name="IconName.Eye" />
+                        </Button>
+                    </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
+                                Displayable="@(SelectedSourceType == DocumentSourceType.SentToMe)"
+                                Caption="@L["DocumentsColumnApprove"]"
+                                Width="100px"
+                                CellStyle="@((item) => "min-width: 100px; text-align: center")">
+                    <DisplayTemplate>
+                        @if (context.HasPendingApprovalTask)
+                        {
                             <Button
-                                @onclick="@(async () => await HandleViewDocumentAsync(context))"
+                                @onclick="@(async () => await OpenApprovalReviewModalAsync(context))"
+                                Color="Color.Success"
+                                Size="Size.Small"
+                                Outline
+                                Class="mb-1"
+                                Title="@L["ApproveDocument"]">
+                                <Icon Name="IconName.Check" />
+                            </Button>
+                        }
+                    </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
+                                Displayable="@(SelectedSourceType != DocumentSourceType.SentToMe)"
+                                Caption="@L["Actions"]"
+                                Width="120px"
+                                CellStyle="@((item) => "min-width: 120px")">
+                    <DisplayTemplate>
+                        <Div Class="d-flex gap-1">
+                            @if (CanEditDocument && CanShowEditDocumentButton)
+                            {
+                                <Button
+                                    @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
+                                    Color="Color.Secondary"
+                                    Outline
+                                    Size="Size.Small"
+                                    Title="@L["Edit"]"
+                                    Class="mb-1">
+                                    <Icon Name="IconName.Edit" />
+                                </Button>
+                            }
+                            @if (CanDeleteDocument && CanDeleteOrRevokeInArchiveView)
+                            {
+                                <Button
+                                    @onclick="@(async () => await ShowDeleteOrRevokeModalAsync(context))"
+                                    Color="Color.Danger"
+                                    Outline
+                                    Size="Size.Small"
+                                    Title="@L["Delete"]"
+                                    Class="mb-1">
+                                    <Icon Name="IconName.Delete" />
+                                </Button>
+                            }
+                            <Button
+                                @onclick="@(() => HandleViewDocumentAsync(context))"
                                 Color="Color.Primary"
                                 Size="Size.Small"
                                 Outline
@@ -387,73 +452,9 @@
                                 Title="@L["ViewFile"]">
                                 <Icon Name="IconName.Eye" />
                             </Button>
-                        </DisplayTemplate>
-                    </DataGridColumn>
-                    <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
-                                    Caption="@L["DocumentsColumnApprove"]"
-                                    Width="88px"
-                                    CellStyle="@((item) => "min-width: 88px; text-align: center")">
-                        <DisplayTemplate>
-                            @if (context.HasPendingApprovalTask)
-                            {
-                                <Button
-                                    @onclick="@(async () => await OpenApprovalReviewModalAsync(context))"
-                                    Color="Color.Success"
-                                    Size="Size.Small"
-                                    Outline
-                                    Class="mb-1"
-                                    Title="@L["ApproveDocument"]">
-                                    <Icon Name="IconName.Check" />
-                                </Button>
-                            }
-                        </DisplayTemplate>
-                    </DataGridColumn>
-                }
-                else
-                {
-                    <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
-                                    Caption="@L["Actions"]"
-                                    Width="120px"
-                                    CellStyle="@((item) => "min-width: 120px")">
-                        <DisplayTemplate>
-                            <Div Class="d-flex gap-1">
-                                @if (CanEditDocument && CanShowEditDocumentButton)
-                                {
-                                    <Button
-                                        @onclick="@(() => OpenDocumentDetailAsync(context.Document.Id))"
-                                        Color="Color.Secondary"
-                                        Outline
-                                        Size="Size.Small"
-                                        Title="@L["Edit"]"
-                                        Class="mb-1">
-                                        <Icon Name="IconName.Edit" />
-                                    </Button>
-                                }
-                                @if (CanDeleteDocument && CanDeleteOrRevokeInArchiveView)
-                                {
-                                    <Button
-                                        @onclick="@(async () => await ShowDeleteOrRevokeModalAsync(context))"
-                                        Color="Color.Danger"
-                                        Outline
-                                        Size="Size.Small"
-                                        Title="@L["Delete"]"
-                                        Class="mb-1">
-                                        <Icon Name="IconName.Delete" />
-                                    </Button>
-                                }
-                                <Button
-                                    @onclick="@(() => HandleViewDocumentAsync(context))"
-                                    Color="Color.Primary"
-                                    Size="Size.Small"
-                                    Outline
-                                    Class="mb-1"
-                                    Title="@L["ViewFile"]">
-                                    <Icon Name="IconName.Eye" />
-                                </Button>
-                            </Div>
-                        </DisplayTemplate>
-                    </DataGridColumn>
-                }
+                        </Div>
+                    </DisplayTemplate>
+                </DataGridColumn>
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto" 
                 Caption="@L["SendAndSign"]" 
                 CellStyle="@((item) => "min-width: 150px")"
@@ -500,26 +501,26 @@
                     </DisplayTemplate>
                 </DataGridColumn>
 
-                @* Sent to me (sourceType=2): show routing metadata from Document *@
-                @if (SelectedSourceType == DocumentSourceType.SentToMe)
-                {
-                    <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
-                        Caption="@L["FromUser"]"
-                        Width="180px"
-                        CellStyle="@((item) => "min-width: 160px")">
-                        <DisplayTemplate>
-                            <small>@(context.FromUserDisplayName ?? "—")</small>
-                        </DisplayTemplate>
-                    </DataGridColumn>
-                    <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
-                        Caption="@L["Department"]"
-                        Width="160px"
-                        CellStyle="@((item) => "min-width: 140px")">
-                        <DisplayTemplate>
-                            <small>@(context.DepartmentDisplayName ?? "—")</small>
-                        </DisplayTemplate>
-                    </DataGridColumn>
-                }
+                @* Sent to me (sourceType=2): show routing metadata from Document.
+                   Always declared, toggled via Displayable to keep column order stable. *@
+                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
+                    Displayable="@(SelectedSourceType == DocumentSourceType.SentToMe)"
+                    Caption="@L["FromUser"]"
+                    Width="180px"
+                    CellStyle="@((item) => "min-width: 160px")">
+                    <DisplayTemplate>
+                        <small>@(context.FromUserDisplayName ?? "—")</small>
+                    </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
+                    Displayable="@(SelectedSourceType == DocumentSourceType.SentToMe)"
+                    Caption="@L["Department"]"
+                    Width="160px"
+                    CellStyle="@((item) => "min-width: 140px")">
+                    <DisplayTemplate>
+                        <small>@(context.DepartmentDisplayName ?? "—")</small>
+                    </DisplayTemplate>
+                </DataGridColumn>
 
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                         Field="Document.No"
@@ -732,7 +733,7 @@
                     </AlertDescription>
                 </Alert>
                 <div class="mb-3">
-                    <strong>@L["FromUser"]:</strong> @(DocumentToSubmitApproval.FromUserDisplayName ?? CurrentUser.Name ?? CurrentUser.UserName ?? "—")
+                    <strong>@L["FromUser"]:</strong> @(DocumentToSubmitApproval.FromUserDisplayName ?? GetCurrentUserFullName())
                 </div>
             }
 

@@ -740,26 +740,54 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
             }
 
             DocumentDto savedDocument;
+            var isEditMode = DocumentId != Guid.Empty && DocumentUpdateData != null;
 
-            if (DocumentId != Guid.Empty && DocumentUpdateData != null)
+            if (isEditMode)
             {
-                savedDocument = await DocumentsAppService.UpdateAsync(DocumentId, DocumentUpdateData);
+                savedDocument = await DocumentsAppService.UpdateAsync(DocumentId, DocumentUpdateData!);
 
                 // Save new file on edit when user uploaded a replacement
-                if (!string.IsNullOrEmpty(UploadedFilePath) && SelectedFile != null)
+                var fileReplaced = !string.IsNullOrEmpty(UploadedFilePath) && SelectedFile != null;
+                if (fileReplaced)
                 {
                     await DocumentFilesAppService.CreateAsync(new DocumentFileCreateDto
                     {
                         DocumentId = savedDocument.Id,
-                        Name = SelectedFile.Name,
+                        Name = SelectedFile!.Name,
                         Path = UploadedFilePath,
                         Hash = UploadedFileHash,
                         IsSigned = false,
                         UploadedAt = DateTime.Now
                     });
                 }
+
+                // Refresh in-memory state so the form reflects the saved values
+                // without having to do a full page reload.
+                if (CurrentDocument != null)
+                {
+                    CurrentDocument.Document = savedDocument;
+                }
+                DocumentUpdateData = ObjectMapper.Map<DocumentDto, DocumentUpdateDto>(savedDocument);
+                SelectedSourceType = savedDocument.SourceType;
+
+                if (fileReplaced)
+                {
+                    await ResetUploadedFileStateAsync();
+                    await LoadDocumentFilesAsync();
+                    await LoadPdfUrlAsync();
+                }
+
+                // Reload histories because the update creates a new history entry
+                await LoadDocumentHistoriesAsync();
+
+                await UiMessageService.Success(L["SuccessfullySaved"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+
+                await InvokeAsync(StateHasChanged);
+                return;
             }
-            else if (DocumentCreateData != null)
+
+            if (DocumentCreateData != null)
             {
                 savedDocument = await DocumentsAppService.CreateAsync(DocumentCreateData);
 
@@ -776,28 +804,17 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
                         UploadedAt = DateTime.Now
                     });
                 }
-            }
-            else
-            {
-                return;
-            }
 
-            await UiMessageService.Success(L["SuccessfullySaved"],
-            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                await UiMessageService.Success(L["SuccessfullySaved"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
 
-            var effectiveSourceType = SourceType
-                ?? (CurrentDocument != null ? (int?)CurrentDocument.Document.SourceType : null)
-                ?? (int?)savedDocument.SourceType;
-            var sourceTypeParam = effectiveSourceType.HasValue ? $"?sourceType={effectiveSourceType.Value}" : "";
+                var effectiveSourceType = SourceType
+                    ?? (int?)savedDocument.SourceType;
+                var sourceTypeParam = effectiveSourceType.HasValue ? $"?sourceType={effectiveSourceType.Value}" : "";
 
-            // After creating a new document, return to the list for the same sourceType (archive / personal / etc.)
-            if (DocumentCreateData != null)
-            {
+                // After creating a new document, return to the list for the same sourceType (archive / personal / etc.)
                 NavigationManager.NavigateTo("/manage-documents" + sourceTypeParam, true);
-            }
-            else
-            {
-                NavigationManager.NavigateTo($"/document-detail/{savedDocument.Id}{sourceTypeParam}", true);
+                return;
             }
         }
         catch (Exception ex)

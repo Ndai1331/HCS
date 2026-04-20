@@ -1669,6 +1669,24 @@ public partial class Documents : IDisposable
             : fullName;
     }
 
+    /// <summary>
+    /// Build full display name for the currently logged-in user.
+    /// ICurrentUser.Name returns only the given name claim, so we combine SurName + Name
+    /// to avoid losing the surname in fallback UI (e.g. Submit Approval modal).
+    /// </summary>
+    private string GetCurrentUserFullName()
+    {
+        var surname = CurrentUser?.SurName ?? string.Empty;
+        var name = CurrentUser?.Name ?? string.Empty;
+        var fullName = $"{surname} {name}".Trim();
+        if (!string.IsNullOrWhiteSpace(fullName))
+        {
+            return fullName;
+        }
+
+        return CurrentUser?.UserName ?? "—";
+    }
+
     #endregion PDF Viewer
 
     /// <summary>

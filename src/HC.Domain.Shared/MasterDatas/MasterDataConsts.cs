@@ -2,7 +2,7 @@ namespace HC.MasterDatas;
 
 public static class MasterDataConsts
 {
-    private const string DefaultSorting = "{0}CreationTime desc";
+    private const string DefaultSorting = "{0}SortOrder asc";
 
     public static string GetDefaultSorting(bool withEntityName)
     {
