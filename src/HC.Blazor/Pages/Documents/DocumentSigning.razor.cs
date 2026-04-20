@@ -398,12 +398,10 @@ public partial class DocumentSigning
     {
         try
         {
-            // Load workflow instance to get StartedAt, FinishedAt, CurrentStepId, WorkflowId
             WorkflowInstanceInfo = await DocumentWorkflowInstancesAppService.GetAsync(workflowInstanceId);
 
             if (WorkflowInstanceInfo != null)
             {
-                // Load workflow submit info to get all steps with assigned users
                 var submitInfo = await DocumentWorkflowInstancesAppService.GetWorkflowSubmitInfoAsync(WorkflowInstanceInfo.WorkflowId);
                 CurrentStepDetailInfo = submitInfo.Steps.FirstOrDefault(s => s.StepId == WorkflowInstanceInfo.CurrentStepId);
             }
