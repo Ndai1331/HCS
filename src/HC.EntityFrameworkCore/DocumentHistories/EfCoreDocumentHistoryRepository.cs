@@ -11,7 +11,6 @@ using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using HC.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 namespace HC.DocumentHistories;
 
@@ -39,49 +38,57 @@ public abstract class EfCoreDocumentHistoryRepositoryBase : EfCoreRepository<HCD
 
     public virtual async Task<List<DocumentHistoryWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? comment = null, string? action = null, Guid? documentId = null, Guid? fromUser = null, Guid? toUser = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)
     {
-        try{   
+        try
+        {
             var query = await GetQueryForNavigationPropertiesAsync();
             query = ApplyFilter(query, filterText, comment, action, documentId, fromUser, toUser);
             query = query.OrderBy(string.IsNullOrWhiteSpace(sorting) ? DocumentHistoryConsts.GetDefaultSorting(true) : sorting);
-            Logger.LogInformation($"GetListWithNavigationPropertiesAsync query: {JsonSerializer.Serialize(query)}");
+
             var res = await query.PageBy(skipCount, maxResultCount).ToListAsync(cancellationToken);
-            Logger.LogInformation($"GetListWithNavigationPropertiesAsync returned {JsonSerializer.Serialize(res)} items");
+
+            // Avoid serializing the entire result set on the hot path; only log counts.
+            if (Logger.IsEnabled(LogLevel.Debug))
+            {
+                Logger.LogDebug(
+                    "GetListWithNavigationPropertiesAsync returned {Count} items (skip={Skip}, take={Take}, documentId={DocumentId})",
+                    res.Count, skipCount, maxResultCount, documentId);
+            }
+
             return res;
-        }catch(Exception ex){
-            Logger.LogError($"GetListWithNavigationPropertiesAsync error: {ex}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "GetListWithNavigationPropertiesAsync error");
             return new List<DocumentHistoryWithNavigationProperties>();
         }
     }
 
     protected virtual async Task<IQueryable<DocumentHistoryWithNavigationProperties>> GetQueryForNavigationPropertiesAsync()
     {
-            try{
-            Logger.LogInformation($"GetQueryForNavigationPropertiesAsync called");
-            var query = from documentHistory in (await GetDbSetAsync())
-                join document in (await GetDbContextAsync()).Set<Document>() on documentHistory.DocumentId equals document.Id into documents
-                from document in documents.DefaultIfEmpty()
-                join fromUser in (await GetDbContextAsync()).Set<IdentityUser>() on documentHistory.FromUser equals fromUser.Id into identityUsers
-                from fromUser in identityUsers.DefaultIfEmpty()
-                join toUser in (await GetDbContextAsync()).Set<IdentityUser>() on documentHistory.ToUser equals toUser.Id into identityUsers1
-                from toUser in identityUsers1.DefaultIfEmpty()
-                select new DocumentHistoryWithNavigationProperties
-                {
-                    DocumentHistory = documentHistory,
-                    Document = document,
-                    FromUser = fromUser,
-                    ToUser = toUser
-                };
-            Logger.LogInformation($"GetQueryForNavigationPropertiesAsync returned {JsonSerializer.Serialize(query)}");
-            return query;
-        }catch(Exception ex){
-            Logger.LogError($"GetQueryForNavigationPropertiesAsync error: {ex}");
-            throw;
-        }
+        // Resolve DbContext once instead of awaiting it three times.
+        var dbContext = await GetDbContextAsync();
+        var historySet = await GetDbSetAsync();
+        var documentSet = dbContext.Set<Document>().AsNoTracking();
+        var userSet = dbContext.Set<IdentityUser>().AsNoTracking();
+
+        return from documentHistory in historySet.AsNoTracking()
+               join document in documentSet on documentHistory.DocumentId equals document.Id into documents
+               from document in documents.DefaultIfEmpty()
+               join fromUser in userSet on documentHistory.FromUser equals fromUser.Id into identityUsers
+               from fromUser in identityUsers.DefaultIfEmpty()
+               join toUser in userSet on documentHistory.ToUser equals toUser.Id into identityUsers1
+               from toUser in identityUsers1.DefaultIfEmpty()
+               select new DocumentHistoryWithNavigationProperties
+               {
+                   DocumentHistory = documentHistory,
+                   Document = document,
+                   FromUser = fromUser,
+                   ToUser = toUser
+               };
     }
 
     protected virtual IQueryable<DocumentHistoryWithNavigationProperties> ApplyFilter(IQueryable<DocumentHistoryWithNavigationProperties> query, string? filterText, string? comment = null, string? action = null, Guid? documentId = null, Guid? fromUser = null, Guid? toUser = null)
     {
-        Logger.LogInformation($"ApplyFilter called with filterText: {filterText}, comment: {comment}, action: {action}, documentId: {documentId}, fromUser: {fromUser}, toUser: {toUser}");
         return query
         .WhereIf(!string.IsNullOrWhiteSpace(filterText), e => 
         e.DocumentHistory.Comment!.Contains(filterText!) || e.DocumentHistory.Action!.Contains(filterText!))

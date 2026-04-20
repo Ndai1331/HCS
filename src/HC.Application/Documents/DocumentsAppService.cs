@@ -72,37 +72,59 @@ public abstract class DocumentsAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetMasterDataLookupAsync(LookupRequestDto input)
     {
-        var query = (await _masterDataRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
-        var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.MasterDatas.MasterData>();
-        var totalCount = query.Count();
+        var baseQuery = (await _masterDataRepository.GetQueryableAsync())
+            .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
+
+        // Project to LookupDto in SQL so we only pull Id/Name and skip ObjectMapper round-trips.
+        var lookupQuery = baseQuery
+            .OrderBy(x => x.SortOrder)
+            .Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name });
+
+        var totalCount = await AsyncExecuter.LongCountAsync(baseQuery);
+        var items = await AsyncExecuter.ToListAsync(lookupQuery.PageBy(input.SkipCount, input.MaxResultCount));
+
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,
-            Items = ObjectMapper.Map<List<HC.MasterDatas.MasterData>, List<LookupDto<Guid>>>(lookupData)
+            Items = items
         };
     }
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetUnitLookupAsync(LookupRequestDto input)
     {
-        var query = (await _unitRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
-        var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.Units.Unit>();
-        var totalCount = query.Count();
+        var baseQuery = (await _unitRepository.GetQueryableAsync())
+            .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
+
+        var lookupQuery = baseQuery
+            .OrderBy(x => x.Name)
+            .Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name });
+
+        var totalCount = await AsyncExecuter.LongCountAsync(baseQuery);
+        var items = await AsyncExecuter.ToListAsync(lookupQuery.PageBy(input.SkipCount, input.MaxResultCount));
+
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,
-            Items = ObjectMapper.Map<List<HC.Units.Unit>, List<LookupDto<Guid>>>(lookupData)
+            Items = items
         };
     }
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetWorkflowLookupAsync(LookupRequestDto input)
     {
-        var query = (await _workflowRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
-        var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.Workflows.Workflow>();
-        var totalCount = query.Count();
+        var baseQuery = (await _workflowRepository.GetQueryableAsync())
+            .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
+
+        var lookupQuery = baseQuery
+            .OrderBy(x => x.Name)
+            .Select(x => new LookupDto<Guid> { Id = x.Id, DisplayName = x.Name });
+
+        var totalCount = await AsyncExecuter.LongCountAsync(baseQuery);
+        var items = await AsyncExecuter.ToListAsync(lookupQuery.PageBy(input.SkipCount, input.MaxResultCount));
+
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,
-            Items = ObjectMapper.Map<List<HC.Workflows.Workflow>, List<LookupDto<Guid>>>(lookupData)
+            Items = items
         };
     }
 

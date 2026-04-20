@@ -22,7 +22,7 @@ public partial class ProjectTasks
 
     protected string GetUserDisplayName(Volo.Abp.Identity.IdentityUserDto user)
     {
-        var fullName = $"{user.Name} {user.Surname}".Trim();
+        var fullName = $"{user.Surname} {user.Name}".Trim();
         if (!string.IsNullOrWhiteSpace(fullName))
         {
             return fullName;

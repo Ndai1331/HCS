@@ -246,55 +246,29 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
                 DocumentUpdateData = ObjectMapper.Map<DocumentDto, DocumentUpdateDto>(CurrentDocument.Document);
                 DocumentCreateData = null;
 
-                if (CurrentDocument.Document.TypeId != default)
+                // Use nav-properties already returned by GetWithNavigationPropertiesAsync instead of issuing
+                // 6 extra GET-by-id calls. Pre-seed the lookup cache so dropdown filters can re-use them.
+                SelectedTypeMasterData = BuildLookupListFromMasterData(CurrentDocument.Type) ?? SelectedTypeMasterData;
+                SelectedUrgencyLevelMasterData = BuildLookupListFromMasterData(CurrentDocument.UrgencyLevel) ?? SelectedUrgencyLevelMasterData;
+                SelectedSecrecyLevelMasterData = BuildLookupListFromMasterData(CurrentDocument.SecrecyLevel) ?? SelectedSecrecyLevelMasterData;
+                SelectedFieldMasterData = BuildLookupListFromMasterData(CurrentDocument.Field) ?? SelectedFieldMasterData;
+                SelectedStatusMasterData = BuildLookupListFromMasterData(CurrentDocument.Status) ?? SelectedStatusMasterData;
+
+                if (CurrentDocument.Unit != null && CurrentDocument.Unit.Id != Guid.Empty)
                 {
-                    var typeData = await GetMasterDataByIdAsync(CurrentDocument.Document.TypeId, MasterDataType.DocumentType);
-                    if (typeData != null)
-                        SelectedTypeMasterData = new List<LookupDto<Guid>> { typeData };
-                }
-                if (CurrentDocument.Document.UrgencyLevelId != default)
-                {
-                    var urgencyData = await GetMasterDataByIdAsync(CurrentDocument.Document.UrgencyLevelId, MasterDataType.UrgencyLevel);
-                    if (urgencyData != null)
-                        SelectedUrgencyLevelMasterData = new List<LookupDto<Guid>> { urgencyData };
-                }
-                if (CurrentDocument.Document.SecrecyLevelId != default)
-                {
-                    var secrecyData = await GetMasterDataByIdAsync(CurrentDocument.Document.SecrecyLevelId, MasterDataType.SecrecyLevel);
-                    if (secrecyData != null)
-                        SelectedSecrecyLevelMasterData = new List<LookupDto<Guid>> { secrecyData };
-                }
-                if (CurrentDocument.Document.FieldId.HasValue)
-                {
-                    var fieldData = await GetMasterDataByIdAsync(CurrentDocument.Document.FieldId.Value, MasterDataType.Field);
-                    if (fieldData != null)
-                        SelectedFieldMasterData = new List<LookupDto<Guid>> { fieldData };
-                }
-                if (CurrentDocument.Document.StatusId.HasValue)
-                {
-                    var statusData = await GetMasterDataByIdAsync(CurrentDocument.Document.StatusId.Value, MasterDataType.Status);
-                    if (statusData != null)
-                        SelectedStatusMasterData = new List<LookupDto<Guid>> { statusData };
-                }
-                if (CurrentDocument.Document.UnitId.HasValue)
-                {
-                    var unitData = await GetUnitByIdAsync(CurrentDocument.Document.UnitId.Value);
-                    if (unitData != null)
-                        SelectedUnit = new List<LookupDto<Guid>> { unitData };
+                    var unitLookup = new LookupDto<Guid> { Id = CurrentDocument.Unit.Id, DisplayName = CurrentDocument.Unit.Name };
+                    SelectedUnit = new List<LookupDto<Guid>> { unitLookup };
+                    DocumentsPageLookupCache.SetUnitById(unitLookup);
                 }
 
                 // Load SourceType
                 SelectedSourceType = CurrentDocument.Document.SourceType;
 
-                // Load document files
-                Logger.LogInformation($"LoadDocumentAsync: Calling LoadDocumentFilesAsync");
-                await LoadDocumentFilesAsync();
+                // Files + histories can run in parallel — neither depends on the other.
+                Logger.LogInformation("LoadDocumentAsync: loading files & histories in parallel");
+                await Task.WhenAll(LoadDocumentFilesAsync(), LoadDocumentHistoriesAsync());
 
-                // Load document histories
-                Logger.LogInformation($"LoadDocumentAsync: Calling LoadDocumentHistoriesAsync");
-                await LoadDocumentHistoriesAsync();
-                
-                // Load PDF URL if file exists and is PDF
+                // PDF URL needs files to be loaded first, so it runs after.
                 await LoadPdfUrlAsync();
             }
             else
@@ -439,7 +413,29 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
 
     private Task<LookupDto<Guid>?> GetUnitByIdAsync(Guid id)
     {
+        var cached = DocumentsPageLookupCache.TryGetUnitById(id);
+        if (cached != null)
+        {
+            return Task.FromResult<LookupDto<Guid>?>(cached);
+        }
+
         return DocumentsAppService.GetUnitLookupByIdAsync(id);
+    }
+
+    /// <summary>
+    /// Builds a single-item LookupDto list from an inline MasterDataDto carried by GetWithNavigationPropertiesAsync,
+    /// and seeds the lookup cache so subsequent dropdown reuse does not hit the API.
+    /// </summary>
+    private List<LookupDto<Guid>>? BuildLookupListFromMasterData(MasterDataDto? master)
+    {
+        if (master == null || master.Id == Guid.Empty)
+        {
+            return null;
+        }
+
+        var lookup = new LookupDto<Guid> { Id = master.Id, DisplayName = master.Name };
+        DocumentsPageLookupCache.SetMasterDataById(lookup);
+        return new List<LookupDto<Guid>> { lookup };
     }
 
     // Select2 change handlers

@@ -197,7 +197,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                     {
                         UserId = a.DefaultUserId!.Value,
                         UserName = userDict.ContainsKey(a.DefaultUserId.Value) ? userDict[a.DefaultUserId.Value].UserName : "Unknown",
-                        FullName = userDict.ContainsKey(a.DefaultUserId.Value) ? userDict[a.DefaultUserId.Value].Name : null,
+                        FullName = userDict.ContainsKey(a.DefaultUserId.Value) ? userDict[a.DefaultUserId.Value].Surname + " " +userDict[a.DefaultUserId.Value].Name : null,
                         IsPrimary = a.IsPrimary
                     }).ToList()
             }).ToList()

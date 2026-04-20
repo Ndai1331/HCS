@@ -103,6 +103,8 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.Property(x => x.Name).HasColumnName(nameof(MasterData.Name)).IsRequired();
             b.Property(x => x.SortOrder).HasColumnName(nameof(MasterData.SortOrder)).HasMaxLength(MasterDataConsts.SortOrderMaxLength);
             b.Property(x => x.IsActive).HasColumnName(nameof(MasterData.IsActive));
+            // Speeds up DocumentStatusCode → MasterData.Id lookups (UpdateDocumentStatusAsync) and dropdown filtering by type.
+            b.HasIndex(x => new { x.Type, x.Code }).HasDatabaseName("IX_AppMasterDatas_Type_Code");
         });
         builder.Entity<WorkflowDefinition>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "WorkflowDefinitions", HCConsts.DbSchema);
@@ -432,6 +434,11 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.HasOne<WorkflowStepTemplate>().WithMany().HasForeignKey(x => x.WorkflowStepTemplateId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<IdentityUser>().WithMany().IsRequired().HasForeignKey(x => x.ReceiverUserId).OnDelete(DeleteBehavior.NoAction);
             b.HasOne<DocumentFile>().WithMany().HasForeignKey(x => x.DocumentFileResultId).OnDelete(DeleteBehavior.SetNull);
+            // Filtered (partial) index – ApplyPendingApprovalFlagsAsync, GetSentToMeDocumentIdsAsync,
+            // ApplySubmitSigningButtonVisibilityAsync, RevokeDocumentAsync all filter by IsCurrent = true on a document.
+            b.HasIndex(x => new { x.DocumentId, x.IsCurrent })
+                .HasDatabaseName("IX_AppDocumentAssignments_DocumentId_IsCurrent")
+                .HasFilter("\"IsCurrent\" = true");
         });
         builder.Entity<DocumentWorkflowInstanceFile>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "DocumentWorkflowInstanceFiles", HCConsts.DbSchema);

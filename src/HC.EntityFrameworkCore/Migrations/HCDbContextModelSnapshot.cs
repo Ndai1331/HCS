@@ -806,6 +806,10 @@ namespace HC.Migrations
 
                     b.HasIndex("WorkflowStepTemplateId");
 
+                    b.HasIndex("DocumentId", "IsCurrent")
+                        .HasDatabaseName("IX_AppDocumentAssignments_DocumentId_IsCurrent")
+                        .HasFilter("\"IsCurrent\" = true");
+
                     b.ToTable("AppDocumentAssignments", (string)null);
                 });
 
@@ -1432,6 +1436,9 @@ namespace HC.Migrations
                         .HasColumnName("Type");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Type", "Code")
+                        .HasDatabaseName("IX_AppMasterDatas_Type_Code");
 
                     b.ToTable("AppMasterDatas", (string)null);
                 });

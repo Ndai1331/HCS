@@ -24,6 +24,21 @@ public interface IDocumentsPageLookupCache
     /// Caches single master data row by id (display labels on detail/view pages, revisits within the same Blazor circuit).
     /// </summary>
     Task<LookupDto<Guid>?> GetMasterDataByIdAsync(Guid id, Func<Task<MasterDataDto>> loadFactory);
+
+    /// <summary>
+    /// Pre-seed an already-known lookup pair so subsequent calls hit the cache (used when nav-prop bundles already carry name).
+    /// </summary>
+    void SetMasterDataById(LookupDto<Guid> lookup);
+
+    /// <summary>
+    /// Pre-seed unit lookup pair (parallels SetMasterDataById).
+    /// </summary>
+    void SetUnitById(LookupDto<Guid> lookup);
+
+    /// <summary>
+    /// Tries to fetch a previously-cached unit lookup by id without making an API call.
+    /// </summary>
+    LookupDto<Guid>? TryGetUnitById(Guid id);
 }
 
 /// <summary>
@@ -96,5 +111,38 @@ public class DocumentsPageLookupCache : IDocumentsPageLookupCache, IScopedDepend
         {
             return null;
         }
+    }
+
+    public void SetMasterDataById(LookupDto<Guid> lookup)
+    {
+        if (lookup == null || lookup.Id == Guid.Empty)
+        {
+            return;
+        }
+
+        var key = CacheKey($"mdi-{lookup.Id}");
+        _memoryCache.Set(key, lookup, new MemoryCacheEntryOptions { SlidingExpiration = CacheDuration });
+    }
+
+    public void SetUnitById(LookupDto<Guid> lookup)
+    {
+        if (lookup == null || lookup.Id == Guid.Empty)
+        {
+            return;
+        }
+
+        var key = CacheKey($"unit-{lookup.Id}");
+        _memoryCache.Set(key, lookup, new MemoryCacheEntryOptions { SlidingExpiration = CacheDuration });
+    }
+
+    public LookupDto<Guid>? TryGetUnitById(Guid id)
+    {
+        if (id == Guid.Empty)
+        {
+            return null;
+        }
+
+        var key = CacheKey($"unit-{id}");
+        return _memoryCache.TryGetValue(key, out LookupDto<Guid>? cached) ? cached : null;
     }
 }

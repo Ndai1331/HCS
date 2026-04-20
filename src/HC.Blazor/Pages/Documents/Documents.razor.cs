@@ -407,14 +407,28 @@ public partial class Documents : IDisposable
 
     private async Task SetPermissionsAsync()
     {
-        CanCreateDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Create);
-        CanEditDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Edit);
-        CanSendDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Send);
-        CanSubmitForSigning = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.SubmitForSigning);
-        CanSubmitForApproval = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.SubmitForApproval);
-        CanRejectApproval = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.RejectApproval);
-        CanApproveWithNote = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.ApproveWithNote);
-        CanDeleteDocument = await AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Delete);
+        // Run all permission checks in parallel to cut 7 sequential round-trips on first paint.
+        var createTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Create);
+        var editTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Edit);
+        var sendTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Send);
+        var submitForSigningTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.SubmitForSigning);
+        var submitForApprovalTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.SubmitForApproval);
+        var rejectApprovalTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.RejectApproval);
+        var approveWithNoteTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.ApproveWithNote);
+        var deleteTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Delete);
+
+        await Task.WhenAll(
+            createTask, editTask, sendTask, submitForSigningTask,
+            submitForApprovalTask, rejectApprovalTask, approveWithNoteTask, deleteTask);
+
+        CanCreateDocument = createTask.Result;
+        CanEditDocument = editTask.Result;
+        CanSendDocument = sendTask.Result;
+        CanSubmitForSigning = submitForSigningTask.Result;
+        CanSubmitForApproval = submitForApprovalTask.Result;
+        CanRejectApproval = rejectApprovalTask.Result;
+        CanApproveWithNote = approveWithNoteTask.Result;
+        CanDeleteDocument = deleteTask.Result;
     }
 
     private async Task GetDocumentsAsync()
