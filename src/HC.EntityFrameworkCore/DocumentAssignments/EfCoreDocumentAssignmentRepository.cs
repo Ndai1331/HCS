@@ -31,8 +31,38 @@ public abstract class EfCoreDocumentAssignmentRepositoryBase : EfCoreRepository<
 
     public virtual async Task<DocumentAssignmentWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        // M2: single LEFT JOIN query replaces 4 correlated subqueries
+        // (Document/WorkflowStepTemplate/ReceiverUser/DocumentFileResult) previously issued
+        // via `FirstOrDefault` inside `Select`. We intentionally avoid the list-mode
+        // `document.IsDeleted == false` filter so callers still get the assignment row
+        // (with a null Document) when the parent document has been soft-deleted.
         var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(documentAssignment => new DocumentAssignmentWithNavigationProperties { DocumentAssignment = documentAssignment, Document = dbContext.Set<Document>().FirstOrDefault(c => c.Id == documentAssignment.DocumentId), WorkflowStepTemplate = dbContext.Set<WorkflowStepTemplate>().FirstOrDefault(c => c.Id == documentAssignment.WorkflowStepTemplateId), ReceiverUser = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == documentAssignment.ReceiverUserId), DocumentFileResult = dbContext.Set<DocumentFile>().FirstOrDefault(c => c.Id == documentAssignment.DocumentFileResultId) }).FirstOrDefault();
+        var assignments = await GetDbSetAsync();
+        var documents = dbContext.Set<Document>().AsNoTracking();
+        var workflowStepTemplates = dbContext.Set<WorkflowStepTemplate>().AsNoTracking();
+        var identityUsers = dbContext.Set<IdentityUser>().AsNoTracking();
+        var documentFiles = dbContext.Set<DocumentFile>().AsNoTracking();
+
+        var query = from documentAssignment in assignments
+                    where documentAssignment.Id == id
+                    join document in documents on documentAssignment.DocumentId equals document.Id into documentJoin
+                    from document in documentJoin.DefaultIfEmpty()
+                    join workflowStepTemplate in workflowStepTemplates on documentAssignment.WorkflowStepTemplateId equals workflowStepTemplate.Id into wstJoin
+                    from workflowStepTemplate in wstJoin.DefaultIfEmpty()
+                    join receiverUser in identityUsers on documentAssignment.ReceiverUserId equals receiverUser.Id into userJoin
+                    from receiverUser in userJoin.DefaultIfEmpty()
+                    join documentFileResult in documentFiles on documentAssignment.DocumentFileResultId equals documentFileResult.Id into fileJoin
+                    from documentFileResult in fileJoin.DefaultIfEmpty()
+                    select new DocumentAssignmentWithNavigationProperties
+                    {
+                        DocumentAssignment = documentAssignment,
+                        Document = document,
+                        WorkflowStepTemplate = workflowStepTemplate,
+                        ReceiverUser = receiverUser,
+                        DocumentFileResult = documentFileResult
+                    };
+
+        return await query.FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<DocumentAssignmentWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, int? stepOrderMin = null, int? stepOrderMax = null, string? actionType = null, string? status = null, DateTime? assignedAtMin = null, DateTime? assignedAtMax = null, DateTime? processedAtMin = null, DateTime? processedAtMax = null, bool? isCurrent = null, Guid? documentId = null, Guid? workflowStepTemplateId = null, Guid? receiverUserId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

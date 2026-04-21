@@ -67,4 +67,18 @@ public class DocumentController : DocumentControllerBase, IDocumentsAppService
     {
         return _documentsAppService.IsStorageNumberDuplicateAsync(storageNumber, excludeDocumentId);
     }
+
+    [HttpGet]
+    [Route("detail-bundle")]
+    public virtual Task<DocumentDetailBundleDto> GetDetailBundleAsync(GetDocumentDetailBundleInput input)
+    {
+        return _documentsAppService.GetDetailBundleAsync(input);
+    }
+
+    [HttpPost]
+    [Route("page-bootstrap")]
+    public virtual Task<DocumentsPageBootstrapDto> GetPageBootstrapAsync(GetDocumentsPageBootstrapInput input)
+    {
+        return _documentsAppService.GetPageBootstrapAsync(input);
+    }
 }

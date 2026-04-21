@@ -32,8 +32,12 @@ public abstract class EfCoreDocumentHistoryRepositoryBase : EfCoreRepository<HCD
 
     public virtual async Task<DocumentHistoryWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(documentHistory => new DocumentHistoryWithNavigationProperties { DocumentHistory = documentHistory, Document = dbContext.Set<Document>().FirstOrDefault(c => c.Id == documentHistory.DocumentId), FromUser = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == documentHistory.FromUser), ToUser = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == documentHistory.ToUser) }).FirstOrDefault();
+        // M2: reuse the LEFT JOIN query used by list-mode instead of issuing 3 correlated
+        // subqueries (Document/FromUser/ToUser) via `FirstOrDefault` inside `Select`.
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.DocumentHistory.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<DocumentHistoryWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? comment = null, string? action = null, Guid? documentId = null, Guid? fromUser = null, Guid? toUser = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

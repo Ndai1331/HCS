@@ -2727,4 +2727,58 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     }
 
     #endregion
+
+    #region M3 ActionBundle
+
+    /// <summary>
+    /// Returns every piece of data the Signing modal needs on open in a single response.
+    /// Calls are issued sequentially server-side (single DbContext), but the client observes one RTT.
+    /// </summary>
+    public virtual async Task<WorkflowInstanceActionBundleDto> GetActionBundleAsync(GetWorkflowInstanceActionBundleInput input)
+    {
+        if (input == null) throw new UserFriendlyException("input is required");
+        if (input.WorkflowInstanceId == Guid.Empty) throw new UserFriendlyException("WorkflowInstanceId is required");
+        if (input.DocumentId == Guid.Empty) throw new UserFriendlyException("DocumentId is required");
+
+        var bundle = new WorkflowInstanceActionBundleDto();
+
+        // 1) Instance + submit info + current step detail.
+        var instance = await GetAsync(input.WorkflowInstanceId);
+        bundle.Instance = instance;
+
+        if (instance != null)
+        {
+            try
+            {
+                bundle.SubmitInfo = await GetWorkflowSubmitInfoAsync(instance.WorkflowId);
+                bundle.CurrentStepDetail = bundle.SubmitInfo?.Steps.FirstOrDefault(s => s.StepId == instance.CurrentStepId);
+            }
+            catch (Exception ex)
+            {
+                // SubmitInfo is a nice-to-have; failing should not blow up the whole modal open.
+                Logger.LogWarning(ex, "GetActionBundleAsync: SubmitInfo fetch failed for workflowId={workflowId}", instance.WorkflowId);
+            }
+        }
+
+        // 2) Logs / files / histories / all-steps-with-status.
+        bundle.Logs = await GetWorkflowInstanceLogsAsync(input.WorkflowInstanceId);
+        bundle.Files = await GetWorkflowInstanceFilesAsync(input.WorkflowInstanceId);
+        bundle.DocumentHistories = await GetDocumentHistoriesByDocumentIdAsync(input.DocumentId);
+        bundle.AllStepsWithStatus = await GetAllStepsWithStatusAsync(input.WorkflowInstanceId);
+
+        // 3) Signing methods (LOAI_KY master data) — small list, queried directly here
+        //    to avoid coupling to MasterDatasAppService and its permission check.
+        var mdQuery = await _masterDataRepository.GetQueryableAsync();
+        var mdTake = input.SigningMethodsMaxResultCount <= 0 ? 100 : input.SigningMethodsMaxResultCount;
+        var signingMethods = await AsyncExecuter.ToListAsync(
+            mdQuery
+                .Where(x => x.Type == "LOAI_KY" && x.IsActive)
+                .OrderBy(x => x.SortOrder)
+                .Take(mdTake));
+        bundle.SigningMethods = ObjectMapper.Map<List<MasterData>, List<MasterDataDto>>(signingMethods);
+
+        return bundle;
+    }
+
+    #endregion
 }

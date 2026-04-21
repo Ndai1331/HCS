@@ -49,14 +49,14 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
     protected IRepository<IdentityUser, Guid> _identityUserRepository;
     protected IRepository<Department, Guid> _departmentRepository;
     protected IDocumentWorkflowInstanceRepository _documentWorkflowInstanceRepository;
-    protected IRepository<DocumentFile, Guid> _documentFileRepository;
+    protected IDocumentFileRepository _documentFileRepository;
     protected IBlobContainer _blobContainer;
     protected IPdfStampingService _pdfStampingService;
     protected IUserSignatureRepository _userSignatureRepository;
     protected IWorkflowSigningExecutionService _workflowSigningExecutionService;
     protected IDistributedCache<MasterDataCodeCacheItem, string> _masterDataCodeCache;
 
-    public DocumentsAppService(IDocumentRepository documentRepository, DocumentManager documentManager, IDistributedCache<DocumentDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.MasterDatas.MasterData, Guid> masterDataRepository, IRepository<HC.Units.Unit, Guid> unitRepository, IRepository<HC.Workflows.Workflow, Guid> workflowRepository, ILogger<DocumentsAppServiceBase> logger, IDocumentHistoryRepository documentHistoryRepository, DocumentHistoryManager documentHistoryManager, INotificationRepository notificationRepository, INotificationReceiverRepository notificationReceiverRepository, IDistributedEventBus distributedEventBus, IRepository<HC.Documents.Document, Guid> documentRepository2, IRepository<HC.UserDepartments.UserDepartment, Guid> userDepartmentRepository, IDocumentAssignmentRepository documentAssignmentRepository, DocumentAssignmentManager documentAssignmentManager, IRepository<IdentityUser, Guid> identityUserRepository, IRepository<Department, Guid> departmentRepository, IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository, IRepository<DocumentFile, Guid> documentFileRepository, IBlobContainer blobContainer, IPdfStampingService pdfStampingService, IUserSignatureRepository userSignatureRepository, IWorkflowSigningExecutionService workflowSigningExecutionService, IDistributedCache<MasterDataCodeCacheItem, string> masterDataCodeCache) : base(documentRepository, documentManager, downloadTokenCache, masterDataRepository, unitRepository, workflowRepository, logger)
+    public DocumentsAppService(IDocumentRepository documentRepository, DocumentManager documentManager, IDistributedCache<DocumentDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.MasterDatas.MasterData, Guid> masterDataRepository, IRepository<HC.Units.Unit, Guid> unitRepository, IRepository<HC.Workflows.Workflow, Guid> workflowRepository, ILogger<DocumentsAppServiceBase> logger, IDocumentHistoryRepository documentHistoryRepository, DocumentHistoryManager documentHistoryManager, INotificationRepository notificationRepository, INotificationReceiverRepository notificationReceiverRepository, IDistributedEventBus distributedEventBus, IRepository<HC.Documents.Document, Guid> documentRepository2, IRepository<HC.UserDepartments.UserDepartment, Guid> userDepartmentRepository, IDocumentAssignmentRepository documentAssignmentRepository, DocumentAssignmentManager documentAssignmentManager, IRepository<IdentityUser, Guid> identityUserRepository, IRepository<Department, Guid> departmentRepository, IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository, IDocumentFileRepository documentFileRepository, IBlobContainer blobContainer, IPdfStampingService pdfStampingService, IUserSignatureRepository userSignatureRepository, IWorkflowSigningExecutionService workflowSigningExecutionService, IDistributedCache<MasterDataCodeCacheItem, string> masterDataCodeCache) : base(documentRepository, documentManager, downloadTokenCache, masterDataRepository, unitRepository, workflowRepository, logger)
     {
         _documentHistoryRepository = documentHistoryRepository;
         _documentHistoryManager = documentHistoryManager;
@@ -85,38 +85,115 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         return unit == null ? null : ObjectMapper.Map<HC.Units.Unit, LookupDto<Guid>>(unit);
     }
 
-    public virtual async Task<bool> IsDocumentNumberDuplicateAsync(string no, Guid? excludeDocumentId = null)
+    /// <summary>
+    /// M3: first-paint bundle for the Documents list page.
+    /// Replaces 8 permission checks + up to 6 master-data lookups + unit lookup (+ optional workflow)
+    /// with a single round-trip. All work happens server-side sequentially to avoid DbContext
+    /// concurrency issues while keeping the client-perceived latency to one RTT.
+    /// </summary>
+    public virtual async Task<DocumentsPageBootstrapDto> GetPageBootstrapAsync(GetDocumentsPageBootstrapInput input)
     {
-        var normalizedNo = no?.Trim();
-        if (string.IsNullOrWhiteSpace(normalizedNo))
+        input ??= new GetDocumentsPageBootstrapInput();
+
+        var pageSize = input.LookupPageSize <= 0 ? 200 : input.LookupPageSize;
+
+        // 1) Permissions — all 8 resolved in parallel via the AuthorizationService cache.
+        var permTasks = new[]
         {
-            return false;
+            AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Create),
+            AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Edit),
+            AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Delete),
+            AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Send),
+            AuthorizationService.IsGrantedAsync(HCPermissions.Documents.SubmitForSigning),
+            AuthorizationService.IsGrantedAsync(HCPermissions.Documents.SubmitForApproval),
+            AuthorizationService.IsGrantedAsync(HCPermissions.Documents.RejectApproval),
+            AuthorizationService.IsGrantedAsync(HCPermissions.Documents.ApproveWithNote)
+        };
+        await Task.WhenAll(permTasks);
+
+        var permissions = new DocumentsPagePermissionsDto
+        {
+            CanCreate = permTasks[0].Result,
+            CanEdit = permTasks[1].Result,
+            CanDelete = permTasks[2].Result,
+            CanSend = permTasks[3].Result,
+            CanSubmitForSigning = permTasks[4].Result,
+            CanSubmitForApproval = permTasks[5].Result,
+            CanRejectApproval = permTasks[6].Result,
+            CanApproveWithNote = permTasks[7].Result
+        };
+
+        var result = new DocumentsPageBootstrapDto { Permissions = permissions };
+
+        // 2) MasterData lookups — default to the 5 types used by the Documents list page.
+        var masterDataTypes = input.MasterDataTypes != null && input.MasterDataTypes.Count > 0
+            ? input.MasterDataTypes
+            : new List<string>
+            {
+                MasterDataType.DocumentType.GetTypeValue(),
+                MasterDataType.Status.GetTypeValue(),
+                MasterDataType.UrgencyLevel.GetTypeValue(),
+                MasterDataType.SecrecyLevel.GetTypeValue(),
+                MasterDataType.Field.GetTypeValue()
+            };
+
+        // Pull all needed master-data in a single SQL roundtrip then group by Type in memory.
+        // This is cheaper than calling the cached lookup per-type because MasterData
+        // is small and we avoid N Redis calls.
+        var mdQuery = await _masterDataRepository.GetQueryableAsync();
+        var mdRows = await AsyncExecuter.ToListAsync(
+            mdQuery
+                .Where(x => masterDataTypes.Contains(x.Type))
+                .OrderBy(x => x.Type)
+                .ThenBy(x => x.SortOrder)
+                .Select(x => new { x.Id, x.Name, x.Type }));
+
+        foreach (var type in masterDataTypes)
+        {
+            result.MasterDataLookups[type] = mdRows
+                .Where(r => r.Type == type)
+                .Take(pageSize)
+                .Select(r => new LookupDto<Guid> { Id = r.Id, DisplayName = r.Name })
+                .ToList();
         }
 
-        var normalizedNoLower = normalizedNo.ToLower();
-        var query = await _documentRepository.GetQueryableAsync();
+        // 3) Units — via cached lookup method (hits Redis on the 2nd+ call).
+        if (input.IncludeUnits)
+        {
+            var unitsPage = await GetUnitLookupAsync(new LookupRequestDto
+            {
+                Filter = string.Empty,
+                MaxResultCount = pageSize,
+                SkipCount = 0
+            });
+            result.Units = unitsPage.Items is List<LookupDto<Guid>> ul ? ul : unitsPage.Items.ToList();
+        }
 
-        return await AsyncExecuter.AnyAsync(
-            query.Where(x => x.No != null)
-                .WhereIf(excludeDocumentId.HasValue && excludeDocumentId.Value != Guid.Empty, x => x.Id != excludeDocumentId!.Value)
-                .Where(x => x.No!.Trim().ToLower() == normalizedNoLower));
+        // 4) Workflows — optional, off by default (only the Documents create modal needs them).
+        if (input.IncludeWorkflows)
+        {
+            var wfPage = await GetWorkflowLookupAsync(new LookupRequestDto
+            {
+                Filter = string.Empty,
+                MaxResultCount = pageSize,
+                SkipCount = 0
+            });
+            result.Workflows = wfPage.Items is List<LookupDto<Guid>> wl ? wl : wfPage.Items.ToList();
+        }
+
+        return result;
     }
 
-    public virtual async Task<bool> IsStorageNumberDuplicateAsync(string storageNumber, Guid? excludeDocumentId = null)
+    public virtual Task<bool> IsDocumentNumberDuplicateAsync(string no, Guid? excludeDocumentId = null)
     {
-        var normalizedStorageNumber = storageNumber?.Trim();
-        if (string.IsNullOrWhiteSpace(normalizedStorageNumber))
-        {
-            return false;
-        }
+        // M8: delegate to the repository so the EF-specific ILIKE (pg_trgm) stays in the EF layer.
+        return _documentRepository.AnyByNoAsync(no, excludeDocumentId);
+    }
 
-        var normalizedStorageNumberLower = normalizedStorageNumber.ToLower();
-        var query = await _documentRepository.GetQueryableAsync();
-
-        return await AsyncExecuter.AnyAsync(
-            query.Where(x => x.StorageNumber != null)
-                .WhereIf(excludeDocumentId.HasValue && excludeDocumentId.Value != Guid.Empty, x => x.Id != excludeDocumentId!.Value)
-                .Where(x => x.StorageNumber.Trim().ToLower() == normalizedStorageNumberLower));
+    public virtual Task<bool> IsStorageNumberDuplicateAsync(string storageNumber, Guid? excludeDocumentId = null)
+    {
+        // M8: see IsDocumentNumberDuplicateAsync.
+        return _documentRepository.AnyByStorageNumberAsync(storageNumber, excludeDocumentId);
     }
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetIdentityUserLookupAsync(LookupRequestDto input)
@@ -245,6 +322,54 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         await ApplySubmitSigningButtonVisibilityAsync(new List<DocumentWithNavigationPropertiesDto> { dto });
         await ApplyPendingApprovalFlagsAsync(new List<DocumentWithNavigationPropertiesDto> { dto });
         return dto;
+    }
+
+    /// <summary>
+    /// M1 (mid-term optimization): aggregate the 3 calls the DocumentDetail Blazor page
+    /// previously made (document + files + histories) into a single round-trip.
+    /// The sub-queries still run sequentially server-side because the ABP UnitOfWork
+    /// shares one DbContext per request, but the client only pays 1 RTT instead of 3.
+    /// </summary>
+    public virtual async Task<DocumentDetailBundleDto> GetDetailBundleAsync(GetDocumentDetailBundleInput input)
+    {
+        if (input == null || input.DocumentId == Guid.Empty)
+        {
+            throw new UserFriendlyException("DocumentId is required");
+        }
+
+        // Reuse the overridden method so the UI flags (SubmitSigning / PendingApproval)
+        // are included exactly like the standalone endpoint.
+        var documentDto = await GetWithNavigationPropertiesAsync(input.DocumentId);
+
+        // Files — mirrors DocumentFilesAppService.GetListAsync but without the extra HTTP hop.
+        var filesTotal = await _documentFileRepository.GetCountAsync(
+            documentId: input.DocumentId);
+        var filesEntities = await _documentFileRepository.GetListWithNavigationPropertiesAsync(
+            documentId: input.DocumentId,
+            maxResultCount: input.FilesMaxResultCount,
+            skipCount: input.FilesSkipCount);
+
+        // Histories — mirrors DocumentHistoriesAppService.GetHistoryByDocumentIdAsync.
+        var historiesEntities = await _documentHistoryRepository.GetHistoryByDocumentIdAsync(
+            input.DocumentId,
+            input.HistoriesSkipCount,
+            input.HistoriesMaxResultCount);
+        var historiesTotal = await _documentHistoryRepository.GetCountByDocumentIdAsync(input.DocumentId);
+
+        return new DocumentDetailBundleDto
+        {
+            Document = documentDto,
+            Files = new PagedResultDto<DocumentFileWithNavigationPropertiesDto>
+            {
+                TotalCount = filesTotal,
+                Items = ObjectMapper.Map<List<DocumentFileWithNavigationProperties>, List<DocumentFileWithNavigationPropertiesDto>>(filesEntities)
+            },
+            Histories = new PagedResultDto<DocumentHistoryWithNavigationPropertiesDto>
+            {
+                TotalCount = historiesTotal,
+                Items = ObjectMapper.Map<List<DocumentHistoryWithNavigationProperties>, List<DocumentHistoryWithNavigationPropertiesDto>>(historiesEntities)
+            }
+        };
     }
 
     /// <summary>
@@ -464,41 +589,43 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
     /// </summary>
     private async Task<List<Guid>> GetSentToMeDocumentIdsAsync(Guid userId)
     {
+        // M5: fold the two previous queries + in-memory Union into a single SQL statement.
+        // Before: 3 round-trips (assignments, userDepartments, explicit) + Union in memory.
+        // After : 1 query that reads userDepartmentIds via subselect and OR-s the two sources.
         var assignmentQ = await _documentAssignmentRepository.GetQueryableAsync();
         var docQ = await _documentRepository.GetQueryableAsync();
+        var userDeptQ = await _userDepartmentRepository.GetQueryableAsync();
+
         var viewAction = DocumentAssignmentActionType.VIEW.ToString();
         var processAction = DocumentAssignmentActionType.PROCESS.ToString();
+        var revokeStatus = nameof(DocumentAssignmentStatus.REVOKE);
 
-        // SentToMe inbox: VIEW assignments (non-revoked) + PROCESS (approval) assignments in any terminal state except REVOKE,
-        // so leaders still see documents after approval/rejection (read-only in UI when not PENDING).
-        var fromAssignmentsQuery = assignmentQ
-            .Where(a => a.ReceiverUserId == userId
+        // Subquery: departmentIds the user currently belongs to.
+        var userDeptIds = userDeptQ
+            .Where(ud => ud.UserId == userId && ud.IsActive)
+            .Select(ud => ud.DepartmentId);
+
+        // Combined predicate:
+        //   (a) there exists a current VIEW/PROCESS assignment (non-revoked, not workflow-sourced)
+        //       for this user on the document, OR
+        //   (b) the document is explicitly SourceType=SentToMe and routed to this user or
+        //       to one of their active departments.
+        var combinedQuery = docQ
+            .Where(d =>
+                (d.SourceType != DocumentSourceType.Workflow
+                    && assignmentQ.Any(a => a.DocumentId == d.Id
+                        && a.ReceiverUserId == userId
                         && a.WorkflowStepTemplateId == null
                         && a.IsCurrent
-                        && ((a.ActionType == viewAction
-                             && a.Status != nameof(DocumentAssignmentStatus.REVOKE))
-                            || (a.ActionType == processAction
-                                && a.Status != nameof(DocumentAssignmentStatus.REVOKE))))
-            .Join(docQ.Where(d => d.SourceType != DocumentSourceType.Workflow),
-                a => a.DocumentId,
-                d => d.Id,
-                (_, d) => d.Id)
+                        && (a.ActionType == viewAction || a.ActionType == processAction)
+                        && a.Status != revokeStatus))
+                || (d.SourceType == DocumentSourceType.SentToMe
+                    && (d.ReceiverUserId == userId
+                        || (d.DepartmentId != null && userDeptIds.Contains(d.DepartmentId.Value)))))
+            .Select(d => d.Id)
             .Distinct();
 
-        var fromAssignments = await AsyncExecuter.ToListAsync(fromAssignmentsQuery);
-
-        var userDepts = await _userDepartmentRepository.GetListAsync(ud => ud.UserId == userId && ud.IsActive);
-        var deptIds = userDepts.Select(ud => ud.DepartmentId).Distinct().ToList();
-
-        IQueryable<Guid> explicitQuery = docQ
-            .Where(d => d.SourceType == DocumentSourceType.SentToMe
-                        && (d.ReceiverUserId == userId
-                            || (d.DepartmentId != null && deptIds.Contains(d.DepartmentId.Value))))
-            .Select(d => d.Id);
-
-        var fromExplicit = await AsyncExecuter.ToListAsync(explicitQuery);
-
-        return fromAssignments.Union(fromExplicit).Distinct().ToList();
+        return await AsyncExecuter.ToListAsync(combinedQuery);
     }
 
     private static string GetIdentityUserFullDisplayName(IdentityUser user)

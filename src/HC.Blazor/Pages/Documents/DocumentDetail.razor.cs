@@ -240,13 +240,24 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
     {
         try
         {
-            CurrentDocument = await DocumentsAppService.GetWithNavigationPropertiesAsync(DocumentId);
+            // M1 bundle: 1 HTTP call returns document + files + histories.
+            // Replaces the previous 3-request fan-out (GetWithNavigationPropertiesAsync
+            // + DocumentFilesAppService.GetListAsync + DocumentHistoriesAppService.GetHistoryByDocumentIdAsync).
+            var bundle = await DocumentsAppService.GetDetailBundleAsync(new GetDocumentDetailBundleInput
+            {
+                DocumentId = DocumentId,
+                FilesMaxResultCount = 200,
+                HistoriesMaxResultCount = DocumentHistoriesPageSize,
+                HistoriesSkipCount = 0
+            });
+
+            CurrentDocument = bundle?.Document;
             if (CurrentDocument != null)
             {
                 DocumentUpdateData = ObjectMapper.Map<DocumentDto, DocumentUpdateDto>(CurrentDocument.Document);
                 DocumentCreateData = null;
 
-                // Use nav-properties already returned by GetWithNavigationPropertiesAsync instead of issuing
+                // Use nav-properties already returned by the bundle instead of issuing
                 // 6 extra GET-by-id calls. Pre-seed the lookup cache so dropdown filters can re-use them.
                 SelectedTypeMasterData = BuildLookupListFromMasterData(CurrentDocument.Type) ?? SelectedTypeMasterData;
                 SelectedUrgencyLevelMasterData = BuildLookupListFromMasterData(CurrentDocument.UrgencyLevel) ?? SelectedUrgencyLevelMasterData;
@@ -261,14 +272,16 @@ public partial class DocumentDetail : HCComponentBase, IDisposable
                     DocumentsPageLookupCache.SetUnitById(unitLookup);
                 }
 
-                // Load SourceType
                 SelectedSourceType = CurrentDocument.Document.SourceType;
 
-                // Files + histories can run in parallel — neither depends on the other.
-                Logger.LogInformation("LoadDocumentAsync: loading files & histories in parallel");
-                await Task.WhenAll(LoadDocumentFilesAsync(), LoadDocumentHistoriesAsync());
+                // Files & histories came in the bundle — just bind them.
+                DocumentFilesList = bundle!.Files?.Items?.ToList() ?? new List<DocumentFileWithNavigationPropertiesDto>();
+                DocumentHistoriesList = bundle.Histories?.Items?.ToList() ?? new List<DocumentHistoryWithNavigationPropertiesDto>();
+                DocumentHistoriesTotalCount = (int)(bundle.Histories?.TotalCount ?? 0);
+                DocumentHistoriesCurrentPage = 1;
 
-                // PDF URL needs files to be loaded first, so it runs after.
+                // PDF stamping stays separate: it's CPU-heavy and the blob is large,
+                // so keep it out of the bundle.
                 await LoadPdfUrlAsync();
             }
             else

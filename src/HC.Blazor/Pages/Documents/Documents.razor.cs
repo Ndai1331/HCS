@@ -171,17 +171,13 @@ public partial class Documents : IDisposable
             // Register location changed event handler
             NavigationManager.LocationChanged += OnLocationChanged;
 
-            await SetPermissionsAsync();
-            await SetToolbarItemsAsync();
+            // M3: one bundled call replaces 8 permission checks + 6 lookup calls.
+            // Departments stays separate (different service + shape); everything else comes
+            // through page-bootstrap and is fanned out to the existing collections for compat.
             await Task.WhenAll(
-                GetDepartmentsAsync(),
-                GetStatusMasterDataLookupAsync(StatusMasterDataCollection, string.Empty, CancellationToken.None),
-                GetTypeMasterDataLookupAsync(TypeMasterDataCollection, "", CancellationToken.None),
-                GetUrgencyLevelMasterDataLookupAsync(UrgencyLevelMasterDataCollection, "", CancellationToken.None),
-                GetSecrecyLevelMasterDataLookupAsync(SecrecyLevelMasterDataCollection, "", CancellationToken.None),
-                GetFieldMasterDataLookupAsync(FieldMasterDataCollection, "", CancellationToken.None),
-                GetUnitLookupAsync(UnitsCollection, "", CancellationToken.None)
-            );
+                HydrateFromPageBootstrapAsync(),
+                GetDepartmentsAsync());
+            await SetToolbarItemsAsync();
 
             // Set breadcrumb items AFTER page title is updated (from OnInitializedAsync)
             BreadcrumbItems.Clear();
@@ -408,6 +404,7 @@ public partial class Documents : IDisposable
     private async Task SetPermissionsAsync()
     {
         // Run all permission checks in parallel to cut 7 sequential round-trips on first paint.
+        // Kept for code paths that still need local permission refresh (e.g. navigating back).
         var createTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Create);
         var editTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Edit);
         var sendTask = AuthorizationService.IsGrantedAsync(HCPermissions.Documents.Send);
@@ -429,6 +426,67 @@ public partial class Documents : IDisposable
         CanRejectApproval = rejectApprovalTask.Result;
         CanApproveWithNote = approveWithNoteTask.Result;
         CanDeleteDocument = deleteTask.Result;
+    }
+
+    /// <summary>
+    /// M3: pull permissions + lookups from the new <c>documents/page-bootstrap</c> endpoint
+    /// so first paint needs one HTTP round-trip instead of ~14.
+    /// </summary>
+    private async Task HydrateFromPageBootstrapAsync()
+    {
+        try
+        {
+            var bootstrap = await DocumentsAppService.GetPageBootstrapAsync(new GetDocumentsPageBootstrapInput
+            {
+                LookupPageSize = 200,
+                IncludeUnits = true,
+                IncludeWorkflows = false,
+                MasterDataTypes = new List<string>
+                {
+                    MasterDataType.Status.GetTypeValue(),
+                    MasterDataType.DocumentType.GetTypeValue(),
+                    MasterDataType.UrgencyLevel.GetTypeValue(),
+                    MasterDataType.SecrecyLevel.GetTypeValue(),
+                    MasterDataType.Field.GetTypeValue()
+                }
+            });
+
+            CanCreateDocument = bootstrap.Permissions.CanCreate;
+            CanEditDocument = bootstrap.Permissions.CanEdit;
+            CanDeleteDocument = bootstrap.Permissions.CanDelete;
+            CanSendDocument = bootstrap.Permissions.CanSend;
+            CanSubmitForSigning = bootstrap.Permissions.CanSubmitForSigning;
+            CanSubmitForApproval = bootstrap.Permissions.CanSubmitForApproval;
+            CanRejectApproval = bootstrap.Permissions.CanRejectApproval;
+            CanApproveWithNote = bootstrap.Permissions.CanApproveWithNote;
+
+            StatusMasterDataCollection = GetBootstrapLookup(bootstrap, MasterDataType.Status);
+            TypeMasterDataCollection = GetBootstrapLookup(bootstrap, MasterDataType.DocumentType);
+            UrgencyLevelMasterDataCollection = GetBootstrapLookup(bootstrap, MasterDataType.UrgencyLevel);
+            SecrecyLevelMasterDataCollection = GetBootstrapLookup(bootstrap, MasterDataType.SecrecyLevel);
+            FieldMasterDataCollection = GetBootstrapLookup(bootstrap, MasterDataType.Field);
+            UnitsCollection = bootstrap.Units ?? new List<LookupDto<Guid>>();
+        }
+        catch (Exception ex)
+        {
+            // Fallback to the legacy per-call path if the bundle endpoint fails (older server, auth hiccup, etc.).
+            Logger.LogWarning(ex, "Documents page-bootstrap failed; falling back to per-call lookups");
+            await SetPermissionsAsync();
+            await Task.WhenAll(
+                GetStatusMasterDataLookupAsync(StatusMasterDataCollection, string.Empty, CancellationToken.None),
+                GetTypeMasterDataLookupAsync(TypeMasterDataCollection, string.Empty, CancellationToken.None),
+                GetUrgencyLevelMasterDataLookupAsync(UrgencyLevelMasterDataCollection, string.Empty, CancellationToken.None),
+                GetSecrecyLevelMasterDataLookupAsync(SecrecyLevelMasterDataCollection, string.Empty, CancellationToken.None),
+                GetFieldMasterDataLookupAsync(FieldMasterDataCollection, string.Empty, CancellationToken.None),
+                GetUnitLookupAsync(UnitsCollection, string.Empty, CancellationToken.None));
+        }
+    }
+
+    private static List<LookupDto<Guid>> GetBootstrapLookup(DocumentsPageBootstrapDto bootstrap, MasterDataType type)
+    {
+        return bootstrap.MasterDataLookups.TryGetValue(type.GetTypeValue(), out var list) && list != null
+            ? list
+            : new List<LookupDto<Guid>>();
     }
 
     private async Task GetDocumentsAsync()

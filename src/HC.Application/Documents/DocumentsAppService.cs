@@ -70,7 +70,47 @@ public abstract class DocumentsAppServiceBase : HCAppService
         return ObjectMapper.Map<Document, DocumentDto>(await _documentRepository.GetAsync(id));
     }
 
+    // M4: lazily-resolved distributed cache for default (filter-less, first-page) lookup pages.
+    // Tenant isolation is handled by ABP's DistributedCache<T> via CurrentTenant.
+    protected IDistributedCache<DocumentsLookupCacheItem, string> _documentsLookupCache
+        => LazyServiceProvider.LazyGetRequiredService<IDistributedCache<DocumentsLookupCacheItem, string>>();
+
+    private static readonly DistributedCacheEntryOptions _lookupCacheOptions = new()
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+    };
+
+    private static bool IsDefaultLookupRequest(LookupRequestDto input)
+    {
+        // Only cache the "no filter, first page" call — that's what first-paint uses
+        // and where cache hits dominate.
+        return string.IsNullOrWhiteSpace(input.Filter) && input.SkipCount == 0;
+    }
+
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetMasterDataLookupAsync(LookupRequestDto input)
+    {
+        if (IsDefaultLookupRequest(input))
+        {
+            var cacheKey = $"master:{input.MaxResultCount}";
+            var cached = await _documentsLookupCache.GetOrAddAsync(cacheKey,
+                async () => await LoadMasterDataLookupPageAsync(input),
+                () => _lookupCacheOptions);
+            return new PagedResultDto<LookupDto<Guid>>
+            {
+                TotalCount = cached!.TotalCount,
+                Items = cached.Items
+            };
+        }
+
+        var fresh = await LoadMasterDataLookupPageAsync(input);
+        return new PagedResultDto<LookupDto<Guid>>
+        {
+            TotalCount = fresh.TotalCount,
+            Items = fresh.Items
+        };
+    }
+
+    private async Task<DocumentsLookupCacheItem> LoadMasterDataLookupPageAsync(LookupRequestDto input)
     {
         var baseQuery = (await _masterDataRepository.GetQueryableAsync())
             .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
@@ -83,14 +123,33 @@ public abstract class DocumentsAppServiceBase : HCAppService
         var totalCount = await AsyncExecuter.LongCountAsync(baseQuery);
         var items = await AsyncExecuter.ToListAsync(lookupQuery.PageBy(input.SkipCount, input.MaxResultCount));
 
-        return new PagedResultDto<LookupDto<Guid>>
-        {
-            TotalCount = totalCount,
-            Items = items
-        };
+        return new DocumentsLookupCacheItem { TotalCount = totalCount, Items = items };
     }
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetUnitLookupAsync(LookupRequestDto input)
+    {
+        if (IsDefaultLookupRequest(input))
+        {
+            var cacheKey = $"unit:{input.MaxResultCount}";
+            var cached = await _documentsLookupCache.GetOrAddAsync(cacheKey,
+                async () => await LoadUnitLookupPageAsync(input),
+                () => _lookupCacheOptions);
+            return new PagedResultDto<LookupDto<Guid>>
+            {
+                TotalCount = cached!.TotalCount,
+                Items = cached.Items
+            };
+        }
+
+        var fresh = await LoadUnitLookupPageAsync(input);
+        return new PagedResultDto<LookupDto<Guid>>
+        {
+            TotalCount = fresh.TotalCount,
+            Items = fresh.Items
+        };
+    }
+
+    private async Task<DocumentsLookupCacheItem> LoadUnitLookupPageAsync(LookupRequestDto input)
     {
         var baseQuery = (await _unitRepository.GetQueryableAsync())
             .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
@@ -102,14 +161,33 @@ public abstract class DocumentsAppServiceBase : HCAppService
         var totalCount = await AsyncExecuter.LongCountAsync(baseQuery);
         var items = await AsyncExecuter.ToListAsync(lookupQuery.PageBy(input.SkipCount, input.MaxResultCount));
 
-        return new PagedResultDto<LookupDto<Guid>>
-        {
-            TotalCount = totalCount,
-            Items = items
-        };
+        return new DocumentsLookupCacheItem { TotalCount = totalCount, Items = items };
     }
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetWorkflowLookupAsync(LookupRequestDto input)
+    {
+        if (IsDefaultLookupRequest(input))
+        {
+            var cacheKey = $"workflow:{input.MaxResultCount}";
+            var cached = await _documentsLookupCache.GetOrAddAsync(cacheKey,
+                async () => await LoadWorkflowLookupPageAsync(input),
+                () => _lookupCacheOptions);
+            return new PagedResultDto<LookupDto<Guid>>
+            {
+                TotalCount = cached!.TotalCount,
+                Items = cached.Items
+            };
+        }
+
+        var fresh = await LoadWorkflowLookupPageAsync(input);
+        return new PagedResultDto<LookupDto<Guid>>
+        {
+            TotalCount = fresh.TotalCount,
+            Items = fresh.Items
+        };
+    }
+
+    private async Task<DocumentsLookupCacheItem> LoadWorkflowLookupPageAsync(LookupRequestDto input)
     {
         var baseQuery = (await _workflowRepository.GetQueryableAsync())
             .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
@@ -121,11 +199,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
         var totalCount = await AsyncExecuter.LongCountAsync(baseQuery);
         var items = await AsyncExecuter.ToListAsync(lookupQuery.PageBy(input.SkipCount, input.MaxResultCount));
 
-        return new PagedResultDto<LookupDto<Guid>>
-        {
-            TotalCount = totalCount,
-            Items = items
-        };
+        return new DocumentsLookupCacheItem { TotalCount = totalCount, Items = items };
     }
 
     [Authorize(HCPermissions.Documents.Delete)]

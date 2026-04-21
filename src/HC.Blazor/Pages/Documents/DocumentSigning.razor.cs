@@ -614,22 +614,59 @@ public partial class DocumentSigning
             AvailableUserSignaturesForMethod = new();
             SelectedUserSignatureId = null;
 
-            // Load all data in parallel
-            var tasks = new List<Task>();
-
+            // M3: pull everything the modal needs in a single bundle call instead of 7 parallel HTTPs.
+            // `LoadSigningDocumentFilesAsync` stays separate because it comes from DocumentAssignmentsAppService.
             if (document.WorkflowInstanceId.HasValue)
             {
-                tasks.Add(LoadWorkflowLogsAsync(document.WorkflowInstanceId.Value));
-                tasks.Add(LoadWorkflowFilesAsync(document.WorkflowInstanceId.Value));
-                tasks.Add(LoadCurrentStepDetailAsync(document.WorkflowInstanceId.Value));
-                tasks.Add(LoadAllStepsWithStatusAsync(document.WorkflowInstanceId.Value));
+                try
+                {
+                    var bundle = await DocumentWorkflowInstancesAppService.GetActionBundleAsync(
+                        new GetWorkflowInstanceActionBundleInput
+                        {
+                            WorkflowInstanceId = document.WorkflowInstanceId.Value,
+                            DocumentId = document.DocumentId,
+                            SigningMethodsMaxResultCount = 100
+                        });
+
+                    WorkflowInstanceInfo = bundle.Instance;
+                    CurrentStepDetailInfo = bundle.CurrentStepDetail;
+                    WorkflowLogs = bundle.Logs ?? new();
+                    WorkflowFiles = bundle.Files ?? new();
+                    DocumentHistories = bundle.DocumentHistories ?? new();
+                    AllStepsWithStatus = bundle.AllStepsWithStatus ?? new();
+                    SigningMethods = bundle.SigningMethods ?? new();
+
+                    // Files list from document assignments is served by a different AppService;
+                    // fire it off in the background so it doesn't block the modal opening.
+                    await LoadSigningDocumentFilesAsync(document.DocumentId);
+                }
+                catch (Exception ex)
+                {
+                    // Fallback to the legacy per-call path if the bundle endpoint fails.
+                    Logger.LogWarning(ex, "Signing action-bundle failed; falling back to per-call loads");
+                    var tasks = new List<Task>
+                    {
+                        LoadWorkflowLogsAsync(document.WorkflowInstanceId.Value),
+                        LoadWorkflowFilesAsync(document.WorkflowInstanceId.Value),
+                        LoadCurrentStepDetailAsync(document.WorkflowInstanceId.Value),
+                        LoadAllStepsWithStatusAsync(document.WorkflowInstanceId.Value),
+                        LoadDocumentHistoriesAsync(document.DocumentId),
+                        LoadSigningMethodsAsync(),
+                        LoadSigningDocumentFilesAsync(document.DocumentId)
+                    };
+                    await Task.WhenAll(tasks);
+                }
             }
-
-            tasks.Add(LoadDocumentHistoriesAsync(document.DocumentId));
-            tasks.Add(LoadSigningMethodsAsync());
-            tasks.Add(LoadSigningDocumentFilesAsync(document.DocumentId));
-
-            await Task.WhenAll(tasks);
+            else
+            {
+                var tasks = new List<Task>
+                {
+                    LoadDocumentHistoriesAsync(document.DocumentId),
+                    LoadSigningMethodsAsync(),
+                    LoadSigningDocumentFilesAsync(document.DocumentId)
+                };
+                await Task.WhenAll(tasks);
+            }
 
             // Default signing method to ELECTRONIC when available.
             var defaultSigningMethod = SigningMethods.FirstOrDefault(m => m.Code == nameof(SignType.ELECTRONIC));

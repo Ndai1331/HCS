@@ -28,8 +28,13 @@ public abstract class EfCoreUserSignatureRepositoryBase : EfCoreRepository<HCDbC
 
     public virtual async Task<UserSignatureWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(userSignature => new UserSignatureWithNavigationProperties { UserSignature = userSignature, IdentityUser = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == userSignature.IdentityUserId) }).FirstOrDefault();
+        // M2: reuse the LEFT JOIN query used by list-mode instead of issuing a correlated
+        // `FirstOrDefault` subquery for IdentityUser inside `Select`. Also switches the
+        // call path to async.
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.UserSignature.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<UserSignatureWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? signType = null, string? providerCode = null, string? tokenRef = null, string? signatureImage = null, DateTime? validFromMin = null, DateTime? validFromMax = null, DateTime? validToMin = null, DateTime? validToMax = null, bool? isActive = null, Guid? identityUserId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

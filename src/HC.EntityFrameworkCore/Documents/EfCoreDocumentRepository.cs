@@ -35,8 +35,12 @@ public abstract class EfCoreDocumentRepositoryBase : EfCoreRepository<HCDbContex
 
     public virtual async Task<DocumentWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(document => new DocumentWithNavigationProperties { Document = document, Field = dbContext.Set<MasterData>().FirstOrDefault(c => c.Id == document.FieldId), Unit = dbContext.Set<Unit>().FirstOrDefault(c => c.Id == document.UnitId), Workflow = dbContext.Set<Workflow>().FirstOrDefault(c => c.Id == document.WorkflowId), Status = dbContext.Set<MasterData>().FirstOrDefault(c => c.Id == document.StatusId), Type = dbContext.Set<MasterData>().FirstOrDefault(c => c.Id == document.TypeId), UrgencyLevel = dbContext.Set<MasterData>().FirstOrDefault(c => c.Id == document.UrgencyLevelId), SecrecyLevel = dbContext.Set<MasterData>().FirstOrDefault(c => c.Id == document.SecrecyLevelId) }).FirstOrDefault();
+        // M2: reuse the LEFT JOIN query used by list-mode instead of issuing 7 correlated
+        // subqueries (one per nav-property) via `FirstOrDefault` inside `Select`.
+        var query = await GetQueryForNavigationPropertiesAsync(trackEntities: false);
+        return await query
+            .Where(x => x.Document.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<DocumentWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? no = null, string? title = null, string? currentStatus = null, DateTime? completedTimeMin = null, DateTime? completedTimeMax = null, string? storageNumber = null, DateTime? incommingDateMin = null, DateTime? incommingDateMax = null, Guid? fieldId = null, Guid? unitId = null, Guid? workflowId = null, Guid? statusId = null, Guid? typeId = null, Guid? urgencyLevelId = null, Guid? secrecyLevelId = null, DocumentSourceType? sourceType = null, Guid? creatorId = null, List<Guid>? documentIds = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

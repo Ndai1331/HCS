@@ -85,4 +85,10 @@ public partial interface IDocumentWorkflowInstancesAppService
     /// Used in the action modal to display full workflow progress.
     /// </summary>
     Task<List<WorkflowStepStatusDto>> GetAllStepsWithStatusAsync(Guid workflowInstanceId);
+
+    /// <summary>
+    /// M3 — bundles all data the Signing modal needs on open (instance, submit info, logs,
+    /// files, histories, all-step status, signing methods) into one round-trip.
+    /// </summary>
+    Task<WorkflowInstanceActionBundleDto> GetActionBundleAsync(GetWorkflowInstanceActionBundleInput input);
 }

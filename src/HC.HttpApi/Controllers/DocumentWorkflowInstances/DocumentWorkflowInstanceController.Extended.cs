@@ -114,4 +114,11 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     {
         return _documentWorkflowInstancesAppService.GetAllStepsWithStatusAsync(workflowInstanceId);
     }
+
+    [HttpGet]
+    [Route("action-bundle")]
+    public Task<WorkflowInstanceActionBundleDto> GetActionBundleAsync(GetWorkflowInstanceActionBundleInput input)
+    {
+        return _documentWorkflowInstancesAppService.GetActionBundleAsync(input);
+    }
 }
