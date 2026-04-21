@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using HC.BnnSoftSigns;
 using HC.DocumentAssignments;
 using HC.DocumentFiles;
-using HC.DocumentPdfViewer;
 using HC.Localization;
 using HC.SignatureSettings;
 using HC.UserSignatures;
@@ -887,8 +886,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                     case "PREPARED_SIGN":
                         if (signatureImageBytes != null && signatureImageBytes.Length > 0)
                         {
-                            var opaquePrepBytes = SignatureImageHelper.FlattenTransparency(signatureImageBytes);
-                            using var imgStream = new MemoryStream(opaquePrepBytes);
+                            // Do not flatten onto white here — preserves signature colors (approval stamping uses FlattenTransparency in PdfStampingService only).
+                            using var imgStream = new MemoryStream(signatureImageBytes);
                             var img = PdfSharpDrawing.XImage.FromStream(imgStream);
                             var imgAspect = (double)img.PixelWidth / img.PixelHeight;
                             var fitWidth = w;
@@ -995,8 +994,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 case "PREPARED_SIGN":
                     if (signatureImageBytes != null && signatureImageBytes.Length > 0)
                     {
-                        var opaqueSignBytes = SignatureImageHelper.FlattenTransparency(signatureImageBytes);
-                        using var imgStream = new MemoryStream(opaqueSignBytes);
+                        // Raw PNG bytes — avoid FlattenTransparency so electronic signing keeps correct signature appearance (see PdfStampingService for approval-only white composite).
+                        using var imgStream = new MemoryStream(signatureImageBytes);
                         var img = PdfSharpDrawing.XImage.FromStream(imgStream);
                         var imgAspect = (double)img.PixelWidth / img.PixelHeight;
                         var fitWidth = w;

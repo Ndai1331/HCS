@@ -9,8 +9,9 @@ namespace HC.DocumentPdfViewer;
 
 /// <summary>
 /// PdfSharp on Linux renders PNG alpha channels as black.
-/// This helper composites PNG images onto a white background,
-/// producing an opaque RGB PNG that renders correctly everywhere.
+/// Composites PNG onto white for an opaque RGB PNG.
+/// Use only where a white matte is acceptable (e.g. leadership PDF approval stamp in <see cref="PdfStampingService"/>);
+/// do not use for electronic/digital signing assets where colors must stay faithful.
 /// </summary>
 public static class SignatureImageHelper
 {
