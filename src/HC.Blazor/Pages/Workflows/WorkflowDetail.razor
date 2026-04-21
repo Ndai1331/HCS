@@ -555,6 +555,9 @@
                                         <DataGridColumn TItem="WorkflowStepAssignmentWithNavigationPropertiesDto"
                                                 Field="DefaultUser.Name"
                                                 Caption="@L["DefaultUser"]">
+                                                <DisplayTemplate>
+                                                    @(context.DefaultUser?.Surname + " " + context.DefaultUser?.Name)
+                                                </DisplayTemplate>
                                         </DataGridColumn>
 
                                         <DataGridColumn TItem="WorkflowStepAssignmentWithNavigationPropertiesDto"
