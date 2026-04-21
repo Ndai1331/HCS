@@ -32,6 +32,9 @@ using Volo.Abp.BlobStoring;
 using System.Text;
 using HC.SignatureSettings;
 using HC.UserSignatures;
+using HC.Documents.BackgroundJobs;
+using System.Text.Json;
+using Volo.Abp.BackgroundJobs;
 
 namespace HC.Documents;
 
@@ -1173,28 +1176,50 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
     [Authorize(HCPermissions.Documents.ApproveWithNote)]
     public async Task<bool> ApproveWithNoteAsync(ApproveDocumentWithNoteInput input)
     {
+        var currentUserId = CurrentUser.Id ?? throw new UserFriendlyException(L["User not authenticated"]);
+        return await ExecuteApproveWithNoteForUserAsync(input, currentUserId);
+    }
+
+    /// <summary>
+    /// Phase 3: core approve-with-note logic. Optional progress reporter for background jobs + SignalR.
+    /// </summary>
+    /// <remarks>
+    /// Not exposed as a remote API endpoint. Callers must enforce identity: HTTP via <see cref="ApproveWithNoteAsync"/>,
+    /// background jobs via <see cref="ICurrentPrincipalAccessor"/> impersonation of the initiating user.
+    /// </remarks>
+    // ABP validation interceptor cannot reflect Func<,,>; skip it (this method is internal — not exposed remotely).
+    [Volo.Abp.Validation.DisableValidation]
+    public virtual async Task<bool> ExecuteApproveWithNoteForUserAsync(
+        ApproveDocumentWithNoteInput input,
+        Guid userId,
+        Func<int, string, Task>? reportProgressAsync = null)
+    {
         if (input.DocumentId == Guid.Empty || input.PageNumber <= 0 || string.IsNullOrWhiteSpace(input.NoteContent))
         {
             throw new UserFriendlyException("DocumentId, page number and note content are required.");
         }
 
-        var currentUserId = CurrentUser.Id ?? throw new UserFriendlyException(L["User not authenticated"]);
-        var (document, assignment) = await GetPendingApprovalAssignmentAsync(input.DocumentId, currentUserId);
+        await ReportAsync(5, "Validating approval request...");
+        var (document, assignment) = await GetPendingApprovalAssignmentAsync(input.DocumentId, userId);
 
+        await ReportAsync(20, "Loading PDF...");
         var latestPdfFile = await GetLatestPdfFileAsync(input.DocumentId);
         if (latestPdfFile == null || string.IsNullOrWhiteSpace(latestPdfFile.Path))
         {
             throw new UserFriendlyException("PDF file for this document was not found.");
         }
 
+        await ReportAsync(35, "Reading file from storage...");
         var originalBytes = await _blobContainer.GetAllBytesOrNullAsync(latestPdfFile.Path!);
         if (originalBytes == null || originalBytes.Length == 0)
         {
             throw new UserFriendlyException("Could not load PDF bytes from storage.");
         }
 
-        var (signatureImageBytes, signerFullName) = await TryGetApprovalSignatureStampAsync(currentUserId);
+        await ReportAsync(45, "Preparing signature stamp...");
+        var (signatureImageBytes, signerFullName) = await TryGetApprovalSignatureStampAsync(userId);
 
+        await ReportAsync(55, "Stamping PDF...");
         var stamped = _pdfStampingService.AddTextNote(
             originalBytes,
             input.PageNumber,
@@ -1204,6 +1229,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             signatureImageBytes,
             signerFullName);
 
+        await ReportAsync(65, "Saving approved PDF...");
         var approvedBlobPath = $"documents/approved/{input.DocumentId}/{GuidGenerator.Create():N}.pdf";
         await _blobContainer.SaveAsync(approvedBlobPath, stamped, overrideExisting: true);
 
@@ -1220,26 +1246,93 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         };
         await _documentFileRepository.InsertAsync(approvedFile);
 
+        await ReportAsync(75, "Updating assignment...");
         assignment.Status = DocumentAssignmentStatus.DONE.ToString();
         assignment.ProcessedAt = DateTime.Now;
         assignment.IsCurrent = false;
         await _documentAssignmentRepository.UpdateAsync(assignment);
 
+        await ReportAsync(82, "Updating document status...");
         await UpdateDocumentStatusAsync(input.DocumentId, DocumentStatusCode.DA_PHE_DUYET);
 
+        await ReportAsync(88, "Writing history...");
         var approvalComment = $"[Page:{input.PageNumber}; X:{input.PdfX:0.##}; Y:{input.PdfY:0.##}] {input.NoteContent.Trim()}";
         var history = new DocumentHistory(
             GuidGenerator.Create(),
             input.DocumentId,
-            currentUserId,
+            userId,
             document.CreatorId.Value,
             DocumentStatusCode.DA_PHE_DUYET.GetCode(),
             approvalComment);
         history.TenantId = CurrentTenant.Id;
         await _documentHistoryRepository.InsertAsync(history);
 
-        await NotifyDocumentOwnerAsync(document, "DocumentApproved", $"DocumentApprovedMessage|{document.StorageNumber}|{document.Title}|{CurrentUser.UserName ?? "System"}");
+        await ReportAsync(94, "Notifying document owner...");
+        var notifierUser = await _identityUserRepository.GetAsync(userId);
+        await NotifyDocumentOwnerAsync(document, "DocumentApproved", $"DocumentApprovedMessage|{document.StorageNumber}|{document.Title}|{notifierUser.UserName ?? "System"}");
+        await ReportAsync(100, "Done");
         return true;
+
+        async Task ReportAsync(int progress, string message)
+        {
+            if (reportProgressAsync != null)
+            {
+                await reportProgressAsync(progress, message);
+            }
+        }
+    }
+
+    [Authorize(HCPermissions.Documents.ApproveWithNote)]
+    public virtual async Task<QueueDocumentBackgroundOperationResultDto> QueueApproveWithNoteAsync(ApproveDocumentWithNoteInput input)
+    {
+        if (input.DocumentId == Guid.Empty || input.PageNumber <= 0 || string.IsNullOrWhiteSpace(input.NoteContent))
+        {
+            throw new UserFriendlyException("DocumentId, page number and note content are required.");
+        }
+
+        var userId = CurrentUser.Id ?? throw new UserFriendlyException(L["User not authenticated"]);
+        var operationId = GuidGenerator.Create();
+        var json = JsonSerializer.Serialize(input);
+        await LazyServiceProvider.LazyGetRequiredService<IRepository<DocumentBackgroundOperation, Guid>>().InsertAsync(
+            new DocumentBackgroundOperation(
+                operationId,
+                userId,
+                input.DocumentId,
+                DocumentBackgroundOperationTypes.ApproveWithNote,
+                json,
+                CurrentTenant.Id));
+
+        await LazyServiceProvider.LazyGetRequiredService<IBackgroundJobManager>()
+            .EnqueueAsync(new ApproveWithNoteBackgroundJobArgs { OperationId = operationId });
+
+        return new QueueDocumentBackgroundOperationResultDto { OperationId = operationId };
+    }
+
+    [Authorize]
+    public virtual async Task<DocumentBackgroundOperationStatusDto?> GetBackgroundOperationStatusAsync(Guid operationId)
+    {
+        var op = await LazyServiceProvider.LazyGetRequiredService<IRepository<DocumentBackgroundOperation, Guid>>()
+            .FindAsync(operationId);
+        if (op == null)
+        {
+            return null;
+        }
+
+        if (CurrentUser.Id != op.UserId)
+        {
+            throw new AbpAuthorizationException();
+        }
+
+        return new DocumentBackgroundOperationStatusDto
+        {
+            OperationId = op.Id,
+            OperationType = op.OperationType,
+            Status = op.Status,
+            Progress = op.Progress,
+            Message = op.Message,
+            ErrorMessage = op.ErrorMessage,
+            DocumentId = op.DocumentId
+        };
     }
 
     private async Task<(Document Document, DocumentAssignment Assignment)> GetPendingApprovalAssignmentAsync(Guid documentId, Guid currentUserId)

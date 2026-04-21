@@ -82,5 +82,7 @@ public class HCDomainModule : AbpModule
 
         // Register background worker for checking overdue workflow instances
         await context.AddBackgroundWorkerAsync<HC.DocumentWorkflowInstances.WorkflowOverdueBackgroundWorker>();
+        // Phase 3: notification outbox (extend worker body to send real notifications)
+        await context.AddBackgroundWorkerAsync<HC.Notifications.NotificationOutboxBackgroundWorker>();
     }
 }

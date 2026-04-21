@@ -1,0 +1,29 @@
+-- Example only — adjust joins/columns to match production SentToMe semantics
+-- (see DocumentsAppService.GetSentToMeDocumentIdsAsync and EfCoreDocumentRepository filters).
+--
+-- REFRESH after bulk changes:
+--   REFRESH MATERIALIZED VIEW CONCURRENTLY mv_app_sent_to_me_inbox;
+--
+-- Requires unique index on materialized view for CONCURRENT refresh:
+--   CREATE UNIQUE INDEX ON mv_app_sent_to_me_inbox (tenant_id, user_id, document_id);
+
+-- DROP MATERIALIZED VIEW IF EXISTS mv_app_sent_to_me_inbox;
+
+-- CREATE MATERIALIZED VIEW mv_app_sent_to_me_inbox AS
+-- SELECT
+--     d."TenantId" AS tenant_id,
+--     a."ReceiverUserId" AS user_id,
+--     d."Id" AS document_id
+-- FROM "AppDocumentAssignments" a
+-- INNER JOIN "AppDocuments" d ON d."Id" = a."DocumentId"
+-- WHERE a."IsCurrent" = true
+--   AND a."WorkflowStepTemplateId" IS NULL
+--   -- ... add VIEW/PROCESS and non-REVOKE rules ...
+-- UNION
+-- SELECT
+--     d."TenantId",
+--     COALESCE(d."ReceiverUserId", ud."UserId") AS user_id,
+--     d."Id"
+-- FROM "AppDocuments" d
+-- ... explicit SentToMe + department routing ...
+-- ;

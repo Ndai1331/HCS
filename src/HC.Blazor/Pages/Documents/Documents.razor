@@ -395,8 +395,8 @@
                 <DataGridColumn TItem="DocumentWithNavigationPropertiesDto"
                                 Displayable="@(SelectedSourceType == DocumentSourceType.SentToMe)"
                                 Caption="@L["DocumentsColumnApprove"]"
-                                Width="100px"
-                                CellStyle="@((item) => "min-width: 100px; text-align: center")">
+                                Width="1200px"
+                                CellStyle="@((item) => "min-width: 120px; text-align: center")">
                     <DisplayTemplate>
                         @if (context.HasPendingApprovalTask)
                         {

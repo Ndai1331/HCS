@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using HC;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -50,8 +51,8 @@ public interface IWorkflowSigningExecutionService
 
 public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionService, ITransientDependency
 {
-    /// <summary>PDFsharp family name; resolves to LiberationSans-*.ttf via CustomFontResolver (e.g. LiberationSans-Regular.ttf on Linux).</summary>
-    private const string PdfPlaceholderTextFontFamily = "Liberation Sans";
+    /// <summary>PDFsharp family name; production uses Liberation Sans, dev uses Helvetica (see <see cref="PdfFontEnvironment"/>).</summary>
+    private static string PdfPlaceholderTextFontFamily => PdfFontEnvironment.DefaultPdfFontFamily;
 
     private readonly IDocumentAssignmentRepository _documentAssignmentRepository;
     private readonly IRepository<DocumentFile, Guid> _documentFileRepository;
@@ -248,6 +249,15 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 borderstyle = 0,
                 bordercolor = "#000000"
             }, xOffset: 10, yOffset: 42);
+        }
+        catch (SignPlaceholderNotFoundException ex)
+        {
+            _logger.LogWarning(
+                "[DIGITAL_SIGN] Signature placeholder not found in PDF. AssignmentId={AssignmentId} | TextSign={TextSign} | PageSign={PageSign}",
+                assignment.Id,
+                ex.TextSign,
+                ex.PageSign);
+            throw new UserFriendlyException(_localizer["PlaceholderNotFoundInPdf", ex.TextSign]);
         }
         catch (Exception ex)
         {

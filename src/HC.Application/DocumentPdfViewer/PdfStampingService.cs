@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using HC;
 using Microsoft.Extensions.Logging;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf.IO;
@@ -54,17 +56,24 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
     private const double SignatureMaxWidth = 110;
     private const double SignatureMaxHeight = 42;
     private const double DiagonalAngleDegrees = -45;
-    /// <summary>PDFsharp family name; resolves to LiberationSans-*.ttf via CustomFontResolver (e.g. LiberationSans-Regular.ttf on Linux).</summary>
-    private const string PrimaryPdfFontFamily = "Liberation Sans";
-    private static readonly string[] WatermarkFontCandidates =
+
+    /// <summary>PDFsharp primary family; production Liberation Sans, dev Helvetica (<see cref="PdfFontEnvironment"/>).</summary>
+    private static string PrimaryPdfFontFamily => PdfFontEnvironment.DefaultPdfFontFamily;
+
+    private static string[] GetWatermarkFontCandidates()
     {
-        PrimaryPdfFontFamily,
-        "Helvetica",
-        "Arial",
-        "DejaVu Sans",
-        "Noto Sans",
-        "FreeSans"
-    };
+        var primary = PdfFontEnvironment.DefaultPdfFontFamily;
+        var ordered = new List<string> { primary };
+        foreach (var name in new[] { "Liberation Sans", "Helvetica", "Arial", "DejaVu Sans", "Noto Sans", "FreeSans" })
+        {
+            if (!ordered.Contains(name, StringComparer.OrdinalIgnoreCase))
+            {
+                ordered.Add(name);
+            }
+        }
+
+        return ordered.ToArray();
+    }
 
     public PdfStampingService(ILogger<PdfStampingService> logger)
     {
@@ -90,7 +99,7 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
             {
                 _logger.LogWarning(
                     "No usable font found for PDF watermark. Candidates: {Candidates}. Returning original PDF.",
-                    string.Join(", ", WatermarkFontCandidates));
+                    string.Join(", ", GetWatermarkFontCandidates()));
                 LogRuntimeFontDiagnostics();
                 return pdfBytes;
             }
@@ -360,7 +369,7 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
 
     private XFont? ResolveWatermarkFont()
     {
-        foreach (var fontName in WatermarkFontCandidates)
+        foreach (var fontName in GetWatermarkFontCandidates())
         {
             try
             {
@@ -377,7 +386,7 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
 
     private XFont? ResolveNoteFont(double fontSize)
     {
-        foreach (var fontName in WatermarkFontCandidates)
+        foreach (var fontName in GetWatermarkFontCandidates())
         {
             try
             {

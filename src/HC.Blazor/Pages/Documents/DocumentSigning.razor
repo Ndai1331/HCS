@@ -697,7 +697,7 @@
                                                     </div>
                                                     <div class="flex-grow-1" style="min-width: 0;">
                                                         <div class="d-flex justify-content-between align-items-start">
-                                                            <strong style="font-size: 0.8rem;">@(log.ActorUser?.Name ?? log.ActorUser?.UserName ?? "---")</strong>
+                                                            <strong style="font-size: 0.8rem;">@((log.ActorUser?.Surname + " " + log.ActorUser?.Name) ?? log.ActorUser?.UserName ?? "---")</strong>
                                                             <small class="text-muted" style="font-size: 0.7rem;">@log.DocumentWorkflowInstanceLogs.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
                                                         </div>
                                                         <div style="font-size: 0.8rem;">
@@ -808,7 +808,7 @@
                                                             @assignment.DocumentFileResult!.Name
                                                         </div>
                                                         <small class="text-muted" style="font-size: 0.7rem;">
-                                                            <i class="bi bi-person me-1"></i>@L["ProcessedBy"]: @(assignment.ReceiverUser?.Name ?? assignment.ReceiverUser?.UserName ?? "---")
+                                                            <i class="bi bi-person me-1"></i>@L["ProcessedBy"]: @((assignment.ReceiverUser?.Surname + " " + assignment.ReceiverUser?.Name) ?? assignment.ReceiverUser?.UserName ?? "---")
                                                         </small>
                                                         <br />
                                                         <small class="text-muted" style="font-size: 0.7rem;">
@@ -883,13 +883,13 @@
                                                     </div>
                                                     <div class="flex-grow-1" style="min-width: 0;">
                                                         <div class="d-flex justify-content-between align-items-start">
-                                                            <strong style="font-size: 0.8rem;">@(history.FromUser?.Name ?? history.FromUser?.UserName ?? "---")</strong>
+                                                            <strong style="font-size: 0.8rem;">@((history.FromUser?.Surname + " " + history.FromUser?.Name) ?? history.FromUser?.UserName ?? "---")</strong>
                                                             <small class="text-muted" style="font-size: 0.7rem;">@history.DocumentHistory.CreationTime.ToString("dd/MM/yyyy HH:mm")</small>
                                                         </div>
                                                         <div style="font-size: 0.8rem;">
                                                             <span class="badge bg-info text-white me-1" style="font-size: 0.7rem;">@L[history.DocumentHistory.Action]</span>
                                                             <i class="bi bi-arrow-right mx-1 text-muted"></i>
-                                                            <span class="text-muted">@(history.ToUser?.Name ?? history.ToUser?.UserName ?? "---")</span>
+                                                            <span class="text-muted">@((history.ToUser?.Surname + " " + history.ToUser?.Name) ?? history.ToUser?.UserName ?? "---")</span>
                                                         </div>
                                                         @if (!string.IsNullOrWhiteSpace(history.DocumentHistory.Comment))
                                                         {

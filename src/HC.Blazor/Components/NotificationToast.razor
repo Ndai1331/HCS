@@ -8,6 +8,7 @@
 @using Microsoft.JSInterop
 @using System.Linq
 @using System.Threading
+@using System.Text.Json
 
 @if (_isInitialized)
 {
@@ -37,9 +38,107 @@
             </div>
         }
     </div>
+
+    @* Phase 3: long-running document jobs (approve-with-note, etc.) — bottom-right progress *@
+    @if (_documentOpProgress != null)
+    {
+        var p = _documentOpProgress;
+        // SignalR JSON is camelCase; bind case-insensitively (see DocumentOperationProgressJsonOptions).
+        var isFailed = string.Equals(p.Status, "Failed", StringComparison.OrdinalIgnoreCase);
+        var isCompleted = string.Equals(p.Status, "Completed", StringComparison.OrdinalIgnoreCase);
+        var statusIcon = isFailed ? "fa-circle-xmark text-danger"
+                          : isCompleted ? "fa-circle-check text-success"
+                          : "fa-spinner fa-spin text-primary";
+        var opTitle = !string.IsNullOrWhiteSpace(p.OperationTypeDisplay) ? p.OperationTypeDisplay : p.OperationType;
+        var docTitle = p.DocumentTitle;
+        var docNo = p.DocumentNo;
+        var detailUrl = p.DocumentId.HasValue ? $"/document-detail/{p.DocumentId.Value}" : null;
+        var hasDocLabel = !string.IsNullOrWhiteSpace(docNo) || !string.IsNullOrWhiteSpace(docTitle);
+        var barWidthPct = isCompleted ? 100 : isFailed ? 100 : p.Progress;
+
+        <div class="doc-op-toast position-fixed bottom-0 end-0 p-3 @(_isDocumentOpMinimized ? "minimized" : "")" style="z-index: 1080;">
+            @if (_isDocumentOpMinimized)
+            {
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="doc-op-toast-bubble" title="@GetDocOpMinimizedTooltip(opTitle, docNo, docTitle, p.Progress)" @onclick="ToggleDocumentOpMinimized">
+                        <i class="fas @statusIcon"></i>
+                        <span class="badge @(isFailed ? "bg-danger" : isCompleted ? "bg-success" : "bg-primary") ms-1">@(p.Progress)%</span>
+                    </button>
+                    <button type="button" class="btn btn-light btn-sm rounded-circle shadow-sm doc-op-toast-expand" title="Phóng to" @onclick="ToggleDocumentOpMinimized">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="card shadow border doc-op-toast-card">
+                    <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                        <div class="d-flex align-items-center gap-2 min-w-0">
+                            <i class="fas @statusIcon"></i>
+                            <span class="fw-semibold text-truncate" title="@opTitle">@opTitle</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="btn btn-sm btn-link p-0 doc-op-toast-btn" title="Thu nhỏ (góc gọn)" @onclick="ToggleDocumentOpMinimized">
+                                <i class="fas fa-compress"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-link p-0 doc-op-toast-btn text-danger" title="Đóng" @onclick="DismissDocumentProgressNow">
+                                <i class="fas fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body py-2 px-3">
+                        @if (hasDocLabel)
+                        {
+                            <div class="small mb-1 doc-op-toast-doc">
+                                @if (!string.IsNullOrWhiteSpace(docNo))
+                                {
+                                    <span class="badge bg-light text-dark border me-1">@docNo</span>
+                                }
+                                @if (detailUrl != null)
+                                {
+                                    <a href="@detailUrl" class="text-decoration-none text-truncate" title="@docTitle">@(string.IsNullOrWhiteSpace(docTitle) ? "Chi tiết văn bản" : docTitle)</a>
+                                }
+                                else
+                                {
+                                    <span class="text-truncate" title="@docTitle">@(string.IsNullOrWhiteSpace(docTitle) ? "—" : docTitle)</span>
+                                }
+                            </div>
+                        }
+                        else if (p.DocumentId.HasValue)
+                        {
+                            <div class="small text-muted mb-1">Văn bản: <span class="font-monospace">@p.DocumentId.Value.ToString("N")</span></div>
+                        }
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="small text-muted">Tiến độ</span>
+                            <span class="small fw-semibold">@(p.Progress)%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar @(isFailed ? "bg-danger" : isCompleted ? "bg-success" : "progress-bar-striped progress-bar-animated bg-primary")"
+                                 role="progressbar"
+                                 style="width: @(barWidthPct)%"></div>
+                        </div>
+                        <div class="small text-muted mt-1 text-truncate" title="@p.Message">@(p.Message ?? "")</div>
+                        @if (!string.IsNullOrEmpty(p.ErrorMessage))
+                        {
+                            <div class="small text-danger mt-1" title="@p.ErrorMessage">@p.ErrorMessage</div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
 }
 
 @code {
+    private DocumentBackgroundOperationProgressEto? _documentOpProgress;
+    private CancellationTokenSource? _documentProgressHideCts;
+    private bool _isDocumentOpMinimized = false;
+    /// <summary>SignalR payloads use camelCase; default System.Text.Json is case-sensitive.</summary>
+    private static readonly JsonSerializerOptions DocumentOperationProgressJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private List<NotificationDto> _notifications = new();
     private HashSet<Guid> _removingNotifications = new(); // Track notifications being removed for fade-out animation
     private bool _isInitialized = false;
@@ -129,6 +228,85 @@
         // This method exists to prevent errors when SignalR calls it
         // The Notification component will handle the unread count update
         await Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public async Task OnDocumentOperationProgress(string json)
+    {
+        try
+        {
+            var dto = JsonSerializer.Deserialize<DocumentBackgroundOperationProgressEto>(json, DocumentOperationProgressJsonOptions);
+            if (dto == null)
+            {
+                return;
+            }
+
+            _documentProgressHideCts?.Cancel();
+            _documentProgressHideCts?.Dispose();
+            _documentProgressHideCts = null;
+
+            await InvokeAsync(() =>
+            {
+                _documentOpProgress = dto;
+                StateHasChanged();
+            });
+
+            if (string.Equals(dto.Status, "Completed", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(dto.Status, "Failed", StringComparison.OrdinalIgnoreCase))
+            {
+                var cts = new CancellationTokenSource();
+                _documentProgressHideCts = cts;
+                _ = DismissDocumentProgressAfterDelayAsync(cts.Token);
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationLogger.LogError(ex, "[NotificationToast] OnDocumentOperationProgress failed");
+        }
+    }
+
+    private async Task DismissDocumentProgressAfterDelayAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(8000, cancellationToken);
+            await InvokeAsync(() =>
+            {
+                _documentOpProgress = null;
+                _isDocumentOpMinimized = false;
+                StateHasChanged();
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // replaced by newer progress
+        }
+    }
+
+    private void ToggleDocumentOpMinimized()
+    {
+        _isDocumentOpMinimized = !_isDocumentOpMinimized;
+    }
+
+    private void DismissDocumentProgressNow()
+    {
+        _documentProgressHideCts?.Cancel();
+        _documentProgressHideCts?.Dispose();
+        _documentProgressHideCts = null;
+        _documentOpProgress = null;
+        _isDocumentOpMinimized = false;
+    }
+
+    private static string GetDocOpMinimizedTooltip(string opTitle, string? docNo, string? docTitle, int progress)
+    {
+        var parts = opTitle;
+        if (!string.IsNullOrWhiteSpace(docNo) || !string.IsNullOrWhiteSpace(docTitle))
+        {
+            var seg = string.Join(" · ", new[] { docNo, docTitle }.Where(s => !string.IsNullOrWhiteSpace(s)));
+            parts = string.IsNullOrWhiteSpace(seg) ? opTitle : $"{opTitle} — {seg}";
+        }
+
+        return $"{parts} — {progress}%";
     }
 
     [JSInvokable]
@@ -589,6 +767,9 @@
         {
             _isDisposed = true;
             _disposeCts.Cancel();
+            _documentProgressHideCts?.Cancel();
+            _documentProgressHideCts?.Dispose();
+            _documentProgressHideCts = null;
             NotificationLogger.LogInformation("[NotificationToast] 🔴 Starting cleanup - IsInitialized={IsInitialized}", _isInitialized);
             
             if (_isInitialized)
@@ -708,5 +889,76 @@
         opacity: 1;
         transform: translateX(0);
     }
+}
+
+/* Document operation (approve/sign) progress toast */
+.doc-op-toast {
+    max-width: 360px;
+}
+
+.doc-op-toast.minimized {
+    max-width: none;
+}
+
+.doc-op-toast-card {
+    border-radius: 12px;
+    overflow: hidden;
+    animation: fadeIn 0.25s ease-out;
+    min-width: 320px;
+}
+
+.doc-op-toast-card .card-header {
+    background: linear-gradient(90deg, #5b7cfa, #6f4cf3);
+    color: #fff;
+    border-bottom: none;
+}
+
+.doc-op-toast-card .card-header .text-danger {
+    color: #ffe1e1 !important;
+}
+
+.doc-op-toast-card .card-header .doc-op-toast-btn {
+    color: #fff;
+    opacity: 0.85;
+}
+
+.doc-op-toast-card .card-header .doc-op-toast-btn:hover {
+    opacity: 1;
+    text-decoration: none;
+}
+
+.doc-op-toast-doc {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.doc-op-toast-doc a,
+.doc-op-toast-doc span.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.doc-op-toast-bubble {
+    border: none;
+    background: linear-gradient(90deg, #5b7cfa, #6f4cf3);
+    color: #fff;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    box-shadow: 0 6px 18px rgba(18, 38, 63, 0.18);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+}
+
+.doc-op-toast-bubble:hover {
+    filter: brightness(1.05);
 }
 </style>

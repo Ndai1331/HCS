@@ -207,7 +207,7 @@ namespace HC.BnnSoftSigns
                 if (string.IsNullOrWhiteSpace(input.textsign))
                 {
                     _logger?.LogError("[SIGN_ERROR_V2] textsign is empty, cannot locate placeholder.");
-                    return null;
+                    throw new SignPlaceholderNotFoundException(input.textsign ?? string.Empty, input.pagesign);
                 }
 
                 if (input.pagesign == 0)
@@ -290,6 +290,11 @@ namespace HC.BnnSoftSigns
                     stopwatch.ElapsedMilliseconds,
                     input.textsign,
                     input.pagesign);
+                throw new SignPlaceholderNotFoundException(input.textsign ?? string.Empty, input.pagesign);
+            }
+            catch (SignPlaceholderNotFoundException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

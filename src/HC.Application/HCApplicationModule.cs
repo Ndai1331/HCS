@@ -5,6 +5,7 @@ using Volo.Abp.Identity;
 using Volo.Abp.Mapperly;
 using Volo.Abp.FeatureManagement;
 using Volo.Abp.Modularity;
+using Volo.Abp.BackgroundJobs;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.AuditLogging;
 using Volo.Abp.Gdpr;
@@ -34,7 +35,8 @@ namespace HC;
     typeof(FileManagementApplicationModule),
     typeof(AbpGdprApplicationModule),
     typeof(AbpSettingManagementApplicationModule),
-    typeof(AbpMapperlyModule)
+    typeof(AbpMapperlyModule),
+    typeof(AbpBackgroundJobsModule)
     // typeof(FormsApplicationModule)
     )]
 public class HCApplicationModule : AbpModule

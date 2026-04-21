@@ -22,4 +22,14 @@ public partial interface IDocumentsAppService
     /// Replaces 8 permission checks + 6–7 lookup calls with 1 round-trip.
     /// </summary>
     Task<DocumentsPageBootstrapDto> GetPageBootstrapAsync(GetDocumentsPageBootstrapInput input);
+
+    /// <summary>
+    /// Queues approve-with-note (PDF stamp) as a background job. Use with HTTP 202 + SignalR progress.
+    /// </summary>
+    Task<QueueDocumentBackgroundOperationResultDto> QueueApproveWithNoteAsync(ApproveDocumentWithNoteInput input);
+
+    /// <summary>
+    /// Poll status when SignalR is unavailable (fallback).
+    /// </summary>
+    Task<DocumentBackgroundOperationStatusDto?> GetBackgroundOperationStatusAsync(Guid operationId);
 }

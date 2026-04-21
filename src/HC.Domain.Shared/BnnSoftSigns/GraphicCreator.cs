@@ -1,4 +1,5 @@
 using Bnn.SignLib;
+using HC;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
@@ -6,6 +7,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using SkiaSharp;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -63,8 +65,17 @@ namespace HC.BnnSoftSigns
 
         private static string GetAvailableSystemFontFamilyName()
         {
-            // Try common font names in order, fall back to first system font
-            var preferred = new[] { "Arial", "Liberation Sans", "DejaVu Sans", "Noto Sans", "FreeSans" };
+            // Production: prefer Liberation Sans; dev/local: prefer Helvetica (see PdfFontEnvironment).
+            var primary = PdfFontEnvironment.DefaultPdfFontFamily;
+            var preferred = new List<string> { primary };
+            foreach (var name in new[] { "Arial", "Helvetica", "Liberation Sans", "DejaVu Sans", "Noto Sans", "FreeSans" })
+            {
+                if (!preferred.Contains(name, StringComparer.OrdinalIgnoreCase))
+                {
+                    preferred.Add(name);
+                }
+            }
+
             foreach (var name in preferred)
             {
                 if (SystemFonts.Collection.TryGet(name, out var _))

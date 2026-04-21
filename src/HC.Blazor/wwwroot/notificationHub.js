@@ -59,6 +59,14 @@ window.notificationHub = {
                 });
         });
 
+        window.baseHub.registerEventHandler("notification", "ReceiveDocumentOperationProgress", async (helper, payload) => {
+            const json = typeof payload === "string" ? payload : JSON.stringify(payload);
+            await helper.invokeMethodAsync("OnDocumentOperationProgress", json)
+                .catch(err => {
+                    window.hcLogger.error("Notification Hub: Error calling OnDocumentOperationProgress:", err);
+                });
+        });
+
         // console.log("Notification Hub: All event handlers registered");
     },
 

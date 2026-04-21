@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using HC;
 using PdfSharp.Fonts;
 
 namespace HC.Helpers;
@@ -202,9 +203,20 @@ public class CustomFontResolver : IFontResolver
         // Helvetica maps to Arial; Arial is often absent on Linux (proprietary). Use common free substitutes.
         if (normalizedFamily == "arial")
         {
-            var substitute = FindFontPath("dejavu sans", isBold, isItalic)
-                ?? FindFontPath("liberation sans", isBold, isItalic)
-                ?? FindFontPath("noto sans", isBold, isItalic);
+            string? substitute;
+            if (PdfFontEnvironment.IsProductionFontProfile())
+            {
+                substitute = FindFontPath("liberation sans", isBold, isItalic)
+                    ?? FindFontPath("dejavu sans", isBold, isItalic)
+                    ?? FindFontPath("noto sans", isBold, isItalic);
+            }
+            else
+            {
+                substitute = FindFontPath("dejavu sans", isBold, isItalic)
+                    ?? FindFontPath("liberation sans", isBold, isItalic)
+                    ?? FindFontPath("noto sans", isBold, isItalic);
+            }
+
             if (substitute != null)
             {
                 _pathCache.TryAdd(cacheKey, substitute);

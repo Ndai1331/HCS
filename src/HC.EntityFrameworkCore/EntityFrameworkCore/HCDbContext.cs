@@ -75,6 +75,8 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
     public DbSet<WorkflowDefinition> WorkflowDefinitions { get; set; } = null!;
     public DbSet<MasterData> MasterDatas { get; set; } = null!;
     public DbSet<Position> Positions { get; set; } = null!;
+    public DbSet<DocumentBackgroundOperation> DocumentBackgroundOperations { get; set; } = null!;
+    public DbSet<NotificationOutbox> NotificationOutboxes { get; set; } = null!;
 
     // Chat DbSets are inherited from HCDbContextBase
     public HCDbContext(DbContextOptions<HCDbContext> options) : base(options)
@@ -484,6 +486,32 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.HasOne<DocumentAssignment>().WithMany().HasForeignKey(x => x.DocumentAssignmentId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<DocumentWorkflowInstance>().WithMany(x => x.DocumentWorkflowInstanceLogss).HasForeignKey(x => x.DocumentWorkflowInstanceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<DocumentBackgroundOperation>(b => {
+            b.ToTable(HCConsts.DbTablePrefix + "DocumentBackgroundOperations", HCConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.TenantId).HasColumnName(nameof(DocumentBackgroundOperation.TenantId));
+            b.Property(x => x.UserId).HasColumnName(nameof(DocumentBackgroundOperation.UserId));
+            b.Property(x => x.DocumentId).HasColumnName(nameof(DocumentBackgroundOperation.DocumentId));
+            b.Property(x => x.OperationType).HasColumnName(nameof(DocumentBackgroundOperation.OperationType)).IsRequired().HasMaxLength(64);
+            b.Property(x => x.Status).HasColumnName(nameof(DocumentBackgroundOperation.Status)).IsRequired().HasMaxLength(32);
+            b.Property(x => x.Progress).HasColumnName(nameof(DocumentBackgroundOperation.Progress));
+            b.Property(x => x.Message).HasColumnName(nameof(DocumentBackgroundOperation.Message)).HasMaxLength(512);
+            b.Property(x => x.ErrorMessage).HasColumnName(nameof(DocumentBackgroundOperation.ErrorMessage));
+            b.Property(x => x.InputJson).HasColumnName(nameof(DocumentBackgroundOperation.InputJson));
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.CreationTime });
+            b.HasIndex(x => x.Status);
+        });
+        builder.Entity<NotificationOutbox>(b => {
+            b.ToTable(HCConsts.DbTablePrefix + "NotificationOutboxes", HCConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.TenantId).HasColumnName(nameof(NotificationOutbox.TenantId));
+            b.Property(x => x.EventType).HasColumnName(nameof(NotificationOutbox.EventType)).IsRequired().HasMaxLength(128);
+            b.Property(x => x.PayloadJson).HasColumnName(nameof(NotificationOutbox.PayloadJson)).IsRequired();
+            b.Property(x => x.ProcessedTime).HasColumnName(nameof(NotificationOutbox.ProcessedTime));
+            b.Property(x => x.RetryCount).HasColumnName(nameof(NotificationOutbox.RetryCount));
+            b.Property(x => x.ErrorMessage).HasColumnName(nameof(NotificationOutbox.ErrorMessage));
+            b.HasIndex(x => new { x.ProcessedTime, x.CreationTime });
         });
     }
 }

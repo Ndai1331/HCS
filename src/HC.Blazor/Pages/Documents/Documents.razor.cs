@@ -1428,7 +1428,8 @@ public partial class Documents : IDisposable
             }
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            await DocumentsAppService.ApproveWithNoteAsync(new ApproveDocumentWithNoteInput
+            // Phase 3: queue heavy PDF work — progress via SignalR (bottom-right toast)
+            await DocumentsAppService.QueueApproveWithNoteAsync(new ApproveDocumentWithNoteInput
             {
                 DocumentId = ApprovalReviewDocument.Document.Id,
                 PageNumber = PickedPageNumber,
@@ -1437,7 +1438,7 @@ public partial class Documents : IDisposable
                 NoteContent = ApprovalActionNote.Trim()
             });
 
-            await UiMessageService.Success("Đã phê duyệt văn bản.");
+            await UiMessageService.Info("Đã xếp hàng xử lý phê duyệt. Theo dõi tiến trình ở góc dưới phải màn hình.");
             await CloseApprovalReviewModalAsync();
             await GetDocumentsAsync();
             await InvokeAsync(StateHasChanged);
