@@ -121,6 +121,10 @@
     "HC.Domain": {
       "path": "src/HC.Domain/HC.Domain.abppkg",
       "folder": "src"
+    },
+    "HC.BackgroundJobWorker": {
+      "path": "src/HC.BackgroundJobWorker/HC.BackgroundJobWorker.abppkg",
+      "folder": "src"
     }
   },
   "moduleId": "3a1c3434-a933-3e9b-37b4-46f6f803b20c"
