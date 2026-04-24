@@ -41,6 +41,7 @@ using Volo.Abp.VirtualFileSystem;
 using Volo.Abp.Studio.Client.AspNetCore;
 using Volo.Abp.AspNetCore.Authentication.JwtBearer;
 using Volo.Abp.EventBus.RabbitMq;
+using Volo.Abp.BackgroundJobs;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.BlobStoring.Minio;
 // Chat feature - SignalR module needs to be created
@@ -94,6 +95,13 @@ public class HCHttpApiHostModule : AbpModule
             // Forms module was removed; disable dynamic permission store to avoid
             // loading stale permission definitions from database (e.g. Volo.Forms.*).
             options.IsDynamicPermissionStoreEnabled = false;
+        });
+
+        // When HC.BackgroundJobWorker runs, set BackgroundJobs:IsExecutionEnabled=false on API
+        // so this host enqueues but does not poll AbpBackgroundJobs.
+        Configure<AbpBackgroundJobOptions>(options =>
+        {
+            options.IsJobExecutionEnabled = configuration.GetValue<bool>("BackgroundJobs:IsExecutionEnabled", true);
         });
     }
 

@@ -1,4 +1,38 @@
 services:
+  # Dedicated ABP background job processor (AbpBackgroundJobs + job workers).
+  # After deploying this service, set hc-blazor environment BackgroundJobs__IsExecutionEnabled=false
+  # (see below) so the web tier does not compete for the same job queue.
+  hc-backgroundjobworker:
+    image: longnguyen1331/hc-backgroundjobworker:latest01042026
+    container_name: hc-backgroundjobworker
+    environment:
+      - App__RunDomainBackgroundWorkers=true
+      - ASPNETCORE_ENVIRONMENT=Production
+      - HC_PDF_FONT_ENV=production
+      - ConnectionStrings__Default=User ID=postgres;Password=Bv199;Host=113.160.232.208;Port=5400;Database=AxisHCS;Pooling=false;
+      - Redis__Configuration=redis
+      - RabbitMQ__Connections__Default__HostName=rabbitmq
+      - RabbitMQ__Connections__Default__Port=5672
+      - RabbitMQ__Connections__Default__UserName=guest
+      - RabbitMQ__Connections__Default__Password=guest
+      - RabbitMQ__EventBus__ClientName=HC_BackgroundJobWorker
+      - RabbitMQ__EventBus__ExchangeName=HC
+      - MinIO__EndPoint=minio:9000
+      - MinIO__AccessKey=hcsadmin
+      - MinIO__SecretKey=hcsadminpassword
+      - MinIO__BucketName=hcs_bucket
+      - MinIO__WithSSL=false
+      - MinIO__CreateBucketIfNotExists=true
+      - LibreOffice__SofficePath=soffice
+      - LibreOffice__UnoconvPath=unoconv
+      - LibreOffice__UnoPort=2002
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - abp-network
+
   hc-blazor:
     image: longnguyen1331/hc-blazor:latest01042026
     container_name: hc-blazor
@@ -8,6 +42,7 @@ services:
       - Kestrel__Certificates__Default__Password=StrongPass123
       - App__SelfUrl=https://hanhchinhso.benhvien199.vn
       - App__HealthCheckUrl=http://hc-blazor:8080/health-status
+      - BackgroundJobs__IsExecutionEnabled=false
       - App__DisablePII=true  
       - AuthServer__RequireHttpsMetadata=false
       - AuthServer__Authority=https://auth.benhvien199.vn
@@ -68,6 +103,8 @@ services:
       - App__SelfUrl=https://api-hcs.benhvien199.vn
       - App__DisablePII=true  
       - App__HealthCheckUrl=http://hc-api:8080/health-status
+      - BackgroundJobs__IsExecutionEnabled=false
+      - HC_PDF_FONT_ENV=production
       - AuthServer__RequireHttpsMetadata=false
       - AuthServer__Authority=https://auth.benhvien199.vn
       - AuthServer__MetaAddress=http://hc-authserver:8080

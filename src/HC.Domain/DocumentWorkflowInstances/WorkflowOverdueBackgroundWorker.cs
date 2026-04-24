@@ -17,18 +17,6 @@ using Volo.Abp.Uow;
 
 namespace HC.DocumentWorkflowInstances;
 
-/// <summary>
-/// Background worker that periodically checks for overdue workflow instances and cancels them.
-/// Replaces the frontend-triggered CheckAndHandleOverdueAsync approach (ISSUE-05 enhancement).
-/// 
-/// Runs every 5 minutes (configurable via TimerPeriod).
-/// For each IN_PROGRESS workflow instance whose FinishedAt has passed:
-///   1. Updates instance status to CANCELLED
-///   2. Updates document status to DA_HUY
-///   3. Creates a document history record
-///   4. Creates a workflow instance log
-///   5. Revokes all pending assignments
-/// </summary>
 public class WorkflowOverdueBackgroundWorker : AsyncPeriodicBackgroundWorkerBase
 {
     public WorkflowOverdueBackgroundWorker(
@@ -36,8 +24,8 @@ public class WorkflowOverdueBackgroundWorker : AsyncPeriodicBackgroundWorkerBase
         IServiceScopeFactory serviceScopeFactory)
         : base(timer, serviceScopeFactory)
     {
-        // Run every 5 minutes (300,000 ms)
-        Timer.Period = 5 * 60 * 1000;
+        // Run every 3 minutes (300,000 ms)
+        Timer.Period = 3 * 60 * 1000;
     }
 
     [UnitOfWork]
@@ -55,9 +43,6 @@ public class WorkflowOverdueBackgroundWorker : AsyncPeriodicBackgroundWorkerBase
 
         var now = clock.Now;
 
-        // Find all IN_PROGRESS instances that are overdue
-        // FinishedAt > DateTime.MinValue means SLA deadline was set
-        // FinishedAt <= now means the deadline has passed
         var overdueInstances = await instanceRepository.GetListAsync(
             x => x.Status == nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS)
             && x.FinishedAt > DateTime.MinValue

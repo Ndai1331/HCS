@@ -162,28 +162,19 @@ public partial class Documents : IDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        Logger.LogInformation("Documents OnAfterRenderAsync start, firstRender={firstRender}", firstRender);
 
         if (firstRender)
         {
-            Logger.LogInformation("Documents OnAfterRenderAsync firstRender");
-
-            // Register location changed event handler
             NavigationManager.LocationChanged += OnLocationChanged;
 
-            // M3: one bundled call replaces 8 permission checks + 6 lookup calls.
-            // Departments stays separate (different service + shape); everything else comes
-            // through page-bootstrap and is fanned out to the existing collections for compat.
             await Task.WhenAll(
                 HydrateFromPageBootstrapAsync(),
                 GetDepartmentsAsync());
             await SetToolbarItemsAsync();
 
-            // Set breadcrumb items AFTER page title is updated (from OnInitializedAsync)
             BreadcrumbItems.Clear();
             await SetBreadcrumbItemsAsync();
 
-            // Documents load only via DataGrid ReadData -> OnDataGridReadAsync (avoid duplicate GET on first paint)
 
             await InvokeAsync(StateHasChanged);
         }
@@ -835,7 +826,7 @@ public partial class Documents : IDisposable
     {
         if (!CanDeleteOrRevokeInArchiveView)
         {
-            await UiMessageService.Warn(L["DeleteRevokeOnlyInArchiveView"]);
+            await UiMessageService.Warn(L["DeleteRevokeOnlyInArchiveView"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             return;
         }
 
@@ -1037,7 +1028,7 @@ public partial class Documents : IDisposable
 
             if (!SelectedLeaderUserId.HasValue || SelectedLeaderUserId.Value == Guid.Empty)
             {
-                await UiMessageService.Warn("Vui lòng chọn người phê duyệt.");
+                await UiMessageService.Warn(L["PleaseSelectApprovalLeader"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -1049,7 +1040,7 @@ public partial class Documents : IDisposable
                 Message = string.IsNullOrWhiteSpace(SubmitApprovalMessage) ? null : SubmitApprovalMessage.Trim()
             });
 
-            await UiMessageService.Success("Đã gửi văn bản chờ lãnh đạo phê duyệt.");
+            await UiMessageService.Success(L["DocumentSubmittedForApprovalSuccessfully"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await CloseSubmitApprovalModalAsync();
             await GetDocumentsAsync();
             await InvokeAsync(StateHasChanged);
@@ -1335,7 +1326,7 @@ public partial class Documents : IDisposable
             var pdfFileUrl = await LoadPdfDataUrlAsync(context.Document.Id);
             if (string.IsNullOrWhiteSpace(pdfFileUrl))
             {
-                await UiMessageService.Warn(L["NoPdfAvailable"]);
+                await UiMessageService.Warn(L["NoPdfAvailable"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
@@ -1417,19 +1408,18 @@ public partial class Documents : IDisposable
 
             if (PickedPageNumber <= 0)
             {
-                await UiMessageService.Warn("Vui lòng chọn vị trí note trên PDF.");
+                await UiMessageService.Warn(L["PleaseSelectNotePositionOnPdf"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(ApprovalActionNote))
             {
-                await UiMessageService.Warn("Vui lòng nhập note trước khi phê duyệt.");
+                await UiMessageService.Warn(L["PleaseEnterApprovalNoteBeforeApproving"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            // Phase 3: queue heavy PDF work — progress via SignalR (bottom-right toast)
-            await DocumentsAppService.QueueApproveWithNoteAsync(new ApproveDocumentWithNoteInput
+            await DocumentsAppService.ApproveWithNoteAsync(new ApproveDocumentWithNoteInput
             {
                 DocumentId = ApprovalReviewDocument.Document.Id,
                 PageNumber = PickedPageNumber,
@@ -1438,7 +1428,7 @@ public partial class Documents : IDisposable
                 NoteContent = ApprovalActionNote.Trim()
             });
 
-            await UiMessageService.Info("Đã xếp hàng xử lý phê duyệt. Theo dõi tiến trình ở góc dưới phải màn hình.");
+            await UiMessageService.Success(L["DocumentApprovedSuccessfully"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await CloseApprovalReviewModalAsync();
             await GetDocumentsAsync();
             await InvokeAsync(StateHasChanged);
@@ -1467,11 +1457,11 @@ public partial class Documents : IDisposable
             {
                 DocumentId = ApprovalReviewDocument.Document.Id,
                 Reason = string.IsNullOrWhiteSpace(ApprovalActionNote)
-                    ? "Lãnh đạo từ chối phê duyệt."
+                    ? L["ApprovalLeaderRejectedDocument"]
                     : ApprovalActionNote.Trim()
             });
 
-            await UiMessageService.Success("Đã từ chối văn bản.");
+            await UiMessageService.Success(L["DocumentRejectedSuccessfully"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await CloseApprovalReviewModalAsync();
             await GetDocumentsAsync();
             await InvokeAsync(StateHasChanged);
@@ -1494,7 +1484,7 @@ public partial class Documents : IDisposable
     {
         if (!CanDeleteOrRevokeInArchiveView)
         {
-            await UiMessageService.Warn(L["DeleteRevokeOnlyInArchiveView"]);
+            await UiMessageService.Warn(L["DeleteRevokeOnlyInArchiveView"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             return;
         }
 

@@ -57,7 +57,6 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
     private const double SignatureMaxHeight = 42;
     private const double DiagonalAngleDegrees = -45;
 
-    /// <summary>PDFsharp primary family; production Liberation Sans, dev Helvetica (<see cref="PdfFontEnvironment"/>).</summary>
     private static string PrimaryPdfFontFamily => PdfFontEnvironment.DefaultPdfFontFamily;
 
     private static string[] GetWatermarkFontCandidates()
@@ -183,8 +182,17 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
 
             var page = document.Pages[pageIndex];
             using var gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append);
-            var font = ResolveNoteFont(NoteFontSize) ?? new XFont(PrimaryPdfFontFamily, NoteFontSize);
-            var signerNameFont = ResolveNoteFont(SignerNameFontSize) ?? new XFont(PrimaryPdfFontFamily, SignerNameFontSize);
+            var font = ResolveNoteFont(NoteFontSize);
+            var signerNameFont = ResolveNoteFont(SignerNameFontSize);
+            if (font == null || signerNameFont == null)
+            {
+                _logger.LogError(
+                    "Failed to add text note: no usable font. Candidates tried: {Candidates}. " +
+                    "On Linux set HC_PDF_FONT_ENV=production or install fonts (e.g. fonts-liberation) and optionally HC_FONT_DIRS.",
+                    string.Join(", ", GetWatermarkFontCandidates()));
+                LogRuntimeFontDiagnostics();
+                return pdfBytes;
+            }
 
             // pdf.js returns PDF coordinates in a bottom-left origin system.
             // PdfSharp draws using a top-left origin, so Y must be inverted.

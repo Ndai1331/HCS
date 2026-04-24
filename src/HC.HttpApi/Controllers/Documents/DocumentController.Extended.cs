@@ -81,19 +81,4 @@ public class DocumentController : DocumentControllerBase, IDocumentsAppService
     {
         return _documentsAppService.GetPageBootstrapAsync(input);
     }
-
-    /// <summary>Phase 3: queue approve-with-note; returns operation id for progress polling / SignalR.</summary>
-    [HttpPost]
-    [Route("queue-approve-with-note")]
-    public virtual Task<QueueDocumentBackgroundOperationResultDto> QueueApproveWithNoteAsync(ApproveDocumentWithNoteInput input)
-    {
-        return _documentsAppService.QueueApproveWithNoteAsync(input);
-    }
-
-    [HttpGet]
-    [Route("background-operation-status")]
-    public virtual Task<DocumentBackgroundOperationStatusDto?> GetBackgroundOperationStatusAsync(Guid operationId)
-    {
-        return _documentsAppService.GetBackgroundOperationStatusAsync(operationId);
-    }
 }

@@ -20,7 +20,7 @@ public class NotificationOutboxBackgroundWorker : AsyncPeriodicBackgroundWorkerB
         IServiceScopeFactory serviceScopeFactory)
         : base(timer, serviceScopeFactory)
     {
-        Timer.Period = 5 * 60 * 1000; // 5 minutes
+        Timer.Period = 3 * 60 * 1000; // 3 minutes
     }
 
     [UnitOfWork]

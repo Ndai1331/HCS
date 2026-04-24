@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using HC.Localization;
@@ -79,10 +80,13 @@ public class HCDomainModule : AbpModule
     public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)
     {
         await base.OnApplicationInitializationAsync(context);
+        var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
+        if (!configuration.GetValue<bool>("App:RunDomainBackgroundWorkers"))
+        {
+            return;
+        }
 
-        // Register background worker for checking overdue workflow instances
         await context.AddBackgroundWorkerAsync<HC.DocumentWorkflowInstances.WorkflowOverdueBackgroundWorker>();
-        // Phase 3: notification outbox (extend worker body to send real notifications)
         await context.AddBackgroundWorkerAsync<HC.Notifications.NotificationOutboxBackgroundWorker>();
     }
 }

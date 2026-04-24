@@ -636,13 +636,10 @@ public partial class DocumentSigning
                     AllStepsWithStatus = bundle.AllStepsWithStatus ?? new();
                     SigningMethods = bundle.SigningMethods ?? new();
 
-                    // Files list from document assignments is served by a different AppService;
-                    // fire it off in the background so it doesn't block the modal opening.
                     await LoadSigningDocumentFilesAsync(document.DocumentId);
                 }
                 catch (Exception ex)
                 {
-                    // Fallback to the legacy per-call path if the bundle endpoint fails.
                     Logger.LogWarning(ex, "Signing action-bundle failed; falling back to per-call loads");
                     var tasks = new List<Task>
                     {

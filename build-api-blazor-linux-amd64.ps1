@@ -11,6 +11,7 @@ $blazorBaseImage = "longnguyen1331/hc-blazor-base:$BaseTag"
 $apiBaseImage = "longnguyen1331/hc-api-base:$BaseTag"
 $blazorAppImage = "longnguyen1331/hc-blazor"
 $apiAppImage = "longnguyen1331/hc-api"
+$backgroundJobWorkerAppImage = "longnguyen1331/hc-backgroundjobworker"
 
 if ($ClearDockerCache) {
     Write-Host "Clearing safe Docker cache (preserve buildx cache for base images)..." -ForegroundColor Yellow
@@ -257,7 +258,57 @@ try {
 }
 Write-Host "Docker image built and pushed successfully for API (tags: $version, latest)" -ForegroundColor Green
 
-Write-Host "********* BUILD COMPLETED (Blazor + API with LibreOffice) *********" -ForegroundColor Green
+Write-Host "********* BUILDING HC.BackgroundJobWorker (AbpBackgroundJobs) *********" -ForegroundColor Green
+$bjwFolder = Join-Path $slnFolder "src/HC.BackgroundJobWorker"
+Set-Location $bjwFolder
+
+Write-Host "Publishing HC.BackgroundJobWorker..." -ForegroundColor Yellow
+try {
+    $bjwPublishDir = Join-Path $bjwFolder "bin/Release/net10.0/publish"
+    if (Test-Path $bjwPublishDir) {
+        Remove-Item $bjwPublishDir -Recurse -Force
+    }
+    $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
+    if (-not $?) {
+        throw "dotnet publish failed"
+    }
+} catch {
+    Write-Host "ERROR: dotnet publish failed for HC.BackgroundJobWorker" -ForegroundColor Red
+    Write-Host $result -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+
+Start-Sleep -Seconds 1
+$bjwPublishPathFull = [System.IO.Path]::GetFullPath((Join-Path $bjwFolder "bin/Release/net10.0/publish"))
+if (-not (Test-Path $bjwPublishPathFull)) {
+    Write-Host "ERROR: BackgroundJobWorker publish folder not found: $bjwPublishPathFull" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+
+$bjwDll = Join-Path $bjwPublishPathFull "HC.BackgroundJobWorker.dll"
+if (-not (Test-Path $bjwDll)) {
+    Write-Host "ERROR: BackgroundJobWorker publish output is invalid. Missing file: $bjwDll" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+
+Write-Host "Publish successful. Output: $bjwPublishPathFull" -ForegroundColor Green
+Write-Host "Building Docker image for HC.BackgroundJobWorker (linux/amd64, mcr.microsoft.com/dotnet/runtime:10.0)..." -ForegroundColor Yellow
+try {
+    docker buildx build --pull --no-cache --platform linux/amd64 -f Dockerfile -t "${backgroundJobWorkerAppImage}:$version" -t "${backgroundJobWorkerAppImage}:latest" . --push
+    if (-not $?) {
+        throw "docker build failed"
+    }
+} catch {
+    Write-Host "ERROR: Docker build failed for HC.BackgroundJobWorker" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+Write-Host "Docker image built and pushed successfully for HC.BackgroundJobWorker (tags: $version, latest) -> $backgroundJobWorkerAppImage" -ForegroundColor Green
+
+Write-Host "********* BUILD COMPLETED (Blazor + API with LibreOffice + HC.BackgroundJobWorker) *********" -ForegroundColor Green
 Set-Location $currentFolder
 exit 0
 

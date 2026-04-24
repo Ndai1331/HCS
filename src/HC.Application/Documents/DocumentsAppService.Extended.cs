@@ -32,9 +32,7 @@ using Volo.Abp.BlobStoring;
 using System.Text;
 using HC.SignatureSettings;
 using HC.UserSignatures;
-using HC.Documents.BackgroundJobs;
 using System.Text.Json;
-using Volo.Abp.BackgroundJobs;
 
 namespace HC.Documents;
 
@@ -1180,14 +1178,13 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         return await ExecuteApproveWithNoteForUserAsync(input, currentUserId);
     }
 
-    /// <summary>
-    /// Phase 3: core approve-with-note logic. Optional progress reporter for background jobs + SignalR.
-    /// </summary>
+    /// <summary>Core approve-with-note logic. Optional progress callback (reserved for future use; HTTP flow uses <see cref="ApproveWithNoteAsync"/>).</summary>
     /// <remarks>
-    /// Not exposed as a remote API endpoint. Callers must enforce identity: HTTP via <see cref="ApproveWithNoteAsync"/>,
-    /// background jobs via <see cref="ICurrentPrincipalAccessor"/> impersonation of the initiating user.
+    /// Not exposed as a remote API endpoint. Callers must enforce identity: HTTP via <see cref="ApproveWithNoteAsync"/>.
     /// </remarks>
     // ABP validation interceptor cannot reflect Func<,,>; skip it (this method is internal — not exposed remotely).
+    // Auditing cannot JSON-serialize Func parameters (throws during audit log write).
+    [Volo.Abp.Auditing.DisableAuditing]
     [Volo.Abp.Validation.DisableValidation]
     public virtual async Task<bool> ExecuteApproveWithNoteForUserAsync(
         ApproveDocumentWithNoteInput input,
@@ -1280,59 +1277,6 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                 await reportProgressAsync(progress, message);
             }
         }
-    }
-
-    [Authorize(HCPermissions.Documents.ApproveWithNote)]
-    public virtual async Task<QueueDocumentBackgroundOperationResultDto> QueueApproveWithNoteAsync(ApproveDocumentWithNoteInput input)
-    {
-        if (input.DocumentId == Guid.Empty || input.PageNumber <= 0 || string.IsNullOrWhiteSpace(input.NoteContent))
-        {
-            throw new UserFriendlyException("DocumentId, page number and note content are required.");
-        }
-
-        var userId = CurrentUser.Id ?? throw new UserFriendlyException(L["User not authenticated"]);
-        var operationId = GuidGenerator.Create();
-        var json = JsonSerializer.Serialize(input);
-        await LazyServiceProvider.LazyGetRequiredService<IRepository<DocumentBackgroundOperation, Guid>>().InsertAsync(
-            new DocumentBackgroundOperation(
-                operationId,
-                userId,
-                input.DocumentId,
-                DocumentBackgroundOperationTypes.ApproveWithNote,
-                json,
-                CurrentTenant.Id));
-
-        await LazyServiceProvider.LazyGetRequiredService<IBackgroundJobManager>()
-            .EnqueueAsync(new ApproveWithNoteBackgroundJobArgs { OperationId = operationId });
-
-        return new QueueDocumentBackgroundOperationResultDto { OperationId = operationId };
-    }
-
-    [Authorize]
-    public virtual async Task<DocumentBackgroundOperationStatusDto?> GetBackgroundOperationStatusAsync(Guid operationId)
-    {
-        var op = await LazyServiceProvider.LazyGetRequiredService<IRepository<DocumentBackgroundOperation, Guid>>()
-            .FindAsync(operationId);
-        if (op == null)
-        {
-            return null;
-        }
-
-        if (CurrentUser.Id != op.UserId)
-        {
-            throw new AbpAuthorizationException();
-        }
-
-        return new DocumentBackgroundOperationStatusDto
-        {
-            OperationId = op.Id,
-            OperationType = op.OperationType,
-            Status = op.Status,
-            Progress = op.Progress,
-            Message = op.Message,
-            ErrorMessage = op.ErrorMessage,
-            DocumentId = op.DocumentId
-        };
     }
 
     private async Task<(Document Document, DocumentAssignment Assignment)> GetPendingApprovalAssignmentAsync(Guid documentId, Guid currentUserId)

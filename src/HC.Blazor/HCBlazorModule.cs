@@ -73,6 +73,7 @@ using Volo.Abp.Caching;
 using Volo.Abp.Caching.StackExchangeRedis;
 using Volo.Abp.DistributedLocking;
 using Volo.Abp.EventBus.RabbitMq;
+using Volo.Abp.BackgroundJobs;
 using HC.Blazor.Components.Layout;
 using HC.Blazor.Shared;
 using HC.Blazor.Toolbars;
@@ -179,6 +180,13 @@ namespace HC.Blazor;
             Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
             Microsoft.IdentityModel.Logging.IdentityModelEventSource.LogCompleteSecurityArtifact = true;
         }
+
+        // When HC.BackgroundJobWorker is deployed to execute the queue, set BackgroundJobs:IsExecutionEnabled=false
+        // on Blazor so the web tier does not compete for the same IBackgroundJobManager work (see docs).
+        Configure<AbpBackgroundJobOptions>(options =>
+        {
+            options.IsJobExecutionEnabled = configuration.GetValue<bool>("BackgroundJobs:IsExecutionEnabled", true);
+        });
 
         ConfigureUrls(configuration);
         ConfigureToolbars();
