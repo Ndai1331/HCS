@@ -159,7 +159,7 @@
           "redis": {
             "name": "redis",
             "path": "etc/helm/hc/charts/redis"
-          },
+          }
         },
         "metadata": {}
       }
@@ -167,9 +167,7 @@
   },
   "options": {
     "httpRequests": {
-      "ignoredUrls": [
-      
-      ]
+      "ignoredUrls": []
     }
   },
   "creatingStudioConfiguration": {
@@ -193,13 +191,16 @@
     "theme": "leptonx",
     "themeStyle": "system",
     "themeMenuPlacement": "top",
-    "mobileFramework": "none",
     "publicWebsite": "false",
     "optionalModules": "GDPR FileManagement TextTemplateManagement LanguageManagement AuditLogging Chat OpenIddictAdmin",
     "socialLogin": "false",
     "sampleCrudPage": "true",
-    "selectedLanguages": ["Vietnamese", "English", ],
+    "selectedLanguages": [
+      "Vietnamese",
+      "English"
+    ],
     "defaultLanguage": "Vietnamese",
     "createCommand": "abp new HC -t app --tiered --ui-framework blazor-server --database-provider ef --database-management-system postgresql --theme leptonx --separate-tenant-schema  --skip-migration  --skip-migrator  --without-cms-kit --sample-crud-page --dont-run-install-libs --dont-run-bundling --no-social-logins -chat -file-management"
-  }
+  },
+  "defaultRunProfile": "Default"
 }

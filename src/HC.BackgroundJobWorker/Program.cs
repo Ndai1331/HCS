@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -31,7 +32,13 @@ public static class Program
         try
         {
             Log.Information("Starting HC.BackgroundJobWorker host.");
-            var builder = Host.CreateApplicationBuilder(args);
+            // Align content root with the running assembly so appsettings.json next to the exe/output is always loaded
+            // (avoids empty Redis:Configuration when the process working directory is not the project/output folder).
+            var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+            {
+                Args = args,
+                ContentRootPath = AppContext.BaseDirectory
+            });
             builder.Configuration.AddJsonFile("appsettings.secrets.json", optional: true, reloadOnChange: false);
             builder.Logging.ClearProviders();
             builder.Services.AddHostedService<BackgroundJobWorkerHostedService>();

@@ -1,9 +1,11 @@
+using System;
 using HC.EntityFrameworkCore;
 using Medallion.Threading;
 using Medallion.Threading.Redis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
+using Volo.Abp.DependencyInjection;
 using Volo.Abp.Autofac;
 using Volo.Abp.BackgroundJobs;
 using Volo.Abp.BlobStoring;
@@ -30,7 +32,7 @@ public class HCBackgroundJobWorkerModule : AbpModule
 {
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
-        var configuration = context.Services.GetConfiguration();
+        var configuration = ResolveWorkerConfiguration(context.Services);
 
         Configure<AbpDistributedCacheOptions>(options => { options.KeyPrefix = "HC:"; });
 
@@ -46,6 +48,49 @@ public class HCBackgroundJobWorkerModule : AbpModule
 
         ConfigureBlobStoring(context, configuration);
         ConfigureDistributedLocking(context, configuration);
+    }
+
+    /// <summary>
+    /// ABP's GetConfiguration() may return HostBuilderContext.Configuration (minimal). ReplaceConfiguration
+    /// registers IConfiguration as a descriptor that GetSingletonInstanceOrNull sometimes does not surface.
+    /// Scan descriptors, then fall back to file-based config next to the assembly.
+    /// </summary>
+    private static IConfiguration ResolveWorkerConfiguration(IServiceCollection services)
+    {
+        static bool HasRedis(IConfiguration c) =>
+            !string.IsNullOrWhiteSpace(c["Redis:Configuration"]);
+
+        foreach (var d in services)
+        {
+            if (d.ServiceType != typeof(IConfiguration) || d.ImplementationInstance is not IConfiguration cfg)
+            {
+                continue;
+            }
+
+            if (HasRedis(cfg))
+            {
+                return cfg;
+            }
+        }
+
+        var singleton = services.GetSingletonInstanceOrNull<IConfiguration>();
+        if (singleton != null && HasRedis(singleton))
+        {
+            return singleton;
+        }
+
+        var abpConfig = services.GetConfiguration();
+        if (HasRedis(abpConfig))
+        {
+            return abpConfig;
+        }
+
+        return new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile("appsettings.secrets.json", optional: true)
+            .AddEnvironmentVariables()
+            .Build();
     }
 
     private void ConfigureBlobStoring(ServiceConfigurationContext context, IConfiguration configuration)
@@ -74,7 +119,9 @@ public class HCBackgroundJobWorkerModule : AbpModule
         var redisConn = configuration["Redis:Configuration"];
         if (string.IsNullOrWhiteSpace(redisConn))
         {
-            return;
+            throw new System.InvalidOperationException(
+                "Redis:Configuration is missing or empty. Background jobs require a distributed lock provider backed by Redis; " +
+                "set Redis:Configuration in appsettings (and check appsettings.secrets.json / environment variables do not clear it).");
         }
 
         context.Services.AddSingleton<IDistributedLockProvider>(_ =>

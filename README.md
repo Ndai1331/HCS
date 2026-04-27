@@ -104,8 +104,7 @@ cd /Users/nguyenlong/Documents/Projects/HCS/src/HC.AuthServer && docker build --
 kill -9 $(lsof -ti :44301)
 kill -9 $(lsof -ti :44302)
 kill -9 $(lsof -ti :44379)
-
-
+kill -9 $(lsof -ti :44303)
 
 
 

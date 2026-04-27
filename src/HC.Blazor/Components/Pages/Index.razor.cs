@@ -12,11 +12,10 @@ using HC.ProjectTaskDocuments;
 using HC.CalendarEvents;
 using HC.CalendarEventParticipants;
 using HC.ProjectMembers;
+using HC.Dashboard;
 using HC.Documents;
 using HC.NotificationReceivers;
 using HC.Notifications;
-using HC.DocumentAssignments;
-using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentFiles;
 using Humanizer;
 using Blazorise;
@@ -44,10 +43,8 @@ public partial class Index
     [Inject] private IProjectTaskAssignmentsAppService ProjectTaskAssignmentsAppService { get; set; } = default!;
     [Inject] private IProjectTaskDocumentsAppService ProjectTaskDocumentsAppService { get; set; } = default!;
     [Inject] private ICalendarEventsAppService CalendarEventsAppService { get; set; } = default!;
-    [Inject] private IDocumentsAppService DocumentsAppService { get; set; } = default!;
     [Inject] private INotificationReceiversAppService NotificationReceiversAppService { get; set; } = default!;
-    [Inject] private IDocumentAssignmentsAppService DocumentAssignmentsAppService { get; set; } = default!;
-    [Inject] private IDocumentWorkflowInstanceLogssAppService DocumentWorkflowInstanceLogssAppService { get; set; } = default!;
+    [Inject] private IHomeDashboardAppService HomeDashboardAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
     [Inject] private HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService { get; set; } = default!;
     [Inject] private IBlockUiService BlockUiService { get; set; } = default!;
@@ -165,18 +162,43 @@ public partial class Index
 
         try
         {
-            // Load all data in parallel
-            await Task.WhenAll(
-                LoadActiveProjectsAsync(),
-                LoadTasksStatisticsAsync(),
-                LoadCalendarEventsAsync(),
-                LoadRecentDocumentsAsync(),
-                LoadWorkflowChartStatisticsAsync(),
-                LoadRecentNotificationsAsync(),
-                LoadMyTasksAsync()
-            );
+            var bundle = await HomeDashboardAppService.GetDashboardBundleAsync(new GetHomeDashboardBundleInput
+            {
+                StartDate = FilterStartDate,
+                EndDate = FilterEndDate,
+                Culture = CultureInfo.CurrentUICulture.Name
+            });
 
-            // Generate calendar tabs after loading events
+            TotalProjectsCount = bundle.TotalProjectsCount;
+            ActiveProjectsCount = bundle.ActiveProjectsCount;
+            ActiveProjectsList = bundle.ActiveProjects;
+
+            TotalTasksCount = bundle.TotalTasksCount;
+            TasksByStatus = bundle.TasksByStatus;
+            MyTasksList = bundle.MyTasks;
+
+            CalendarEventsList = bundle.CalendarEvents;
+            TotalEvents = CalendarEventsList.Count;
+
+            RecentDocumentsList = bundle.RecentDocuments
+                .Select(x => new RecentDocumentItem { Document = x.Document, Time = x.Time })
+                .ToList();
+            LastDocumentTimeAgo = RecentDocumentsList.Any()
+                ? RecentDocumentsList.First().Time.Humanize()
+                : string.Empty;
+
+            WorkflowSignedCount = bundle.WorkflowChartStatistics.SignedCount;
+            WorkflowUnsignedCount = bundle.WorkflowChartStatistics.UnsignedCount;
+            WorkflowReturnedOrRejectedCount = bundle.WorkflowChartStatistics.ReturnedOrRejectedCount;
+            WorkflowTotalCount = bundle.WorkflowChartStatistics.TotalCount;
+
+            RecentNotificationsList = bundle.RecentNotifications
+                .Select(x => (NotificationReceiverWithNavigationPropertiesDto)x)
+                .ToList();
+            LastNotificationTimeAgo = bundle.RecentNotifications.Any()
+                ? bundle.RecentNotifications.Last().NotificationReceiver.CreationTime.Humanize()
+                : string.Empty;
+
             GenerateCalendarTabs();
         }
         catch (Exception ex)
@@ -190,268 +212,6 @@ public partial class Index
         }
     }
 
-    private async Task LoadActiveProjectsAsync()
-    {
-        try
-        {
-            // Get all projects
-            var allProjectsResult = await ProjectsAppService.GetListAsync(new GetProjectsInput
-            {
-                MaxResultCount = 200,
-                SkipCount = 0
-            });
-
-            TotalProjectsCount = (int)allProjectsResult.TotalCount;
-
-            // Get all projects with date filter
-            var input = new GetProjectsInput
-            {
-                MaxResultCount = 200,
-                SkipCount = 0
-            };
-
-            // Apply date filter if set
-            if (FilterStartDate.HasValue)
-            {
-                input.StartDateMin = FilterStartDate.Value.Date;
-            }
-            if (FilterEndDate.HasValue)
-            {
-                input.StartDateMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
-            }
-
-            var projectsResult = await ProjectsAppService.GetListAsync(input);
-
-            ActiveProjectsList = projectsResult.Items.ToList();
-            ActiveProjectsCount = (int)projectsResult.TotalCount;
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-
-    private async Task LoadTasksStatisticsAsync()
-    {
-        try
-        {
-            // Get all tasks with date filter
-            var input = new GetProjectTasksInput
-            {
-                MaxResultCount = 200,
-                SkipCount = 0
-            };
-
-            // Apply date filter if set
-            if (FilterStartDate.HasValue)
-            {
-                input.StartDateMin = FilterStartDate.Value.Date;
-            }
-            if (FilterEndDate.HasValue)
-            {
-                input.StartDateMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
-            }
-
-            var result = await ProjectTasksAppService.GetListAsync(input);
-
-            TotalTasksCount = (int)result.TotalCount;
-
-            // Group by status
-            TasksByStatus = result.Items
-                .GroupBy(t => t.ProjectTask.Status)
-                .ToDictionary(g => g.Key, g => g.Count());
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-
-    private async Task LoadCalendarEventsAsync()
-    {
-        try
-        {
-            if (!CurrentUser.Id.HasValue)
-            {
-                CalendarEventsList = new List<CalendarEventDto>();
-                TotalEvents = 0;
-                return;
-            }
-
-            var input = new GetCalendarEventsInput
-            {
-                MaxResultCount = 200,
-                SkipCount = 0,
-                Sorting = "StartTime"
-            };
-
-            // Apply date filter if set
-            if (FilterStartDate.HasValue)
-            {
-                input.StartTimeMin = FilterStartDate.Value.Date;
-            }
-            else
-            {
-                // Default behavior: show events from now to next 7 days
-                var now = DateTime.Now;
-                input.StartTimeMin = now;
-                input.StartTimeMax = now.AddDays(7);
-            }
-
-            if (FilterEndDate.HasValue)
-            {
-                input.StartTimeMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
-            }
-
-            var result = await CalendarEventsAppService.GetListAsync(input);
-
-            var participantsResult = await CalendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
-            {
-                IdentityUserId = CurrentUser.Id,
-                MaxResultCount = 200,
-                SkipCount = 0,
-                Sorting = "CalendarEventParticipant.CreationTime DESC"
-            });
-
-            var participantEventIds = participantsResult.Items
-                .Where(x => x.CalendarEvent != null)
-                .Select(x => x.CalendarEvent!.Id)
-                .ToHashSet();
-
-            CalendarEventsList = result.Items
-                .Where(x => participantEventIds.Contains(x.Id))
-                .ToList();
-            TotalEvents = CalendarEventsList.Count;
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-
-    private async Task LoadRecentDocumentsAsync()
-    {
-        try
-        {
-            // Load documents assigned to current user (sourceType=0)
-            var assignmentInput = new GetDocumentAssignmentsInput
-            {
-                ReceiverUserId = CurrentUser.Id,
-                MaxResultCount = 10,
-                SkipCount = 0,
-                Sorting = "DocumentAssignment.CreationTime DESC"
-            };
-
-            // Apply date filter if set
-            if (FilterStartDate.HasValue)
-            {
-                assignmentInput.AssignedAtMin = FilterStartDate.Value.Date;
-            }
-            if (FilterEndDate.HasValue)
-            {
-                assignmentInput.AssignedAtMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
-            }
-
-            var assignmentResult = await DocumentAssignmentsAppService.GetListAsync(assignmentInput);
-            var assignedItems = assignmentResult.Items
-                .Where(x => x.Document.SourceType == DocumentSourceType.Archive)
-                .Select(x => new RecentDocumentItem
-                {
-                    Document = x.Document,
-                    Time = x.DocumentAssignment.CreationTime
-                });
-
-            // Load personal documents (sourceType=1)
-            var personalInput = new GetDocumentsInput
-            {
-                SourceType = DocumentSourceType.Personal,
-                IncommingDateMin = FilterStartDate, 
-                IncommingDateMax = FilterEndDate,
-                MaxResultCount = 10,
-                SkipCount = 0,
-                Sorting = "Document.CreationTime DESC"
-            };
-
-            var personalResult = await DocumentsAppService.GetListAsync(personalInput);
-            var personalItems = personalResult.Items.Select(x => new RecentDocumentItem
-            {
-                Document = x.Document,
-                Time = x.Document.CreationTime
-            });
-
-            RecentDocumentsList = assignedItems
-                .Concat(personalItems)
-                .OrderByDescending(x => x.Time)
-                .Take(10)
-                .ToList();
-
-            LastDocumentTimeAgo = RecentDocumentsList.Any()
-                ? RecentDocumentsList.First().Time.Humanize()
-                : string.Empty;
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-
-    private async Task LoadRecentNotificationsAsync()
-    {
-        try
-        {
-            var input = new GetMyNotificationsInput
-            {
-                Culture = CultureInfo.CurrentUICulture.Name,
-                MaxResultCount = 10,
-                SkipCount = 0,
-                Sorting = "NotificationReceiver.CreationTime DESC"
-            };
-
-            // Apply date filter if set
-            if (FilterStartDate.HasValue)
-            {
-                input.CreationTimeMin = FilterStartDate.Value.Date;
-            }
-            if (FilterEndDate.HasValue)
-            {
-                input.CreationTimeMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
-            }
-
-            var result = await NotificationReceiversAppService.GetMyListWithLocalizedMessagesAsync(input);
-
-            RecentNotificationsList = result.Items.Select(x => (NotificationReceiverWithNavigationPropertiesDto)x).ToList();
-            LastNotificationTimeAgo = result.Items.Any() ? result.Items.Last().NotificationReceiver.CreationTime.Humanize() : string.Empty;
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-
-    private async Task LoadWorkflowChartStatisticsAsync()
-    {
-        try
-        {
-            var workflowStats = await DocumentWorkflowInstanceLogssAppService.GetWorkflowChartStatisticsAsync(
-                FilterStartDate,
-                FilterEndDate
-            );
-
-            WorkflowSignedCount = workflowStats.SignedCount;
-            WorkflowUnsignedCount = workflowStats.UnsignedCount;
-            WorkflowReturnedOrRejectedCount = workflowStats.ReturnedOrRejectedCount;
-            WorkflowTotalCount = workflowStats.TotalCount;
-        }
-        catch (Exception ex)
-        {
-            WorkflowSignedCount = 0;
-            WorkflowUnsignedCount = 0;
-            WorkflowReturnedOrRejectedCount = 0;
-            WorkflowTotalCount = 0;
-            await HandleErrorAsync(ex);
-        }
-    }
-
     private double GetWorkflowPercentage(int count)
     {
         if (WorkflowTotalCount <= 0)
@@ -460,37 +220,6 @@ public partial class Index
         }
 
         return Math.Round((double)count / WorkflowTotalCount * 100, 1);
-    }
-
-    private async Task LoadMyTasksAsync()
-    {
-        try
-        {
-            var input = new GetProjectTasksInput
-            {
-                MaxResultCount = 200,
-                SkipCount = 0,
-                Sorting = "ProjectTask.StartDate DESC"
-            };
-
-            // Apply date filter if set, otherwise use default 60 days
-            if (FilterStartDate.HasValue)
-            {
-                input.StartDateMin = FilterStartDate.Value.Date;
-            }
-            if (FilterEndDate.HasValue)
-            {
-                input.StartDateMax = FilterEndDate.Value.Date.AddDays(1).AddSeconds(-1);
-            }
-
-            var result = await ProjectTasksAppService.GetListAsync(input);
-
-            MyTasksList = result.Items.ToList();
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
     }
 
     // Helper method to calculate project progress based on status
@@ -720,8 +449,7 @@ public partial class Index
             await UiMessageService.Success(L["SuccessfullyCreated"],
             options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
 
-            // Reload projects list
-            await LoadActiveProjectsAsync();
+            await LoadDashboardDataAsync();
 
             await CloseCreateProjectModalAsync();
         }
@@ -978,16 +706,12 @@ public partial class Index
 
     private async Task OnTaskCreatedAsync()
     {
-        // Reload tasks data when a new task is created
-        await LoadMyTasksAsync();
-        await LoadTasksStatisticsAsync();
+        await LoadDashboardDataAsync();
     }
 
     private async Task OnTaskUpdatedAsync()
     {
-        // Reload tasks data when a task is updated
-        await LoadMyTasksAsync();
-        await LoadTasksStatisticsAsync();
+        await LoadDashboardDataAsync();
     }
 
     private async Task<bool> CheckIfDocumentHasPdfAsync(Guid documentId)
