@@ -97,6 +97,7 @@ using Microsoft.AspNetCore.SignalR;
 using System.Collections.Generic;
 using Volo.Abp.AspNetCore.Components.Web.LeptonXTheme.Navigation;
 // using Volo.Forms.Web;
+using Volo.Abp.Elsa;
 
 namespace HC.Blazor;
 
@@ -134,6 +135,7 @@ namespace HC.Blazor;
     typeof(AbpBlobStoringMinioModule)
     )]
 // [DependsOn(typeof(FormsWebModule))]
+    [DependsOn(typeof(AbpElsaBlazorServerModule))]
     public class HCBlazorModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)

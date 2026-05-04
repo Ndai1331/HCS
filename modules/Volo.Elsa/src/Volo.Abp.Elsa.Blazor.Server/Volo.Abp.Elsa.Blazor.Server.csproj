@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+    
+    
+  <PropertyGroup><LangVersion>latest</LangVersion>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Volo.Abp.Elsa</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="../../../../../abp/framework/src/Volo.Abp.AspNetCore.Components.Server.Theming/Volo.Abp.AspNetCore.Components.Server.Theming.csproj" VersionOverride="10.0.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Volo.Abp.Elsa.Blazor\Volo.Abp.Elsa.Blazor.csproj" />
+  </ItemGroup>
+</Project>

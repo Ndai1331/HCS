@@ -1,0 +1,35 @@
+<Solution>
+  <Folder Name="/app/">
+    <Project Path="app/ElsaDemoApp.Contracts/ElsaDemoApp.Contracts.csproj" />
+    <Project Path="app/ElsaDemoApp.Ordering.Contracts/ElsaDemoApp.Ordering.Contracts.csproj" />
+    <Project Path="app/ElsaDemoApp.Ordering/ElsaDemoApp.Ordering.csproj" />
+    <Project Path="app/ElsaDemoApp.Payment.Contracts/ElsaDemoApp.Payment.Contracts.csproj" />
+    <Project Path="app/ElsaDemoApp.Payment/ElsaDemoApp.Payment.csproj" />
+    <Project Path="app/ElsaDemoApp.Server/ElsaDemoApp.Server.csproj" />
+    <Project Path="app/ElsaDemoApp.Studio.WASM/ElsaDemoApp.Studio.WASM.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Volo.Abp.Elsa.Application.Contracts/Volo.Abp.Elsa.Application.Contracts.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.Application/Volo.Abp.Elsa.Application.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.AspNetCore/Volo.Abp.Elsa.AspNetCore.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.Blazor.Server/Volo.Abp.Elsa.Blazor.Server.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.Blazor.WebAssembly/Volo.Abp.Elsa.Blazor.WebAssembly.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.Blazor/Volo.Abp.Elsa.Blazor.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.Domain.Shared/Volo.Abp.Elsa.Domain.Shared.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.Domain/Volo.Abp.Elsa.Domain.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.EntityFrameworkCore/Volo.Abp.Elsa.EntityFrameworkCore.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.HttpApi.Client/Volo.Abp.Elsa.HttpApi.Client.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.HttpApi/Volo.Abp.Elsa.HttpApi.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.Identity/Volo.Abp.Elsa.Identity.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.Installer/Volo.Abp.Elsa.Installer.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.MongoDB/Volo.Abp.Elsa.MongoDB.csproj" />
+    <Project Path="src/Volo.Abp.Elsa.Web/Volo.Abp.Elsa.Web.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Volo.Abp.Elsa.Application.Tests/Volo.Abp.Elsa.Application.Tests.csproj" />
+    <Project Path="test/Volo.Abp.Elsa.Domain.Tests/Volo.Abp.Elsa.Domain.Tests.csproj" />
+    <Project Path="test/Volo.Abp.Elsa.EntityFrameworkCore.Tests/Volo.Abp.Elsa.EntityFrameworkCore.Tests.csproj" />
+    <Project Path="test/Volo.Abp.Elsa.MongoDB.Tests/Volo.Abp.Elsa.MongoDB.Tests.csproj" />
+    <Project Path="test/Volo.Abp.Elsa.TestBase/Volo.Abp.Elsa.TestBase.csproj" />
+  </Folder>
+</Solution>

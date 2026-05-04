@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    
+    
+  <PropertyGroup><LangVersion>latest</LangVersion>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Volo.Abp.Elsa</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Volo.Abp.Elsa.Application.Contracts\Volo.Abp.Elsa.Application.Contracts.csproj" />
+    <PackageReference Include="../../../../../abp/framework/src/Volo.Abp.AspNetCore.Mvc/Volo.Abp.AspNetCore.Mvc.csproj" VersionOverride="10.0.1" />
+  </ItemGroup>
+</Project>

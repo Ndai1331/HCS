@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+    
+    
+    <PropertyGroup><LangVersion>latest</LangVersion>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Volo.Abp.Elsa</RootNamespace>
+        <OutputType>Library</OutputType>
+        <IsPackable>true</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Volo.Abp.Elsa.Application.Contracts\Volo.Abp.Elsa.Application.Contracts.csproj" />
+    </ItemGroup>
+
+</Project>

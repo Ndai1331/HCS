@@ -11,6 +11,7 @@
     <ProjectReference Include="..\HC.Application.Contracts\HC.Application.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\modules\Volo.Elsa\src\Volo.Abp.Elsa.HttpApi\Volo.Abp.Elsa.HttpApi.csproj" />
     <PackageReference Include="Volo.Abp.PermissionManagement.HttpApi" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.FeatureManagement.HttpApi" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.SettingManagement.HttpApi" Version="10.0.1" />

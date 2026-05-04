@@ -18,6 +18,7 @@ using Volo.Saas;
 using Volo.Abp.Gdpr;
 using Volo.Abp.GlobalFeatures;
 // using Volo.Forms;
+using Volo.Abp.Elsa;
 
 namespace HC;
 
@@ -37,7 +38,8 @@ namespace HC;
     typeof(AbpGlobalFeaturesModule)
     // typeof(FormsDomainSharedModule)
     )]
-public class HCDomainSharedModule : AbpModule
+[DependsOn(typeof(AbpElsaDomainSharedModule))]
+    public class HCDomainSharedModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {

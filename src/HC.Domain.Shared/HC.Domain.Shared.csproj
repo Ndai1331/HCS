@@ -11,6 +11,7 @@
   <ItemGroup>
     <PackageReference Include="Volo.Abp.BackgroundJobs.Domain.Shared" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.AuditLogging.Domain.Shared" Version="10.0.1" />
+    <ProjectReference Include="..\..\modules\Volo.Elsa\src\Volo.Abp.Elsa.Domain.Shared\Volo.Abp.Elsa.Domain.Shared.csproj" />
     <PackageReference Include="Volo.Abp.FeatureManagement.Domain.Shared" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.PermissionManagement.Domain.Shared" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.SettingManagement.Domain.Shared" Version="10.0.1" />

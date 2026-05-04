@@ -96,6 +96,10 @@ public class ContactAppService : ChatAppService, IContactAppService
                     memberCount = activeMemberCountsByConversation.GetValueOrDefault(x.Conversation.Id);
                 }
                 
+                var displayNameForUserChat = x.Conversation.Type == ConversationType.User && x.TargetUser != null
+                    ? FormatPeerDisplayNameForUserConversation(x.TargetUser)
+                    : x.Conversation.Name;
+
                 conversationContacts.Add(new ChatContactDto
                 {
                     UserId = x.TargetUser?.Id ?? Guid.Empty,
@@ -106,7 +110,7 @@ public class ContactAppService : ChatAppService, IContactAppService
                     LastMessageDate = x.Conversation.LastMessageDate,
                     UnreadMessageCount = unreadMessageCount, // Get from ConversationMember
                     Type = x.Conversation.Type,
-                    ConversationName = x.Conversation.Name,
+                    ConversationName = displayNameForUserChat,
                     ConversationId = x.Conversation.Id,
                     IsPinned = isPinned,
                     PinnedDate = pinnedDate,
@@ -287,5 +291,11 @@ public class ContactAppService : ChatAppService, IContactAppService
             TotalCount = filteredUsers.Count,
             Items = filteredUsers
         };
+    }
+
+    private static string FormatPeerDisplayNameForUserConversation(ChatUser peer)
+    {
+        var full = $"{peer.Surname} {peer.Name}".Trim();
+        return string.IsNullOrEmpty(full) ? (peer.UserName ?? string.Empty) : full;
     }
 }

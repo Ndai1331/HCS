@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    
+    
+  <PropertyGroup><LangVersion>latest</LangVersion>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Volo.Abp.Elsa</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Volo.Abp.Elsa.Application.Contracts\Volo.Abp.Elsa.Application.Contracts.csproj" />
+    <ProjectReference Include="..\Volo.Abp.Elsa.Domain\Volo.Abp.Elsa.Domain.csproj" />
+    <PackageReference Include="../../../../../abp/framework/src/Volo.Abp.Mapperly/Volo.Abp.Mapperly.csproj" VersionOverride="10.0.1" />
+    <PackageReference Include="../../../../../abp/framework/src/Volo.Abp.Ddd.Application/Volo.Abp.Ddd.Application.csproj" VersionOverride="10.0.1" />
+  </ItemGroup>
+</Project>

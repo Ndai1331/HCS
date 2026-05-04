@@ -30,6 +30,7 @@ using Volo.Abp.Gdpr;
 using Volo.Abp.Localization.ExceptionHandling;
 // using Volo.Forms;
 using Volo.Abp;
+using Volo.Abp.Elsa;
 
 namespace HC;
 
@@ -54,7 +55,8 @@ namespace HC;
     typeof(AbpBlobStoringMinioModule)
     // typeof(FormsDomainModule)
     )]
-public class HCDomainModule : AbpModule
+[DependsOn(typeof(AbpElsaDomainModule))]
+    public class HCDomainModule : AbpModule
 {
     public override void ConfigureServices(ServiceConfigurationContext context)
     {

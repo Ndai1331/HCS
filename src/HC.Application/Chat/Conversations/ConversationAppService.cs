@@ -14,6 +14,7 @@ using Volo.Abp.PermissionManagement;
 using Volo.Abp.Uow;
 using Volo.Abp.Users;
 using HC.Chat.Authorization;
+using HC.Chat.Conversations;
 using HC.Chat.Messages;
 using HC.Chat.Users;
 using Microsoft.Extensions.Logging;
@@ -79,6 +80,25 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             var missing = distinct.First(id => !found.Contains(id));
             throw new BusinessException("HC.Chat:UserNotFound").WithData("UserId", missing);
         }
+    }
+
+    /// <summary>
+    /// Display label for a 1:1 (User) chat from the current member's perspective — always the other participant, not the stored <see cref="Conversation.Name"/> (which reflects the invitee at creation time).
+    /// </summary>
+    private static string FormatUserConversationDisplayName(string? name, string? surname, string? userName)
+    {
+        var full = $"{name} {surname}".Trim();
+        return string.IsNullOrEmpty(full) ? (userName ?? string.Empty) : full;
+    }
+
+    private static string? FormatUserConversationDisplayName(ChatUser? user)
+    {
+        if (user == null)
+        {
+            return null;
+        }
+
+        return FormatUserConversationDisplayName(user.Name, user.Surname, user.UserName);
     }
 
     public virtual async Task<ChatMessageDto> SendMessageAsync(SendMessageInput input)
@@ -154,7 +174,9 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             Id = message.Id,
             ConversationId = input.ConversationId,
             ConversationType = conversation.Type.ToString(),
-            ConversationName = conversation.Name,
+            ConversationName = conversation.Type == ConversationType.User
+                ? (FormatUserConversationDisplayName(senderUser) ?? conversation.Name)
+                : conversation.Name,
             SenderName = senderUser.Name,
             SenderSurname = senderUser.Surname,
             SenderUserId = senderUser.Id,
@@ -1216,6 +1238,12 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         
         // Send real-time notification
         var senderUser = await _chatUserLookupService.FindByIdAsync(CurrentUser.GetId());
+        var notifyConversationName = conversationName;
+        if (input.ConversationId.HasValue && conversationType == ConversationType.User.ToString())
+        {
+            notifyConversationName = FormatUserConversationDisplayName(senderUser) ?? conversationName;
+        }
+
         await _realTimeChatMessageSender.SendAsync(
             targetUserId,
             new ChatMessageRdto
@@ -1223,7 +1251,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                 Id = message.Id,
                 ConversationId = input.ConversationId,
                 ConversationType = conversationType,
-                ConversationName = conversationName,
+                ConversationName = notifyConversationName,
                 SenderName = senderUser.Name,
                 SenderSurname = senderUser.Surname,
                 SenderUserId = senderUser.Id,
@@ -1383,6 +1411,12 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         
         // Send real-time notification
         var senderUser = await _chatUserLookupService.FindByIdAsync(CurrentUser.GetId());
+        var notifyConversationNameWithFiles = conversationName;
+        if (input.ConversationId.HasValue && conversationType == ConversationType.User.ToString())
+        {
+            notifyConversationNameWithFiles = FormatUserConversationDisplayName(senderUser) ?? conversationName;
+        }
+
         await _realTimeChatMessageSender.SendAsync(
             targetUserId,
             new ChatMessageRdto
@@ -1390,7 +1424,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                 Id = message.Id,
                 ConversationId = input.ConversationId,
                 ConversationType = conversationType,
-                ConversationName = conversationName,
+                ConversationName = notifyConversationNameWithFiles,
                 SenderName = senderUser.Name,
                 SenderSurname = senderUser.Surname,
                 SenderUserId = senderUser.Id,
@@ -1644,12 +1678,16 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         var senderUser = await _chatUserLookupService.FindByIdAsync(currentUserId);
         if (senderUser != null)
         {
+            var forwardConversationLabel = targetConversation.Type == ConversationType.User
+                ? (FormatUserConversationDisplayName(senderUser) ?? targetConversation.Name)
+                : targetConversation.Name;
+
             var messageDto = new ChatMessageRdto
             {
                 Id = newMessage.Id,
                 ConversationId = input.TargetConversationId,
                 ConversationType = targetConversation.Type.ToString(),
-                ConversationName = targetConversation.Name,
+                ConversationName = forwardConversationLabel,
                 SenderName = senderUser.Name,
                 SenderSurname = senderUser.Surname,
                 SenderUserId = senderUser.Id,
@@ -1678,13 +1716,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         }
 
         var currentUserId = CurrentUser.GetId();
-        var targetUserId = input.UserIds.FirstOrDefault(id => id != currentUserId);
-        if (targetUserId == Guid.Empty)
-        {
-            targetUserId = currentUserId;
-        }
 
-        return await MapToConversationDtoAsync(members.First().Conversation, targetUserId);
+        return await MapToConversationDtoAsync(members.First().Conversation, currentUserId);
     }
 
 
@@ -1896,6 +1929,7 @@ public class ConversationAppService : ChatAppService, IConversationAppService
                         Surname = targetUser.Surname,
                         Username = targetUser.UserName
                     };
+                    dto.Name = FormatUserConversationDisplayName(targetUser.Name, targetUser.Surname, targetUser.UserName);
                 }
             }
         }
