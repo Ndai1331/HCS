@@ -11,7 +11,6 @@
     <ProjectReference Include="..\HC.Domain.Shared\HC.Domain.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\modules\Volo.Elsa\src\Volo.Abp.Elsa.Application.Contracts\Volo.Abp.Elsa.Application.Contracts.csproj" />
     <PackageReference Include="Volo.Abp.PermissionManagement.Application.Contracts" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.FeatureManagement.Application.Contracts" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.SettingManagement.Application.Contracts" Version="10.0.1" />

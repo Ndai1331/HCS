@@ -20,7 +20,6 @@ using HC.Chat.Conversations;
 using HC.Chat.Messages;
 using HC.Chat.Users;
 // using Volo.Forms.EntityFrameworkCore;
-using Volo.Abp.Elsa.EntityFrameworkCore;
 
 namespace HC.EntityFrameworkCore;
 
@@ -87,6 +86,5 @@ public abstract class HCDbContextBase<TDbContext> : AbpDbContext<TDbContext>, IC
         //     * but should not be in the tenant databases. */
         //}
         // builder.ConfigureForms();
-            builder.ConfigureElsa();
         }
 }

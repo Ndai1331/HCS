@@ -13,7 +13,7 @@ using Volo.Abp.Gdpr;
 using Volo.Abp.OpenIddict;
 using Volo.FileManagement;
 // using Volo.Forms;
-using Volo.Abp.Elsa;
+
 namespace HC;
 
 [DependsOn(
@@ -33,8 +33,7 @@ namespace HC;
     typeof(AbpPermissionManagementApplicationContractsModule)
     //  typeof(FormsApplicationContractsModule)
 )]
-[DependsOn(typeof(AbpElsaApplicationContractsModule))]
-    public class HCApplicationContractsModule : AbpModule
+public class HCApplicationContractsModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {

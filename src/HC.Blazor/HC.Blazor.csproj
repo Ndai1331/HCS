@@ -33,7 +33,6 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
     <PackageReference Include="Excubo.Blazor.TreeViews" Version="4.0.42" />
     <PackageReference Include="Scriban" Version="7.0.6" />
-    <ProjectReference Include="..\..\modules\Volo.Elsa\src\Volo.Abp.Elsa.Blazor.Server\Volo.Abp.Elsa.Blazor.Server.csproj" />
     <!-- <ProjectReference Include="..\..\modules\Volo.Forms\src\Volo.Forms.Web\Volo.Forms.Web.csproj" /> -->
   </ItemGroup>
   <ItemGroup>

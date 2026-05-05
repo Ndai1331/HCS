@@ -17,7 +17,7 @@ using Volo.Saas.Host;
 // using Volo.Forms;
 using PdfSharp.Fonts;
 using HC.Helpers;
-using Volo.Abp.Elsa;
+
 namespace HC;
 
 [DependsOn(
@@ -40,7 +40,6 @@ namespace HC;
     typeof(AbpBackgroundJobsModule)
     // typeof(FormsApplicationModule)
     )]
-[DependsOn(typeof(AbpElsaApplicationModule))]
     public class HCApplicationModule : AbpModule
 {
     public override void ConfigureServices(ServiceConfigurationContext context)
