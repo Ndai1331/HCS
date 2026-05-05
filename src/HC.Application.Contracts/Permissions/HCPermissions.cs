@@ -98,6 +98,11 @@ public static class HCPermissions
         public const string SignatureSettingsEdit = SignatureSettingsDefault + ".Edit";
         public const string SignatureSettingsCreate = SignatureSettingsDefault + ".Create";
         public const string SignatureSettingsDelete = SignatureSettingsDefault + ".Delete";
+
+        public const string ReportsDefault = Default + ".Reports";
+        public const string ReportsEdit = ReportsDefault + ".Edit";
+        public const string ReportsCreate = ReportsDefault + ".Create";
+        public const string ReportsDelete = ReportsDefault + ".Delete";
     }
 
     public static class Hrs

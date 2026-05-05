@@ -156,6 +156,8 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         reportsPermission.AddChild(HCPermissions.Reports.Create, L("Permission:Create"));
         reportsPermission.AddChild(HCPermissions.Reports.Edit, L("Permission:Edit"));
         reportsPermission.AddChild(HCPermissions.Reports.Delete, L("Permission:Delete"));
+
+        
         var documentReportPermission = myGroup.AddPermission(HCPermissions.Reports.DocumentDefault, L("Permission:Documents"));
         documentReportPermission.AddChild(HCPermissions.Reports.DocumentCreate, L("Permission:Create"));
         documentReportPermission.AddChild(HCPermissions.Reports.DocumentEdit, L("Permission:Edit"));
@@ -184,6 +186,12 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         signatureSettingPermission.AddChild(HCPermissions.MasterDatas.SignatureSettingsCreate, L("Permission:Create"));
         signatureSettingPermission.AddChild(HCPermissions.MasterDatas.SignatureSettingsEdit, L("Permission:Edit"));
         signatureSettingPermission.AddChild(HCPermissions.MasterDatas.SignatureSettingsDelete, L("Permission:Delete"));
+
+        var masterDataReportsPermission = myGroup.AddPermission(HCPermissions.MasterDatas.ReportsDefault, L("Permission:Reports"));
+        masterDataReportsPermission.AddChild(HCPermissions.MasterDatas.ReportsCreate, L("Permission:Create"));
+        masterDataReportsPermission.AddChild(HCPermissions.MasterDatas.ReportsEdit, L("Permission:Edit"));
+        masterDataReportsPermission.AddChild(HCPermissions.MasterDatas.ReportsDelete, L("Permission:Delete"));
+
         var userSignaturePermission = myGroup.AddPermission(HCPermissions.UserSignatures.Default, L("Permission:UserSignatures"));
         userSignaturePermission.AddChild(HCPermissions.UserSignatures.Create, L("Permission:Create"));
         userSignaturePermission.AddChild(HCPermissions.UserSignatures.Edit, L("Permission:Edit"));

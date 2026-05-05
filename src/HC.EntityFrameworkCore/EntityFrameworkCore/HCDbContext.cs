@@ -1,3 +1,4 @@
+using HC.Reports;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.UserDepartments;
@@ -42,6 +43,7 @@ namespace HC.EntityFrameworkCore;
 [ConnectionStringName("Default")]
 public class HCDbContext : HCDbContextBase<HCDbContext>
 {
+    public DbSet<Report> Reports { get; set; } = null!;
     public DbSet<DocumentWorkflowInstanceLogs> DocumentWorkflowInstanceLogss { get; set; } = null!;
     public DbSet<DocumentWorkflowInstanceFile> DocumentWorkflowInstanceFiles { get; set; } = null!;
     public DbSet<UserDepartment> UserDepartments { get; set; } = null!;
@@ -438,9 +440,7 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.HasOne<DocumentFile>().WithMany().HasForeignKey(x => x.DocumentFileResultId).OnDelete(DeleteBehavior.SetNull);
             // Filtered (partial) index – ApplyPendingApprovalFlagsAsync, GetSentToMeDocumentIdsAsync,
             // ApplySubmitSigningButtonVisibilityAsync, RevokeDocumentAsync all filter by IsCurrent = true on a document.
-            b.HasIndex(x => new { x.DocumentId, x.IsCurrent })
-                .HasDatabaseName("IX_AppDocumentAssignments_DocumentId_IsCurrent")
-                .HasFilter("\"IsCurrent\" = true");
+            b.HasIndex(x => new { x.DocumentId, x.IsCurrent }).HasDatabaseName("IX_AppDocumentAssignments_DocumentId_IsCurrent").HasFilter("\"IsCurrent\" = true");
         });
         builder.Entity<DocumentWorkflowInstanceFile>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "DocumentWorkflowInstanceFiles", HCConsts.DbSchema);
@@ -513,5 +513,16 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.Property(x => x.ErrorMessage).HasColumnName(nameof(NotificationOutbox.ErrorMessage));
             b.HasIndex(x => new { x.ProcessedTime, x.CreationTime });
         });
+        if (builder.IsHostDatabase())
+        {
+            builder.Entity<Report>(b => {
+                b.ToTable(HCConsts.DbTablePrefix + "Reports", HCConsts.DbSchema);
+                b.ConfigureByConvention();
+                b.Property(x => x.Name).HasColumnName(nameof(Report.Name)).IsRequired().HasMaxLength(ReportConsts.NameMaxLength);
+                b.Property(x => x.Url).HasColumnName(nameof(Report.Url)).IsRequired().HasMaxLength(ReportConsts.UrlMaxLength);
+                b.Property(x => x.SortOrder).HasColumnName(nameof(Report.SortOrder));
+                b.Property(x => x.Image).HasColumnName(nameof(Report.Image)).HasMaxLength(ReportConsts.ImageMaxLength);
+            });
+        }
     }
 }

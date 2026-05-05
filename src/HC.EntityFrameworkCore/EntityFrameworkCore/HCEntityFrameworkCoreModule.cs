@@ -1,3 +1,4 @@
+using HC.Reports;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.UserDepartments;
@@ -51,12 +52,11 @@ using Volo.Abp.Gdpr;
 using Volo.Abp.OpenIddict.EntityFrameworkCore;
 using Volo.Abp.Studio;
 // using Volo.Forms.EntityFrameworkCore;
-
 namespace HC.EntityFrameworkCore;
 
 [DependsOn(typeof(HCDomainModule), typeof(AbpIdentityProEntityFrameworkCoreModule), typeof(AbpOpenIddictProEntityFrameworkCoreModule), typeof(AbpPermissionManagementEntityFrameworkCoreModule), typeof(AbpSettingManagementEntityFrameworkCoreModule), typeof(AbpEntityFrameworkCorePostgreSqlModule), typeof(AbpBackgroundJobsEntityFrameworkCoreModule), typeof(AbpAuditLoggingEntityFrameworkCoreModule), typeof(AbpFeatureManagementEntityFrameworkCoreModule), typeof(LanguageManagementEntityFrameworkCoreModule), typeof(FileManagementEntityFrameworkCoreModule), typeof(SaasEntityFrameworkCoreModule), typeof(TextTemplateManagementEntityFrameworkCoreModule), typeof(AbpGdprEntityFrameworkCoreModule))]
 // [DependsOn(typeof(FormsEntityFrameworkCoreModule))]
-    public class HCEntityFrameworkCoreModule : AbpModule
+public class HCEntityFrameworkCoreModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {
@@ -111,6 +111,7 @@ namespace HC.EntityFrameworkCore;
             options.AddRepository<HC.Chat.Messages.MessageFile, HC.Chat.EntityFrameworkCore.Messages.EfCoreMessageFileRepository>();
             options.AddRepository<DocumentWorkflowInstanceFile, DocumentWorkflowInstanceFiles.EfCoreDocumentWorkflowInstanceFileRepository>();
             options.AddRepository<DocumentWorkflowInstanceLogs, DocumentWorkflowInstanceLogss.EfCoreDocumentWorkflowInstanceLogsRepository>();
+            options.AddRepository<Report, Reports.EfCoreReportRepository>();
         });
         // Register IChatDbContext mapping to HCDbContext
         // This allows repositories that depend on IChatDbContext to resolve HCDbContext

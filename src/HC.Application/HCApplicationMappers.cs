@@ -1,3 +1,4 @@
+using HC.Reports;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.UserDepartments;
@@ -344,10 +345,7 @@ public partial class DocumentToLookupDtoGuidMapper : MapperBase<Document, Lookup
 
     public override void AfterMap(Document source, LookupDto<Guid> destination)
     {
-        destination.DisplayName = source.Title +
-        
-         (!string.IsNullOrEmpty(source.StorageNumber) ? " - Storage No: " + source.StorageNumber : "") 
-         + (!string.IsNullOrEmpty(source.No) ? " - No: " + source.No : "");
+        destination.DisplayName = source.Title + (!string.IsNullOrEmpty(source.StorageNumber) ? " - Storage No: " + source.StorageNumber : "") + (!string.IsNullOrEmpty(source.No) ? " - No: " + source.No : "");
     }
 }
 
@@ -974,4 +972,18 @@ public partial class DocumentAssignmentToLookupDtoGuidMapper : MapperBase<Docume
     {
         destination.DisplayName = source.ActionType;
     }
+}
+
+[Mapper]
+public partial class ReportToReportDtoMappers : MapperBase<Report, ReportDto>
+{
+    public override partial ReportDto Map(Report source);
+    public override partial void Map(Report source, ReportDto destination);
+}
+
+[Mapper]
+public partial class ReportToReportExcelDtoMappers : MapperBase<Report, ReportExcelDto>
+{
+    public override partial ReportExcelDto Map(Report source);
+    public override partial void Map(Report source, ReportExcelDto destination);
 }

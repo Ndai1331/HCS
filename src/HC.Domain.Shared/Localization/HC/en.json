@@ -754,7 +754,6 @@
     "Menu:Survey": "Surveys",
     "Menu:SurveyResults": "Satisfaction Survey",
     "Menu:Forms": "Forms",
-
     "StorageNumber": "Storage Number",
     "DocumentNumber": "Document Number",
     "EditDocument": "Edit Document",
@@ -1061,7 +1060,6 @@
     "DocumentAssignment": "Document assignment",
     "ActorUser": "Actor user",
     "Permission:DocumentWorkflowInstanceLogss": "Document Workflow Instance Logss",
-
     "Menu:DocumentSigning": "Document Signing",
     "DocumentSigning": "Document Signing",
     "WorkflowNotificationItemNotFound": "Cannot open this signing item from the notification. It may not be in your list, you may not have access, or the document was removed.",
@@ -1234,7 +1232,7 @@
     "NoEventsFound": "No events found",
     "Events": "Events",
     "CalendarEvent:Detail": "Calendar event detail",
-    "NoMembersFound" : "No members found",
+    "NoMembersFound": "No members found",
     "ProjectDetail": "Project detail",
     "Warning": "Warning",
     "PleaseSelectAssignee": "Please select an assignee",
@@ -1266,6 +1264,9 @@
     "Y": "Y",
     "SubmitForApproval": "Submit For Approval",
     "ApprovalNote": "Approval Note",
-    "RemoveAdmin": "Remove Admin"
+    "RemoveAdmin": "Remove Admin",
+    "Url": "Url",
+    "Reports": "Reports",
+    "NewReport": "New Report"
   }
 }

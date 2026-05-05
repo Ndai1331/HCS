@@ -122,9 +122,6 @@ namespace HC.Blazor;
     typeof(LanguageManagementBlazorServerModule),
     typeof(FileManagementBlazorServerModule),
     typeof(SaasHostBlazorServerModule),
-    // Chat feature - SignalR module needs to be created
-    // typeof(HCChatBlazorServerModule),
-    // typeof(HCChatSignalRModule),
     typeof(TextTemplateManagementBlazorServerModule),
     typeof(AbpGdprBlazorServerModule),
     typeof(AbpAspNetCoreComponentsServerLeptonXThemeModule),
@@ -134,7 +131,6 @@ namespace HC.Blazor;
     typeof(AbpSettingManagementBlazorServerModule),
     typeof(AbpBlobStoringMinioModule)
     )]
-// [DependsOn(typeof(FormsWebModule))]
     public class HCBlazorModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
@@ -808,10 +804,6 @@ namespace HC.Blazor;
     public override void OnPostApplicationInitialization(ApplicationInitializationContext context)
     {
         var logger = context.ServiceProvider.GetRequiredService<ILogger<HCBlazorModule>>();
-        logger.LogInformation("[HCBlazorModule] ✅ Layout Hook configured: Hook={Hook}, Component={Component}, Layout={Layout}",
-            LayoutHooks.Body.Last,
-            typeof(Components.NotificationToast).FullName,
-            StandardLayouts.Application);
     }
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
@@ -850,7 +842,6 @@ namespace HC.Blazor;
 
         if (env.IsDevelopment())
         {
-            // Verbose auth/tenant logging only in development (risk review M1)
             app.Use(async (httpContext, next) =>
             {
                 var path = httpContext.Request.Path.Value ?? "";
@@ -861,8 +852,6 @@ namespace HC.Blazor;
                     var userId = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "Anonymous";
                     var hasCookies = httpContext.Request.Cookies.Count > 0;
 
-                    logger.LogInformation("[SignalR Debug] Path={Path}, IsAuthenticated={IsAuthenticated}, UserId={UserId}, HasCookies={HasCookies}, CookieCount={CookieCount}",
-                        path, isAuthenticated, userId, hasCookies, httpContext.Request.Cookies.Count);
                 }
 
                 if (MultiTenancyConsts.IsEnabled)
@@ -870,51 +859,12 @@ namespace HC.Blazor;
                     var currentTenant = httpContext.RequestServices.GetRequiredService<Volo.Abp.MultiTenancy.ICurrentTenant>();
                     var logger = httpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HCBlazorModule>>();
                     var userId = httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "Anonymous";
-                    logger.LogWarning("[DEBUG] UserId: {UserId}, TenantId: {TenantId}, Name: {TenantName}, IsAvailable: {IsAvailable}",
-                        userId, currentTenant.Id, currentTenant.Name, currentTenant.IsAvailable);
                 }
                 await next();
             });
         }
 
         app.UseAuthorization();
-
-        // app.Use(async (context, next) =>
-        // {
-        //     if (!context.User?.Identity?.IsAuthenticated == true &&
-        //         context.Request.Path == "/")
-        //     {
-        //         context.Response.Redirect("/Account/Login");
-        //         return;
-        //     }
-
-        //     try
-        //     {
-        //         await next();
-        //     }
-        //     catch (Volo.Abp.Authorization.AbpAuthorizationException)
-        //     {
-        //         await context.SignOutAsync();
-        //         context.Response.Redirect("/Account/Logout");
-        //     }
-        //     catch (Volo.Abp.Http.Client.AbpRemoteCallException ex)
-        //     {
-        //         // Handle Unauthorized exceptions from API calls
-        //         if (ex.Message.Contains("Unauthorized")
-        //          || ex.Message.Contains("401")
-        //          || ex.Message.Contains("expired")
-        //          || ex.Message.Contains("Authentication"))
-        //         {
-        //             await context.SignOutAsync();
-        //             context.Response.Redirect("/Account/Logout");
-        //         }
-        //         else
-        //         {
-        //             throw; // Re-throw other remote call exceptions
-        //         }
-        //     }
-        // });
-
 
         app.UseSwagger();
         app.UseAbpSwaggerUI(options =>
@@ -955,6 +905,5 @@ namespace HC.Blazor;
         
         // Log SignalR hub mapping
         var logger = context.GetApplicationBuilder().ApplicationServices.GetRequiredService<ILogger<HCBlazorModule>>();
-        logger.LogInformation("[HCBlazorModule] SignalR Hubs mapped: /notificationHub, /chatHub");
     }
 }

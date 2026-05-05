@@ -1,3 +1,4 @@
+using HC.Reports;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.UserDepartments;
@@ -306,7 +307,6 @@ public partial class UserSignatureDtoToUserSignatureUpdateDtoBlazorMapper : Mapp
 {
     [MapperIgnoreTarget(nameof(UserSignatureUpdateDto.Secret))]
     public override partial UserSignatureUpdateDto Map(UserSignatureDto source);
-
     [MapperIgnoreTarget(nameof(UserSignatureUpdateDto.Secret))]
     public override partial void Map(UserSignatureDto source, UserSignatureUpdateDto destination);
 }
@@ -379,4 +379,11 @@ public partial class DocumentWorkflowInstanceLogsDtoToDocumentWorkflowInstanceLo
 {
     public override partial DocumentWorkflowInstanceLogsUpdateDto Map(DocumentWorkflowInstanceLogsDto source);
     public override partial void Map(DocumentWorkflowInstanceLogsDto source, DocumentWorkflowInstanceLogsUpdateDto destination);
+}
+
+[Mapper]
+public partial class ReportDtoToReportUpdateDtoBlazorMapper : MapperBase<ReportDto, ReportUpdateDto>
+{
+    public override partial ReportUpdateDto Map(ReportDto source);
+    public override partial void Map(ReportDto source, ReportUpdateDto destination);
 }
