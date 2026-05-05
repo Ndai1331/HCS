@@ -267,16 +267,33 @@
                              </NumericPicker>
                         </Field>
                      </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["Image"]</FieldLabel>
-                            <TextEdit @bind-Text="@NewReport.Image" MaxLength="ReportConsts.ImageMaxLength"  >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
+                    <Field>
+                        <FieldLabel>@L["Image"]</FieldLabel>
+                        <FilePicker @key="CreateImagePickerKey"
+                                    @ref="CreateImageFilePicker"
+                                    Multiple="false"
+                                    Changed="OnCreateImageFileChanged"
+                                    ShowMode="FilePickerShowMode.List"
+                                    MaxFileSize="52428800"
+                                    Accept="image/*"
+                                    FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
+                            <ButtonsTemplate>
+                                <Buttons>
+                                    <Button Clicked="@context.Clear" Color="Color.Warning">
+                                        <Icon Name="IconName.Clear" /> @L["Clear"]
+                                    </Button>
+                                </Buttons>
+                            </ButtonsTemplate>
+                        </FilePicker>
+                        @if (!string.IsNullOrWhiteSpace(NewReport.Image))
+                        {
+                            <div class="mt-2">
+                                <img src="@GetImageUrl(NewReport.Image)"
+                                     alt="Report Image Preview"
+                                     style="max-width: 300px; max-height: 140px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                            </div>
+                        }
+                    </Field>
                 </Validations>
             </ModalBody>
             <ModalFooter>
@@ -338,16 +355,33 @@
                              </NumericPicker>
                         </Field>
                      </Validation>
-                    <Validation MessageLocalizer="@LH.Localize">
-                        <Field>
-                            <FieldLabel>@L["Image"]</FieldLabel>
-                            <TextEdit @bind-Text="@EditingReport.Image" MaxLength="ReportConsts.ImageMaxLength"  >
-                                <Feedback>
-                                    <ValidationError />
-                                </Feedback>
-                            </TextEdit>
-                        </Field>
-                    </Validation>
+                    <Field>
+                        <FieldLabel>@L["Image"]</FieldLabel>
+                        <FilePicker @key="EditImagePickerKey"
+                                    @ref="EditImageFilePicker"
+                                    Multiple="false"
+                                    Changed="OnEditImageFileChanged"
+                                    ShowMode="FilePickerShowMode.List"
+                                    MaxFileSize="52428800"
+                                    Accept="image/*"
+                                    FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
+                            <ButtonsTemplate>
+                                <Buttons>
+                                    <Button Clicked="@context.Clear" Color="Color.Warning">
+                                        <Icon Name="IconName.Clear" /> @L["Clear"]
+                                    </Button>
+                                </Buttons>
+                            </ButtonsTemplate>
+                        </FilePicker>
+                        @if (!string.IsNullOrWhiteSpace(EditingReport.Image))
+                        {
+                            <div class="mt-2">
+                                <img src="@GetImageUrl(EditingReport.Image)"
+                                     alt="Report Image Preview"
+                                     style="max-width: 300px; max-height: 140px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                            </div>
+                        }
+                    </Field>
                 </Validations>
             </ModalBody>
             <ModalFooter>

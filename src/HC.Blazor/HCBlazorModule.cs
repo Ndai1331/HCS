@@ -171,6 +171,8 @@ namespace HC.Blazor;
         // Add global exception handler service
         context.Services.AddScoped<HC.Blazor.Services.GlobalExceptionHandler>();
         context.Services.AddScoped<FileHelper>();
+        context.Services.AddSingleton<IReportMenuDataProvider, ReportMenuDataProvider>();
+        context.Services.AddHostedService<ReportMenuWarmupHostedService>();
 
         if (!configuration.GetValue<bool>("App:DisablePII"))
         {

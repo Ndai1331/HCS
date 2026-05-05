@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Volo.Abp;
 using Volo.Abp.Content;
+using Volo.Abp.BlobStoring;
 
 namespace HC.Blazor.Pages;
 
@@ -48,6 +49,11 @@ public partial class Reports
 
     private Validations NewReportValidations { get; set; } = new();
     private ReportUpdateDto EditingReport { get; set; }
+    private FilePicker CreateImageFilePicker { get; set; } = new();
+    private FilePicker EditImageFilePicker { get; set; } = new();
+    private int CreateImagePickerKey { get; set; }
+    private int EditImagePickerKey { get; set; }
+    private string? _apiBaseUrl;
 
     private Validations EditingReportValidations { get; set; } = new();
     private Guid EditingReportId { get; set; }
@@ -64,6 +70,9 @@ public partial class Reports
 
     private List<ReportDto> SelectedReports { get; set; } = new();
     private bool AllReportsSelected { get; set; }
+    
+    [Inject]
+    protected IBlobContainer BlobContainer { get; set; } = default!;
 
     public Reports()
     {
@@ -81,6 +90,8 @@ public partial class Reports
     protected override async Task OnInitializedAsync()
     {
         await SetPermissionsAsync();
+        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
+        _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -176,6 +187,7 @@ public partial class Reports
         NewReport = new ReportCreateDto
         {
         };
+        CreateImagePickerKey++;
         SelectedCreateTab = "report-create-tab";
         await NewReportValidations.ClearAll();
         await CreateReportModal.Show();
@@ -186,6 +198,7 @@ public partial class Reports
         NewReport = new ReportCreateDto
         {
         };
+        CreateImagePickerKey++;
         await CreateReportModal.Hide();
     }
 
@@ -195,6 +208,7 @@ public partial class Reports
         var report = await ReportsAppService.GetAsync(input.Id);
         EditingReportId = report.Id;
         EditingReport = ObjectMapper.Map<ReportDto, ReportUpdateDto>(report);
+        EditImagePickerKey++;
         await EditingReportValidations.ClearAll();
         await EditReportModal.Show();
     }
@@ -233,6 +247,7 @@ public partial class Reports
 
     private async Task CloseEditReportModalAsync()
     {
+        EditImagePickerKey++;
         await EditReportModal.Hide();
     }
 
@@ -293,6 +308,108 @@ public partial class Reports
     {
         Filter.Image = image;
         await SearchAsync();
+    }
+
+    protected virtual async Task OnCreateImageFileChanged(FileChangedEventArgs e)
+    {
+        if (e.Files != null && e.Files.Any())
+        {
+            await UploadImageFileAsync(e.Files.First(), false);
+            return;
+        }
+
+        NewReport.Image = string.Empty;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected virtual async Task OnEditImageFileChanged(FileChangedEventArgs e)
+    {
+        if (e.Files != null && e.Files.Any())
+        {
+            await UploadImageFileAsync(e.Files.First(), true);
+            return;
+        }
+
+        EditingReport.Image = string.Empty;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected virtual async Task UploadImageFileAsync(IFileEntry file, bool isEditMode)
+    {
+        try
+        {
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg" };
+            var fileExtension = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (!allowedExtensions.Contains(fileExtension))
+            {
+                await Message.Error(L["OnlyImageFilesAllowed"]);
+                if (isEditMode)
+                {
+                    await EditImageFilePicker.Clear();
+                }
+                else
+                {
+                    await CreateImageFilePicker.Clear();
+                }
+
+                return;
+            }
+
+            if (file.Size > 52428800)
+            {
+                await Message.Error(L["FileSizeTooLarge"]);
+                if (isEditMode)
+                {
+                    await EditImageFilePicker.Clear();
+                }
+                else
+                {
+                    await CreateImageFilePicker.Clear();
+                }
+
+                return;
+            }
+
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream(long.MaxValue).CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+            var filePath = $"report-images/{Guid.NewGuid()}_{file.Name}";
+            await BlobContainer.SaveAsync(filePath, memoryStream.ToArray());
+
+            if (isEditMode)
+            {
+                EditingReport.Image = filePath;
+            }
+            else
+            {
+                NewReport.Image = filePath;
+            }
+
+            await Message.Success(L["FileUploadedSuccessfully"]);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected virtual string GetImageUrl(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath))
+        {
+            return string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(_apiBaseUrl))
+        {
+            _apiBaseUrl = "/";
+        }
+
+        return $"{_apiBaseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
     }
 
     private Task SelectAllItems()

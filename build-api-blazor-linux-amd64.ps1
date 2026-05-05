@@ -114,99 +114,99 @@ if ($ClearDockerCache) {
 # }
 # Write-Host "Docker image built and pushed successfully for API (tags: $version, latest)" -ForegroundColor Green
 
-# Write-Host "********* BUILDING Blazor Application *********" -ForegroundColor Green
-# $blazorFolder = Join-Path $slnFolder "src/HC.Blazor"
-# Set-Location $blazorFolder
+Write-Host "********* BUILDING Blazor Application *********" -ForegroundColor Green
+$blazorFolder = Join-Path $slnFolder "src/HC.Blazor"
+Set-Location $blazorFolder
 
-# if ($BuildBase) {
-#     Write-Host "Building Blazor base image ($blazorBaseImage)..." -ForegroundColor Yellow
-#     try {
-#         docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.base -t $blazorBaseImage . --push
-#         if (-not $?) {
-#             throw "docker base build failed"
-#         }
-#     } catch {
-#         Write-Host "ERROR: Docker base image build failed for Blazor" -ForegroundColor Red
-#         exit 1
-#     }
-#     Write-Host "Blazor base image built and pushed successfully ($blazorBaseImage)" -ForegroundColor Green
+if ($BuildBase) {
+    Write-Host "Building Blazor base image ($blazorBaseImage)..." -ForegroundColor Yellow
+    try {
+        docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.base -t $blazorBaseImage . --push
+        if (-not $?) {
+            throw "docker base build failed"
+        }
+    } catch {
+        Write-Host "ERROR: Docker base image build failed for Blazor" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Blazor base image built and pushed successfully ($blazorBaseImage)" -ForegroundColor Green
 
-#     $apiBaseFolder = Join-Path $slnFolder "src/HC.HttpApi.Host"
-#     Set-Location $apiBaseFolder
-#     Write-Host "Building API base image ($apiBaseImage)..." -ForegroundColor Yellow
-#     try {
-#         docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.base -t $apiBaseImage . --push
-#         if (-not $?) {
-#             throw "docker api base build failed"
-#         }
-#     } catch {
-#         Write-Host "ERROR: Docker base image build failed for HttpApi.Host" -ForegroundColor Red
-#         exit 1
-#     }
-#     Write-Host "API base image built and pushed successfully ($apiBaseImage)" -ForegroundColor Green
-#     Set-Location $blazorFolder
-# }
+    $apiBaseFolder = Join-Path $slnFolder "src/HC.HttpApi.Host"
+    Set-Location $apiBaseFolder
+    Write-Host "Building API base image ($apiBaseImage)..." -ForegroundColor Yellow
+    try {
+        docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.base -t $apiBaseImage . --push
+        if (-not $?) {
+            throw "docker api base build failed"
+        }
+    } catch {
+        Write-Host "ERROR: Docker base image build failed for HttpApi.Host" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "API base image built and pushed successfully ($apiBaseImage)" -ForegroundColor Green
+    Set-Location $blazorFolder
+}
 
-# Write-Host "Publishing Blazor..." -ForegroundColor Yellow
-# try {
-#     $blazorPublishDir = Join-Path $blazorFolder "bin/Release/net10.0/publish"
-#     if (Test-Path $blazorPublishDir) {
-#         Remove-Item $blazorPublishDir -Recurse -Force
-#     }
-#     $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
-#     if (-not $?) {
-#         throw "dotnet publish failed"
-#     }
-# } catch {
-#     Write-Host "ERROR: dotnet publish failed for Blazor" -ForegroundColor Red
-#     Write-Host $result -ForegroundColor Red
-#     exit 1
-# }
+Write-Host "Publishing Blazor..." -ForegroundColor Yellow
+try {
+    $blazorPublishDir = Join-Path $blazorFolder "bin/Release/net10.0/publish"
+    if (Test-Path $blazorPublishDir) {
+        Remove-Item $blazorPublishDir -Recurse -Force
+    }
+    $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
+    if (-not $?) {
+        throw "dotnet publish failed"
+    }
+} catch {
+    Write-Host "ERROR: dotnet publish failed for Blazor" -ForegroundColor Red
+    Write-Host $result -ForegroundColor Red
+    exit 1
+}
 
-# Start-Sleep -Seconds 1
-# $currentDir = Get-Location
-# $publishPath = Join-Path $currentDir "bin/Release/net10.0/publish"
-# $publishPathFull = [System.IO.Path]::GetFullPath($publishPath)
-# if (-not (Test-Path $publishPathFull)) {
-#     Write-Host "ERROR: Publish folder not found: $publishPathFull" -ForegroundColor Red
-#     exit 1
-# }
+Start-Sleep -Seconds 1
+$currentDir = Get-Location
+$publishPath = Join-Path $currentDir "bin/Release/net10.0/publish"
+$publishPathFull = [System.IO.Path]::GetFullPath($publishPath)
+if (-not (Test-Path $publishPathFull)) {
+    Write-Host "ERROR: Publish folder not found: $publishPathFull" -ForegroundColor Red
+    exit 1
+}
 
-# Write-Host "Publish successful. Output: $publishPathFull" -ForegroundColor Green
-# Write-Host "Building Docker image for Blazor (linux/amd64)..." -ForegroundColor Yellow
-# try {
-#     $blazorDll = Join-Path $publishPathFull "HC.Blazor.dll"
-#     if (-not (Test-Path $blazorDll)) {
-#         Write-Host "ERROR: Blazor publish output is invalid. Missing file: $blazorDll" -ForegroundColor Red
-#         exit 1
-#     }
+Write-Host "Publish successful. Output: $publishPathFull" -ForegroundColor Green
+Write-Host "Building Docker image for Blazor (linux/amd64)..." -ForegroundColor Yellow
+try {
+    $blazorDll = Join-Path $publishPathFull "HC.Blazor.dll"
+    if (-not (Test-Path $blazorDll)) {
+        Write-Host "ERROR: Blazor publish output is invalid. Missing file: $blazorDll" -ForegroundColor Red
+        exit 1
+    }
 
-#     $publishDockerfile = Join-Path $publishPathFull "Dockerfile.publish.local"
-#     $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-# @"
-# FROM $blazorBaseImage
-# USER `$APP_UID
-# EXPOSE 8080
-# EXPOSE 8081
-# WORKDIR /app
-# COPY . .
-# ARG BUILD_DATE
-# LABEL org.opencontainers.image.created=`"`$BUILD_DATE`"
-# ENTRYPOINT ["dotnet", "HC.Blazor.dll"]
-# "@ | Set-Content -Path $publishDockerfile -Encoding UTF8
+    $publishDockerfile = Join-Path $publishPathFull "Dockerfile.publish.local"
+    $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+@"
+FROM $blazorBaseImage
+USER `$APP_UID
+EXPOSE 8080
+EXPOSE 8081
+WORKDIR /app
+COPY . .
+ARG BUILD_DATE
+LABEL org.opencontainers.image.created=`"`$BUILD_DATE`"
+ENTRYPOINT ["dotnet", "HC.Blazor.dll"]
+"@ | Set-Content -Path $publishDockerfile -Encoding UTF8
 
-#     docker buildx build --pull --no-cache --platform linux/amd64 -f $publishDockerfile --build-arg BUILD_DATE=$buildDate -t "${blazorAppImage}:$version" -t "${blazorAppImage}:latest" $publishPathFull --push
-#     if (-not $?) {
-#         throw "docker build failed"
-#     }
-#     if (Test-Path $publishDockerfile) {
-#         Remove-Item $publishDockerfile -Force
-#     }
-# } catch {
-#     Write-Host "ERROR: Docker build failed for Blazor" -ForegroundColor Red
-#     exit 1
-# }
-# Write-Host "Docker image built and pushed successfully for Blazor (tags: $version, latest)" -ForegroundColor Green
+    docker buildx build --pull --no-cache --platform linux/amd64 -f $publishDockerfile --build-arg BUILD_DATE=$buildDate -t "${blazorAppImage}:$version" -t "${blazorAppImage}:latest" $publishPathFull --push
+    if (-not $?) {
+        throw "docker build failed"
+    }
+    if (Test-Path $publishDockerfile) {
+        Remove-Item $publishDockerfile -Force
+    }
+} catch {
+    Write-Host "ERROR: Docker build failed for Blazor" -ForegroundColor Red
+    exit 1
+}
+Write-Host "Docker image built and pushed successfully for Blazor (tags: $version, latest)" -ForegroundColor Green
 
 Write-Host "********* BUILDING API (HC.HttpApi.Host, LibreOffice base) *********" -ForegroundColor Green
 $apiFolder = Join-Path $slnFolder "src/HC.HttpApi.Host"

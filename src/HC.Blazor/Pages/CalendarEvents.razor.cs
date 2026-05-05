@@ -394,7 +394,6 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
         }
     }
 
-    // Method to convert CalendarEventDto to Appointment and update Appointments list
     private async Task UpdateTestAppointmentsFromCalendarEvents()
     {
         // Generate unique request ID for this update
@@ -404,9 +403,6 @@ public partial class CalendarEvents : HCComponentBase, IAsyncDisposable
         
         try
         {
-            Logger.LogInformation("UpdateTestAppointmentsFromCalendarEvents - Start [RequestId: {RequestId}] - CalendarEventList Count: {Count}, SelectedSchedulerView: {View}, SelectedSchedulerDate: {Date}",
-                requestId, CalendarEventList?.Count ?? 0, currentView, currentSelectedDate);
-
             if (CalendarEventList == null || !CalendarEventList.Any())
             {
                 Logger.LogWarning("UpdateTestAppointmentsFromCalendarEvents - CalendarEventList is null or empty");

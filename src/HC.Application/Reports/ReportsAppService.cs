@@ -35,6 +35,7 @@ public abstract class ReportsAppServiceBase : HCAppService
         _reportManager = reportManager;
     }
 
+    [AllowAnonymous]
     public virtual async Task<PagedResultDto<ReportDto>> GetListAsync(GetReportsInput input)
     {
         var totalCount = await _reportRepository.GetCountAsync(input.FilterText, input.Name, input.Url, input.SortOrderMin, input.SortOrderMax, input.Image);

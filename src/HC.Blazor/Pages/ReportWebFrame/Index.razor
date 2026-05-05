@@ -1,0 +1,145 @@
+@page "/report-web-frame"
+@attribute [Authorize(HCPermissions.Reports.Default)]
+@using HC.Permissions
+@using HC.Reports
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
+@using Volo.Abp.Http.Client
+@inherits HCComponentBase
+@inject IReportsAppService ReportsAppService
+@inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
+
+<Card class="mt-3">
+    <CardBody>
+        @if (IsLoading)
+        {
+            <div class="d-flex justify-content-center align-items-center" style="min-height: 60vh;">
+                <span>@L["Loading"]...</span>
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <div class="alert alert-warning mb-0" role="alert">
+                @ErrorMessage
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(ReportUrl))
+        {
+            <div class="d-flex align-items-center mb-2 gap-2">
+                @if (!string.IsNullOrWhiteSpace(ReportImage))
+                {
+                    <img src="@GetImageUrl(ReportImage)" alt="@ReportName" style="width:20px; height:20px; object-fit:contain;" />
+                }
+                <span class="fw-semibold">@ReportName</span>
+            </div>
+
+            <iframe
+                title="@ReportName"
+                src="@ReportUrl"
+                style="width:100%; height:calc(100vh - 180px); border:0;"
+                allowfullscreen>
+            </iframe>
+        }
+    </CardBody>
+</Card>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "reportId")]
+    public Guid? ReportId { get; set; }
+
+    private bool IsLoading { get; set; } = true;
+    private string? ErrorMessage { get; set; }
+    private string? ReportUrl { get; set; }
+    private string? ReportName { get; set; }
+    private string? ReportImage { get; set; }
+    private string _apiBaseUrl = "/";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
+        var baseUrl = blobFilesService?.BaseUrl;
+        _apiBaseUrl = string.IsNullOrWhiteSpace(baseUrl)
+            ? "/"
+            : (baseUrl.EndsWith('/') ? baseUrl : $"{baseUrl}/");
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+        ReportUrl = null;
+        ReportName = null;
+        ReportImage = null;
+
+        if (!ReportId.HasValue || ReportId.Value == Guid.Empty)
+        {
+            ErrorMessage = L["NoDataAvailable"];
+            IsLoading = false;
+            return;
+        }
+
+        try
+        {
+            var report = await ReportsAppService.GetAsync(ReportId.Value);
+            ReportName = report.Name;
+            ReportImage = report.Image;
+
+            if (TryGetSafeHttpUrl(report.Url, out var safeReportUrl))
+            {
+                ReportUrl = safeReportUrl;
+            }
+            else
+            {
+                ErrorMessage = L["NoDataAvailable"];
+            }
+        }
+        catch
+        {
+            ErrorMessage = L["NoDataAvailable"];
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private static bool TryGetSafeHttpUrl(string? rawUrl, out string? safeUrl)
+    {
+        safeUrl = null;
+
+        if (string.IsNullOrWhiteSpace(rawUrl))
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return false;
+        }
+
+        safeUrl = uri.ToString();
+        return true;
+    }
+
+    private string GetImageUrl(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath))
+        {
+            return string.Empty;
+        }
+
+        if (Uri.TryCreate(imagePath, UriKind.Absolute, out var absoluteUri)
+            && (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps))
+        {
+            return imagePath;
+        }
+
+        return $"{_apiBaseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+    }
+}
