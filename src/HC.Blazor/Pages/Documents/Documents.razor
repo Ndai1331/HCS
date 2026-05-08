@@ -1,13 +1,11 @@
 @page "/manage-documents"
 @attribute [Authorize(HCPermissions.Documents.Default)]
 @using HC.Blazor.Services
-@using HC.Departments
 @using HC.DocumentHistories
 @using HC.Documents
 @using HC.MasterDatas
 @using HC.Localization
 @using HC.Shared
-@using HC.UserDepartments
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.Caching.Memory
 @using Microsoft.Extensions.Localization
@@ -37,8 +35,6 @@
 @inject HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService
 @inject IUiMessageService UiMessageService
 @inject IBlockUiService BlockUiService
-@inject IUserDepartmentsAppService UserDepartmentsAppService
-@inject IDepartmentsAppService DepartmentsAppService
 @inject IMasterDatasAppService MasterDatasAppService
 @inject IDocumentsPageLookupCache DocumentsPageLookupCache
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH

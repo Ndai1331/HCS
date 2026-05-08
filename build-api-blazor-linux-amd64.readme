@@ -1,4 +1,17 @@
 
+## GitHub Actions CI
+
+Workflow: `.github/workflows/build-api-blazor-docker.yml`
+
+- **Push**: chạy khi commit message chứa `[latest01042026]` hoặc `[latestlvt]` (ưu tiên `latest01042026` nếu cả hai có trong message).
+- **Manual**: Actions → *Build API + Blazor Docker images* → *Run workflow* → chọn tag `latest01042026` hoặc `latestlvt`.
+
+**Secrets** (Settings → Secrets and variables → Actions): `DOCKER_USERNAME`, `DOCKER_PASSWORD` (Docker Hub, account có quyền push `longnguyen1331/*`).
+
+Runner: Ubuntu, PowerShell 7, .NET 10 SDK, Docker Buildx — tương đương chạy `build-api-blazor-linux-amd64.ps1 -version <tag> -ClearDockerCache`.
+
+---
+
 cd /Users/nguyenlong/Documents/Projects/HCS && chmod +x build-api-blazor-linux-amd64.ps1
 
 # Blazor + API + HC.BackgroundJobWorker (push longnguyen1331/hc-backgroundjobworker).

@@ -1285,6 +1285,10 @@ namespace HC.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("ParentDocumentId");
 
+                    b.Property<Guid?>("OrganizationUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("OrganizationUnitId");
+
                     b.Property<Guid?>("ReceiverUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("ReceiverUserId");
@@ -1335,6 +1339,8 @@ namespace HC.Migrations
                     b.HasIndex("FromUserId");
 
                     b.HasIndex("ParentDocumentId");
+
+                    b.HasIndex("OrganizationUnitId");
 
                     b.HasIndex("ReceiverUserId");
 

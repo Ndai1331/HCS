@@ -19,7 +19,6 @@ using HC.Shared;
 using Volo.Abp.BlobStoring;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
-using HC.Departments;
 using System.Threading;
 using Excubo.Blazor.TreeViews;
 using Microsoft.AspNetCore.Components.Web;
@@ -133,7 +132,6 @@ public partial class Documents : IDisposable
 
     public Documents()
     {
-        DepartmentList = new List<DepartmentDto>();
         DepartmentTreeViews = new List<DepartmentTreeView>();
         AllDepartmentsFlat = new List<DepartmentTreeView>();
         AllDepartmentsForSelect2 = new List<DepartmentTreeView>();
@@ -169,7 +167,7 @@ public partial class Documents : IDisposable
 
             await Task.WhenAll(
                 HydrateFromPageBootstrapAsync(),
-                GetDepartmentsAsync());
+                GetOrganizationUnitsAsync());
             await SetToolbarItemsAsync();
 
             BreadcrumbItems.Clear();
@@ -883,7 +881,6 @@ public partial class Documents : IDisposable
     #region Send Document
 
     private List<DepartmentTreeView> DepartmentTreeViews { get; set; } = new();
-    private IReadOnlyList<DepartmentDto> DepartmentList { get; set; } = new List<DepartmentDto>();
     private List<DepartmentTreeView> AllDepartmentsFlat { get; set; } = new List<DepartmentTreeView>();
     private List<DepartmentTreeView> AllDepartmentsForSelect2 { get; set; } = new List<DepartmentTreeView>();
     private SendDocumentInput SendDocumentInput { get; set; } = new();
@@ -916,6 +913,7 @@ public partial class Documents : IDisposable
             IsPersonal = false;
             SelectedDepartments.Clear();
             SelectedRecipients.Clear();
+            SendDocumentInput = new SendDocumentInput();
             SendDocumentInput.DocumentId = DocumentToSend.Document.Id;
         }
         catch (Exception ex)
@@ -953,9 +951,13 @@ public partial class Documents : IDisposable
     string search,
         CancellationToken cancellationToken)
     {
-        var result = await UserDepartmentsAppService.GetIdentityUserLookupAsync(
-            new LookupRequestDto { Filter = search }
-        );
+        var result = await DocumentsAppService.GetIdentityUserLookupAsync(
+            new LookupRequestDto
+            {
+                Filter = search,
+                MaxResultCount = DocumentLookupPageSize,
+                SkipCount = 0
+            });
 
         return result.Items.ToList();
     }
@@ -1079,6 +1081,7 @@ public partial class Documents : IDisposable
                     return;
                 }
                 SendDocumentInput.Recipients = SelectedRecipients.Select(x => x.Id).ToList();
+                SendDocumentInput.OrganizationUnits = null;
                 SendDocumentInput.Departments = null;
             }
             else
@@ -1089,7 +1092,16 @@ public partial class Documents : IDisposable
                     options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                     return;
                 }
-                SendDocumentInput.Departments = SelectedDepartments.Select(x => x.Id).ToList();
+
+                if (SelectedDepartments.Count > 1)
+                {
+                    await UiMessageService.Error(L["OnlyOneDepartmentCanBeSelected"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                    return;
+                }
+
+                SendDocumentInput.OrganizationUnits = SelectedDepartments.Select(x => x.Id).ToList();
+                SendDocumentInput.Departments = null;
                 SendDocumentInput.Recipients = null;
             }
             var result = await DocumentsAppService.SendDocumentAsync(SendDocumentInput);
@@ -1119,17 +1131,18 @@ public partial class Documents : IDisposable
 
 
 
-    private async Task GetDepartmentsAsync()
+    private async Task GetOrganizationUnitsAsync()
     {
-        var result = await DepartmentsAppService.GetListAsync(new GetDepartmentsInput
-        {
-            MaxResultCount = LimitedResultRequestDto.MaxMaxResultCount
-        });
-
-        DepartmentList = result.Items.Select(x => x.Department).ToList();
-
-        // Map each DepartmentDto to DepartmentTreeView manually
-        var departments = DepartmentList.Select(d => ObjectMapper.Map<DepartmentDto, DepartmentTreeView>(d)).ToList();
+        var organizationUnits = await DocumentsAppService.GetOrganizationUnitTreeAsync();
+        var departments = organizationUnits
+            .Select(ou => new DepartmentTreeView
+            {
+                Id = ou.Id,
+                ParentId = ou.ParentId?.ToString(),
+                Code = ou.Code,
+                Name = ou.DisplayName
+            })
+            .ToList();
 
         var departmentsDictionary = new Dictionary<string, List<DepartmentTreeView>>();
 

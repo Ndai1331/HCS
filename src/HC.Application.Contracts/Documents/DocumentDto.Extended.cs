@@ -20,6 +20,11 @@ public class DocumentDto : DocumentDtoBase
     public Guid? DepartmentId { get; set; }
 
     /// <summary>
+    /// ABP Identity organization unit recipient when send targets one department.
+    /// </summary>
+    public Guid? OrganizationUnitId { get; set; }
+
+    /// <summary>
     /// Workflow duplicate → original document id (manage-documents row).
     /// </summary>
     public Guid? ParentDocumentId { get; set; }

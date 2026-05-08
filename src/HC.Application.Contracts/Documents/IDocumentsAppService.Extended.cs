@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using HC.Shared;
 
@@ -22,4 +23,6 @@ public partial interface IDocumentsAppService
     /// Replaces 8 permission checks + 6–7 lookup calls with 1 round-trip.
     /// </summary>
     Task<DocumentsPageBootstrapDto> GetPageBootstrapAsync(GetDocumentsPageBootstrapInput input);
+
+    Task<List<OrganizationUnitTreeNodeDto>> GetOrganizationUnitTreeAsync();
 }

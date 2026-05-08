@@ -32,7 +32,8 @@ Enum: `HC.Domain.Shared/Documents/DocumentConsts.cs` — `DocumentSourceType`
 
 Các field phục vụ luồng “Gửi” / hiển thị inbox:
 
-- `FromUserId`, `ReceiverUserId`, `DepartmentId` (denormalized khi cần).
+- `FromUserId`, `ReceiverUserId`, `DepartmentId` (legacy department), `OrganizationUnitId`.
+- Với luồng gửi theo phòng ban, `OrganizationUnitId` lưu id từ module ABP Identity (`AbpOrganizationUnits`); không expand thành assignment theo từng user để tránh nặng.
 
 Ứng dụng: `DocumentsAppService.Extended.cs` (`SendDocumentAsync`, `PopulateSentToMeDisplayNamesAsync`, `GetSentToMeDocumentIdsAsync`).
 
@@ -40,7 +41,7 @@ Các field phục vụ luồng “Gửi” / hiển thị inbox:
 
 - Nguồn inbox gồm:
   - `DocumentAssignment` kiểu **VIEW** (`ActionType = VIEW`) và **không** gắn bước workflow (`WorkflowStepTemplateId == null`);
-  - các document `SourceType = SentToMe` gửi đích danh theo `ReceiverUserId` hoặc theo `DepartmentId`.
+  - các document không phải workflow đã được gửi phòng ban (`FromUserId != null`, `OrganizationUnitId`) mà current user thuộc về.
 - Query inbox **không** lấy document workflow (`SourceType = Workflow`).
 - Chỉ lấy assignment inbox còn hiệu lực:
   - `IsCurrent = true`
@@ -54,6 +55,7 @@ Các field phục vụ luồng “Gửi” / hiển thị inbox:
   - `IsCurrent = true`
   - `Status != REVOKE`
 - Không update nhầm assignment của trình ký (`WorkflowStepTemplateId != null`) hay assignment nghiệp vụ khác trên cùng document.
+- Khi chọn gửi theo phòng ban, UI load cây phòng ban từ `DocumentsAppService.GetOrganizationUnitTreeAsync()` / endpoint `api/app/documents/organization-unit-tree`; server chỉ lưu `OrganizationUnitId`, không tạo notification/history/assignment theo từng user.
 - `RevokeDocumentAsync`:
   - chỉ revoke assignment thuộc luồng inbox/send:
     - `ActionType = VIEW`

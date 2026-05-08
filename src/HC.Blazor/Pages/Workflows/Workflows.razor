@@ -206,7 +206,9 @@
               </DataGridColumn>
               <DataGridColumn TItem="WorkflowWithNavigationPropertiesDto"
                       Field="Workflow.Name"
-                      Caption="@L["Name"]">
+                      Caption="@L["Name"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="WorkflowWithNavigationPropertiesDto"
                       Caption="@L["WorkflowDefinitions"]">
@@ -216,7 +218,9 @@
               </DataGridColumn>
               <DataGridColumn TItem="WorkflowWithNavigationPropertiesDto"
                       Field="Workflow.Description"
-                      Caption="@L["Description"]">
+                      Caption="@L["Description"]"
+                      CellStyle="@((item) => "min-width: 200px")"
+                      Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="WorkflowWithNavigationPropertiesDto"
                       Field="Workflow.IsActive"

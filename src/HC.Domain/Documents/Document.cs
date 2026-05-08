@@ -65,6 +65,11 @@ public abstract class DocumentBase : FullAuditedAggregateRoot<Guid>, IMultiTenan
     public Guid? DepartmentId { get; set; }
 
     /// <summary>
+    /// Intended ABP Identity organization unit recipient when send targets a department.
+    /// </summary>
+    public Guid? OrganizationUnitId { get; set; }
+
+    /// <summary>
     /// For workflow signing copies (SourceType = Workflow): links to the original Archive/Personal/SentToMe document.
     /// </summary>
     public virtual Guid? ParentDocumentId { get; set; }

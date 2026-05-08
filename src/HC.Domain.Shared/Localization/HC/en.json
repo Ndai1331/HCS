@@ -1029,6 +1029,7 @@
     "DocumentIdIsRequired": "Document ID is required",
     "AtLeastOneRecipientIsRequired": "At least one recipient is required",
     "AtLeastOneDepartmentIsRequired": "At least one department is required",
+    "OnlyOneDepartmentCanBeSelected": "Only one department can be selected",
     "DocumentSentSuccessfully": "Document sent successfully",
     "FailedToSendDocument": "Failed to send document",
     "Ok": "Ok",

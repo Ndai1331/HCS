@@ -405,6 +405,7 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.Property(x => x.FromUserId).HasColumnName(nameof(Document.FromUserId));
             b.Property(x => x.ReceiverUserId).HasColumnName(nameof(Document.ReceiverUserId));
             b.Property(x => x.DepartmentId).HasColumnName(nameof(Document.DepartmentId));
+            b.Property(x => x.OrganizationUnitId).HasColumnName(nameof(Document.OrganizationUnitId));
             b.Property(x => x.ParentDocumentId).HasColumnName(nameof(Document.ParentDocumentId));
             b.HasIndex(x => x.ParentDocumentId);
             b.HasOne<Document>().WithMany().HasForeignKey(x => x.ParentDocumentId).OnDelete(DeleteBehavior.Restrict);
@@ -412,6 +413,7 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.HasIndex(x => x.FromUserId);
             b.HasIndex(x => x.ReceiverUserId);
             b.HasIndex(x => x.DepartmentId);
+            b.HasIndex(x => x.OrganizationUnitId);
             b.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.FromUserId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.ReceiverUserId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<Department>().WithMany().HasForeignKey(x => x.DepartmentId).OnDelete(DeleteBehavior.SetNull);

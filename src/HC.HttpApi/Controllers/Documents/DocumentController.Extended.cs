@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
@@ -80,5 +81,12 @@ public class DocumentController : DocumentControllerBase, IDocumentsAppService
     public virtual Task<DocumentsPageBootstrapDto> GetPageBootstrapAsync(GetDocumentsPageBootstrapInput input)
     {
         return _documentsAppService.GetPageBootstrapAsync(input);
+    }
+
+    [HttpGet]
+    [Route("organization-unit-tree")]
+    public virtual Task<List<OrganizationUnitTreeNodeDto>> GetOrganizationUnitTreeAsync()
+    {
+        return _documentsAppService.GetOrganizationUnitTreeAsync();
     }
 }

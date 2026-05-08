@@ -14,7 +14,6 @@ using HC.Notifications;
 using HC.NotificationReceivers;
 using HC.DocumentHistories;
 using Volo.Abp.Identity;
-using HC.UserDepartments;
 using HC.DocumentAssignments;
 using HC.WorkflowStepTemplates;
 using HC.Departments;
@@ -44,10 +43,10 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
     protected INotificationRepository _notificationRepository;
     protected INotificationReceiverRepository _notificationReceiverRepository;
     protected IDistributedEventBus _distributedEventBus;
-    protected IRepository<HC.UserDepartments.UserDepartment, Guid> _userDepartmentRepository;
     protected IDocumentAssignmentRepository _documentAssignmentRepository;
     protected DocumentAssignmentManager _documentAssignmentManager;
     protected IRepository<IdentityUser, Guid> _identityUserRepository;
+    protected IRepository<OrganizationUnit, Guid> _organizationUnitRepository;
     protected IRepository<Department, Guid> _departmentRepository;
     protected IDocumentWorkflowInstanceRepository _documentWorkflowInstanceRepository;
     protected IDocumentFileRepository _documentFileRepository;
@@ -57,17 +56,17 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
     protected IWorkflowSigningExecutionService _workflowSigningExecutionService;
     protected IDistributedCache<MasterDataCodeCacheItem, string> _masterDataCodeCache;
 
-    public DocumentsAppService(IDocumentRepository documentRepository, DocumentManager documentManager, IDistributedCache<DocumentDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.MasterDatas.MasterData, Guid> masterDataRepository, IRepository<HC.Units.Unit, Guid> unitRepository, IRepository<HC.Workflows.Workflow, Guid> workflowRepository, ILogger<DocumentsAppServiceBase> logger, IDocumentHistoryRepository documentHistoryRepository, DocumentHistoryManager documentHistoryManager, INotificationRepository notificationRepository, INotificationReceiverRepository notificationReceiverRepository, IDistributedEventBus distributedEventBus, IRepository<HC.Documents.Document, Guid> documentRepository2, IRepository<HC.UserDepartments.UserDepartment, Guid> userDepartmentRepository, IDocumentAssignmentRepository documentAssignmentRepository, DocumentAssignmentManager documentAssignmentManager, IRepository<IdentityUser, Guid> identityUserRepository, IRepository<Department, Guid> departmentRepository, IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository, IDocumentFileRepository documentFileRepository, IBlobContainer blobContainer, IPdfStampingService pdfStampingService, IUserSignatureRepository userSignatureRepository, IWorkflowSigningExecutionService workflowSigningExecutionService, IDistributedCache<MasterDataCodeCacheItem, string> masterDataCodeCache) : base(documentRepository, documentManager, downloadTokenCache, masterDataRepository, unitRepository, workflowRepository, logger)
+    public DocumentsAppService(IDocumentRepository documentRepository, DocumentManager documentManager, IDistributedCache<DocumentDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.MasterDatas.MasterData, Guid> masterDataRepository, IRepository<HC.Units.Unit, Guid> unitRepository, IRepository<HC.Workflows.Workflow, Guid> workflowRepository, ILogger<DocumentsAppServiceBase> logger, IDocumentHistoryRepository documentHistoryRepository, DocumentHistoryManager documentHistoryManager, INotificationRepository notificationRepository, INotificationReceiverRepository notificationReceiverRepository, IDistributedEventBus distributedEventBus, IRepository<HC.Documents.Document, Guid> documentRepository2, IDocumentAssignmentRepository documentAssignmentRepository, DocumentAssignmentManager documentAssignmentManager, IRepository<IdentityUser, Guid> identityUserRepository, IRepository<OrganizationUnit, Guid> organizationUnitRepository, IRepository<Department, Guid> departmentRepository, IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository, IDocumentFileRepository documentFileRepository, IBlobContainer blobContainer, IPdfStampingService pdfStampingService, IUserSignatureRepository userSignatureRepository, IWorkflowSigningExecutionService workflowSigningExecutionService, IDistributedCache<MasterDataCodeCacheItem, string> masterDataCodeCache) : base(documentRepository, documentManager, downloadTokenCache, masterDataRepository, unitRepository, workflowRepository, logger)
     {
         _documentHistoryRepository = documentHistoryRepository;
         _documentHistoryManager = documentHistoryManager;
         _notificationRepository = notificationRepository;
         _notificationReceiverRepository = notificationReceiverRepository;
         _distributedEventBus = distributedEventBus;
-        _userDepartmentRepository = userDepartmentRepository;
         _documentAssignmentRepository = documentAssignmentRepository;
         _documentAssignmentManager = documentAssignmentManager;
         _identityUserRepository = identityUserRepository;
+        _organizationUnitRepository = organizationUnitRepository;
         _departmentRepository = departmentRepository;
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
         _documentFileRepository = documentFileRepository;
@@ -228,6 +227,23 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                 DisplayName = GetIdentityUserFullDisplayName(x)
             }).ToList()
         };
+    }
+
+    public virtual async Task<List<OrganizationUnitTreeNodeDto>> GetOrganizationUnitTreeAsync()
+    {
+        var query = await _organizationUnitRepository.GetQueryableAsync();
+        var organizationUnits = await AsyncExecuter.ToListAsync(
+            query
+                .OrderBy(x => x.Code)
+                .Select(x => new OrganizationUnitTreeNodeDto
+                {
+                    Id = x.Id,
+                    ParentId = x.ParentId,
+                    Code = x.Code,
+                    DisplayName = x.DisplayName
+                }));
+
+        return organizationUnits;
     }
 
     public override async Task<PagedResultDto<DocumentWithNavigationPropertiesDto>> GetListAsync(GetDocumentsInput input)
@@ -590,27 +606,25 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
     /// </summary>
     private async Task<List<Guid>> GetSentToMeDocumentIdsAsync(Guid userId)
     {
-        // M5: fold the two previous queries + in-memory Union into a single SQL statement.
-        // Before: 3 round-trips (assignments, userDepartments, explicit) + Union in memory.
-        // After : 1 query that reads userDepartmentIds via subselect and OR-s the two sources.
+        // Keep the document inbox predicate in one SQL query after membership IDs are loaded.
         var assignmentQ = await _documentAssignmentRepository.GetQueryableAsync();
         var docQ = await _documentRepository.GetQueryableAsync();
-        var userDeptQ = await _userDepartmentRepository.GetQueryableAsync();
-
         var viewAction = DocumentAssignmentActionType.VIEW.ToString();
         var processAction = DocumentAssignmentActionType.PROCESS.ToString();
         var revokeStatus = nameof(DocumentAssignmentStatus.REVOKE);
 
-        // Subquery: departmentIds the user currently belongs to.
-        var userDeptIds = userDeptQ
-            .Where(ud => ud.UserId == userId && ud.IsActive)
-            .Select(ud => ud.DepartmentId);
+        // Materialize organization unit memberships first. Identity users and documents
+        // can be served by different EF context instances, so they must not be composed
+        // into the same IQueryable expression.
+        var userQ = await _identityUserRepository.GetQueryableAsync();
+        var userOrganizationUnitIds = await AsyncExecuter.ToListAsync(userQ
+            .Where(u => u.Id == userId)
+            .SelectMany(u => u.OrganizationUnits)
+            .Select(ou => ou.OrganizationUnitId));
 
         // Combined predicate:
-        //   (a) there exists a current VIEW/PROCESS assignment (non-revoked, not workflow-sourced)
-        //       for this user on the document, OR
-        //   (b) the document is explicitly SourceType=SentToMe and routed to this user or
-        //       to one of their active departments.
+        //   (a) there exists a current VIEW/PROCESS assignment for this user, OR
+        //   (b) the document was sent to one of their organization units via OrganizationUnitId.
         var combinedQuery = docQ
             .Where(d =>
                 (d.SourceType != DocumentSourceType.Workflow
@@ -620,9 +634,10 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                         && a.IsCurrent
                         && (a.ActionType == viewAction || a.ActionType == processAction)
                         && a.Status != revokeStatus))
-                || (d.SourceType == DocumentSourceType.SentToMe
-                    && (d.ReceiverUserId == userId
-                        || (d.DepartmentId != null && userDeptIds.Contains(d.DepartmentId.Value)))))
+                || (d.SourceType != DocumentSourceType.Workflow
+                    && d.FromUserId != null
+                    && d.OrganizationUnitId != null
+                    && userOrganizationUnitIds.Contains(d.OrganizationUnitId.Value)))
             .Select(d => d.Id)
             .Distinct();
 
@@ -676,25 +691,40 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             userDict = new Dictionary<Guid, string>();
         }
 
-        var deptIds = dtos
-            .Select(d => d.Document.DepartmentId)
+        var organizationUnitIds = dtos
+            .Select(d => d.Document.OrganizationUnitId)
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
             .Distinct()
             .ToList();
 
-        Dictionary<Guid, string> deptDict;
-        if (deptIds.Count > 0)
+        Dictionary<Guid, string> organizationUnitDict;
+        if (organizationUnitIds.Count > 0)
         {
-            var deptQ = (await _departmentRepository.GetQueryableAsync())
-                .Where(d => deptIds.Contains(d.Id))
-                .Select(d => new { d.Id, d.Name });
-            var deptRows = await AsyncExecuter.ToListAsync(deptQ);
-            deptDict = deptRows.ToDictionary(d => d.Id, d => d.Name ?? d.Id.ToString());
+            var organizationUnitQ = (await _organizationUnitRepository.GetQueryableAsync())
+                .Where(d => organizationUnitIds.Contains(d.Id))
+                .Select(d => new { d.Id, d.DisplayName });
+            var organizationUnitRows = await AsyncExecuter.ToListAsync(organizationUnitQ);
+            organizationUnitDict = organizationUnitRows.ToDictionary(d => d.Id, d => d.DisplayName ?? d.Id.ToString());
+
+            var unresolvedIds = organizationUnitIds
+                .Where(id => !organizationUnitDict.ContainsKey(id))
+                .ToList();
+            if (unresolvedIds.Count > 0)
+            {
+                var legacyDeptQ = (await _departmentRepository.GetQueryableAsync())
+                    .Where(d => unresolvedIds.Contains(d.Id))
+                    .Select(d => new { d.Id, d.Name });
+                var legacyDeptRows = await AsyncExecuter.ToListAsync(legacyDeptQ);
+                foreach (var legacyDept in legacyDeptRows)
+                {
+                    organizationUnitDict[legacyDept.Id] = legacyDept.Name ?? legacyDept.Id.ToString();
+                }
+            }
         }
         else
         {
-            deptDict = new Dictionary<Guid, string>();
+            organizationUnitDict = new Dictionary<Guid, string>();
         }
 
         foreach (var dto in dtos)
@@ -705,7 +735,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                 dto.FromUserDisplayName = fn;
             }
 
-            if (dto.Document.DepartmentId.HasValue && deptDict.TryGetValue(dto.Document.DepartmentId.Value, out var dn))
+            if (dto.Document.OrganizationUnitId.HasValue && organizationUnitDict.TryGetValue(dto.Document.OrganizationUnitId.Value, out var dn))
             {
                 dto.DepartmentDisplayName = dn;
             }
@@ -716,10 +746,15 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
     {
         try
         {
-            _logger.LogInformation("SendDocumentAsync started: DocumentId={DocumentId}, Recipients={RecipientCount}, Departments={DepartmentCount}",
+            var organizationUnitIds = (input.OrganizationUnits ?? input.Departments)?
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToList() ?? new List<Guid>();
+
+            _logger.LogInformation("SendDocumentAsync started: DocumentId={DocumentId}, Recipients={RecipientCount}, OrganizationUnits={OrganizationUnitCount}",
                 input.DocumentId,
                 input.Recipients?.Count ?? 0,
-                input.Departments?.Count ?? 0);
+                organizationUnitIds.Count);
 
             // Validate input
             if (input.DocumentId == Guid.Empty)
@@ -728,9 +763,19 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             }
 
             if ((input.Recipients == null || input.Recipients.Count == 0) &&
-                (input.Departments == null || input.Departments.Count == 0))
+                organizationUnitIds.Count == 0)
             {
-                throw new UserFriendlyException(L["At least one recipient or department is required"]);
+                throw new UserFriendlyException(L["At least one recipient or organization unit is required"]);
+            }
+
+            if (input.Recipients?.Count > 0 && organizationUnitIds.Count > 0)
+            {
+                throw new UserFriendlyException(L["Send to users and organization units must be handled separately"]);
+            }
+
+            if (organizationUnitIds.Count > 1)
+            {
+                throw new UserFriendlyException(L["Only one organization unit can be selected"]);
             }
 
             // Get current user
@@ -743,6 +788,30 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             // Get document info
             var document = await _documentRepository.GetAsync(input.DocumentId);
 
+            if (organizationUnitIds.Count == 1)
+            {
+                var organizationUnitId = organizationUnitIds[0];
+                if (await _organizationUnitRepository.FindAsync(organizationUnitId) == null)
+                {
+                    throw new UserFriendlyException(L["Organization unit not found"]);
+                }
+
+                document.FromUserId = currentUserId.Value;
+                document.ReceiverUserId = null;
+                document.DepartmentId = null;
+                document.OrganizationUnitId = organizationUnitId;
+                await _documentRepository.UpdateAsync(document);
+
+                await UpdateDocumentStatusAsync(input.DocumentId, DocumentStatusCode.DA_GUI);
+
+                _logger.LogInformation(
+                    "SendDocumentAsync completed by organization unit route: DocumentId={DocumentId}, OrganizationUnitId={OrganizationUnitId}",
+                    input.DocumentId,
+                    organizationUnitId);
+
+                return true;
+            }
+
             var allReceiverUserIds = new HashSet<Guid>();
 
             if (input.Recipients != null)
@@ -750,17 +819,6 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
                 foreach (var id in input.Recipients)
                 {
                     allReceiverUserIds.Add(id);
-                }
-            }
-
-            if (input.Departments != null && input.Departments.Count > 0)
-            {
-                var departmentIds = input.Departments.Distinct().ToList();
-                var userDepartments = await _userDepartmentRepository.GetListAsync(ud =>
-                    departmentIds.Contains(ud.DepartmentId) && ud.IsActive);
-                foreach (var ud in userDepartments)
-                {
-                    allReceiverUserIds.Add(ud.UserId);
                 }
             }
 
@@ -893,20 +951,17 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
 
             // Denormalized routing metadata for SentToMe grid (From / Receiver / Department)
             document.FromUserId = currentUserId.Value;
-            if (input.Recipients?.Count == 1 && (input.Departments == null || input.Departments.Count == 0))
+            if (input.Recipients?.Count == 1 && organizationUnitIds.Count == 0)
             {
                 document.ReceiverUserId = input.Recipients[0];
                 document.DepartmentId = null;
-            }
-            else if (input.Departments?.Count == 1 && (input.Recipients == null || input.Recipients.Count == 0))
-            {
-                document.DepartmentId = input.Departments[0];
-                document.ReceiverUserId = null;
+                document.OrganizationUnitId = null;
             }
             else
             {
                 document.ReceiverUserId = null;
                 document.DepartmentId = null;
+                document.OrganizationUnitId = null;
             }
 
             await _documentRepository.UpdateAsync(document);
@@ -957,6 +1012,11 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             if (documentAssignments == null || documentAssignments.Count == 0)
             {
                 _logger.LogWarning("No document assignments found for DocumentId={DocumentId}", input.DocumentId);
+                document.FromUserId = null;
+                document.ReceiverUserId = null;
+                document.DepartmentId = null;
+                document.OrganizationUnitId = null;
+                await _documentRepository.UpdateAsync(document);
                 return true;
             }
 
@@ -1029,6 +1089,12 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             _logger.LogInformation("RevokeDocumentAsync completed successfully: DocumentId={DocumentId}, RevokedFrom={RecipientCount} users",
                 input.DocumentId, receiverUserIds.Count.ToString());
 
+            document.FromUserId = null;
+            document.ReceiverUserId = null;
+            document.DepartmentId = null;
+            document.OrganizationUnitId = null;
+            await _documentRepository.UpdateAsync(document);
+
             return true;
         }
         catch (Exception ex)
@@ -1095,6 +1161,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
         document.FromUserId = currentUserId;
         document.ReceiverUserId = input.LeaderUserId;
         document.DepartmentId = null;
+        document.OrganizationUnitId = null;
         await _documentRepository.UpdateAsync(document);
 
         await UpdateDocumentStatusAsync(input.DocumentId, DocumentStatusCode.CHO_PHE_DUYET);

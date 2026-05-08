@@ -81,10 +81,6 @@
                             <Icon Name="IconName.User" />
                             @L["MyProfile"]
                         </Tab>
-                        <Tab Name="Department">
-                            <Icon Name="IconName.Building" />
-                            @L["Department"]
-                        </Tab>
                         <Tab Name="UserSignatures">
                             <Icon Name="IconName.FileAlt" />
                             @L["UserSignatures"]
@@ -203,101 +199,6 @@
                                 </TabPanel>
                             </Content>
                            </Tabs>
-                            }
-                        </TabPanel>
-                        <TabPanel Name="Department" Class="mt-3">
-                            @if (IsLoadingDepartmentTab)
-                            {
-                                <div class="d-flex flex-column align-items-center justify-content-center py-5" style="min-height: 220px;">
-                                    <RadarSpinner />
-                                    <span class="text-muted mt-3">@L["Loading"]</span>
-                                </div>
-                            }
-                            else
-                            {
-                            <div class="d-flex justify-content-end mb-3">
-                                <Button Color="Color.Primary" Size="Size.Small" Clicked="OpenCreateUserDepartmentModalAsync">
-                                    <Icon Name="IconName.Add" />
-                                    @L["NewUserDepartment"]
-                                </Button>
-                            </div>
-
-                            <Card>
-                                <CardBody>
-                                    <DataGrid TItem="UserDepartmentWithNavigationPropertiesDto"
-                                              Data="UserDepartments"
-                                              ShowPager="false"
-                                              Responsive="true"
-                                              Class="datagrid-detail">
-                                        <LoadingTemplate>
-                                            <Row Class="w-100 align-items-center" Style="height: 150px;">
-                                                <Column>
-                                                   <RadarSpinner />
-                                                </Column>
-                                            </Row>
-                                        </LoadingTemplate>
-                                        <EmptyTemplate>
-                                            <Row Class="w-100 align-items-center" Style="height: 150px;">
-                                                <Column>
-                                                    <Heading Size="HeadingSize.Is4" TextAlignment="TextAlignment.Center">@L["NoDepartmentsAssigned"]</Heading>
-                                                </Column>
-                                            </Row>
-                                        </EmptyTemplate>   
-                                        <DataGridColumns>
-                                            <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto"
-                                                    Field="Department.Name"
-                                                    Caption="@L["Department"]">
-                                            </DataGridColumn>
-                                            <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto"
-                                                    Field="UserDepartment.IsPrimary"
-                                                    Caption="@L["IsDepartmentPrimary"]">
-                                                <DisplayTemplate>
-                                                    @if (context.UserDepartment.IsPrimary)
-                                                    {
-                                                        <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
-                                                    }
-                                                    else
-                                                    {
-                                                        <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
-                                                    }
-                                                </DisplayTemplate>
-                                            </DataGridColumn>
-                                            <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto"
-                                                    Field="UserDepartment.IsActive"
-                                                    Caption="@L["IsActive"]">
-                                                <DisplayTemplate>
-                                                    @if (context.UserDepartment.IsActive)
-                                                    {
-                                                        <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
-                                                    }
-                                                    else
-                                                    {
-                                                        <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
-                                                    }
-                                                </DisplayTemplate>
-                                            </DataGridColumn>
-                                            <DataGridColumn TItem="UserDepartmentWithNavigationPropertiesDto" Caption="@L["Actions"]" Width="120px">
-                                                <DisplayTemplate>
-                                                    <div class="d-flex gap-2">
-                                                        <Button Outline Color="Color.Primary"
-                                                         Size="Size.Small" 
-                                                         Title="@L["Edit"]"
-                                                         Clicked="@(() => OpenEditUserDepartmentModalAsync(context))">
-                                                            <Icon Name="IconName.Edit" />
-                                                        </Button>
-                                                        <Button Outline Color="Color.Danger"
-                                                         Size="Size.Small" 
-                                                         Title="@L["Delete"]"
-                                                         Clicked="@(() => DeleteUserDepartmentAsync(context))">
-                                                            <Icon Name="IconName.Delete" />
-                                                        </Button>
-                                                    </div>
-                                                </DisplayTemplate>
-                                            </DataGridColumn>
-                                        </DataGridColumns>
-                                    </DataGrid>
-                                </CardBody>
-                            </Card>
                             }
                         </TabPanel>
                         <TabPanel Name="UserSignatures" Class="mt-3">
