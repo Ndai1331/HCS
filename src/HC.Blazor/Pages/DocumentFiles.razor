@@ -240,7 +240,9 @@
                 </DataGridEntityActionsColumn>
               <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto"
                       Field="DocumentFile.Name"
-                      Caption="@L["Name"]">
+                      Caption="@L["Name"]"
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="DocumentFileWithNavigationPropertiesDto"
                       Field="DocumentFile.Path"

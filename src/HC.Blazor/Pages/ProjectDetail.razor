@@ -424,7 +424,9 @@ else
                             <DataGridColumns>
                                 <DataGridColumn TItem="ProjectMemberWithNavigationPropertiesDto"
                                                 Field="User.UserName"
-                                                Caption="@L["Name"]">
+                                                Caption="@L["Name"]"
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px">
                                     <DisplayTemplate>
                                         <div class="d-flex align-items-center gap-2">
                                             <span>@context.User.Surname @context.User.Name</span>

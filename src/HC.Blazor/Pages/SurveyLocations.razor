@@ -188,11 +188,15 @@
               </DataGridColumn>
               <DataGridColumn TItem="SurveyLocationDto"
                       Field="Name"
-                      Caption="@L["Name"]">
+                      Caption="@L["Name"]"
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SurveyLocationDto"
                       Field="Description"
-                      Caption="@L["Description"]">
+                      Caption="@L["Description"]"
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px">
               </DataGridColumn>
               <DataGridColumn TItem="SurveyLocationDto"
                       Field="IsActive"

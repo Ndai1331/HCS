@@ -54,7 +54,9 @@
                 </DataGridEntityActionsColumn>
                 <DataGridColumn TItem="BookDto"
                                 Field="@nameof(BookDto.Name)"
-                                Caption="@L["Name"]"></DataGridColumn>
+                                Caption="@L["Name"]"
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px"></DataGridColumn>
                 <DataGridColumn TItem="BookDto"
                                 Field="@nameof(BookDto.Type)"
                                 Caption="@L["Type"]">

@@ -547,7 +547,9 @@ else
                         <DataGridColumns>
                             <DataGridColumn TItem="CalendarEventParticipantWithNavigationPropertiesDto"
                                              Field="IdentityUser.UserName"
-                                             Caption="@L["Name"]">
+                                             Caption="@L["Name"]"
+                        CellStyle="@((item) => "min-width: 200px")"
+                        Width="200px">
                                 <DisplayTemplate>
                                     <div class="d-flex align-items-center gap-2">
                                         <span>@(context.IdentityUser != null ? $"{context.IdentityUser.Surname} {context.IdentityUser.Name}".Trim() : "-")</span>
