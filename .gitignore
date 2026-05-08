@@ -278,7 +278,7 @@ src/HC.Blazor.Server/Logs/*
 src/HC.Blazor/Logs/*
 
 # Use abp install-libs to restore.
-**/wwwroot/libs/*
+# **/wwwroot/libs/*
 
 # IdentityServer temp files
 tempkey.rsa
