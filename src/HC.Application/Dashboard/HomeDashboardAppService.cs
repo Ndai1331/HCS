@@ -180,8 +180,9 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
             Sorting = "StartTime"
         };
 
-        input.StartTimeMin = filterStart.Date;
         input.StartTimeMax = filterEndExclusive;
+        input.EndTimeMin = filterStart.Date;
+        
 
         var result = await _calendarEventsAppService.GetListAsync(input);
 
