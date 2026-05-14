@@ -31,8 +31,10 @@ public abstract class EfCoreDocumentWorkflowInstanceRepositoryBase : EfCoreRepos
 
     public virtual async Task<DocumentWorkflowInstanceWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(documentWorkflowInstance => new DocumentWorkflowInstanceWithNavigationProperties { DocumentWorkflowInstance = documentWorkflowInstance, Document = dbContext.Set<Document>().FirstOrDefault(c => c.Id == documentWorkflowInstance.DocumentId), Workflow = dbContext.Set<Workflow>().FirstOrDefault(c => c.Id == documentWorkflowInstance.WorkflowId), WorkflowTemplate = dbContext.Set<WorkflowTemplate>().FirstOrDefault(c => c.Id == documentWorkflowInstance.WorkflowTemplateId), CurrentStep = dbContext.Set<WorkflowStepTemplate>().FirstOrDefault(c => c.Id == documentWorkflowInstance.CurrentStepId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.DocumentWorkflowInstance.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<DocumentWorkflowInstanceWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? status = null, DateTime? startedAtMin = null, DateTime? startedAtMax = null, DateTime? finishedAtMin = null, DateTime? finishedAtMax = null, Guid? documentId = null, Guid? workflowId = null, Guid? workflowTemplateId = null, Guid? currentStepId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

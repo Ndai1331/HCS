@@ -29,8 +29,10 @@ public abstract class EfCoreProjectTaskAssignmentRepositoryBase : EfCoreReposito
 
     public virtual async Task<ProjectTaskAssignmentWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(projectTaskAssignment => new ProjectTaskAssignmentWithNavigationProperties { ProjectTaskAssignment = projectTaskAssignment, ProjectTask = dbContext.Set<ProjectTask>().FirstOrDefault(c => c.Id == projectTaskAssignment.ProjectTaskId), User = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == projectTaskAssignment.UserId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.ProjectTaskAssignment.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<ProjectTaskAssignmentWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? assignmentRole = null, DateTime? assignedAtMin = null, DateTime? assignedAtMax = null, string? note = null, Guid? projectTaskId = null, Guid? userId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

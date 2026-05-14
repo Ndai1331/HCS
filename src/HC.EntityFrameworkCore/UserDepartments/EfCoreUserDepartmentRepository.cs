@@ -29,8 +29,10 @@ public abstract class EfCoreUserDepartmentRepositoryBase : EfCoreRepository<HCDb
 
     public virtual async Task<UserDepartmentWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(userDepartment => new UserDepartmentWithNavigationProperties { UserDepartment = userDepartment, Department = dbContext.Set<Department>().FirstOrDefault(c => c.Id == userDepartment.DepartmentId), User = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == userDepartment.UserId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.UserDepartment.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<UserDepartmentWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, bool? isPrimary = null, bool? isActive = null, Guid? departmentId = null, Guid? userId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

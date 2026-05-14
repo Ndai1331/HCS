@@ -32,8 +32,10 @@ public abstract class EfCoreNotificationReceiverRepositoryBase : EfCoreRepositor
 
     public virtual async Task<NotificationReceiverWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(notificationReceiver => new NotificationReceiverWithNavigationProperties { NotificationReceiver = notificationReceiver, Notification = dbContext.Set<Notification>().FirstOrDefault(c => c.Id == notificationReceiver.NotificationId), IdentityUser = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == notificationReceiver.IdentityUserId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.NotificationReceiver.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<NotificationReceiverWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, bool? isRead = null, DateTime? readAtMin = null, DateTime? readAtMax = null, Guid? notificationId = null, Guid? identityUserId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, string? sourceType = null, DateTime? creationTimeMin = null, DateTime? creationTimeMax = null, CancellationToken cancellationToken = default)

@@ -31,20 +31,21 @@ namespace HC.Blazor.Services
     {
         private readonly ILogger<ChatMetrics> _logger;
         private readonly Timer _snapshotTimer;
-        private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+        /// <summary>Protects list/dictionary fields and max/recent duration updates only.</summary>
+        private readonly object _listsLock = new object();
 
-        // Metrics storage
-        private long _messagesSent = 0;
-        private long _messagesSentFailed = 0;
-        private long _messagesReceived = 0;
-        private long _messagesReceivedFailed = 0;
-        private long _notificationsSent = 0;
-        private long _notificationsSentFailed = 0;
-        private long _totalRecipients = 0;
+        // Metrics storage (Interlocked for hot counters — avoids SemaphoreSlim.Wait on thread pool)
+        private long _messagesSent;
+        private long _messagesSentFailed;
+        private long _messagesReceived;
+        private long _messagesReceivedFailed;
+        private long _notificationsSent;
+        private long _notificationsSentFailed;
+        private long _totalRecipients;
 
         // Performance metrics
-        private long _totalSendDurationMs = 0;
-        private long _maxSendDurationMs = 0;
+        private long _totalSendDurationMs;
+        private long _maxSendDurationMs;
         private readonly List<long> _recentSendDurations = new List<long>();
 
         // Error tracking
@@ -52,7 +53,7 @@ namespace HC.Blazor.Services
         private readonly List<ErrorEvent> _recentErrors = new List<ErrorEvent>();
 
         // Connection metrics
-        private int _activeConnections = 0;
+        private int _activeConnections;
         private readonly Dictionary<string, long> _connectionEvents = new Dictionary<string, long>();
 
         public ChatMetrics(ILogger<ChatMetrics> logger)
@@ -67,91 +68,61 @@ namespace HC.Blazor.Services
 
         public void RecordMessageSent(bool success, long durationMs)
         {
-            try
+            if (success)
             {
-                _lock.Wait();
-                
-                if (success)
+                Interlocked.Increment(ref _messagesSent);
+                Interlocked.Add(ref _totalSendDurationMs, durationMs);
+                lock (_listsLock)
                 {
-                    _messagesSent++;
-                    _totalSendDurationMs += durationMs;
                     _maxSendDurationMs = Math.Max(_maxSendDurationMs, durationMs);
-                    
-                    // Track recent durations for p95 calculation
                     _recentSendDurations.Add(durationMs);
                     if (_recentSendDurations.Count > 100)
                     {
                         _recentSendDurations.RemoveAt(0);
                     }
                 }
-                else
-                {
-                    _messagesSentFailed++;
-                }
             }
-            finally
+            else
             {
-                _lock.Release();
+                Interlocked.Increment(ref _messagesSentFailed);
             }
         }
 
         public void RecordMessageReceived(bool success)
         {
-            try
+            if (success)
             {
-                _lock.Wait();
-                
-                if (success)
-                {
-                    _messagesReceived++;
-                }
-                else
-                {
-                    _messagesReceivedFailed++;
-                }
+                Interlocked.Increment(ref _messagesReceived);
             }
-            finally
+            else
             {
-                _lock.Release();
+                Interlocked.Increment(ref _messagesReceivedFailed);
             }
         }
 
         public void RecordNotificationSent(bool success, int recipientCount)
         {
-            try
+            if (success)
             {
-                _lock.Wait();
-                
-                if (success)
-                {
-                    _notificationsSent++;
-                    _totalRecipients += recipientCount;
-                }
-                else
-                {
-                    _notificationsSentFailed++;
-                }
+                Interlocked.Increment(ref _notificationsSent);
+                Interlocked.Add(ref _totalRecipients, recipientCount);
             }
-            finally
+            else
             {
-                _lock.Release();
+                Interlocked.Increment(ref _notificationsSentFailed);
             }
         }
 
         public void RecordError(string operation, Exception exception)
         {
-            try
+            lock (_listsLock)
             {
-                _lock.Wait();
-
-                // Increment error count for operation
                 if (!_errorCounts.ContainsKey(operation))
                 {
                     _errorCounts[operation] = 0;
                 }
                 _errorCounts[operation]++;
 
-                // Add to recent errors
                 _recentErrors.Add(new ErrorEvent
                 {
                     Operation = operation,
@@ -160,30 +131,23 @@ namespace HC.Blazor.Services
                     Timestamp = DateTime.UtcNow
                 });
 
-                // Keep only last 50 errors
                 while (_recentErrors.Count > 50)
                 {
                     _recentErrors.RemoveAt(0);
                 }
+            }
 
-                _logger.LogError(
-                    exception,
-                    "Error recorded in metrics: {Operation}, Type: {ExceptionType}",
-                    operation,
-                    exception.GetType().Name);
-            }
-            finally
-            {
-                _lock.Release();
-            }
+            _logger.LogError(
+                exception,
+                "Error recorded in metrics: {Operation}, Type: {ExceptionType}",
+                operation,
+                exception.GetType().Name);
         }
 
         public void RecordConnectionEvent(string hub, string eventType)
         {
-            try
+            lock (_listsLock)
             {
-                _lock.Wait();
-
                 var key = $"{hub}_{eventType}";
                 if (!_connectionEvents.ContainsKey(key))
                 {
@@ -191,7 +155,6 @@ namespace HC.Blazor.Services
                 }
                 _connectionEvents[key]++;
 
-                // Track active connections
                 if (eventType == "connected")
                 {
                     _activeConnections++;
@@ -200,23 +163,18 @@ namespace HC.Blazor.Services
                 {
                     _activeConnections--;
                 }
+            }
 
-                _logger.LogDebug("Connection event: {Hub} - {EventType}", hub, eventType);
-            }
-            finally
-            {
-                _lock.Release();
-            }
+            _logger.LogDebug("Connection event: {Hub} - {EventType}", hub, eventType);
         }
 
         public ChatMetricsSnapshot GetSnapshot()
         {
-            try
+            lock (_listsLock)
             {
-                _lock.Wait();
-
-                var avgSendDuration = _messagesSent > 0 
-                    ? _totalSendDurationMs / _messagesSent 
+                var messagesSent = Interlocked.Read(ref _messagesSent);
+                var avgSendDuration = messagesSent > 0
+                    ? Interlocked.Read(ref _totalSendDurationMs) / messagesSent
                     : 0;
 
                 var p95SendDuration = CalculateP95();
@@ -224,13 +182,13 @@ namespace HC.Blazor.Services
                 return new ChatMetricsSnapshot
                 {
                     Timestamp = DateTime.UtcNow,
-                    MessagesSent = _messagesSent,
-                    MessagesSentFailed = _messagesSentFailed,
-                    MessagesReceived = _messagesReceived,
-                    MessagesReceivedFailed = _messagesReceivedFailed,
-                    NotificationsSent = _notificationsSent,
-                    NotificationsSentFailed = _notificationsSentFailed,
-                    TotalRecipients = _totalRecipients,
+                    MessagesSent = messagesSent,
+                    MessagesSentFailed = Interlocked.Read(ref _messagesSentFailed),
+                    MessagesReceived = Interlocked.Read(ref _messagesReceived),
+                    MessagesReceivedFailed = Interlocked.Read(ref _messagesReceivedFailed),
+                    NotificationsSent = Interlocked.Read(ref _notificationsSent),
+                    NotificationsSentFailed = Interlocked.Read(ref _notificationsSentFailed),
+                    TotalRecipients = Interlocked.Read(ref _totalRecipients),
                     AverageSendDurationMs = avgSendDuration,
                     MaxSendDurationMs = _maxSendDurationMs,
                     P95SendDurationMs = p95SendDuration,
@@ -240,42 +198,31 @@ namespace HC.Blazor.Services
                     ConnectionEvents = new Dictionary<string, long>(_connectionEvents)
                 };
             }
-            finally
-            {
-                _lock.Release();
-            }
         }
 
-        public async Task ResetAsync()
+        public Task ResetAsync()
         {
-            await Task.Run(() =>
+            lock (_listsLock)
             {
-                try
-                {
-                    _lock.Wait();
+                Interlocked.Exchange(ref _messagesSent, 0);
+                Interlocked.Exchange(ref _messagesSentFailed, 0);
+                Interlocked.Exchange(ref _messagesReceived, 0);
+                Interlocked.Exchange(ref _messagesReceivedFailed, 0);
+                Interlocked.Exchange(ref _notificationsSent, 0);
+                Interlocked.Exchange(ref _notificationsSentFailed, 0);
+                Interlocked.Exchange(ref _totalRecipients, 0);
+                Interlocked.Exchange(ref _totalSendDurationMs, 0);
+                Interlocked.Exchange(ref _maxSendDurationMs, 0);
+                _recentSendDurations.Clear();
+                _errorCounts.Clear();
+                _recentErrors.Clear();
+                _connectionEvents.Clear();
+                _activeConnections = 0;
 
-                    _messagesSent = 0;
-                    _messagesSentFailed = 0;
-                    _messagesReceived = 0;
-                    _messagesReceivedFailed = 0;
-                    _notificationsSent = 0;
-                    _notificationsSentFailed = 0;
-                    _totalRecipients = 0;
-                    _totalSendDurationMs = 0;
-                    _maxSendDurationMs = 0;
-                    _recentSendDurations.Clear();
-                    _errorCounts.Clear();
-                    _recentErrors.Clear();
-                    _connectionEvents.Clear();
-                    _activeConnections = 0;
+                _logger.LogInformation("Chat metrics reset");
+            }
 
-                    _logger.LogInformation("Chat metrics reset");
-                }
-                finally
-                {
-                    _lock.Release();
-                }
-            });
+            return Task.CompletedTask;
         }
 
         private long CalculateP95()
@@ -313,7 +260,7 @@ namespace HC.Blazor.Services
                 snapshot.ActiveConnections);
 
             // Log warnings if metrics are degraded
-            if (snapshot.MessagesSentFailed > snapshot.MessagesSent * 0.05) // >5% failure rate
+            if (snapshot.MessagesSent > 0 && snapshot.MessagesSentFailed > snapshot.MessagesSent * 0.05) // >5% failure rate
             {
                 _logger.LogWarning(
                     "High message send failure rate: {FailureRate:F2}%",
@@ -334,7 +281,6 @@ namespace HC.Blazor.Services
         {
             _snapshotTimer?.Stop();
             _snapshotTimer?.Dispose();
-            _lock?.Dispose();
         }
     }
 

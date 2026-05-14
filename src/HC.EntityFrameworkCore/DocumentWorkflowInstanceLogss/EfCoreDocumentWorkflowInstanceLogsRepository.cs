@@ -41,8 +41,10 @@ public abstract class EfCoreDocumentWorkflowInstanceLogsRepositoryBase : EfCoreR
 
     public virtual async Task<DocumentWorkflowInstanceLogsWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(documentWorkflowInstanceLogs => new DocumentWorkflowInstanceLogsWithNavigationProperties { DocumentWorkflowInstanceLogs = documentWorkflowInstanceLogs, DocumentAssignment = dbContext.Set<DocumentAssignment>().FirstOrDefault(c => c.Id == documentWorkflowInstanceLogs.DocumentAssignmentId), ActorUser = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == documentWorkflowInstanceLogs.ActorUserId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.DocumentWorkflowInstanceLogs.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<DocumentWorkflowInstanceLogsWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? action = null, string? actorRole = null, string? fromStatus = null, string? toStatus = null, string? note = null, Guid? documentAssignmentId = null, Guid? actorUserId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

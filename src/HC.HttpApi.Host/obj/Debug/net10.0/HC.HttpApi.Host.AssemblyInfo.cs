@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HC.HttpApi.Host")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3ca7f7c17189e4b798c35175491c1ce87df4a2c8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e49db34e5d5179043dbecbd3c509d547b3eff799")]
 [assembly: System.Reflection.AssemblyProductAttribute("HC.HttpApi.Host")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HC.HttpApi.Host")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

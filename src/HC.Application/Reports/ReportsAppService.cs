@@ -35,7 +35,7 @@ public abstract class ReportsAppServiceBase : HCAppService
         _reportManager = reportManager;
     }
 
-    [AllowAnonymous]
+    /// <summary>List reports requires authentication (previously anonymous — removed to avoid unauthenticated data exposure).</summary>
     public virtual async Task<PagedResultDto<ReportDto>> GetListAsync(GetReportsInput input)
     {
         var totalCount = await _reportRepository.GetCountAsync(input.FilterText, input.Name, input.Url, input.SortOrderMin, input.SortOrderMax, input.Image);
@@ -75,11 +75,7 @@ public abstract class ReportsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(ReportExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var items = await _reportRepository.GetListAsync(input.FilterText, input.Name, input.Url, input.SortOrderMin, input.SortOrderMax, input.Image);
         var memoryStream = new MemoryStream();

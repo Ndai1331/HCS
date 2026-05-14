@@ -9,7 +9,6 @@ using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 using HC.SurveyFiles;
 using Volo.Abp.Content;
-using HC.Shared;
 
 namespace HC.Controllers.SurveyFiles;
 

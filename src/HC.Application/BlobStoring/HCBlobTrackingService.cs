@@ -34,9 +34,7 @@ public class HCBlobTrackingService : ApplicationService
             return new List<BlobInfo>();
         }
 
-        var prefix = $"tenants/{tenantId.Value}/";
-        
-        // TODO: Implement logic để list blobs từ MinIO với prefix
+        // TODO: Implement logic để list blobs từ MinIO với prefix tenants/{tenant-id}/
         // Có thể sử dụng MinIO client trực tiếp hoặc lưu metadata trong database
         
         return new List<BlobInfo>();
@@ -47,8 +45,6 @@ public class HCBlobTrackingService : ApplicationService
     /// </summary>
     public async Task<List<BlobInfo>> GetHostBlobsAsync()
     {
-        var prefix = "host/";
-        
         // TODO: Implement logic để list blobs từ MinIO với prefix "host/"
         
         return new List<BlobInfo>();

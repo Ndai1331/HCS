@@ -40,8 +40,10 @@ public abstract class EfCoreDocumentWorkflowInstanceFileRepositoryBase : EfCoreR
 
     public virtual async Task<DocumentWorkflowInstanceFileWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(documentWorkflowInstanceFile => new DocumentWorkflowInstanceFileWithNavigationProperties { DocumentWorkflowInstanceFile = documentWorkflowInstanceFile, DocumentFile = dbContext.Set<DocumentFile>().FirstOrDefault(c => c.Id == documentWorkflowInstanceFile.DocumentFileId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.DocumentWorkflowInstanceFile.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<DocumentWorkflowInstanceFileWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, Guid? documentFileId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

@@ -144,11 +144,7 @@ public abstract class ProjectTasksAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(ProjectTaskExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var projectTasks = await _projectTaskRepository.GetListWithNavigationPropertiesAsync(input.FilterText, false, false, input.ParentTaskId, input.Code, input.Title, input.Description, input.StartDateMin, input.StartDateMax, input.DueDateMin, input.DueDateMax, input.Priority, input.Status, input.ProgressPercentMin, input.ProgressPercentMax, input.ProjectId, null, null, int.MaxValue, 0);
         var items = projectTasks.Select(item => new { ParentTaskId = item.ProjectTask.ParentTaskId, Code = item.ProjectTask.Code, Title = item.ProjectTask.Title, Description = item.ProjectTask.Description, StartDate = item.ProjectTask.StartDate, DueDate = item.ProjectTask.DueDate, Priority = item.ProjectTask.Priority, Status = item.ProjectTask.Status, ProgressPercent = item.ProjectTask.ProgressPercent, Project = item.Project?.Name, });

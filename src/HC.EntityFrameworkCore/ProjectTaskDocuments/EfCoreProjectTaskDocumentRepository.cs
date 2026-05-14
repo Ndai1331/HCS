@@ -29,8 +29,10 @@ public abstract class EfCoreProjectTaskDocumentRepositoryBase : EfCoreRepository
 
     public virtual async Task<ProjectTaskDocumentWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(projectTaskDocument => new ProjectTaskDocumentWithNavigationProperties { ProjectTaskDocument = projectTaskDocument, ProjectTask = dbContext.Set<ProjectTask>().FirstOrDefault(c => c.Id == projectTaskDocument.ProjectTaskId), Document = dbContext.Set<Document>().FirstOrDefault(c => c.Id == projectTaskDocument.DocumentId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.ProjectTaskDocument.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<ProjectTaskDocumentWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? documentPurpose = null, Guid? projectTaskId = null, Guid? documentId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

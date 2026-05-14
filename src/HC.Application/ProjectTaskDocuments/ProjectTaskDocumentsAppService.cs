@@ -19,7 +19,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.ProjectTaskDocuments;
 
@@ -134,11 +133,7 @@ public abstract class ProjectTaskDocumentsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(ProjectTaskDocumentExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var projectTaskDocuments = await _projectTaskDocumentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.DocumentPurpose, input.ProjectTaskId, input.DocumentId);
         var items = projectTaskDocuments.Select(item => new { DocumentPurpose = item.ProjectTaskDocument.DocumentPurpose, ProjectTask = item.ProjectTask?.Title, Document = item.Document?.Title, });

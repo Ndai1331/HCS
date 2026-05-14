@@ -18,7 +18,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.SurveyFiles;
 
@@ -108,11 +107,7 @@ public abstract class SurveyFilesAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(SurveyFileExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var surveyFiles = await _surveyFileRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.UploaderType, input.FileName, input.FilePath, input.FileSizeMin, input.FileSizeMax, input.MimeType, input.FileType, input.SurveySessionId);
         var items = surveyFiles.Select(item => new { UploaderType = item.SurveyFile.UploaderType, FileName = item.SurveyFile.FileName, FilePath = item.SurveyFile.FilePath, FileSize = item.SurveyFile.FileSize, MimeType = item.SurveyFile.MimeType, FileType = item.SurveyFile.FileType, SurveySession = item.SurveySession?.SessionDisplay, });

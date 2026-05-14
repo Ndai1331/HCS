@@ -129,11 +129,7 @@ public abstract class SurveyResultsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(SurveyResultExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var surveyResults = await _surveyResultRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.RatingMin, input.RatingMax, input.SurveyCriteriaId, input.SurveySessionId, input.SurveyLocationId);
         var items = surveyResults.Select(item => new {

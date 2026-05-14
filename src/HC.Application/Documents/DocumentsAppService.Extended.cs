@@ -113,14 +113,14 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
 
         var permissions = new DocumentsPagePermissionsDto
         {
-            CanCreate = permTasks[0].Result,
-            CanEdit = permTasks[1].Result,
-            CanDelete = permTasks[2].Result,
-            CanSend = permTasks[3].Result,
-            CanSubmitForSigning = permTasks[4].Result,
-            CanSubmitForApproval = permTasks[5].Result,
-            CanRejectApproval = permTasks[6].Result,
-            CanApproveWithNote = permTasks[7].Result
+            CanCreate = await permTasks[0],
+            CanEdit = await permTasks[1],
+            CanDelete = await permTasks[2],
+            CanSend = await permTasks[3],
+            CanSubmitForSigning = await permTasks[4],
+            CanSubmitForApproval = await permTasks[5],
+            CanRejectApproval = await permTasks[6],
+            CanApproveWithNote = await permTasks[7]
         };
 
         var result = new DocumentsPageBootstrapDto { Permissions = permissions };
@@ -488,11 +488,7 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
             var currentUserId = CurrentUser.Id;
             if (currentUserId.HasValue)
             {
-                var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-                if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-                {
-                    throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-                }
+                await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
                 var sentToMeIds = await GetSentToMeDocumentIdsAsync(currentUserId.Value);
                 var documents = await _documentRepository.GetListWithNavigationPropertiesAsync(

@@ -14,6 +14,7 @@ using HC.Blazor.Extensions;
 using Blazorise;
 using HC.Chat.Users;
 using HC.DocumentFiles;
+using Microsoft.Extensions.Logging;
 using Volo.Abp.AspNetCore.Components.Messages;
 
 
@@ -118,7 +119,9 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
     private List<ConversationMemberDto> Members { get; set; } = new();
     private bool IsLoadingMembers { get; set; }
-    private ChatContactDto? _previousChatContact;
+    /// <summary>Last conversation id for which members were loaded (stable key; avoids refetch on parent re-render with new DTO instance).</summary>
+    private Guid? _lastLoadedMembersConversationId;
+    private string? _memberListSignatureForAvatars;
 
     [Parameter]
     public Guid? CurrentUserId { get; set; }
@@ -153,22 +156,29 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         {
             Members = new();
             IsCurrentUserAdmin = false;
-            _previousChatContact = CurrentChatContact;
+            _lastLoadedMembersConversationId = null;
+            _memberListSignatureForAvatars = null;
             return;
         }
 
-        if (_previousChatContact?.ConversationId != CurrentChatContact.ConversationId
-            || !ReferenceEquals(_previousChatContact, CurrentChatContact))
+        var conversationId = CurrentChatContact.ConversationId.Value;
+        if (_lastLoadedMembersConversationId == conversationId)
         {
-            if (_previousChatContact?.ConversationId != CurrentChatContact.ConversationId)
-            {
-                ResetAccordionToDefault();
-                await CloseFindMessageAsync();
-            }
-            await LoadConversationMembersAsync();
-            CheckIsCurrentUserAdminAsync();
-            _previousChatContact = CurrentChatContact;
+            return;
         }
+
+        var hadDifferentConversation = _lastLoadedMembersConversationId.HasValue
+            && _lastLoadedMembersConversationId.Value != conversationId;
+        if (hadDifferentConversation)
+        {
+            ResetAccordionToDefault();
+            await CloseFindMessageAsync();
+        }
+
+        await LoadConversationMembersAsync();
+        CheckIsCurrentUserAdminAsync();
+        _lastLoadedMembersConversationId = conversationId;
+        _memberListSignatureForAvatars = null;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -180,7 +190,12 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         }
         if (!firstRender && AccordionChatMembersVisible && Members.Any() && !IsLoadingMembers)
         {
-            await CreateMemberAvatarsAsync();
+            var signature = string.Join(',', Members.Select(m => m.UserId));
+            if (!string.Equals(_memberListSignatureForAvatars, signature, StringComparison.Ordinal))
+            {
+                _memberListSignatureForAvatars = signature;
+                await CreateMemberAvatarsAsync();
+            }
         }
     }
 
@@ -318,7 +333,8 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            try { await BlockUiService.UnBlock(); } catch { }
+            try { await BlockUiService.UnBlock(); }
+            catch (Exception unblockEx) { Logger.LogDebug(unblockEx, "BlockUiService.UnBlock failed (ignored)."); }
             await UiMessageService.Error(ex.Message,
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
         }

@@ -18,7 +18,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.Departments;
 
@@ -95,11 +94,7 @@ public abstract class DepartmentsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(DepartmentExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var departments = await _departmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.Code, input.Name, input.ParentId, input.LevelMin, input.LevelMax, input.SortOrderMin, input.SortOrderMax, input.IsActive, input.LeaderUserId);
         var items = departments.Select(item => new { Code = item.Department.Code, Name = item.Department.Name, ParentId = item.Department.ParentId, Level = item.Department.Level, SortOrder = item.Department.SortOrder, IsActive = item.Department.IsActive, LeaderUser = item.LeaderUser?.UserName, });

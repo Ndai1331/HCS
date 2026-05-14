@@ -28,8 +28,10 @@ public abstract class EfCoreSurveyFileRepositoryBase : EfCoreRepository<HCDbCont
 
     public virtual async Task<SurveyFileWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(surveyFile => new SurveyFileWithNavigationProperties { SurveyFile = surveyFile, SurveySession = dbContext.Set<SurveySession>().FirstOrDefault(c => c.Id == surveyFile.SurveySessionId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.SurveyFile.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<SurveyFileWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? uploaderType = null, string? fileName = null, string? filePath = null, int? fileSizeMin = null, int? fileSizeMax = null, string? mimeType = null, string? fileType = null, Guid? surveySessionId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

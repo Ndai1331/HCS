@@ -28,8 +28,10 @@ public abstract class EfCoreSurveySessionRepositoryBase : EfCoreRepository<HCDbC
 
     public virtual async Task<SurveySessionWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(surveySession => new SurveySessionWithNavigationProperties { SurveySession = surveySession, SurveyLocation = dbContext.Set<SurveyLocation>().FirstOrDefault(c => c.Id == surveySession.SurveyLocationId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.SurveySession.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<SurveySessionWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? fullName = null, string? phoneNumber = null, string? patientCode = null, DateTime? surveyTimeMin = null, DateTime? surveyTimeMax = null, string? deviceType = null, string? note = null, string? sessionDisplay = null, Guid? surveyLocationId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

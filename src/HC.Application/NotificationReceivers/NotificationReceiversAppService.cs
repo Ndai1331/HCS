@@ -130,11 +130,7 @@ public abstract class NotificationReceiversAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(NotificationReceiverExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var notificationReceivers = await _notificationReceiverRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.IsRead, input.ReadAtMin, input.ReadAtMax, input.NotificationId, input.IdentityUserId);
         var items = notificationReceivers.Select(item => new { IsRead = item.NotificationReceiver.IsRead, ReadAt = item.NotificationReceiver.ReadAt, Notification = item.Notification?.Title, IdentityUser = item.IdentityUser?.Name, });

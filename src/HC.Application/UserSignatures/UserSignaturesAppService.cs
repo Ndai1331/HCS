@@ -126,11 +126,7 @@ public abstract class UserSignaturesAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(UserSignatureExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var userSignatures = await _userSignatureRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.SignType, input.ProviderCode, input.TokenRef, input.SignatureImage, input.ValidFromMin, input.ValidFromMax, input.ValidToMin, input.ValidToMax, input.IsActive, input.IdentityUserId);
         var items = userSignatures.Select(item => new

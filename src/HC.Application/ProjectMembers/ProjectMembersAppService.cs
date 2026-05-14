@@ -20,7 +20,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.ProjectMembers;
 
@@ -151,11 +150,7 @@ public abstract class ProjectMembersAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(ProjectMemberExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var projectMembers = await _projectMemberRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.MemberRole, input.JoinedAtMin, input.JoinedAtMax, input.ProjectId, input.UserId);
         var items = projectMembers.Select(item => new { MemberRole = item.ProjectMember.MemberRole, JoinedAt = item.ProjectMember.JoinedAt, Project = item.Project?.Name, User = item.User?.Name, });

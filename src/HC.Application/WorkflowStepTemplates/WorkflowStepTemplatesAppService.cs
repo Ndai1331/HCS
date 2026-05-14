@@ -18,7 +18,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.WorkflowStepTemplates;
 
@@ -105,11 +104,7 @@ public abstract class WorkflowStepTemplatesAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(WorkflowStepTemplateExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var workflowStepTemplates = await _workflowStepTemplateRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.OrderMin, input.OrderMax, input.Name, input.Type, input.SLADaysMin, input.SLADaysMax, input.IsActive, input.WorkflowTemplateId);
         var items = workflowStepTemplates.Select(item => new { Order = item.WorkflowStepTemplate.Order, Name = item.WorkflowStepTemplate.Name, Type = item.WorkflowStepTemplate.Type, SLADays = item.WorkflowStepTemplate.SLADays, AllowReturn = item.WorkflowStepTemplate.AllowReturn, IsActive = item.WorkflowStepTemplate.IsActive, WorkflowTemplate = item.WorkflowTemplate?.Name, });

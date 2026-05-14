@@ -28,8 +28,10 @@ public abstract class EfCoreDocumentFileRepositoryBase : EfCoreRepository<HCDbCo
 
     public virtual async Task<DocumentFileWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(documentFile => new DocumentFileWithNavigationProperties { DocumentFile = documentFile, Document = dbContext.Set<Document>().FirstOrDefault(c => c.Id == documentFile.DocumentId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.DocumentFile.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<DocumentFileWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? name = null, string? path = null, string? hash = null, bool? isSigned = null, DateTime? uploadedAtMin = null, DateTime? uploadedAtMax = null, Guid? documentId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

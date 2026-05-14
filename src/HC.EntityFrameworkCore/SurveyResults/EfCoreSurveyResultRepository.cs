@@ -31,13 +31,10 @@ public abstract class EfCoreSurveyResultRepositoryBase : EfCoreRepository<HCDbCo
 
     public virtual async Task<SurveyResultWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(surveyResult => new SurveyResultWithNavigationProperties {
-            SurveyResult = surveyResult, 
-            SurveyCriteria = dbContext.Set<SurveyCriteria>().FirstOrDefault(c => c.Id == surveyResult.SurveyCriteriaId), 
-            SurveySession = dbContext.Set<SurveySession>().FirstOrDefault(c => c.Id == surveyResult.SurveySessionId),
-            // SurveyLocation = dbContext.Set<SurveyLocation>().FirstOrDefault(c => c.Id == surveyResult.SurveySession?.SurveyLocationId)
-        }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.SurveyResult.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<SurveyResultWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, int? ratingMin = null, int? ratingMax = null, Guid? surveyCriteriaId = null, Guid? surveySessionId = null, Guid? surveyLocationId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)
@@ -50,13 +47,19 @@ public abstract class EfCoreSurveyResultRepositoryBase : EfCoreRepository<HCDbCo
 
     protected virtual async Task<IQueryable<SurveyResultWithNavigationProperties>> GetQueryForNavigationPropertiesAsync()
     {
-        return from surveyResult in (await GetDbSetAsync())
-               join surveyCriteria in (await GetDbContextAsync()).Set<SurveyCriteria>() on surveyResult.SurveyCriteriaId equals surveyCriteria.Id into surveyCriterias
-               from surveyCriteria in surveyCriterias.DefaultIfEmpty()
-               join surveySession in (await GetDbContextAsync()).Set<SurveySession>() on surveyResult.SurveySessionId equals surveySession.Id into surveySessions
-               from surveySession in surveySessions.DefaultIfEmpty()
-               join surveyLocation in (await GetDbContextAsync()).Set<SurveyLocation>() on surveySession.SurveyLocationId equals surveyLocation.Id into surveyLocations
-               from surveyLocation in surveyLocations.DefaultIfEmpty()
+        var dbContext = await GetDbContextAsync();
+        var surveyResults = await GetDbSetAsync();
+        var surveyCriterias = dbContext.Set<SurveyCriteria>();
+        var surveySessions = dbContext.Set<SurveySession>();
+        var surveyLocations = dbContext.Set<SurveyLocation>();
+
+        return from surveyResult in surveyResults
+               join surveyCriteria in surveyCriterias on surveyResult.SurveyCriteriaId equals surveyCriteria.Id into surveyCriteriasJoin
+               from surveyCriteria in surveyCriteriasJoin.DefaultIfEmpty()
+               join surveySession in surveySessions on surveyResult.SurveySessionId equals surveySession.Id into surveySessionsJoin
+               from surveySession in surveySessionsJoin.DefaultIfEmpty()
+               join surveyLocation in surveyLocations on surveySession.SurveyLocationId equals surveyLocation.Id into surveyLocationsJoin
+               from surveyLocation in surveyLocationsJoin.DefaultIfEmpty()
                select new SurveyResultWithNavigationProperties
                {
                    SurveyResult = surveyResult,

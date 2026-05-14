@@ -48,6 +48,8 @@
     [SupplyParameterFromQuery(Name = "reportId")]
     public Guid? ReportId { get; set; }
 
+    private Guid? _cachedReportId;
+
     private bool IsLoading { get; set; } = true;
     private string? ErrorMessage { get; set; }
     private string? ReportUrl { get; set; }
@@ -66,18 +68,27 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (!ReportId.HasValue || ReportId.Value == Guid.Empty)
+        {
+            _cachedReportId = null;
+            ErrorMessage = L["NoDataAvailable"];
+            ReportUrl = null;
+            ReportName = null;
+            ReportImage = null;
+            IsLoading = false;
+            return;
+        }
+
+        if (_cachedReportId == ReportId.Value && !string.IsNullOrWhiteSpace(ReportUrl))
+        {
+            return;
+        }
+
         IsLoading = true;
         ErrorMessage = null;
         ReportUrl = null;
         ReportName = null;
         ReportImage = null;
-
-        if (!ReportId.HasValue || ReportId.Value == Guid.Empty)
-        {
-            ErrorMessage = L["NoDataAvailable"];
-            IsLoading = false;
-            return;
-        }
 
         try
         {
@@ -93,10 +104,13 @@
             {
                 ErrorMessage = L["NoDataAvailable"];
             }
+
+            _cachedReportId = ReportId.Value;
         }
         catch
         {
             ErrorMessage = L["NoDataAvailable"];
+            _cachedReportId = null;
         }
         finally
         {
