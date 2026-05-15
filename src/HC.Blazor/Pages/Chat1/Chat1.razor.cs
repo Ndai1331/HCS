@@ -110,6 +110,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     // Track processed message IDs to prevent duplicate UnreadMessageCount increments
     private HashSet<Guid> _processedMessageIds = new HashSet<Guid>();
     private const int MaxProcessedIdsCacheSize = 200; // Cleanup when cache gets too large
+
+    private CancellationTokenSource? _refreshContactsDebounceCts;
     
     // New properties for expanded features
     public ChatMessageDto ReplyingToMessage { get; set; }
@@ -564,7 +566,32 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
             await ChatHubConnectionService.OnChatUnreadCountChangedAsync(async () =>
             {
-                // Refresh contacts list to get updated unread counts
+                try
+                {
+                    _refreshContactsDebounceCts?.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // ignore
+                }
+
+                _refreshContactsDebounceCts?.Dispose();
+                _refreshContactsDebounceCts = new CancellationTokenSource();
+                var token = _refreshContactsDebounceCts.Token;
+                try
+                {
+                    await Task.Delay(350, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 await RefreshContactsListAsync();
                 await InvokeAsync(StateHasChanged);
             });
@@ -1082,7 +1109,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            try { await BlockUiService.UnBlock(); } catch { }
+            try { await BlockUiService.UnBlock(); }
+            catch (Exception unblockEx) { Logger.LogDebug(unblockEx, "BlockUiService.UnBlock failed (ignored)."); }
             await HandleErrorAsync(ex);
         }
     }
@@ -1450,7 +1478,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            try { await BlockUiService.UnBlock(); } catch { }
+            try { await BlockUiService.UnBlock(); }
+            catch (Exception unblockEx) { Logger.LogDebug(unblockEx, "BlockUiService.UnBlock failed (ignored)."); }
             await HandleErrorAsync(ex);
         }
 
@@ -1668,7 +1697,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            try { await BlockUiService.UnBlock(); } catch { }
+            try { await BlockUiService.UnBlock(); }
+            catch (Exception unblockEx) { Logger.LogDebug(unblockEx, "BlockUiService.UnBlock failed (ignored)."); }
             await HandleErrorAsync(ex);
         }
     }
@@ -1728,7 +1758,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            try { await BlockUiService.UnBlock(); } catch { }
+            try { await BlockUiService.UnBlock(); }
+            catch (Exception unblockEx) { Logger.LogDebug(unblockEx, "BlockUiService.UnBlock failed (ignored)."); }
             await HandleErrorAsync(ex);
         }
     }
@@ -1841,7 +1872,8 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
         finally
         {
             IsCreatingGroupConversation = false;
-            try { await BlockUiService.UnBlock(); } catch { }
+            try { await BlockUiService.UnBlock(); }
+            catch (Exception unblockEx) { Logger.LogDebug(unblockEx, "BlockUiService.UnBlock failed (ignored)."); }
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -2507,6 +2539,18 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     {
         try
         {
+            try
+            {
+                _refreshContactsDebounceCts?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // ignore
+            }
+
+            _refreshContactsDebounceCts?.Dispose();
+            _refreshContactsDebounceCts = null;
+
             // === NEW: Dispose refactored handlers ===
             if (_messageHandler is IAsyncDisposable disposableMessageHandler)
             {

@@ -18,7 +18,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.WorkflowTemplates;
 

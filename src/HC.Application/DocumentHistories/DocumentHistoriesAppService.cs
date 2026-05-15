@@ -128,11 +128,7 @@ public abstract class DocumentHistoriesAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(DocumentHistoryExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var documentHistories = await _documentHistoryRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.Comment, input.Action, input.DocumentId, input.FromUser, input.ToUser);
         var items = documentHistories.Select(item => new { Comment = item.DocumentHistory.Comment, Action = item.DocumentHistory.Action, Document = item.Document?.Title, FromUser = item.FromUser?.Name, ToUser = item.ToUser?.Name, });

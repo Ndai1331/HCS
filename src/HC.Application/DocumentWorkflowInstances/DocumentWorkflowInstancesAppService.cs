@@ -179,11 +179,7 @@ public abstract class DocumentWorkflowInstancesAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(DocumentWorkflowInstanceExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var documentWorkflowInstances = await _documentWorkflowInstanceRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.Status, input.StartedAtMin, input.StartedAtMax, input.FinishedAtMin, input.FinishedAtMax, input.DocumentId, input.WorkflowId, input.WorkflowTemplateId, input.CurrentStepId);
         var items = documentWorkflowInstances.Select(item => new { Status = item.DocumentWorkflowInstance.Status, StartedAt = item.DocumentWorkflowInstance.StartedAt, FinishedAt = item.DocumentWorkflowInstance.FinishedAt, Document = item.Document?.Title, Workflow = item.Workflow?.Name, WorkflowTemplate = item.WorkflowTemplate?.Name, CurrentStep = item.CurrentStep?.Name, });

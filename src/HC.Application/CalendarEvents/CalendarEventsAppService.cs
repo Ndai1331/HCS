@@ -74,11 +74,7 @@ public abstract class CalendarEventsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(CalendarEventExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var items = await _calendarEventRepository.GetListAsync(input.FilterText, input.Title, input.Description, input.StartTimeMin, input.StartTimeMax, input.EndTimeMin, input.EndTimeMax, input.AllDay, input.EventType, input.Location, input.RelatedType, input.RelatedId, input.Visibility);
         var memoryStream = new MemoryStream();

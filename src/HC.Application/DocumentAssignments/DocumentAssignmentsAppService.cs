@@ -20,7 +20,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.DocumentAssignments;
 
@@ -145,11 +144,7 @@ public abstract class DocumentAssignmentsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(DocumentAssignmentExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var documentAssignments = await _documentAssignmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.StepOrderMin, input.StepOrderMax, input.ActionType, input.Status, input.AssignedAtMin, input.AssignedAtMax, input.ProcessedAtMin, input.ProcessedAtMax, input.IsCurrent, input.DocumentId, input.WorkflowStepTemplateId, input.ReceiverUserId);
         var items = documentAssignments.Select(item => new { StepOrder = item.DocumentAssignment.StepOrder, ActionType = item.DocumentAssignment.ActionType, Status = item.DocumentAssignment.Status, AssignedAt = item.DocumentAssignment.AssignedAt, ProcessedAt = item.DocumentAssignment.ProcessedAt, IsCurrent = item.DocumentAssignment.IsCurrent, Document = item.Document?.Title, WorkflowStepTemplate = item.WorkflowStepTemplate?.Name, ReceiverUser = item.ReceiverUser?.Name, });

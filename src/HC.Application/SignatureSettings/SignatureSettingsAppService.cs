@@ -74,11 +74,7 @@ public abstract class SignatureSettingsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(SignatureSettingExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var items = await _signatureSettingRepository.GetListAsync(input.FilterText, input.ProviderCode, input.ProviderType, input.ApiEndpoint, input.ApiTimeoutMin, input.ApiTimeoutMax, input.DefaultSignType, input.AllowElectronicSign, input.AllowDigitalSign, input.RequireOtp, input.SignWidthMin, input.SignWidthMax, input.SignHeightMin, input.SignHeightMax, input.SignedFileSuffix, input.KeepOriginalFile, input.OverwriteSignedFile, input.EnableSignLog, input.IsActive);
         var memoryStream = new MemoryStream();

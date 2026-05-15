@@ -29,8 +29,10 @@ public abstract class EfCoreCalendarEventParticipantRepositoryBase : EfCoreRepos
 
     public virtual async Task<CalendarEventParticipantWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(calendarEventParticipant => new CalendarEventParticipantWithNavigationProperties { CalendarEventParticipant = calendarEventParticipant, CalendarEvent = dbContext.Set<CalendarEvent>().FirstOrDefault(c => c.Id == calendarEventParticipant.CalendarEventId), IdentityUser = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == calendarEventParticipant.IdentityUserId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.CalendarEventParticipant.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<CalendarEventParticipantWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? responseStatus = null, bool? notified = null, Guid? calendarEventId = null, Guid? identityUserId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

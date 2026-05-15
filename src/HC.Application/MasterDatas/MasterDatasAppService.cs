@@ -74,11 +74,7 @@ public abstract class MasterDatasAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(MasterDataExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var items = await _masterDataRepository.GetListAsync(input.FilterText, input.Type, input.Code, input.Name, input.SortOrderMin, input.SortOrderMax, input.IsActive);
         var memoryStream = new MemoryStream();

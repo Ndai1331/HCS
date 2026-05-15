@@ -18,7 +18,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.SurveyCriterias;
 
@@ -106,11 +105,7 @@ public abstract class SurveyCriteriasAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(SurveyCriteriaExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var surveyCriterias = await _surveyCriteriaRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.Code, input.Name, input.Image, input.DisplayOrderMin, input.DisplayOrderMax, input.IsActive, input.SurveyLocationId);
         var items = surveyCriterias.Select(item => new { Code = item.SurveyCriteria.Code, Name = item.SurveyCriteria.Name, Image = item.SurveyCriteria.Image, DisplayOrder = item.SurveyCriteria.DisplayOrder, IsActive = item.SurveyCriteria.IsActive, SurveyLocation = item.SurveyLocation?.Name, });

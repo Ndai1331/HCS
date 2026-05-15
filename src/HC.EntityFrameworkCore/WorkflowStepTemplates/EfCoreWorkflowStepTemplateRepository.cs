@@ -28,8 +28,10 @@ public abstract class EfCoreWorkflowStepTemplateRepositoryBase : EfCoreRepositor
 
     public virtual async Task<WorkflowStepTemplateWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(workflowStepTemplate => new WorkflowStepTemplateWithNavigationProperties { WorkflowStepTemplate = workflowStepTemplate, WorkflowTemplate = dbContext.Set<WorkflowTemplate>().FirstOrDefault(c => c.Id == workflowStepTemplate.WorkflowTemplateId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.WorkflowStepTemplate.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<WorkflowStepTemplateWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, int? orderMin = null, int? orderMax = null, string? name = null, string? type = null, int? sLADaysMin = null, int? sLADaysMax = null, bool? isActive = null, Guid? workflowTemplateId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

@@ -1,0 +1,27 @@
+/* Getting-Started */
+.card-bg-image[b-lm1vm8cb5n] {
+    pointer-events: none;
+    position: absolute;
+    width: 630px;
+    height: auto;
+    bottom: 0;
+    right: 0;
+    z-index: 1;
+}
+.starting-content[b-lm1vm8cb5n] {
+    position: relative;
+    z-index: 2;
+}
+/* Getting-Started End */
+
+/* Write here your styles for the Index page */
+
+/* Tùy chỉnh thanh cuộn cho CardBody */
+::v-deep .overflow-auto[b-lm1vm8cb5n]::-webkit-scrollbar {
+    width: 6px;
+}
+
+::v-deep .overflow-auto[b-lm1vm8cb5n]::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}

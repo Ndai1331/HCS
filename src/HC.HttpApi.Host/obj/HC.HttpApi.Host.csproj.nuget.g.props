@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <RestoreSuccess Condition=" '$(RestoreSuccess)' == '' ">True</RestoreSuccess>
+    <RestoreTool Condition=" '$(RestoreTool)' == '' ">NuGet</RestoreTool>
+    <ProjectAssetsFile Condition=" '$(ProjectAssetsFile)' == '' ">$(MSBuildThisFileDirectory)project.assets.json</ProjectAssetsFile>
+    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">/Users/user/.nuget/packages/</NuGetPackageRoot>
+    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">/Users/user/.nuget/packages/</NuGetPackageFolders>
+    <NuGetProjectStyle Condition=" '$(NuGetProjectStyle)' == '' ">PackageReference</NuGetProjectStyle>
+    <NuGetToolVersion Condition=" '$(NuGetToolVersion)' == '' ">7.0.0</NuGetToolVersion>
+  </PropertyGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <SourceRoot Include="/Users/user/.nuget/packages/" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.identity.aspnetcore/10.0.1/contentFiles/any/net10.0/Volo.Abp.Identity.AspNetCore.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.identity.aspnetcore/10.0.1/contentFiles/any/net10.0/Volo.Abp.Identity.AspNetCore.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.Identity.AspNetCore</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.Identity.AspNetCore.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.aspnetcore.serilog/10.0.1/contentFiles/any/net10.0/Volo.Abp.AspNetCore.Serilog.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.serilog/10.0.1/contentFiles/any/net10.0/Volo.Abp.AspNetCore.Serilog.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.AspNetCore.Serilog</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.AspNetCore.Serilog.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.aspnetcore.mvc.ui.multitenancy/10.0.1/contentFiles/any/net10.0/Volo.Abp.AspNetCore.Mvc.UI.MultiTenancy.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.mvc.ui.multitenancy/10.0.1/contentFiles/any/net10.0/Volo.Abp.AspNetCore.Mvc.UI.MultiTenancy.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.AspNetCore.Mvc.UI.MultiTenancy</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.AspNetCore.Mvc.UI.MultiTenancy.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)microsoft.entityframeworkcore/10.0.0/buildTransitive/net10.0/Microsoft.EntityFrameworkCore.props" Condition="Exists('$(NuGetPackageRoot)microsoft.entityframeworkcore/10.0.0/buildTransitive/net10.0/Microsoft.EntityFrameworkCore.props')" />
+    <Import Project="$(NuGetPackageRoot)microsoft.codeanalysis.analyzers/3.11.0/buildTransitive/Microsoft.CodeAnalysis.Analyzers.props" Condition="Exists('$(NuGetPackageRoot)microsoft.codeanalysis.analyzers/3.11.0/buildTransitive/Microsoft.CodeAnalysis.Analyzers.props')" />
+  </ImportGroup>
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <PkgMicrosoft_Extensions_ApiDescription_Server Condition=" '$(PkgMicrosoft_Extensions_ApiDescription_Server)' == '' ">/Users/user/.nuget/packages/microsoft.extensions.apidescription.server/9.0.0</PkgMicrosoft_Extensions_ApiDescription_Server>
+    <PkgMicrosoft_CodeAnalysis_Analyzers Condition=" '$(PkgMicrosoft_CodeAnalysis_Analyzers)' == '' ">/Users/user/.nuget/packages/microsoft.codeanalysis.analyzers/3.11.0</PkgMicrosoft_CodeAnalysis_Analyzers>
+    <PkgMicrosoft_EntityFrameworkCore_Tools Condition=" '$(PkgMicrosoft_EntityFrameworkCore_Tools)' == '' ">/Users/user/.nuget/packages/microsoft.entityframeworkcore.tools/10.0.0</PkgMicrosoft_EntityFrameworkCore_Tools>
+    <PkgAWSSDK_Core Condition=" '$(PkgAWSSDK_Core)' == '' ">/Users/user/.nuget/packages/awssdk.core/3.7.105.20</PkgAWSSDK_Core>
+  </PropertyGroup>
+</Project>

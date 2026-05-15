@@ -30,14 +30,11 @@ public abstract class EfCoreProjectRepositoryBase : EfCoreRepository<HCDbContext
 
     public virtual async Task<ProjectWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(project => new ProjectWithNavigationProperties
-        {
-            Project = project,
-            OwnerDepartment = dbContext.Set<Department>().FirstOrDefault(c => c.Id == project.OwnerDepartmentId),
-            ProjectMemberCount = dbContext.Set<ProjectMember>().Count(pm => pm.ProjectId == project.Id),
-            ProjectTaskCount = dbContext.Set<ProjectTask>().Count(pt => pt.ProjectId == project.Id)
-        }).FirstOrDefault();
+        // Reuse the same LEFT JOIN + scalar counts shape as list queries (avoids correlated subqueries per row).
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.Project.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<ProjectWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? code = null, string? name = null, string? description = null, DateTime? startDateMin = null, DateTime? startDateMax = null, DateTime? endDateMin = null, DateTime? endDateMax = null, string? status = null, Guid? ownerDepartmentId = null, Guid? userId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

@@ -5,8 +5,10 @@
 @using HC.Documents
 @using Blazorise
 @using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
 @using HC.Chat.Conversations
 @using System.Globalization
+@using System.Threading
 
 <style>
     .notification-tabs .nav-pills{
@@ -96,7 +98,7 @@
                 {
                     var notification = item.Notification;
                     var isUnread = !item.NotificationReceiver.IsRead;
-                    <div class="p-2 border-bottom notification-item @(isUnread ? "notification-unread" : "")" style="cursor: pointer;" @onclick="() => ViewNotificationDetail(notification, isUnread)">
+                    <div @key="item.NotificationReceiver.Id" class="p-2 border-bottom notification-item @(isUnread ? "notification-unread" : "")" style="cursor: pointer;" @onclick="() => ViewNotificationDetail(notification, isUnread)">
                         <div class="d-flex align-items-start">
                             <div class="flex-shrink-0 me-3">
                                 <div class="rounded-circle @GetSourceTypeColor(notification.SourceType) text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
@@ -165,11 +167,11 @@
     [Inject] private IConversationAppService ConversationAppService { get; set; } = null!;
 
     private DotNetObjectReference<Notification>? _objRef;
+    private CancellationTokenSource? _hubDebounceCts;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadUnreadCountAsync();
-        await LoadChatUnreadCountAsync();
+        await Task.WhenAll(LoadUnreadCountAsync(), LoadChatUnreadCountAsync());
         await LoadNotificationsAsync();
     }
 
@@ -184,61 +186,126 @@
     }
 
     [JSInvokable]
-    public async Task OnUnreadCountChanged()
+    public Task OnUnreadCountChanged()
     {
-        try
+        _ = DebounceHubRefreshAsync(400, OnUnreadCountChangedCoreAsync);
+        return Task.CompletedTask;
+    }
+
+    private async Task OnUnreadCountChangedCoreAsync(CancellationToken cancellationToken)
+    {
+        await LoadUnreadCountAsync();
+        if (!cancellationToken.IsCancellationRequested)
         {
-            await LoadUnreadCountAsync();
-            await LoadChatUnreadCountAsync(); // Also reload chat unread count
-            // Force UI update - must use InvokeAsync to ensure it runs on the UI thread
-            await InvokeAsync(StateHasChanged);
-        }
-        catch
-        {
-            // Log error if needed
+            await LoadChatUnreadCountAsync();
         }
     }
 
     [JSInvokable]
-    public async Task OnNotificationReceived(string notificationId)
+    public Task OnNotificationReceived(string notificationId)
     {
-        try
+        _ = DebounceHubRefreshAsync(400, OnNotificationReceivedCoreAsync);
+        return Task.CompletedTask;
+    }
+
+    private async Task OnNotificationReceivedCoreAsync(CancellationToken cancellationToken)
+    {
+        await LoadUnreadCountAsync();
+        if (!cancellationToken.IsCancellationRequested)
         {
-            await LoadUnreadCountAsync();
             await LoadNotificationsAsync();
-            await LoadChatUnreadCountAsync();
-            await InvokeAsync(StateHasChanged);
         }
-        catch
+        if (!cancellationToken.IsCancellationRequested)
         {
-            // Log error if needed
+            await LoadChatUnreadCountAsync();
         }
     }
 
     [JSInvokable]
-    public async Task OnChatUnreadCountChanged()
+    public Task OnChatUnreadCountChanged()
+    {
+        _ = DebounceHubRefreshAsync(400, OnChatUnreadCountChangedCoreAsync);
+        return Task.CompletedTask;
+    }
+
+    private async Task OnChatUnreadCountChangedCoreAsync(CancellationToken cancellationToken)
+    {
+        await LoadChatUnreadCountAsync();
+    }
+
+    /// <summary>
+    /// Coalesce rapid SignalR/JS callbacks into a single UI refresh (reduces API bursts).
+    /// </summary>
+    private async Task DebounceHubRefreshAsync(int delayMs, Func<CancellationToken, Task> workAsync)
     {
         try
         {
-            await LoadChatUnreadCountAsync();
-            await InvokeAsync(StateHasChanged);
+            _hubDebounceCts?.Cancel();
         }
-        catch
+        catch (ObjectDisposedException)
         {
-            // Log error if needed
+            // ignore
+        }
+
+        _hubDebounceCts?.Dispose();
+        _hubDebounceCts = new CancellationTokenSource();
+        var token = _hubDebounceCts.Token;
+
+        try
+        {
+            await Task.Delay(delayMs, token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                await workAsync(token);
+                StateHasChanged();
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "NotificationBar debounced refresh failed for user {UserId}", CurrentUser.Id);
         }
     }
 
     public void Dispose()
     {
+        try
+        {
+            _hubDebounceCts?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // ignore
+        }
+
+        _hubDebounceCts?.Dispose();
+        _hubDebounceCts = null;
+
         // Stop chat hub for notification bar
         try
         {
             JSRuntime?.InvokeVoidAsync("chatHub.stopForNotificationBar");
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore errors during disposal
+            Logger.LogDebug(ex, "NotificationBar Dispose JS cleanup failed (ignored).");
         }
         
         // Note: Don't dispose the notification hub SignalR connection here as it's shared with NotificationToast
@@ -262,9 +329,9 @@
             var newCount = (int)result.TotalCount;
             _unreadCount = newCount; // Always update, even if same value
         }
-        catch
+        catch (Exception ex)
         {
-            // Log error if needed
+            Logger.LogWarning(ex, "NotificationBar LoadUnreadCountAsync failed for user {UserId}", CurrentUser.Id);
         }
     }
 
@@ -275,8 +342,9 @@
             var result = await ConversationAppService.GetTotalUnreadCountAsync();
             _totalChatUnreadCount = result.TotalUnreadCount;
         }
-        catch
+        catch (Exception ex)
         {
+            Logger.LogWarning(ex, "NotificationBar LoadChatUnreadCountAsync failed for user {UserId}", CurrentUser.Id);
             _totalChatUnreadCount = 0;
         }
     }
@@ -321,18 +389,15 @@
             _skipCount += result.Items.Count; // Use original count for pagination
             // Check if we have more items - show "Load More" if we got a full page of results
             _hasMore = result.Items.Count >= _pageSize && result.TotalCount > _skipCount;
-
-            // Update unread count
-            await LoadUnreadCountAsync();
         }
-        catch
+        catch (Exception ex)
         {
-            // Handle error
+            Logger.LogWarning(ex, "NotificationBar LoadNotificationsAsync failed for user {UserId}", CurrentUser.Id);
         }
         finally
         {
             _isLoading = false;
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -381,9 +446,9 @@
             await LoadNotificationsAsync();
             await LoadUnreadCountAsync();
         }
-        catch
+        catch (Exception ex)
         {
-            // Log error if needed
+            Logger.LogWarning(ex, "NotificationBar MarkNotificationAsReadAsync failed for user {UserId}", CurrentUser.Id);
         }
     }
 

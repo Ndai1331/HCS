@@ -19,7 +19,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.CalendarEventParticipants;
 
@@ -144,11 +143,7 @@ public abstract class CalendarEventParticipantsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(CalendarEventParticipantExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var calendarEventParticipants = await _calendarEventParticipantRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.ResponseStatus, input.Notified, input.CalendarEventId, input.IdentityUserId);
         var items = calendarEventParticipants.Select(item => new { ResponseStatus = item.CalendarEventParticipant.ResponseStatus, Notified = item.CalendarEventParticipant.Notified, CalendarEvent = item.CalendarEvent?.Title, IdentityUser = item.IdentityUser?.Name, });

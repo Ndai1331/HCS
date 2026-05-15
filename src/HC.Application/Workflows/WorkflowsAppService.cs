@@ -19,7 +19,6 @@ using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using Volo.Abp.Domain.Entities;
-using HC.Shared;
 
 namespace HC.Workflows;
 
@@ -115,11 +114,7 @@ public abstract class WorkflowsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(WorkflowExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var workflows = await _workflowRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.Code, input.Name, input.Description, input.IsActive, input.WorkflowDefinitionId);
         var items = workflows.Select(item => new { Code = item.Workflow.Code, Name = item.Workflow.Name, Description = item.Workflow.Description, IsActive = item.Workflow.IsActive, WorkflowDefinition = item.WorkflowDefinition?.Code, });

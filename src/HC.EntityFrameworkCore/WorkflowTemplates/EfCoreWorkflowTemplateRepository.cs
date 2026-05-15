@@ -28,8 +28,10 @@ public abstract class EfCoreWorkflowTemplateRepositoryBase : EfCoreRepository<HC
 
     public virtual async Task<WorkflowTemplateWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(workflowTemplate => new WorkflowTemplateWithNavigationProperties { WorkflowTemplate = workflowTemplate, Workflow = dbContext.Set<Workflow>().FirstOrDefault(c => c.Id == workflowTemplate.WorkflowId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.WorkflowTemplate.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<WorkflowTemplateWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, string? code = null, string? name = null, string? outputFormat = null, Guid? workflowId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

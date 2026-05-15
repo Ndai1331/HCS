@@ -29,8 +29,10 @@ public abstract class EfCoreWorkflowStepAssignmentRepositoryBase : EfCoreReposit
 
     public virtual async Task<WorkflowStepAssignmentWithNavigationProperties> GetWithNavigationPropertiesAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var dbContext = await GetDbContextAsync();
-        return (await GetDbSetAsync()).Where(b => b.Id == id).Select(workflowStepAssignment => new WorkflowStepAssignmentWithNavigationProperties { WorkflowStepAssignment = workflowStepAssignment, Step = dbContext.Set<WorkflowStepTemplate>().FirstOrDefault(c => c.Id == workflowStepAssignment.StepId), DefaultUser = dbContext.Set<IdentityUser>().FirstOrDefault(c => c.Id == workflowStepAssignment.DefaultUserId) }).FirstOrDefault();
+        var query = await GetQueryForNavigationPropertiesAsync();
+        return await query
+            .Where(x => x.WorkflowStepAssignment.Id == id)
+            .FirstOrDefaultAsync(GetCancellationToken(cancellationToken));
     }
 
     public virtual async Task<List<WorkflowStepAssignmentWithNavigationProperties>> GetListWithNavigationPropertiesAsync(string? filterText = null, bool? isPrimary = null, bool? isActive = null, Guid? stepId = null, Guid? defaultUserId = null, string? sorting = null, int maxResultCount = int.MaxValue, int skipCount = 0, CancellationToken cancellationToken = default)

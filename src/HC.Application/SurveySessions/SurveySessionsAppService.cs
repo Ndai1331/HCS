@@ -18,7 +18,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.SurveySessions;
 
@@ -110,11 +109,7 @@ public abstract class SurveySessionsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(SurveySessionExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var surveySessions = await _surveySessionRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.FullName, input.PhoneNumber, input.PatientCode, input.SurveyTimeMin, input.SurveyTimeMax, input.DeviceType, input.Note, input.SessionDisplay, input.SurveyLocationId);
         var items = surveySessions.Select(item => new { FullName = item.SurveySession.FullName, PhoneNumber = item.SurveySession.PhoneNumber, PatientCode = item.SurveySession.PatientCode, SurveyTime = item.SurveySession.SurveyTime, DeviceType = item.SurveySession.DeviceType, Note = item.SurveySession.Note, SessionDisplay = item.SurveySession.SessionDisplay, SurveyLocation = item.SurveyLocation?.Name, });

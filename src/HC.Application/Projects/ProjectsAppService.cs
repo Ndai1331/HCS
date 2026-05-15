@@ -131,14 +131,11 @@ public abstract class ProjectsAppServiceBase : HCAppService
         return ObjectMapper.Map<Project, ProjectDto>(updatedProject);
     }
 
+    /// <summary>Excel download: anonymous endpoint allowed only with a one-time server-issued token (see <see cref="GetDownloadTokenAsync"/>).</summary>
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(ProjectExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var projects = await _projectRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.Code, input.Name, input.Description, input.StartDateMin, input.StartDateMax, input.EndDateMin, input.EndDateMax, input.Status, input.OwnerDepartmentId);
         var items = projects.Select(item => new { Code = item.Project.Code, Name = item.Project.Name, Description = item.Project.Description, StartDate = item.Project.StartDate, EndDate = item.Project.EndDate, Status = item.Project.Status, OwnerDepartment = item.OwnerDepartment?.Name, });

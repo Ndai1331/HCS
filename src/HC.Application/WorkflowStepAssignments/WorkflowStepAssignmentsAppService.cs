@@ -19,7 +19,6 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
-using HC.Shared;
 
 namespace HC.WorkflowStepAssignments;
 
@@ -110,11 +109,7 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
     [AllowAnonymous]
     public virtual async Task<IRemoteStreamContent> GetListAsExcelFileAsync(WorkflowStepAssignmentExcelDownloadDto input)
     {
-        var downloadToken = await _downloadTokenCache.GetAsync(input.DownloadToken);
-        if (downloadToken == null || input.DownloadToken != downloadToken.Token)
-        {
-            throw new AbpAuthorizationException("Invalid download token: " + input.DownloadToken);
-        }
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
         var workflowStepAssignments = await _workflowStepAssignmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.IsPrimary, input.IsActive, input.StepId, input.DefaultUserId);
         var items = workflowStepAssignments.Select(item => new { IsPrimary = item.WorkflowStepAssignment.IsPrimary, IsActive = item.WorkflowStepAssignment.IsActive, Step = item.Step?.Name, DefaultUser = item.DefaultUser?.Name, });

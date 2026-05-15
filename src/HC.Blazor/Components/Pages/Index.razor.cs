@@ -526,7 +526,7 @@ public partial class Index
         try
         {
             int maxNumber = 0;
-            const int pageSize = 200;
+            const int pageSize = 500;
             int skipCount = 0;
             bool hasMore = true;
 
@@ -990,8 +990,10 @@ public partial class Index
             });
 
             await Task.WhenAll(membersTask, tasksTask);
-            ProjectMembersList = membersTask.Result.Items;
-            ProjectTasksList = tasksTask.Result.Items;
+            var members = await membersTask;
+            var tasks = await tasksTask;
+            ProjectMembersList = members.Items;
+            ProjectTasksList = tasks.Items;
 
             await ProjectDetailModal.Show();
         }

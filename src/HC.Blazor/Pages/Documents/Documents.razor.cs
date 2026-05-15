@@ -123,11 +123,6 @@ public partial class Documents : IDisposable
     private string? previousAbsoluteUrl;
     private string? previousSourceTypeValue;
 
-    /// <summary>
-    /// After first DataGrid ReadData; avoids CheckForUrlChangesAsync racing before snapshot matches navigation.
-    /// </summary>
-    private bool _documentListHydrated;
-
     private bool _processingApprovalReviewDeepLink;
 
     public Documents()
@@ -176,23 +171,23 @@ public partial class Documents : IDisposable
 
             await InvokeAsync(StateHasChanged);
         }
-        else
-        {
-            // Also check for URL changes on every render as backup
-            await CheckForUrlChangesAsync();
-        }
 
-        Logger.LogInformation("Documents OnAfterRenderAsync end");
+        Logger.LogDebug("Documents OnAfterRenderAsync end (firstRender={FirstRender})", firstRender);
     }
 
     /// <summary>
     /// Handle URL location changes to detect sourceType parameter changes
     /// </summary>
-    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _ = OnLocationChangedAsync(sender, e);
+    }
+
+    private async Task OnLocationChangedAsync(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
         try
         {
-            Logger.LogInformation($"LocationChanged event fired: {e.Location}");
+            Logger.LogInformation("LocationChanged event fired: {Location}", e.Location);
 
             var currentUrl = NavigationManager.ToAbsoluteUri(NavigationManager.Uri).ToString();
             var currentUri = new Uri(currentUrl);
@@ -202,7 +197,10 @@ public partial class Documents : IDisposable
             // Check if sourceType parameter changed
             if (previousSourceTypeValue != currentSourceTypeValue)
             {
-                Logger.LogInformation($"LocationChanged: sourceType changed from '{previousSourceTypeValue}' to '{currentSourceTypeValue}', updating UI");
+                Logger.LogInformation(
+                    "LocationChanged: sourceType changed from '{Previous}' to '{Current}', updating UI",
+                    previousSourceTypeValue,
+                    currentSourceTypeValue);
 
                 await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
                 try
@@ -236,83 +234,11 @@ public partial class Documents : IDisposable
                 previousAbsoluteUrl = currentUrl;
                 Logger.LogInformation("LocationChanged: sourceType unchanged, no update needed");
                 await TryProcessApprovalReviewDeepLinkAsync();
-                await InvokeAsync(StateHasChanged);
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error in OnLocationChanged");
-        }
-    }
-
-    /// <summary>
-    /// Check if URL or sourceType parameter has changed and update UI accordingly
-    /// </summary>
-    private async Task CheckForUrlChangesAsync()
-    {
-        if (!_documentListHydrated)
-        {
-            return;
-        }
-
-        try
-        {
-            var currentUrl = NavigationManager.ToAbsoluteUri(NavigationManager.Uri).ToString();
-
-            // Check if URL changed
-            if (previousAbsoluteUrl != currentUrl)
-            {
-                Logger.LogInformation($"URL changed from {previousAbsoluteUrl} to {currentUrl}");
-
-                var currentUri = new Uri(currentUrl);
-                var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(currentUri.Query);
-                var currentSourceTypeValue = query.TryGetValue("sourceType", out var st) ? st.ToString() : null;
-
-                // Check if sourceType parameter changed
-                if (previousSourceTypeValue != currentSourceTypeValue)
-                {
-                    Logger.LogInformation($"sourceType changed from '{previousSourceTypeValue}' to '{currentSourceTypeValue}', updating UI");
-
-                    await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-                    try
-                    {
-                        // Update sourceType and page title
-                        UpdateSourceTypeFromQuery();
-                        Logger.LogInformation($"After UpdateSourceTypeFromQuery: PageTitle={PageTitle}");
-
-                        // Update breadcrumb items with new title
-                        BreadcrumbItems.Clear();
-                        await SetBreadcrumbItemsAsync();
-                        Logger.LogInformation($"After SetBreadcrumbItemsAsync: BreadcrumbItems count={BreadcrumbItems.Count}");
-
-                        // Reload documents
-                        await GetDocumentsAsync();
-                    }
-                    finally
-                    {
-                        await BlockUiService.UnBlock();
-                    }
-
-                    // Update previous values
-                    previousAbsoluteUrl = currentUrl;
-                    previousSourceTypeValue = currentSourceTypeValue;
-
-                    // Force UI refresh
-                    await InvokeAsync(StateHasChanged);
-                    Logger.LogInformation("UI updated successfully after sourceType change");
-                }
-                else
-                {
-                    // URL changed but sourceType didn't, just update previous URL
-                    previousAbsoluteUrl = currentUrl;
-                    Logger.LogInformation("URL changed but sourceType is the same, no update needed");
-                    await TryProcessApprovalReviewDeepLinkAsync();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error in CheckForUrlChangesAsync");
         }
     }
 
@@ -407,14 +333,14 @@ public partial class Documents : IDisposable
             createTask, editTask, sendTask, submitForSigningTask,
             submitForApprovalTask, rejectApprovalTask, approveWithNoteTask, deleteTask);
 
-        CanCreateDocument = createTask.Result;
-        CanEditDocument = editTask.Result;
-        CanSendDocument = sendTask.Result;
-        CanSubmitForSigning = submitForSigningTask.Result;
-        CanSubmitForApproval = submitForApprovalTask.Result;
-        CanRejectApproval = rejectApprovalTask.Result;
-        CanApproveWithNote = approveWithNoteTask.Result;
-        CanDeleteDocument = deleteTask.Result;
+        CanCreateDocument = await createTask;
+        CanEditDocument = await editTask;
+        CanSendDocument = await sendTask;
+        CanSubmitForSigning = await submitForSigningTask;
+        CanSubmitForApproval = await submitForApprovalTask;
+        CanRejectApproval = await rejectApprovalTask;
+        CanApproveWithNote = await approveWithNoteTask;
+        CanDeleteDocument = await deleteTask;
     }
 
     /// <summary>
@@ -570,16 +496,9 @@ public partial class Documents : IDisposable
 
     private async Task OnDataGridReadAsync(DataGridReadDataEventArgs<DocumentWithNavigationPropertiesDto> e)
     {
-        try
-        {
-            CurrentSorting = e.Columns.Where(c => c.SortDirection != SortDirection.Default).Select(c => c.Field + (c.SortDirection == SortDirection.Descending ? " DESC" : "")).JoinAsString(",");
-            CurrentPage = e.Page;
-            await GetDocumentsAsync();
-        }
-        finally
-        {
-            _documentListHydrated = true;
-        }
+        CurrentSorting = e.Columns.Where(c => c.SortDirection != SortDirection.Default).Select(c => c.Field + (c.SortDirection == SortDirection.Descending ? " DESC" : "")).JoinAsString(",");
+        CurrentPage = e.Page;
+        await GetDocumentsAsync();
 
         await TryProcessApprovalReviewDeepLinkAsync();
         await InvokeAsync(StateHasChanged);
