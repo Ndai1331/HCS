@@ -1,0 +1,13 @@
+/* _content/Volo.Abp.Account.Pro.Public.Blazor.Shared/Components/PasswordEdit.razor.rz.scp.css */
+.transition[b-o7jhrgauq4] {
+    transition: all 0.3s ease-out;
+}
+
+.progress[b-o7jhrgauq4] {
+    background-color: var(--lpx-border-color);
+    height: 4px;
+    border-radius: 3px 3px 0 0;
+    margin-top: -5px;
+    z-index: 1;
+    position: relative
+}

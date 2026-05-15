@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HC.AuthServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e49db34e5d5179043dbecbd3c509d547b3eff799")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c793a9905b6f1250662128e9fdaf051f2b26dc68")]
 [assembly: System.Reflection.AssemblyProductAttribute("HC.AuthServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HC.AuthServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

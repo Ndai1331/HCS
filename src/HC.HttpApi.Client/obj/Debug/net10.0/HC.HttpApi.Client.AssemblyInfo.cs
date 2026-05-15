@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HC.HttpApi.Client")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e49db34e5d5179043dbecbd3c509d547b3eff799")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+68cde15aebf41eb186987acb0939d51fe950d773")]
 [assembly: System.Reflection.AssemblyProductAttribute("HC.HttpApi.Client")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HC.HttpApi.Client")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
