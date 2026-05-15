@@ -244,12 +244,12 @@ orleans.codegen.cs
 # *.opt
 
 # # Visual Studio LightSwitch build output
-# **/*.HTMLClient/GeneratedArtifacts
-# **/*.DesktopClient/GeneratedArtifacts
-# **/*.DesktopClient/ModelManifest.xml
-# **/*.Server/GeneratedArtifacts
-# **/*.Server/ModelManifest.xml
-# _Pvt_Extensions
+**/*.HTMLClient/GeneratedArtifacts
+**/*.DesktopClient/GeneratedArtifacts
+**/*.DesktopClient/ModelManifest.xml
+**/*.Server/GeneratedArtifacts
+**/*.Server/ModelManifest.xml
+_Pvt_Extensions
 
 # # Paket dependency manager
 # .paket/paket.exe
