@@ -104,7 +104,7 @@ public class HCBackgroundJobWorkerModule : AbpModule
                     minio.EndPoint = configuration["MinIO:EndPoint"] ?? "minio:9000";
                     minio.AccessKey = configuration["MinIO:AccessKey"] ?? "hcsadmin";
                     minio.SecretKey = configuration["MinIO:SecretKey"] ?? "hcsadminpassword";
-                    minio.BucketName = configuration["MinIO:BucketName"] ?? "hcs_bucket";
+                    minio.BucketName = configuration["MinIO:BucketName"] ?? "hcsbucket";
                     minio.WithSSL = configuration.GetValue<bool>("MinIO:WithSSL", false);
                     minio.CreateBucketIfNotExists = configuration.GetValue<bool>("MinIO:CreateBucketIfNotExists", true);
                 });

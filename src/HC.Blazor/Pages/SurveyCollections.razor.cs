@@ -10,10 +10,10 @@ using HC.SurveyResults;
 using HC.SurveyFiles;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
-using Volo.Abp.Http.Client;
 using Volo.Abp.AspNetCore.Components.Messages;
 using Volo.Abp.AspNetCore.Components.BlockUi;
 using Microsoft.JSInterop;
+using HC.Blazor.BlobStoring;
 
 namespace HC.Blazor.Pages;
 
@@ -29,7 +29,7 @@ public partial class SurveyCollections
 
 
     [Inject]
-    private IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider { get; set; } = default!;
+    private IBlobDisplayUrlProvider BlobDisplayUrlProvider { get; set; } = default!;
 
     protected string PageTitle => $"{L["SurveyCollections:Title"]}: {SurveyLocation?.Name ?? string.Empty}";
 
@@ -49,7 +49,6 @@ public partial class SurveyCollections
     // Step data
     protected Dictionary<Guid, IFileEntry> CriteriaFiles { get; set; } = new();
     protected Dictionary<Guid, string> UploadedFileNames { get; set; } = new();
-    protected string ApiBaseUrl { get; set; } = string.Empty;
     protected  List<SurveyResultCreateDto> NewSurveyResults { get; set; } = new();
     protected FilePicker FilePicker { get; set; } = default!;
     public SurveyCollections()
@@ -69,9 +68,6 @@ public partial class SurveyCollections
     protected override async Task OnInitializedAsync()
     {
         _logger.LogInformation("[SurveyCollections] OnInitializedAsync - SurveyLocationId: {SurveyLocationId}", SurveyLocationId);
-        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
-        ApiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
-        _logger.LogInformation("[SurveyCollections] OnInitializedAsync - ApiBaseUrl: {ApiBaseUrl}", ApiBaseUrl ?? "(null)");
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

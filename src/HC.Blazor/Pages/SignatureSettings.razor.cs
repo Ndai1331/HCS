@@ -22,6 +22,7 @@ using Volo.Abp.Content;
 using Volo.Abp.AspNetCore.Components.Messages;
 using Volo.Abp.BlobStoring;
 using Microsoft.Extensions.Logging;
+using HC.Blazor.BlobStoring;
 namespace HC.Blazor.Pages;
 
 public partial class SignatureSettings : HCComponentBase
@@ -54,7 +55,9 @@ public partial class SignatureSettings : HCComponentBase
     private int CreateLayoutImgPickerKey { get; set; }
     private int EditLayoutImgPickerKey { get; set; }
     private bool IsUploadingLayoutImg { get; set; }
-    private string? _apiBaseUrl;
+
+    [Inject]
+    protected IBlobDisplayUrlProvider BlobDisplayUrlProvider { get; set; } = default!;
 
     // Field-level validation errors
     private Dictionary<string, string?> CreateFieldErrors { get; set; } = new();
@@ -102,8 +105,6 @@ public partial class SignatureSettings : HCComponentBase
     protected override async Task OnInitializedAsync()
     {
         await SetPermissionsAsync();
-        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
-        _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -905,11 +906,6 @@ public partial class SignatureSettings : HCComponentBase
             return string.Empty;
         }
 
-        if (string.IsNullOrWhiteSpace(_apiBaseUrl))
-        {
-            _apiBaseUrl = "/";
-        }
-
-        return $"{_apiBaseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+        return BlobDisplayUrlProvider.GetDisplayUrl(imagePath);
     }
 }

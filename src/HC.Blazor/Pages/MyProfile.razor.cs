@@ -25,9 +25,9 @@ using System.Threading;
 using Microsoft.Extensions.Caching.Memory;
 using System.IO;
 using Volo.Abp.BlobStoring;
-using Volo.Abp.Http.Client;
-using HC.SignatureSettings;
+using HC.Blazor.BlobStoring;
 using Volo.Abp.Application.Dtos;
+using HC.SignatureSettings;
 
 
 namespace HC.Blazor.Pages;
@@ -68,7 +68,7 @@ public partial class MyProfile
     public IBlobContainer BlobContainer { get; set; } = default!;
 
     [Inject]
-    public IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider { get; set; } = default!;
+    public IBlobDisplayUrlProvider BlobDisplayUrlProvider { get; set; } = default!;
 
     [Inject]
     public ISignatureSettingsAppService SignatureSettingsAppService { get; set; } = default!;
@@ -114,8 +114,6 @@ public partial class MyProfile
     protected string UploadedSignatureImagePath { get; set; } = string.Empty;
     protected bool IsUploadingSignatureImage { get; set; }
     protected int SignatureImageFilePickerProgress { get; set; }
-    
-    protected string? _apiBaseUrl;
 
     // Department properties
     protected UserDepartmentCreateDto NewUserDepartment { get; set; } = new();
@@ -167,11 +165,6 @@ public partial class MyProfile
         EndDate = Clock.Now.Date;
         HasAuditLoggingPermission = await PermissionChecker.IsGrantedAsync(AbpAuditLoggingPermissions.AuditLogs.Default);
         HasSaasPermission = await PermissionChecker.IsGrantedAsync(SaasHostPermissions.Tenants.Default);
-
-        // Load API base URL for image display
-        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
-
-        _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
 
         await Task.WhenAll(
             LoadUserProfileAsync(),
@@ -1138,15 +1131,11 @@ public partial class MyProfile
     protected virtual string GetSignatureImageUrl(string imagePath)
     {
         if (string.IsNullOrEmpty(imagePath))
-            return string.Empty;
-            
-        // Use cached API base URL or set default
-        if (string.IsNullOrEmpty(_apiBaseUrl))
         {
-            _apiBaseUrl = "/"; // Will be properly set in OnInitializedAsync
+            return string.Empty;
         }
-        
-        return $"{_apiBaseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+
+        return BlobDisplayUrlProvider.GetDisplayUrl(imagePath);
     }
 
     // Signature Settings Lookup Methods

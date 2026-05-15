@@ -23,6 +23,7 @@ using Volo.Abp.Content;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.Http.Client;
 using Volo.Abp.AspNetCore.Components.Messages;
+using HC.Blazor.BlobStoring;
 
 namespace HC.Blazor.Pages;
 
@@ -82,7 +83,8 @@ public partial class SurveyCriterias
     [Inject]
     private IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider { get; set; } = default!;
 
-    private string? _apiBaseUrl;
+    [Inject]
+    private IBlobDisplayUrlProvider BlobDisplayUrlProvider { get; set; } = default!;
 
     public SurveyCriterias()
     {
@@ -101,10 +103,6 @@ public partial class SurveyCriterias
     {
         await SetPermissionsAsync();
         await GetSurveyLocationCollectionLookupAsync();
-        
-        // Get API base URL for image URLs
-        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
-        _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -529,10 +527,11 @@ public partial class SurveyCriterias
     private string GetImageUrl(string imagePath)
     {
         if (string.IsNullOrEmpty(imagePath))
+        {
             return string.Empty;
-            
-        var baseUrl = _apiBaseUrl ?? string.Empty;
-        return $"{baseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+        }
+
+        return BlobDisplayUrlProvider.GetDisplayUrl(imagePath);
     }
 
     private async Task DeleteSelectedSurveyCriteriasAsync()
