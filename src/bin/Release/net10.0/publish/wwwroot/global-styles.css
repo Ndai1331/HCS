@@ -1,0 +1,556 @@
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+:root {
+    --lpx-logo: url('/images/logo/leptonx/icon.svg');
+    --lpx-logo-icon: url('/images/logo/leptonx/icon.svg');
+}
+
+
+
+#lpx-wrapper {
+    margin: 0 auto;
+    max-width: 100% !important;
+    position: relative;
+    min-height: 100vh;
+    background-image: url(https://qldh.benhvien199.vn/Images/bg-axis.png);
+    background-repeat: no-repeat;
+    background-position: right bottom;
+    background-size: cover;
+    background-attachment: fixed;
+}
+
+.lpx-topbar-container, .lpx-topbar-container .lpx-topbar{
+    background-color: transparent !important;
+}
+.lpx-content-container {
+    background-color: transparent !important;
+}
+
+.lpx-topbar-container{
+    display: none !important;
+}
+.lpx-content-container .lpx-content{
+    padding-bottom: 1.5rem !important;
+}
+
+
+.select2-dropdown {
+    z-index: 9999999 !important;
+}
+
+.select2-container--default .select2-selection--multiple,
+
+.select2-container--default
+.select2-selection--single {
+    --tw-bg-opacity: 1;
+    background-color: rgb(249 251 253 / var(--tw-bg-opacity)) !important;
+    height: 44px !important;
+    min-width: 150px;
+    background-color: #f0f4f7 !important;
+    border-radius: 0.5rem !important;
+    border-color: #e8eef3 !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 38px !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow  {
+    height: 35px !important;
+} 
+
+.select2-container--default .select2-selection--multiple .select2-selection__rendered {
+    padding: 5px !important;
+}
+
+.select2-selection--single ,
+.select2-selection--multiple {
+    border: 1px solid #323a461a !important;
+}
+
+.select2-selection__rendered ,
+.select2-selection--multiple .select2-selection__rendered {
+    border-radius: 4px !important;
+}
+
+.select2-selection__arrow ,
+.select2-selection--multiple .select2-selection__arrow {
+    border-radius: 4px !important;
+}
+
+.select2-disabled .select2-selection ,
+.select2-disabled .select2-selection--multiple {
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+.select2-disabled .select2-selection > span ,
+.select2-disabled .select2-selection--multiple > span {
+    background-color: inherit !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove{
+    color: #fff !important;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice{
+    background-color: #f72585 !important;
+    border: 1px solid #f72585 !important;
+    color: #fff;
+}
+
+/* Hide Blazorise license banner globally */
+#blazorise-license-banner-host {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    opacity: 0 !important;
+}
+
+
+
+.lpx-header-bottom .lpx-nav-menu .outer-menu-item .lpx-menu-item, .lpx-header-top > .lpx-nav .lpx-nav-menu .outer-menu-item .lpx-menu-item, .lpx-header-top > .lpx-right-menu > .lpx-nav .lpx-nav-menu .outer-menu-item .lpx-menu-item{
+    padding: 0 10px 0 0 !important;
+}
+
+
+.hc-action-icons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-center;
+    gap: 0.75rem;
+}
+
+.hc-action-icons i {
+    margin-left: 0.75rem !important;
+}
+
+.hc-action-icon {
+    font-size: 14px;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.hc-action-icon:hover {
+    opacity: 0.8;
+    transform: scale(1.1);
+}
+
+.hc-action-edit {
+    color: #6c5dd3 !important;
+}
+
+.hc-action-view {
+    color: #0d6efd !important;
+}
+
+.hc-action-tasks {
+    color: #198754 !important;
+}
+
+.hc-action-members {
+    color: #0dcaf0 !important;
+}
+
+.hc-action-delete {
+    color: #c00d49 !important;
+}
+
+
+
+
+.notification-unread {
+    background-color: #e7f3ff !important;
+}
+
+
+/* Project task styles */
+
+.hc-kanban-board {
+    overflow-x: auto;
+    position: relative;
+}
+
+/* Show loading overlay while updating via drag-drop */
+.hc-kanban-loading {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, .72);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
+}
+
+.hc-kanban-column {
+    min-width: 280px;
+    max-width: 320px;
+}
+
+.hc-kanban-zone {
+    min-height: 420px;
+    background: #f7f9fc;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: .75rem;
+    padding: .5rem;
+}
+
+.hc-kanban-card {
+    cursor: grab;
+}
+
+.hc-kanban-card:active {
+    cursor: grabbing;
+}
+
+.hc-kanban-muted {
+    color: rgba(0,0,0,.55);
+}
+
+.hc-avatar-stack {
+    display: flex;
+    align-items: center;
+}
+
+.hc-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #6c757d;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .75rem;
+    font-weight: 600;
+    border: 2px solid #fff;
+}
+
+.hc-avatar + .hc-avatar {
+    margin-left: -10px;
+}
+
+/* Card layout inspired by Menilo template */
+.hc-kanban-cardwrap {
+    border-radius: .75rem;
+    overflow: hidden;
+}
+
+.hc-badge-subtle {
+    font-weight: 600;
+    font-size: .72rem;
+    border-radius: .5rem;
+    padding: .45rem .6rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.hc-badge-success-subtle {
+    background: rgba(40, 167, 69, .12);
+    color: #198754;
+}
+
+.hc-badge-primary-subtle {
+    background: rgba(13, 110, 253, .12);
+    color: #0d6efd;
+}
+
+.hc-badge-warning-subtle {
+    background: rgba(255, 193, 7, .16);
+    color: #b08900;
+}
+
+.hc-badge-danger-subtle {
+    background: rgba(220, 53, 69, .14);
+    color: #dc3545;
+}
+
+.hc-badge-secondary-subtle {
+    background: rgba(108, 117, 125, .14);
+    color: #6c757d;
+}
+
+.hc-badge-info-subtle {
+    background: rgba(13, 202, 240, .16);
+    color: #0aa2c0;
+}
+
+.hc-kanban-pill-start-date{
+    border: 1px dashed rgb(21, 255, 0);
+    border-radius: 4px;
+    padding: .25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: 10px;
+}
+
+.hc-kanban-pill-due-date{
+    border: 1px dashed rgba(255, 0, 0, 1);
+    border-radius: 4px;
+    padding: .25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: 10px;
+}
+
+
+
+.hc-kanban-actions .btn {
+    border: 0;
+    padding: 0;
+}
+
+/* Hide dropdown caret, keep only 3-dots icon */
+.hc-kanban-actions .dropdown-toggle::after {
+    display: none !important;
+}
+
+.hc-kanban-footer-split {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.hc-kanban-footer-divider {
+    width: 1px;
+    height: 26px;
+    background: rgba(0,0,0,.12);
+}
+
+.hc-kanban-footer-meta {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    color: rgba(0,0,0,.55);
+    font-size: .85rem;
+}
+
+/* Menilo-like typography + borders */
+.fs-13 {
+    font-size: 0.8125rem !important;
+}
+
+.hc-kanban-cardwrap h6,
+.hc-kanban-cardwrap .h6 {
+    font-size: 0.875rem;
+}
+
+.hc-kanban-cardwrap {
+    --pe-card-border-width: 1px;
+    --pe-card-border-color: #e9e9e9;
+}
+
+.hc-kanban-cardwrap .card-body {
+    padding: .75rem;
+    border-bottom: var(--pe-card-border-width) solid var(--pe-card-border-color);
+}
+.hc-kanban-cardwrap .card-footer {
+    padding: .75rem !important;
+}
+ /* End of Project task styles */
+
+
+
+/* FilePicker Container - Purple dropzone theme */
+.b-file-picker {
+    background-color: #f8f7fc !important;
+    border: 2px dashed #8b5cf6 !important;
+    border-radius: 12px !important;
+    padding: 2rem !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+}
+
+.b-file-picker:hover {
+    background-color: #f3f0ff !important;
+    border-color: #7c3aed !important;
+}
+
+/* Input group styling */
+.b-file-picker .input-group.form-file {
+    background-color: transparent !important;
+    border: 1px solid #8b5cf6 !important;
+    border-radius: 8px !important;
+    justify-content: center !important;
+    margin-bottom: 0.5rem !important;
+    overflow: hidden !important;
+}
+
+/* Label/Text styling - Purple */
+.b-file-picker .input-group-text {
+    background-color: #8b5cf6 !important;
+    border: 1px solid #8b5cf6 !important;
+    border-right: none !important;
+    padding: 0.5rem 1rem !important;
+    color: #ffffff !important;
+}
+
+.b-file-picker .input-group-text .text-muted {
+    color: white !important;
+    font-weight: 500 !important;
+    font-size: 1rem !important;
+}
+
+/* File input styling - Ensure it's clickable */
+.b-file-picker .form-control[type="file"] {
+    border: 1px solid #8b5cf6 !important;
+    border-left: none !important;
+    background-color: #ffffff !important;
+    color: #8b5cf6 !important;
+    cursor: pointer !important;
+    padding: 0.5rem !important;
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border-radius: 0 8px 8px 0 !important;
+}
+
+.b-file-picker .form-control[type="file"]::file-selector-button {
+    background-color: #8b5cf6 !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    margin-right: 0.75rem !important;
+}
+
+.b-file-picker .form-control[type="file"]::file-selector-button:hover {
+    background-color: #7c3aed !important;
+}
+
+/* Drop text styling - Purple */
+.b-file-picker .b-text-drop {
+    color: #8b5cf6 !important;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    margin-top: 0.75rem !important;
+    padding-top: 2.5rem;
+    padding-bottom: 2.5rem;
+    border-radius: 12px !important;
+}
+
+/* File list items - Uploading state */
+.b-file-picker .b-file-picker-item {
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important;
+    padding: 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+    background-color: #ffffff !important;
+}
+
+.b-file-picker .b-file-picker-item .b-file-picker-item-name {
+    color: #111827 !important;
+    font-weight: 500 !important;
+}
+
+/* Progress bar styling - Purple */
+.b-file-picker .b-progress {
+    margin-top: 0.5rem !important;
+    height: 8px !important;
+    border-radius: 4px !important;
+    background-color: #e5e7eb !important;
+}
+
+.b-file-picker .b-progress-bar {
+    background-color: #8b5cf6 !important;
+    border-radius: 4px !important;
+}
+
+/* FilePicker List - Uploaded files (success state - Green) */
+.b-file-picker .b-file-picker-item.b-file-picker-item-success,
+.b-file-picker .b-file-picker-item[data-state="success"] {
+    background-color: #ecfdf5 !important;
+    border-color: #10b981 !important;
+}
+
+.b-file-picker .b-file-picker-item.b-file-picker-item-success .b-file-picker-item-name,
+.b-file-picker .b-file-picker-item[data-state="success"] .b-file-picker-item-name {
+    color: #065f46 !important;
+}
+
+/* Upload button styling - Purple */
+.b-file-picker .b-file-picker-buttons .btn-primary,
+.b-file-picker .b-file-picker-buttons button.btn-primary {
+    background-color: #7c3aed !important;
+    border-color: #7c3aed !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 1.5rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    border-radius: 8px !important;
+}
+
+.b-file-picker .b-file-picker-buttons .btn-primary:hover,
+.b-file-picker .b-file-picker-buttons button.btn-primary:hover {
+    background-color: #6d28d9 !important;
+    border-color: #6d28d9 !important;
+}
+
+.b-file-picker .b-file-picker-buttons .btn-primary:disabled,
+.b-file-picker .b-file-picker-buttons button.btn-primary:disabled {
+    background-color: #c4b5fd !important;
+    border-color: #c4b5fd !important;
+    opacity: 0.6 !important;
+}
+
+/* File remove button (trash icon) - Red */
+.b-file-picker .b-file-picker-item-remove,
+.b-file-picker .b-file-picker-item .btn-close {
+    color: #ef4444 !important;
+}
+
+.b-file-picker .b-file-picker-item-remove:hover,
+.b-file-picker .b-file-picker-item .btn-close:hover {
+    color: #dc2626 !important;
+}
+
+/* Button group spacing */
+.b-file-picker .b-file-picker-buttons {
+    display: flex !important;
+    gap: 0.75rem !important;
+    margin-top: 1rem !important;
+    justify-content: center !important;
+}
+
+/* Ensure input file is always clickable */
+.b-file-picker .form-control[type="file"]:not([disabled]) {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.b-file-picker .input-group.form-file {
+    pointer-events: auto !important;
+}
+
+.b-file-picker .b-file-picker-file{
+    min-width: 10rem !important;
+}
+/* End of Filepicker styles */

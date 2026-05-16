@@ -20,6 +20,7 @@ using Microsoft.JSInterop;
 using Volo.Abp;
 using Volo.Abp.Content;
 using Volo.Abp.BlobStoring;
+using HC.Blazor.BlobStoring;
 
 namespace HC.Blazor.Pages;
 
@@ -53,7 +54,9 @@ public partial class Reports
     private FilePicker EditImageFilePicker { get; set; } = new();
     private int CreateImagePickerKey { get; set; }
     private int EditImagePickerKey { get; set; }
-    private string? _apiBaseUrl;
+
+    [Inject]
+    protected IBlobDisplayUrlProvider BlobDisplayUrlProvider { get; set; } = default!;
 
     private Validations EditingReportValidations { get; set; } = new();
     private Guid EditingReportId { get; set; }
@@ -90,8 +93,6 @@ public partial class Reports
     protected override async Task OnInitializedAsync()
     {
         await SetPermissionsAsync();
-        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
-        _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -404,12 +405,7 @@ public partial class Reports
             return string.Empty;
         }
 
-        if (string.IsNullOrWhiteSpace(_apiBaseUrl))
-        {
-            _apiBaseUrl = "/";
-        }
-
-        return $"{_apiBaseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+        return BlobDisplayUrlProvider.GetDisplayUrl(imagePath);
     }
 
     private Task SelectAllItems()

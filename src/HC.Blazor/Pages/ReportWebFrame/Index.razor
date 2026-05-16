@@ -4,10 +4,10 @@
 @using HC.Reports
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components
-@using Volo.Abp.Http.Client
+@using HC.Blazor.BlobStoring
 @inherits HCComponentBase
 @inject IReportsAppService ReportsAppService
-@inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider
+@inject IBlobDisplayUrlProvider BlobDisplayUrlProvider
 
 <Card class="mt-3">
     <CardBody>
@@ -55,16 +55,6 @@
     private string? ReportUrl { get; set; }
     private string? ReportName { get; set; }
     private string? ReportImage { get; set; }
-    private string _apiBaseUrl = "/";
-
-    protected override async Task OnInitializedAsync()
-    {
-        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
-        var baseUrl = blobFilesService?.BaseUrl;
-        _apiBaseUrl = string.IsNullOrWhiteSpace(baseUrl)
-            ? "/"
-            : (baseUrl.EndsWith('/') ? baseUrl : $"{baseUrl}/");
-    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -143,17 +133,6 @@
 
     private string GetImageUrl(string? imagePath)
     {
-        if (string.IsNullOrWhiteSpace(imagePath))
-        {
-            return string.Empty;
-        }
-
-        if (Uri.TryCreate(imagePath, UriKind.Absolute, out var absoluteUri)
-            && (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps))
-        {
-            return imagePath;
-        }
-
-        return $"{_apiBaseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+        return BlobDisplayUrlProvider.GetDisplayUrl(imagePath);
     }
 }

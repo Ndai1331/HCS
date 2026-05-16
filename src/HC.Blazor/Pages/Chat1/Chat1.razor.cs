@@ -25,6 +25,7 @@ using Microsoft.Extensions.Logging;
 using Volo.Abp.Http.Client;
 using HC.Blazor.Pages.Chat1.Handlers;
 using Volo.Abp.AspNetCore.Components.Messages;
+using HC.Blazor.BlobStoring;
 
 namespace HC.Blazor.Pages.Chat1;
 
@@ -165,21 +166,18 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     protected IJSRuntime JSRuntime { get; set; }
 
     [Inject]
-    private IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider { get; set; } = default!;
+    private IBlobDisplayUrlProvider BlobDisplayUrlProvider { get; set; } = default!;
 
     // === NEW: Handler Factory for Refactored Code ===
     [Inject]
     private Pages.Chat1.Handlers.IChatHandlerFactory HandlerFactory { get; set; }
 
-    private string? _apiBaseUrl;
-
-    // === NEW: Refactored Components (Gradual Integration) ===
+    private IChatPaginationHandler _paginationHandler;
     private ChatState _state = new ChatState();
     private PaginationState _pagination = new PaginationState();
     
     private IChatMessageHandler _messageHandler;
     private IChatFileHandler _fileHandler;
-    private IChatPaginationHandler _paginationHandler;
     private IChatOptimizationHandler _optimizationHandler;
     [JSInvokable]
     public async Task HandleSignalRMessage(object messageData)
@@ -506,10 +504,6 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
 
         HasSearchingPermission = await AuthorizationService.IsGrantedAsync(ChatPermissions.Searching);
 
-        // Get API base URL for image URLs
-        var blobFilesService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("BlobFiles");
-        _apiBaseUrl = blobFilesService?.BaseUrl?.EnsureEndsWith('/') ?? string.Empty;
-        
         // Initialize SignalR connection for real-time chat
         try
         {
@@ -2497,10 +2491,11 @@ public partial class Chat1 : HCComponentBase, IAsyncDisposable
     private string GetImageUrl(string imagePath)
     {
         if (string.IsNullOrEmpty(imagePath))
+        {
             return string.Empty;
-            
-        var baseUrl = _apiBaseUrl ?? string.Empty;
-        return $"{baseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+        }
+
+        return BlobDisplayUrlProvider.GetDisplayUrl(imagePath);
     }
 
     /// <summary>

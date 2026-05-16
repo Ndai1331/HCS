@@ -159,3 +159,6 @@ fc-cache -f -v
 
 docker compose down
 docker compose up -d --build
+
+
+mc anonymous set public local/hcsbucket

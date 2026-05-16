@@ -1,24 +1,25 @@
 using System;
+using HC.Blazor.BlobStoring;
 using HC.Localization;
 using Microsoft.Extensions.Localization;
 using Volo.Abp.Localization;
+
 namespace HC.Blazor.Shared;
-public class FileHelper 
+
+public class FileHelper
 {
     protected IStringLocalizer<HCResource> L { get; }
+    private readonly IBlobDisplayUrlProvider _blobDisplayUrlProvider;
 
-    public FileHelper(IStringLocalizer<HCResource> localizer)
+    public FileHelper(IStringLocalizer<HCResource> localizer, IBlobDisplayUrlProvider blobDisplayUrlProvider)
     {
         L = localizer;
+        _blobDisplayUrlProvider = blobDisplayUrlProvider;
     }
-   
-    public static string GetImageUrl(string apiBaseUrl,string imagePath)
+
+    public string GetImageUrl(string? imagePath)
     {
-       if (string.IsNullOrEmpty(imagePath))
-            return string.Empty;
-            
-        var baseUrl = apiBaseUrl ?? string.Empty;
-        return $"{baseUrl}api/app/blob-files/file?path={Uri.EscapeDataString(imagePath)}";
+        return _blobDisplayUrlProvider.GetDisplayUrl(imagePath);
     }
 
     public static bool IsPdfFileExtension(string fileName)

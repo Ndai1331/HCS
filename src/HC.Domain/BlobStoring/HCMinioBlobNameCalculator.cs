@@ -34,27 +34,18 @@ public class HCMinioBlobNameCalculator : IMinioBlobNameCalculator
     {
         var blobName = args.BlobName;
         var tenantId = _currentTenant.Id;
+        var fullName = MinioBlobObjectKeyHelper.GetObjectKeyForPublicUrl(blobName, tenantId);
 
-        // Logic giống DefaultMinioBlobNameCalculator của ABP
-        // Nếu có tenant, prefix với tenants/{tenant-id}
         if (tenantId.HasValue)
         {
-            var tenantBlobName = $"tenants/{tenantId.Value}/{blobName}";
-            
-            // Log để tracking (optional - có thể remove nếu không cần)
-            _logger.LogDebug("Tenant {TenantId} upload blob: {BlobName} -> {FullBlobName}", 
-                tenantId.Value, blobName, tenantBlobName);
-            
-            return tenantBlobName;
+            _logger.LogDebug("Tenant {TenantId} upload blob: {BlobName} -> {FullBlobName}",
+                tenantId.Value, blobName, fullName);
+        }
+        else
+        {
+            _logger.LogDebug("Host upload blob: {BlobName} -> {FullBlobName}", blobName, fullName);
         }
 
-        // Nếu không có tenant (host), prefix với "host"
-        var hostBlobName = $"host/{blobName}";
-        
-        // Log để tracking (optional)
-        _logger.LogDebug("Host upload blob: {BlobName} -> {FullBlobName}", 
-            blobName, hostBlobName);
-        
-        return hostBlobName;
+        return fullName;
     }
 }

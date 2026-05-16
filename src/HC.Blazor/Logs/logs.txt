@@ -857,3 +857,330 @@ System.ObjectDisposedException: The CancellationTokenSource has been disposed.
 2026-05-16 23:29:20.382 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
 2026-05-16 23:29:20.383 +07:00 [DBG] HealthReportCollector has completed.
 2026-05-16 23:29:20.383 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:29:30.310 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:29:30.312 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:29:30.312 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:29:30.312 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 2.2685ms
+2026-05-16 23:29:30.384 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:29:30.386 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:29:30.386 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:29:30.387 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:29:30.387 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:29:30.388 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:29:30.388 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.8596ms
+2026-05-16 23:29:30.388 +07:00 [INF] Received HTTP response headers after 1.6407ms - 200
+2026-05-16 23:29:30.388 +07:00 [INF] End processing HTTP request after 1.739ms - 200
+2026-05-16 23:29:30.390 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:29:30.390 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:29:30.391 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:29:30.391 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:29:40.315 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:29:40.326 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:29:40.328 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:29:40.328 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 13.6766ms
+2026-05-16 23:29:40.392 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:29:40.403 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:29:40.403 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:29:40.407 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:29:40.408 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:29:40.412 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:29:40.412 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 5.7712ms
+2026-05-16 23:29:40.417 +07:00 [INF] Received HTTP response headers after 14.3148ms - 200
+2026-05-16 23:29:40.417 +07:00 [INF] End processing HTTP request after 14.5027ms - 200
+2026-05-16 23:29:40.423 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:29:40.423 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:29:40.424 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:29:40.424 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:29:50.331 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:29:50.333 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:29:50.334 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:29:50.334 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 3.6208ms
+2026-05-16 23:29:50.425 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:29:50.427 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:29:50.427 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:29:50.427 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:29:50.428 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:29:50.428 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:29:50.428 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.6788ms
+2026-05-16 23:29:50.428 +07:00 [INF] Received HTTP response headers after 1.4611ms - 200
+2026-05-16 23:29:50.428 +07:00 [INF] End processing HTTP request after 1.5515ms - 200
+2026-05-16 23:29:50.430 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:29:50.430 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:29:50.430 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:29:50.430 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:30:00.336 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:00.337 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:00.338 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:00.338 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 1.4467ms
+2026-05-16 23:30:00.430 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:30:00.431 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:00.431 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:00.432 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:00.432 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:00.432 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:00.432 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.4639ms
+2026-05-16 23:30:00.432 +07:00 [INF] Received HTTP response headers after 1.0721ms - 200
+2026-05-16 23:30:00.432 +07:00 [INF] End processing HTTP request after 1.1222ms - 200
+2026-05-16 23:30:00.433 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:30:00.433 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:30:00.433 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:30:00.433 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:30:10.341 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:10.345 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:10.346 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:10.346 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 5.1688ms
+2026-05-16 23:30:10.434 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:30:10.438 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:10.438 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:10.440 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:10.440 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:10.441 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:10.441 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.9448ms
+2026-05-16 23:30:10.441 +07:00 [INF] Received HTTP response headers after 3.7301ms - 200
+2026-05-16 23:30:10.442 +07:00 [INF] End processing HTTP request after 3.949ms - 200
+2026-05-16 23:30:10.445 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:30:10.445 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:30:10.446 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:30:10.446 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:30:20.346 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:20.348 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:20.348 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:20.348 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 2.1066ms
+2026-05-16 23:30:20.447 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:30:20.449 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:20.449 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:20.450 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:20.450 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:20.451 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:20.451 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 1.1951ms
+2026-05-16 23:30:20.451 +07:00 [INF] Received HTTP response headers after 1.9295ms - 200
+2026-05-16 23:30:20.451 +07:00 [INF] End processing HTTP request after 2.5087ms - 200
+2026-05-16 23:30:20.451 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:30:20.452 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:30:20.452 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:30:20.452 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:30:30.350 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:30.351 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:30.351 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:30.351 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 1.1742ms
+2026-05-16 23:30:30.451 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:30:30.452 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:30.452 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:30.453 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:30.454 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:30.454 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:30.454 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 1.0384ms
+2026-05-16 23:30:30.454 +07:00 [INF] Received HTTP response headers after 1.9919ms - 200
+2026-05-16 23:30:30.454 +07:00 [INF] End processing HTTP request after 2.1081ms - 200
+2026-05-16 23:30:30.455 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:30:30.456 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:30:30.456 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:30:30.456 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:30:40.352 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:40.354 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:40.354 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:40.354 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 2.2692ms
+2026-05-16 23:30:40.457 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:30:40.458 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:40.458 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:40.458 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:40.459 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:40.459 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:40.459 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 1.075ms
+2026-05-16 23:30:40.460 +07:00 [INF] Received HTTP response headers after 1.9938ms - 200
+2026-05-16 23:30:40.460 +07:00 [INF] End processing HTTP request after 2.1127ms - 200
+2026-05-16 23:30:40.461 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:30:40.462 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:30:40.462 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:30:40.462 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:30:50.457 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:50.463 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:30:50.468 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:50.471 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:50.471 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 13.6262ms
+2026-05-16 23:30:50.474 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:50.474 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:30:50.474 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:30:50.475 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:30:50.475 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:30:50.475 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.9684ms
+2026-05-16 23:30:50.476 +07:00 [INF] Received HTTP response headers after 2.5931ms - 200
+2026-05-16 23:30:50.476 +07:00 [INF] End processing HTTP request after 2.8363ms - 200
+2026-05-16 23:30:50.479 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:30:50.480 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:30:50.480 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:30:50.480 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:31:00.481 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:31:00.485 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:00.485 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:00.494 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:00.496 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:00.496 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:00.496 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 2.2856ms
+2026-05-16 23:31:00.506 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:00.507 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:00.507 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:00.507 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.6923ms
+2026-05-16 23:31:00.507 +07:00 [INF] Received HTTP response headers after 21.957ms - 200
+2026-05-16 23:31:00.507 +07:00 [INF] End processing HTTP request after 22.258ms - 200
+2026-05-16 23:31:00.508 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:31:00.509 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:31:00.509 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:31:00.509 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:31:10.510 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:31:10.510 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:10.511 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:10.511 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:10.512 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:10.512 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:10.512 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.7371ms
+2026-05-16 23:31:10.512 +07:00 [INF] Received HTTP response headers after 1.3736ms - 200
+2026-05-16 23:31:10.512 +07:00 [INF] End processing HTTP request after 1.4458ms - 200
+2026-05-16 23:31:10.512 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:31:10.512 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:31:10.512 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:31:10.512 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:31:10.569 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:10.570 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:10.570 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:10.570 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.9818ms
+2026-05-16 23:31:20.513 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:31:20.514 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:20.514 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:20.514 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:20.515 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:20.515 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:20.515 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.9074ms
+2026-05-16 23:31:20.515 +07:00 [INF] Received HTTP response headers after 1.6285ms - 200
+2026-05-16 23:31:20.515 +07:00 [INF] End processing HTTP request after 1.7394ms - 200
+2026-05-16 23:31:20.516 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:31:20.516 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:31:20.516 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:31:20.516 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:31:20.571 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:20.572 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:20.572 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:20.572 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.7836ms
+2026-05-16 23:31:27.942 +07:00 [INF] Chat SignalR client disconnected: ConnectionId=2XGQ1jOd2uf1BHGEqrDSsg, UserId=3a1e8f71-8948-3043-4e18-40ebdfcc89d9, Exception=null
+2026-05-16 23:31:27.942 +07:00 [INF] SignalR client disconnected: ConnectionId=hVqzeTa9MBwu4yTTbobUvg, UserId=3a1e8f71-8948-3043-4e18-40ebdfcc89d9, Exception=null
+2026-05-16 23:31:27.943 +07:00 [INF] Executed endpoint '/notificationHub'
+2026-05-16 23:31:27.943 +07:00 [INF] Executed endpoint '/chatHub'
+2026-05-16 23:31:27.943 +07:00 [INF] Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+2026-05-16 23:31:27.946 +07:00 [INF] Request starting HTTP/2 POST https://localhost:44302/_blazor/disconnect - multipart/form-data; boundary=----WebKitFormBoundaryLXPoQgwAGcDA9SQq 359
+2026-05-16 23:31:27.946 +07:00 [INF] Request finished HTTP/2 CONNECT https://localhost:44302/_blazor?id=t38TFpUuwpYd2RaG1Zw_kA - 200 null null 144447.5062ms
+2026-05-16 23:31:27.946 +07:00 [INF] Request finished HTTP/2 CONNECT https://localhost:44302/chatHub?id=wsayN6pZT1v0-vfdVoJXrw - 200 null null 144291.6634ms
+2026-05-16 23:31:27.946 +07:00 [INF] Request finished HTTP/2 CONNECT https://localhost:44302/notificationHub?id=wReM0lpE01RQD34va1mvQQ - 200 null null 144315.4323ms
+2026-05-16 23:31:27.993 +07:00 [INF] The access_token is active.
+2026-05-16 23:31:27.993 +07:00 [INF] Executing endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+2026-05-16 23:31:27.998 +07:00 [INF] [NotificationToast] 🔴 Starting cleanup - IsInitialized=true
+2026-05-16 23:31:27.998 +07:00 [INF] [NotificationToast] ✅ Chat Hub stopped for notifications
+2026-05-16 23:31:27.998 +07:00 [INF] [NotificationToast] ✅ Notification Hub stopped
+2026-05-16 23:31:27.998 +07:00 [INF] [NotificationToast] ✅ DotNetObjectReference disposed
+2026-05-16 23:31:28.000 +07:00 [ERR] [NotificationToast] ❌ Error during cleanup: The CancellationTokenSource has been disposed.
+System.ObjectDisposedException: The CancellationTokenSource has been disposed.
+   at System.Threading.CancellationTokenSource.Cancel()
+   at HC.Blazor.Components.NotificationToast.DisposeAsync() in /Users/user/Documents/HCS/src/HC.Blazor/Components/NotificationToast.razor:line 769
+2026-05-16 23:31:28.000 +07:00 [INF] Executed endpoint 'Microsoft.AspNetCore.Routing.RouteEndpoint'
+2026-05-16 23:31:28.001 +07:00 [INF] Request finished HTTP/2 POST https://localhost:44302/_blazor/disconnect - 200 0 null 54.9022ms
+2026-05-16 23:31:30.517 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:31:30.519 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:30.519 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:30.520 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:30.521 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:30.522 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:30.522 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 1.8443ms
+2026-05-16 23:31:30.522 +07:00 [INF] Received HTTP response headers after 2.6604ms - 200
+2026-05-16 23:31:30.522 +07:00 [INF] End processing HTTP request after 2.7848ms - 200
+2026-05-16 23:31:30.523 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:31:30.523 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:31:30.523 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:31:30.523 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:31:30.573 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:30.573 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:30.574 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:30.574 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.5227ms
+2026-05-16 23:31:40.524 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:31:40.534 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:40.534 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:40.536 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:40.539 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:40.539 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:40.540 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 3.7061ms
+2026-05-16 23:31:40.540 +07:00 [INF] Received HTTP response headers after 5.8955ms - 200
+2026-05-16 23:31:40.540 +07:00 [INF] End processing HTTP request after 6.1529ms - 200
+2026-05-16 23:31:40.541 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:31:40.541 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:31:40.542 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:31:40.542 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:31:40.574 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:40.575 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:40.575 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:40.575 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.4755ms
+2026-05-16 23:31:50.543 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:31:50.547 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:50.547 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:31:50.548 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:50.550 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:50.550 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:50.550 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 2.3492ms
+2026-05-16 23:31:50.551 +07:00 [INF] Received HTTP response headers after 3.562ms - 200
+2026-05-16 23:31:50.551 +07:00 [INF] End processing HTTP request after 3.7883ms - 200
+2026-05-16 23:31:50.554 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:31:50.554 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:31:50.554 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:31:50.554 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:31:50.576 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:31:50.576 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:31:50.576 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:31:50.576 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.5323ms
+2026-05-16 23:32:00.555 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:32:00.557 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:32:00.557 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:32:00.557 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:32:00.558 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:32:00.559 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:32:00.559 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 1.389ms
+2026-05-16 23:32:00.559 +07:00 [INF] Received HTTP response headers after 2.173ms - 200
+2026-05-16 23:32:00.559 +07:00 [INF] End processing HTTP request after 2.2814ms - 200
+2026-05-16 23:32:00.560 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:32:00.560 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:32:00.560 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:32:00.560 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:32:00.577 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:32:00.577 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:32:00.577 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:32:00.577 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.6905ms
+2026-05-16 23:32:10.560 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:32:10.560 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:32:10.560 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:32:10.561 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:32:10.561 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:32:10.561 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:32:10.561 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.5826ms
+2026-05-16 23:32:10.562 +07:00 [INF] Received HTTP response headers after 1.2337ms - 200
+2026-05-16 23:32:10.562 +07:00 [INF] End processing HTTP request after 1.3238ms - 200
+2026-05-16 23:32:10.562 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:32:10.562 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:32:10.562 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:32:10.562 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:32:10.578 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:32:10.578 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:32:10.578 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:32:10.578 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.4597ms
+2026-05-16 23:32:20.563 +07:00 [DBG] Executing HealthCheck collector HostedService.
+2026-05-16 23:32:20.564 +07:00 [INF] Start processing HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:32:20.564 +07:00 [INF] Sending HTTP request GET https://localhost:44302/health-status
+2026-05-16 23:32:20.565 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:32:20.566 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:32:20.566 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:32:20.566 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 1.1482ms
+2026-05-16 23:32:20.566 +07:00 [INF] Received HTTP response headers after 2.1463ms - 200
+2026-05-16 23:32:20.566 +07:00 [INF] End processing HTTP request after 2.244ms - 200
+2026-05-16 23:32:20.567 +07:00 [DBG] HealthReportCollector - health report execution history saved.
+2026-05-16 23:32:20.567 +07:00 [DBG] HealthReport history already exists and is in the same state, updating the values.
+2026-05-16 23:32:20.568 +07:00 [DBG] HealthReportCollector has completed.
+2026-05-16 23:32:20.568 +07:00 [DBG] HealthCheck collector HostedService executed successfully.
+2026-05-16 23:32:20.579 +07:00 [INF] Request starting HTTP/1.1 GET https://localhost:44302/health-status - null null
+2026-05-16 23:32:20.579 +07:00 [INF] Executing endpoint 'Health checks'
+2026-05-16 23:32:20.579 +07:00 [INF] Executed endpoint 'Health checks'
+2026-05-16 23:32:20.579 +07:00 [INF] Request finished HTTP/1.1 GET https://localhost:44302/health-status - 200 null application/json 0.5657ms
