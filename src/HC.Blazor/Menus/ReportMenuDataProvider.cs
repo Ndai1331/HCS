@@ -38,7 +38,7 @@ public class ReportMenuDataProvider : IReportMenuDataProvider
 
         while (true)
         {
-            var reportsResult = await _reportsAppService.GetListAsync(new GetReportsInput
+            var reportsResult = await _reportsAppService.GetListForNavigationAsync(new GetReportsInput
             {
                 SkipCount = skipCount,
                 MaxResultCount = maxResultCount,

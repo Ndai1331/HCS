@@ -37,7 +37,6 @@ public class HCMenuContributor : IMenuContributor
         {
             var reportMenuDataProvider = context.ServiceProvider.GetRequiredService<IReportMenuDataProvider>();
             var reports = reportMenuDataProvider.GetCachedReports();
-
             ConfigureMainMenuAsync(context, reports);
         }
         else if (context.Menu.Name == StandardMenus.User)
@@ -64,7 +63,7 @@ public class HCMenuContributor : IMenuContributor
         .AddItem(new ApplicationMenuItem("MasterDatas.Departments", l["Menu:Departments"], icon: "bi bi-menu-button-wide-fill", url: "/departments").RequirePermissions(HCPermissions.MasterDatas.DepartmentDefault)).AddItem(new ApplicationMenuItem("MasterDatas.Positions", l["Menu:Positions"], icon: "bi bi-menu-button-wide-fill", url: "/positions").RequirePermissions(HCPermissions.MasterDatas.PositionDefault)).AddItem(new ApplicationMenuItem("MasterDatas.SurveyLocations", l["Menu:SurveyLocations"], icon: "bi bi-menu-button-wide-fill", url: "/survey-locations").RequirePermissions(HCPermissions.MasterDatas.SurveyLocationDefault)).AddItem(new ApplicationMenuItem("MasterDatas.SurveyCriterias", l["Menu:SurveyCriterias"], icon: "bi bi-menu-button-wide-fill", url: "/survey-criterias").RequirePermissions(HCPermissions.MasterDatas.SurveyCriteriaDefault))
         
         .AddItem(new ApplicationMenuItem("MasterDatas.SignatureSettings", l["Menu:SignatureSettings"], icon: "bi bi-menu-button-wide-fill", url: "/signature-settings").RequirePermissions(HCPermissions.MasterDatas.SignatureSettingsDefault))
-        .AddItem(new ApplicationMenuItem("MasterDatas.Reports", l["Menu:Reports"], icon: "bi bi-menu-button-wide-fill", url: "/reports").RequirePermissions(HCPermissions.Reports.Default)));
+        .AddItem(new ApplicationMenuItem("MasterDatas.Reports", l["Menu:Reports"], icon: "bi bi-menu-button-wide-fill", url: "/reports").RequirePermissions(HCPermissions.MasterDatas.ReportsDefault)));
 
 
         var reportsMenu = new ApplicationMenuItem("Reports", l["Menu:Reports"], icon: "fa fa-chart-area", order: 12)

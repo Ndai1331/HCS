@@ -10,7 +10,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Application.Contracts/HC.Application.Contracts.csproj",
         "projectName": "HC.Application.Contracts",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Application.Contracts/HC.Application.Contracts.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/b0ffdf8df3c22b7c7c230a943f550899/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Application.Contracts/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -403,7 +403,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Application/HC.Application.csproj",
         "projectName": "HC.Application",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Application/HC.Application.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/b0ffdf8df3c22b7c7c230a943f550899/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Application/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -815,7 +815,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.BackgroundJobWorker/HC.BackgroundJobWorker.csproj",
         "projectName": "HC.BackgroundJobWorker",
         "projectPath": "/Users/user/Documents/HCS/src/HC.BackgroundJobWorker/HC.BackgroundJobWorker.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/b0ffdf8df3c22b7c7c230a943f550899/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.BackgroundJobWorker/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -1207,7 +1207,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Domain.Shared/HC.Domain.Shared.csproj",
         "projectName": "HC.Domain.Shared",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Domain.Shared/HC.Domain.Shared.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/b0ffdf8df3c22b7c7c230a943f550899/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Domain.Shared/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -1620,7 +1620,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Domain/HC.Domain.csproj",
         "projectName": "HC.Domain",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Domain/HC.Domain.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/b0ffdf8df3c22b7c7c230a943f550899/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Domain/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -2029,7 +2029,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.EntityFrameworkCore/HC.EntityFrameworkCore.csproj",
         "projectName": "HC.EntityFrameworkCore",
         "projectPath": "/Users/user/Documents/HCS/src/HC.EntityFrameworkCore/HC.EntityFrameworkCore.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/b0ffdf8df3c22b7c7c230a943f550899/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.EntityFrameworkCore/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [

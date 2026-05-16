@@ -14060,7 +14060,7 @@
     ]
   },
   "packageFolders": {
-    "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/b0ffdf8df3c22b7c7c230a943f550899/nuget": {}
+    "/Users/user/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
@@ -14068,7 +14068,7 @@
       "projectUniqueName": "/Users/user/Documents/HCS/src/HC.BackgroundJobWorker/HC.BackgroundJobWorker.csproj",
       "projectName": "HC.BackgroundJobWorker",
       "projectPath": "/Users/user/Documents/HCS/src/HC.BackgroundJobWorker/HC.BackgroundJobWorker.csproj",
-      "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/b0ffdf8df3c22b7c7c230a943f550899/nuget",
+      "packagesPath": "/Users/user/.nuget/packages/",
       "outputPath": "/Users/user/Documents/HCS/src/HC.BackgroundJobWorker/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
@@ -14456,10 +14456,134 @@
   },
   "logs": [
     {
-      "code": "NU1900",
+      "code": "NU1902",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "Error occurred while getting package vulnerability data: Access to the path '/Users/user/.local/share/NuGet/http-cache/670c1461c29885f9aa22c281d8b7da90845b38e4$ps:_api.nuget.org_v3_index.json/vuln_index.dat-new' is denied."
+      "message": "Package 'Scriban' 6.3.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-5rpf-x9jg-8j5p",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1904",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Scriban' 6.3.0 has a known critical severity vulnerability, https://github.com/advisories/GHSA-5wr9-m6jw-xx44",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-c875-h985-hvrc",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-grr9-747v-xvcp",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Scriban' 6.3.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-m2p3-hwv5-xpqw",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-p6q4-fgr8-vx4p",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-v66j-x4hw-fv9g",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-wgh7-7m3c-fx25",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-x6m9-38vm-2xhf",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-xcx6-vp38-8hr5",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Scriban' 6.3.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-xw6w-9jjh-p9cr",
+      "libraryId": "Scriban",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'System.Security.Cryptography.Xml' 9.0.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-37gx-xxp4-5rgx",
+      "libraryId": "System.Security.Cryptography.Xml",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'System.Security.Cryptography.Xml' 9.0.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-w3x6-4m5h-cxqf",
+      "libraryId": "System.Security.Cryptography.Xml",
+      "targetGraphs": [
+        "net10.0"
+      ]
     }
   ]
 }

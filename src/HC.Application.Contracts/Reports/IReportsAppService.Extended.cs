@@ -1,6 +1,9 @@
+using System.Threading.Tasks;
+using Volo.Abp.Application.Dtos;
+
 namespace HC.Reports;
 
 public partial interface IReportsAppService
 {
-    //Write your custom code here...
+    Task<PagedResultDto<ReportDto>> GetListForNavigationAsync(GetReportsInput input);
 }
