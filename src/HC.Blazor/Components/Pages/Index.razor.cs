@@ -145,12 +145,11 @@ public partial class Index
 
     protected override async Task OnInitializedAsync()
     {
-        // Initialize default date range: 60 days ago to today
         var today = DateTime.Now.Date;
-        var sixtyDaysAgo = today.AddDays(-60);
-        SelectedDateRange = new List<DateTime?> { sixtyDaysAgo, today };
-        FilterStartDate = sixtyDaysAgo;
-        FilterEndDate = today;
+        var nextNinetyDays = today.AddDays(90);
+        SelectedDateRange = new List<DateTime?> { today, nextNinetyDays };
+        FilterStartDate = today;
+        FilterEndDate = nextNinetyDays;
 
         await LoadDashboardDataAsync();
     }

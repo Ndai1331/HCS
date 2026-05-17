@@ -11,7 +11,12 @@ public interface IConversationRepository : IBasicRepository<Conversation, Guid>
     // Existing methods
     Task<ConversationPair> FindPairAsync(Guid senderId, Guid targetId, CancellationToken cancellationToken = default);
 
-    Task<List<ConversationWithTargetUser>> GetListByUserIdAsync(Guid userId, string filter, CancellationToken cancellationToken = default);
+    Task<List<ConversationWithTargetUser>> GetListByUserIdAsync(
+        Guid userId,
+        string filter,
+        int skipCount,
+        int maxResultCount,
+        CancellationToken cancellationToken = default);
 
     Task<int> GetTotalUnreadMessageCountAsync(Guid userId, CancellationToken cancellationToken = default);
     

@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
-using Microsoft.JSInterop;
 using HC.Chat.Conversations;
 using HC.Chat.Messages;
 using HC.ProjectMembers;
@@ -24,9 +23,6 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 {
     private const string RoleAdmin = "ADMIN";
     private const string RoleMember = "MEMBER";
-
-    [Inject]
-    public IJSRuntime JsRuntime { get; set; }
 
     [Inject]
     public IContactAppService ContactAppService { get; set; } = default!;
@@ -77,6 +73,8 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private List<MessageFileDto> FoundMedias { get; set; } = new();
     private List<MessageFileDto> FoundFiles { get; set; } = new();
     private bool IsLoadingMediaAndFiles { get; set; }
+    private bool IsLoadingFoundMessages { get; set; }
+    private bool IsLoadingPinnedMessages { get; set; }
 
     private Dictionary<string, bool> ShowDivs = new()
     {
@@ -99,9 +97,6 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private List<ChatMessageDto> FoundMessages { get; set; } = new();
 
     [Parameter]
-    public Dictionary<ChatContactDto, ElementReference> CanvasElementReferences { get; set; } = null!;
-
-    [Parameter]
     public Func<ChatContactDto, string> GetName { get; set; } = null!;
     [Parameter]
     public Func<ChatContactDto, string> GetContactDisplayName { get; set; } = null!;
@@ -121,7 +116,6 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
     private bool IsLoadingMembers { get; set; }
     /// <summary>Last conversation id for which members were loaded (stable key; avoids refetch on parent re-render with new DTO instance).</summary>
     private Guid? _lastLoadedMembersConversationId;
-    private string? _memberListSignatureForAvatars;
 
     [Parameter]
     public Guid? CurrentUserId { get; set; }
@@ -157,7 +151,6 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
             Members = new();
             IsCurrentUserAdmin = false;
             _lastLoadedMembersConversationId = null;
-            _memberListSignatureForAvatars = null;
             return;
         }
 
@@ -178,7 +171,6 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         await LoadConversationMembersAsync();
         CheckIsCurrentUserAdminAsync();
         _lastLoadedMembersConversationId = conversationId;
-        _memberListSignatureForAvatars = null;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -187,37 +179,6 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
         if(firstRender)
         {
             await SetActiveDivAsync("Infobox");
-        }
-        if (!firstRender && AccordionChatMembersVisible && Members.Any() && !IsLoadingMembers)
-        {
-            var signature = string.Join(',', Members.Select(m => m.UserId));
-            if (!string.Equals(_memberListSignatureForAvatars, signature, StringComparison.Ordinal))
-            {
-                _memberListSignatureForAvatars = signature;
-                await CreateMemberAvatarsAsync();
-            }
-        }
-    }
-
-    private async Task CreateMemberAvatarsAsync()
-    {
-        await Task.Delay(300);
-
-        foreach (var member in Members)
-        {
-            try
-            {
-                var canvasId = $"member-avatar-{member.UserId}";
-                var displayName = $"{member.UserInfo.Name} {member.UserInfo.Surname}".Trim();
-                if (string.IsNullOrWhiteSpace(displayName))
-                    displayName = member.UserInfo.Username ?? "";
-
-                await JsRuntime.SafeInvokeVoidAsync("VoloChatAvatarManager.createCanvasForUserById", canvasId, member.UserInfo.Username, displayName);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error creating avatar for member {member.UserId}: {ex.Message}");
-            }
         }
     }
 
@@ -241,11 +202,18 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
     private async Task ShowPinnedMessagesAsync()
     {
-        await BlockUiService.Block(selectors: "#chat_wrapper", busy: true);
-        PinnedMessages = await ConversationService.GetPinnedMessagesAsync(CurrentChatContact!.ConversationId!.Value);
-        await PinnedMessagesModal.Show();
-        await BlockUiService.UnBlock();
+        IsLoadingPinnedMessages = true;
         await InvokeAsync(StateHasChanged);
+        try
+        {
+            PinnedMessages = await ConversationService.GetPinnedMessagesAsync(CurrentChatContact!.ConversationId!.Value);
+            await PinnedMessagesModal.Show();
+        }
+        finally
+        {
+            IsLoadingPinnedMessages = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task ClosePinnedMessagesModalAsync() => await CloseModalAsync(PinnedMessagesModal);
@@ -406,32 +374,37 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
     private async Task SearchMessagesAsync()
     {
-        await BlockUiService.Block(selectors: "#found_messages", busy: true);
-
-        var listMessages = await ConversationService.FindMessagesInConversationAsync(new FindMessageInConversationInput
-        {
-            ConversationId = CurrentChatContact!.ConversationId!.Value,
-            MessageText = SearchMessageValue,
-            MaxResultCount = MaxResultCount,
-            SkipCount = SkipFindMessageCount
-        });
-
-        // Chỉ AddRange nếu đang Load More (SkipFindMessageCount > 0)
-        if (SkipFindMessageCount > 0)
-        {
-            FoundMessages.AddRange(listMessages);
-        }
-        else
-        {
-            // Search mới: Clear trước rồi mới Add
-            FoundMessages.Clear();
-            FoundMessages.AddRange(listMessages);
-        }
-
-        ShowLoadMoreFoundMessages = listMessages.Count >= MaxResultCount;
-
+        IsLoadingFoundMessages = true;
         await InvokeAsync(StateHasChanged);
-        await BlockUiService.UnBlock();
+        try
+        {
+            var listMessages = await ConversationService.FindMessagesInConversationAsync(new FindMessageInConversationInput
+            {
+                ConversationId = CurrentChatContact!.ConversationId!.Value,
+                MessageText = SearchMessageValue,
+                MaxResultCount = MaxResultCount,
+                SkipCount = SkipFindMessageCount
+            });
+
+            // Chỉ AddRange nếu đang Load More (SkipFindMessageCount > 0)
+            if (SkipFindMessageCount > 0)
+            {
+                FoundMessages.AddRange(listMessages);
+            }
+            else
+            {
+                // Search mới: Clear trước rồi mới Add
+                FoundMessages.Clear();
+                FoundMessages.AddRange(listMessages);
+            }
+
+            ShowLoadMoreFoundMessages = listMessages.Count >= MaxResultCount;
+        }
+        finally
+        {
+            IsLoadingFoundMessages = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task OpenFoundMessageAsync(Guid messageId)
@@ -444,46 +417,52 @@ public partial class InfoBox : HCComponentBase, IAsyncDisposable
 
     private async Task SearchMediaAndFileAsync(FileMediaType fileType)
     {
-        await BlockUiService.Block(selectors: "#found_media_and_files", busy: true);
-        var mediaAndFiles = await ConversationService.FindMediaAndFileInConversationAsync(new FindMediaAndFileInConversationInput
-        {
-            ConversationId = CurrentChatContact!.ConversationId!.Value,
-            FileName = "", // Load all files/images without filtering by name
-            FileType = fileType,
-            MaxResultCount = MaxResultCount,
-            SkipCount = fileType == FileMediaType.Image ? SkipImagesCount : SkipFilesCount
-        });
-
-        switch (fileType)
-        {
-            case FileMediaType.Image:
-                if (SkipImagesCount > 0)
-                {
-                    FoundMedias.AddRange(mediaAndFiles);
-                }
-                else
-                {
-                    FoundMedias.Clear();
-                    FoundMedias.AddRange(mediaAndFiles);
-                }
-                ShowLoadMoreImages = mediaAndFiles.Count >= MaxResultCount;
-                break;
-            case FileMediaType.File:
-                if (SkipFilesCount > 0)
-                {
-                    FoundFiles.AddRange(mediaAndFiles);
-                }
-                else
-                {
-                    FoundFiles.Clear();
-                    FoundFiles.AddRange(mediaAndFiles);
-                }
-                ShowLoadMoreFiles = mediaAndFiles.Count >= MaxResultCount;
-                break;
-        }
-
+        IsLoadingMediaAndFiles = true;
         await InvokeAsync(StateHasChanged);
-        await BlockUiService.UnBlock();
+        try
+        {
+            var mediaAndFiles = await ConversationService.FindMediaAndFileInConversationAsync(new FindMediaAndFileInConversationInput
+            {
+                ConversationId = CurrentChatContact!.ConversationId!.Value,
+                FileName = "", // Load all files/images without filtering by name
+                FileType = fileType,
+                MaxResultCount = MaxResultCount,
+                SkipCount = fileType == FileMediaType.Image ? SkipImagesCount : SkipFilesCount
+            });
+
+            switch (fileType)
+            {
+                case FileMediaType.Image:
+                    if (SkipImagesCount > 0)
+                    {
+                        FoundMedias.AddRange(mediaAndFiles);
+                    }
+                    else
+                    {
+                        FoundMedias.Clear();
+                        FoundMedias.AddRange(mediaAndFiles);
+                    }
+                    ShowLoadMoreImages = mediaAndFiles.Count >= MaxResultCount;
+                    break;
+                case FileMediaType.File:
+                    if (SkipFilesCount > 0)
+                    {
+                        FoundFiles.AddRange(mediaAndFiles);
+                    }
+                    else
+                    {
+                        FoundFiles.Clear();
+                        FoundFiles.AddRange(mediaAndFiles);
+                    }
+                    ShowLoadMoreFiles = mediaAndFiles.Count >= MaxResultCount;
+                    break;
+            }
+        }
+        finally
+        {
+            IsLoadingMediaAndFiles = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }   
 
 

@@ -19,10 +19,11 @@
         @* Avatar *@
         @if (Message.Side == ChatMessageSide.Receiver && Message.SenderUserId.HasValue)
         {
-            <canvas id="sender-avatar-@Message.Id"
-                    width="32"
-                    height="32"
-                    class="me-2 rounded-circle"></canvas>
+            <span class="me-2 align-self-start">
+                <ChatInitialAvatar DisplayName="@GetSenderName(Message)"
+                                     Username="@Message.SenderUsername"
+                                     Size="ChatInitialAvatarSize.Msg32" />
+            </span>
         }
 
         <div class="message-wrapper">

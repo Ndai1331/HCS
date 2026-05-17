@@ -1,0 +1,218 @@
+@using HC.Chat.Conversations
+@using HC.Chat.Users
+@using Volo.Abp.Timing
+@inject IClock Clock
+@inherits HCComponentBase
+
+<div class=" mb-2 rounded-2" id="@SearchBoxId">
+    <div class="row">
+        <div class="col">
+            <input type="search"
+                   value="@SearchValue"
+                   @oninput="@OnSearchInputAsync"
+                   @onchange="@(async e => await OnSearchChange.InvokeAsync(e.Value?.ToString()))"
+                   @onkeyup="@(async e => await OnSearchKeyUp.InvokeAsync(e))"
+                   class="form-control form-control-sm"
+                   placeholder="@L["SearchInContacts"].Value"
+                   aria-label="@L["SearchInContacts"].Value"
+                   autocomplete="off" spellcheck="false"
+                   aria-autocomplete="list"
+                   role="combobox"
+                   aria-expanded="false"
+                   aria-owns="algolia-autocomplete-listbox-0"
+                   dir="auto">
+        </div>
+    </div>
+    <div class="row mt-2">
+        <div class="col-12">
+            <div class="btn-group w-100" role="group">
+                <button type="button" class="btn btn-sm btn-outline-info" @onclick="@(() => OnStartDirectModal.InvokeAsync())" title="@L["StartConversation"]">
+                    <i class="bi bi-person"></i> @L["User"]
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="@(() => OnStartGroupModal.InvokeAsync())" title="@L["CreateGroup"]">
+                    <i class="bi bi-people"></i> @L["Group"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="messages-box lpx-ps-scroll-container m-0 p-0 ps ps--active-y" id="@ScrollContainerId" style="flex: 1; overflow-y: auto; min-height: 0; position: relative;">
+    @if (IsLoadingConversations)
+    {
+        <ChatLoadingSpinnerOverlay />
+    }
+    <div class="list-group rounded-3 contract-list" id="@ContactListId">
+        @{
+            foreach (var chatContact in ChatContactDtos)
+            {
+                var contactForDelete = chatContact;
+                <a @key="chatContactKey(chatContact)" class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2 @(ChatContactsActive.ContainsKey(chatContact) ? ChatContactsActive[chatContact] : string.Empty)">
+                    <div class="media" @onclick="async () => await OnContactActivate.InvokeAsync(chatContact)">
+                        @if (chatContact.Type == ConversationType.User)
+                        {
+                            <ChatInitialAvatar DisplayName="@GetContactDisplayName(chatContact)"
+                                                 Username="@chatContact.Username"
+                                                 Size="ChatInitialAvatarSize.Sm24" />
+                        }
+                        else if (chatContact.Type == ConversationType.Group)
+                        {
+                            <i class="bi bi-people-fill fs-3 text-primary"></i>
+                        }
+                        else if (chatContact.Type == ConversationType.Project)
+                        {
+                            <i class="bi bi-folder-fill fs-3 text-success"></i>
+                        }
+                        else if (chatContact.Type == ConversationType.Task)
+                        {
+                            <i class="bi bi-check2-square fs-3 text-warning"></i>
+                        }
+                        <div class="media-body ms-2">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="mb-0 me-1">
+                                    @if (chatContact.IsPinned)
+                                    {
+                                        <i class="bi bi-pin-fill text-warning me-1" title="@L["Pinned"]"></i>
+                                    }
+                                    @(GetContactDisplayName(chatContact).TruncateWithPostfix(36,"..."))
+
+                                    @if (chatContact.UnreadMessageCount > 0)
+                                    {
+                                        <small class="badge bg-brand ms-1">@chatContact.UnreadMessageCount</small>
+                                    }
+                                </h6>
+                            </div>
+                            <p class="d-flex justify-content-between gap-1 mb-0 small last-message">
+                                @if (!string.IsNullOrEmpty(chatContact.LastMessage))
+                                {
+                                    <span class="text-muted">@chatContact.LastMessage?.TruncateWithPostfix(36,"...")</span>
+                                    <span class="text-muted"> @Clock.ConvertToUserTime(chatContact.LastMessageDate!.Value).ToString("d") @Clock.ConvertToUserTime(chatContact.LastMessageDate.Value).ToString("t")</span>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                    <div class="dropdown position-absolute top-0 end-0" @onclick:stopPropagation="true">
+                        <button class="btn p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" @onclick:stopPropagation="true">
+                            <i class="lpx-caret bi-three-dots" aria-hidden="true"></i>
+                        </button>
+                        <ul class="dropdown-menu" @onclick:stopPropagation="true">
+                            @if (chatContact.Type != ConversationType.User)
+                            {
+                                <li>
+                                    <a class="dropdown-item" @onclick="async () => await OnTogglePin.InvokeAsync(chatContact)" @onclick:stopPropagation="true">
+                                        @if (chatContact.IsPinned)
+                                        {
+                                            <i class="bi bi-pin-angle text-warning me-1"></i> @L["UnpinConversation"]
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-pin-fill text-warning me-1"></i> @L["PinConversation"]
+                                        }
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" @onclick="async () => await OnLeaveConversation.InvokeAsync(chatContact)" @onclick:stopPropagation="true">
+                                        <i class="bi bi-box-arrow-left text-danger me-1"></i> @L["LeaveConversation"]
+                                    </a>
+                                </li>
+                            }
+                            @if (IsDeletingConversationEnabled(chatContact))
+                            {
+                                <li>
+                                    <a class="dropdown-item delete-conversation-btn" @onclick="async () => await OnDeleteConversation.InvokeAsync(contactForDelete)" @onclick:stopPropagation="true">
+                                        <i class="bi bi-trash text-danger me-1"></i> @L["Delete"]
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </a>
+            }
+        }
+        @if (HasMoreConversations)
+        {
+            <div class="list-group-item text-center py-2">
+                <button class="btn btn-sm btn-outline-primary" @onclick="@(() => OnLoadMore.InvokeAsync())" disabled="@IsLoadingMoreConversations">
+                    @if (IsLoadingMoreConversations)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    @L["LoadMore"]
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string SearchBoxId { get; set; } = "SearchBox";
+
+    [Parameter]
+    public string ScrollContainerId { get; set; } = "chat-messages-container";
+
+    [Parameter]
+    public string ContactListId { get; set; } = "contact_list";
+
+    [Parameter]
+    public List<ChatContactDto> ChatContactDtos { get; set; } = new();
+
+    [Parameter]
+    public bool IsLoadingConversations { get; set; }
+
+    [Parameter]
+    public Dictionary<ChatContactDto, string> ChatContactsActive { get; set; } = new();
+
+    [Parameter]
+    public bool HasMoreConversations { get; set; }
+
+    [Parameter]
+    public bool IsLoadingMoreConversations { get; set; }
+
+    [Parameter]
+    public string SearchValue { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SearchValueChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> OnSearchChange { get; set; }
+
+    [Parameter]
+    public EventCallback<KeyboardEventArgs> OnSearchKeyUp { get; set; }
+
+    [Parameter]
+    public EventCallback OnStartDirectModal { get; set; }
+
+    [Parameter]
+    public EventCallback OnStartGroupModal { get; set; }
+
+    [Parameter]
+    public EventCallback<ChatContactDto> OnContactActivate { get; set; }
+
+    [Parameter]
+    public EventCallback<ChatContactDto> OnTogglePin { get; set; }
+
+    [Parameter]
+    public EventCallback<ChatContactDto> OnLeaveConversation { get; set; }
+
+    [Parameter]
+    public EventCallback<ChatContactDto> OnDeleteConversation { get; set; }
+
+    [Parameter]
+    public EventCallback OnLoadMore { get; set; }
+
+    [Parameter]
+    public Func<ChatContactDto, string> GetContactDisplayName { get; set; } = null!;
+
+    [Parameter]
+    public Func<ChatContactDto, bool> IsDeletingConversationEnabled { get; set; } = null!;
+
+    private async Task OnSearchInputAsync(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString() ?? string.Empty;
+        await SearchValueChanged.InvokeAsync(v);
+    }
+
+    private object chatContactKey(ChatContactDto c) =>
+        c.Type == ConversationType.User ? c.UserId : (object)(c.ConversationId ?? Guid.Empty);
+}

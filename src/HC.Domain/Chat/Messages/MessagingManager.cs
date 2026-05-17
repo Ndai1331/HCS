@@ -229,20 +229,18 @@ public class MessagingManager : DomainService
             {
                 messages = await _userMessageRepository.GetMessagesAsync(CurrentUser.GetId(), targetUserId, skipCount, maxResultCount);
 
-                //TODO: Optimize
-                var readMessages = new List<Message>();
-                foreach (var message in messages.Where(m => !m.UserMessage.IsRead).ToArray())
+                var unreadBatch = messages.Where(m => !m.UserMessage.IsRead).ToArray();
+                if (unreadBatch.Length > 0)
                 {
-                    message.UserMessage.MarkAsRead(Clock.Now);
-                    await _userMessageRepository.UpdateAsync(message.UserMessage);
-
-                    message.Message.MarkAsAllRead(Clock.Now);
-                    readMessages.Add(message.Message);
-                }
-
-                foreach (var message in readMessages)
-                {
-                    await _messageRepository.UpdateAsync(message);
+                    var now = Clock.Now;
+                    var chatMessageIds = unreadBatch.Select(x => x.Message.Id).Distinct().ToList();
+                    await _userMessageRepository.BulkMarkAsReadForMessagesAsync(CurrentUser.GetId(), chatMessageIds, now);
+                    await _messageRepository.BulkMarkAsAllReadAsync(chatMessageIds, now);
+                    foreach (var x in unreadBatch)
+                    {
+                        x.UserMessage.MarkAsRead(now);
+                        x.Message.MarkAsAllRead(now);
+                    }
                 }
                 await uow.CompleteAsync();
             }
@@ -280,19 +278,18 @@ public class MessagingManager : DomainService
         {
             using (var uow = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: _unitOfWorkManager.Current?.Options?.IsTransactional ?? false))
             {
-                var readMessages = new List<Message>();
-                foreach (var message in messages.Where(m => !m.UserMessage.IsRead).ToArray())
+                var unreadBatch = messages.Where(m => !m.UserMessage.IsRead).ToArray();
+                if (unreadBatch.Length > 0)
                 {
-                    message.UserMessage.MarkAsRead(Clock.Now);
-                    await _userMessageRepository.UpdateAsync(message.UserMessage);
-
-                    message.Message.MarkAsAllRead(Clock.Now);
-                    readMessages.Add(message.Message);
-                }
-
-                foreach (var message in readMessages)
-                {
-                    await _messageRepository.UpdateAsync(message);
+                    var now = Clock.Now;
+                    var chatMessageIds = unreadBatch.Select(x => x.Message.Id).Distinct().ToList();
+                    await _userMessageRepository.BulkMarkAsReadForMessagesAsync(currentUserId, chatMessageIds, now);
+                    await _messageRepository.BulkMarkAsAllReadAsync(chatMessageIds, now);
+                    foreach (var x in unreadBatch)
+                    {
+                        x.UserMessage.MarkAsRead(now);
+                        x.Message.MarkAsAllRead(now);
+                    }
                 }
                 await uow.CompleteAsync();
             }

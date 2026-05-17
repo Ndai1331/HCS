@@ -300,14 +300,9 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         
         messages = await _messagingManager.ReadMessagesByConversationIdAsync(conversationId, input.SkipCount, input.MaxResultCount);
 
-        foreach (var x in messages)
-        {
-            // For Group/Project/Task conversations, use Message.CreatorId as sender
-            // For Direct conversations, CreatorId is also the sender
-            var senderUserId = x.Message.CreatorId;
-            var messageDto = await MapToChatMessageDtoAsync(x.Message, x.UserMessage.Side, senderUserId);
-            chatConversation.Messages.Add(messageDto);
-        }
+        var messageEntities = messages.ConvertAll(x => x.Message);
+        var sides = messages.ConvertAll(x => x.UserMessage.Side);
+        chatConversation.Messages = await MapToChatMessageDtosBatchAsync(messageEntities, sides, senderUserIdOverrides: null);
 
         return chatConversation;
     }
@@ -1301,13 +1296,8 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         
         var pinnedMessages = await _messageRepository.GetPinnedMessagesAsync(conversationId);
         
-        var result = new List<ChatMessageDto>();
-        foreach (var message in pinnedMessages)
-        {
-            result.Add(await MapToChatMessageDtoAsync(message, ChatMessageSide.Sender));
-        }
-        
-        return result;
+        var senderSides = pinnedMessages.ConvertAll(_ => ChatMessageSide.Sender);
+        return await MapToChatMessageDtosBatchAsync(pinnedMessages, senderSides, senderUserIdOverrides: null);
     }
     
     public virtual async Task<ChatMessageDto> SendMessageWithFilesAsync(SendMessageWithFilesInput input)
@@ -1741,11 +1731,9 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             maxResultCount: input.MaxResultCount,
             skipCount: input.SkipCount
         );
-        List<ChatMessageDto> messDto =  new ();
-        foreach (var m in messages)
-        {
-            messDto.Add(await MapToChatMessageDtoAsync(m, ChatMessageSide.Sender));
-        }
+        List<ChatMessageDto> messDto = new ();
+        var sides = messages.ConvertAll(_ => ChatMessageSide.Sender);
+        messDto.AddRange(await MapToChatMessageDtosBatchAsync(messages, sides, senderUserIdOverrides: null));
         return messDto;
     }
 
@@ -1770,20 +1758,27 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             HasMoreAfter = context.HasMoreAfter
         };
 
+        var contextOverride = Enumerable.Repeat((Guid?)currentUserId, 1).ToList();
         if (context.Anchor != null)
         {
-            result.AnchorMessage = await MapToChatMessageDtoAsync(context.Anchor, context.Anchor.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver, currentUserId);
+            result.AnchorMessage = (await MapToChatMessageDtosBatchAsync(
+                new List<Message> { context.Anchor },
+                new List<ChatMessageSide>
+                {
+                    context.Anchor.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver
+                },
+                contextOverride))[0];
         }
 
-        foreach (var message in context.Before)
-        {
-            result.BeforeMessages.Add(await MapToChatMessageDtoAsync(message, message.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver, currentUserId));
-        }
+        var beforeSides = context.Before.ConvertAll(m =>
+            m.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver);
+        var beforeOverrides = Enumerable.Repeat((Guid?)currentUserId, context.Before.Count).ToList();
+        result.BeforeMessages.AddRange(await MapToChatMessageDtosBatchAsync(context.Before, beforeSides, beforeOverrides));
 
-        foreach (var message in context.After)
-        {
-            result.AfterMessages.Add(await MapToChatMessageDtoAsync(message, message.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver, currentUserId));
-        }
+        var afterSides = context.After.ConvertAll(m =>
+            m.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver);
+        var afterOverrides = Enumerable.Repeat((Guid?)currentUserId, context.After.Count).ToList();
+        result.AfterMessages.AddRange(await MapToChatMessageDtosBatchAsync(context.After, afterSides, afterOverrides));
 
         return result;
     }
@@ -1965,7 +1960,102 @@ public class ConversationAppService : ChatAppService, IConversationAppService
         return dto;
     }
     
-    private async Task<ChatMessageDto> MapToChatMessageDtoAsync(Message message, ChatMessageSide side, Guid? senderUserId = null)
+    private async Task<List<ChatMessageDto>> MapToChatMessageDtosBatchAsync(
+        IReadOnlyList<Message> messages,
+        IReadOnlyList<ChatMessageSide> sides,
+        IReadOnlyList<Guid?>? senderUserIdOverrides)
+    {
+        var currentUserId = CurrentUser.GetId();
+        var count = messages.Count;
+        if (count == 0)
+        {
+            return new List<ChatMessageDto>();
+        }
+
+        if (sides.Count != count)
+        {
+            throw new ArgumentException("sides must have the same length as messages.", nameof(sides));
+        }
+
+        if (senderUserIdOverrides != null && senderUserIdOverrides.Count != count)
+        {
+            throw new ArgumentException("senderUserIdOverrides must have the same length as messages.", nameof(senderUserIdOverrides));
+        }
+
+        var senderIds = new HashSet<Guid>();
+        var refIdSet = new HashSet<Guid>();
+        var messageIds = new List<Guid>(count);
+
+        for (var i = 0; i < count; i++)
+        {
+            var m = messages[i];
+            messageIds.Add(m.Id);
+
+            var effectiveSender = senderUserIdOverrides != null ? senderUserIdOverrides[i] : m.CreatorId;
+            if (effectiveSender.HasValue)
+            {
+                senderIds.Add(effectiveSender.Value);
+            }
+
+            if (m.ReplyToMessageId.HasValue)
+            {
+                refIdSet.Add(m.ReplyToMessageId.Value);
+            }
+
+            if (m.ForwardedFromMessageId.HasValue)
+            {
+                refIdSet.Add(m.ForwardedFromMessageId.Value);
+            }
+        }
+
+        var refMessages = refIdSet.Count > 0
+            ? await _messageRepository.GetListByIdsAsync(refIdSet.ToList())
+            : new List<Message>();
+        var refById = refMessages.ToDictionary(x => x.Id);
+
+        foreach (var rm in refMessages)
+        {
+            if (rm.CreatorId.HasValue)
+            {
+                senderIds.Add(rm.CreatorId.Value);
+            }
+        }
+
+        var users = senderIds.Count > 0
+            ? await _chatUserLookupService.GetListByIdsAsync(senderIds)
+            : Array.Empty<ChatUser>();
+        var userById = users.ToDictionary(u => u.Id);
+
+        var allFiles = await _messageFileRepository.GetListByMessageIdsAsync(messageIds);
+        var filesByMessageId = allFiles
+            .Where(f => f.MessageId.HasValue)
+            .GroupBy(f => f.MessageId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var result = new List<ChatMessageDto>(count);
+        for (var i = 0; i < count; i++)
+        {
+            result.Add(BuildChatMessageDtoFromCaches(
+                messages[i],
+                sides[i],
+                senderUserIdOverrides?[i],
+                currentUserId,
+                refById,
+                userById,
+                filesByMessageId));
+        }
+
+        return result;
+    }
+
+    private static ChatMessageDto BuildChatMessageDtoFromCaches(
+        Message message,
+        ChatMessageSide side,
+        Guid? senderUserIdOverride,
+        Guid currentUserId,
+        IReadOnlyDictionary<Guid, Message> refById,
+        IReadOnlyDictionary<Guid, ChatUser> userById,
+        IReadOnlyDictionary<Guid, List<MessageFile>> filesByMessageId)
     {
         var dto = new ChatMessageDto
         {
@@ -1981,79 +2071,86 @@ public class ConversationAppService : ChatAppService, IConversationAppService
             SenderUserId = message.CreatorId,
             Files = new List<MessageFileDto>()
         };
-        
-        if (senderUserId.HasValue || message.CreatorId.HasValue)
+
+        var effectiveSenderId = senderUserIdOverride ?? message.CreatorId;
+        if (effectiveSenderId.HasValue && userById.TryGetValue(effectiveSenderId.Value, out var senderUser))
         {
-            var senderUser = senderUserId.HasValue ? await _chatUserLookupService.FindByIdAsync(senderUserId.Value) : await _chatUserLookupService.FindByIdAsync(message.CreatorId.Value);
-            if (senderUser != null)
-            {
-                dto.SenderUserId = senderUser.Id;
-                dto.SenderName = senderUser.Name;
-                dto.SenderSurname = senderUser.Surname;
-                dto.SenderUsername = senderUser.UserName;
-            }
+            dto.SenderUserId = senderUser.Id;
+            dto.SenderName = senderUser.Name;
+            dto.SenderSurname = senderUser.Surname;
+            dto.SenderUsername = senderUser.UserName;
         }
-        
-        // Load reply to message if exists
-        if (message.ReplyToMessageId.HasValue)
+
+        if (message.ReplyToMessageId.HasValue &&
+            refById.TryGetValue(message.ReplyToMessageId.Value, out var replyTo))
         {
-            var replyTo = await _messageRepository.GetAsync(message.ReplyToMessageId.Value);
-            if (replyTo != null)
+            dto.ReplyToMessage = new ChatMessageDto
             {
-                dto.ReplyToMessage = new ChatMessageDto
+                Id = replyTo.Id,
+                Message = replyTo.Text,
+                MessageDate = replyTo.CreationTime,
+                IsPinned = replyTo.IsPinned,
+                Side = replyTo.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver
+            };
+        }
+
+        if (message.ForwardedFromMessageId.HasValue &&
+            refById.TryGetValue(message.ForwardedFromMessageId.Value, out var forwardedFrom))
+        {
+            ChatUser? forwardedSenderUser = null;
+            if (forwardedFrom.CreatorId.HasValue)
+            {
+                userById.TryGetValue(forwardedFrom.CreatorId.Value, out forwardedSenderUser);
+            }
+
+            dto.ForwardedFromMessage = new ChatMessageDto
+            {
+                Id = forwardedFrom.Id,
+                Message = forwardedFrom.Text,
+                MessageDate = forwardedFrom.CreationTime,
+                Side = forwardedFrom.CreatorId == currentUserId ? ChatMessageSide.Sender : ChatMessageSide.Receiver,
+                SenderUserId = forwardedSenderUser?.Id,
+                SenderName = forwardedSenderUser?.Name,
+                SenderSurname = forwardedSenderUser?.Surname,
+                SenderUsername = forwardedSenderUser?.UserName
+            };
+        }
+
+        if (filesByMessageId.TryGetValue(message.Id, out var files))
+        {
+            foreach (var file in files)
+            {
+                dto.Files.Add(new MessageFileDto
                 {
-                    Id = replyTo.Id,
-                    Message = replyTo.Text,
-                    MessageDate = replyTo.CreationTime,
-                    IsPinned = replyTo.IsPinned, // Include pin status for pinning from reply preview
-                    Side = replyTo.CreatorId == CurrentUser.GetId() ? ChatMessageSide.Sender : ChatMessageSide.Receiver
-                };
+                    Id = file.Id,
+                    MessageId = file.MessageId,
+                    FileName = file.FileName,
+                    ContentType = file.ContentType,
+                    FileSize = file.FileSize,
+                    FilePath = file.FilePath,
+                    FileExtension = file.FileExtension,
+                    DownloadUrl = $"/api/chat/files/{file.Id}/download",
+                    CreationTime = file.CreationTime
+                });
             }
         }
-        
-        // Load forwarded from message if exists
-        if (message.ForwardedFromMessageId.HasValue)
-        {
-            var forwardedFrom = await _messageRepository.GetAsync(message.ForwardedFromMessageId.Value);
-            if (forwardedFrom != null)
-            {
-                var forwardedSenderUser = forwardedFrom.CreatorId.HasValue 
-                    ? await _chatUserLookupService.FindByIdAsync(forwardedFrom.CreatorId.Value)
-                    : null;
-                
-                dto.ForwardedFromMessage = new ChatMessageDto
-                {
-                    Id = forwardedFrom.Id,
-                    Message = forwardedFrom.Text,
-                    MessageDate = forwardedFrom.CreationTime,
-                    Side = forwardedFrom.CreatorId == CurrentUser.GetId() ? ChatMessageSide.Sender : ChatMessageSide.Receiver,
-                    SenderUserId = forwardedSenderUser?.Id,
-                    SenderName = forwardedSenderUser?.Name,
-                    SenderSurname = forwardedSenderUser?.Surname,
-                    SenderUsername = forwardedSenderUser?.UserName
-                };
-            }
-        }
-        
-        // Load files
-        var files = await _messageFileRepository.GetByMessageIdAsync(message.Id);
-        foreach (var file in files)
-        {
-            dto.Files.Add(new MessageFileDto
-            {
-                Id = file.Id,
-                MessageId = file.MessageId,
-                FileName = file.FileName,
-                ContentType = file.ContentType,
-                FileSize = file.FileSize,
-                FilePath = file.FilePath,
-                FileExtension = file.FileExtension,
-                DownloadUrl = $"/api/chat/files/{file.Id}/download",
-                CreationTime = file.CreationTime
-            });
-        }
-        
+
         return dto;
+    }
+
+    private async Task<ChatMessageDto> MapToChatMessageDtoAsync(Message message, ChatMessageSide side, Guid? senderUserId = null)
+    {
+        IReadOnlyList<Guid?>? overrides = null;
+        if (senderUserId.HasValue)
+        {
+            overrides = new List<Guid?> { senderUserId.Value };
+        }
+
+        var batch = await MapToChatMessageDtosBatchAsync(
+            new List<Message> { message },
+            new List<ChatMessageSide> { side },
+            overrides);
+        return batch[0];
     }
     
     #endregion

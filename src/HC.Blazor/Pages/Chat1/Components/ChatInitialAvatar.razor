@@ -1,0 +1,12 @@
+<span class="mt-1 chat-initial-avatar @ChatInitialAvatarHelper.SizeToCssClass(Size) @ChatInitialAvatarHelper.GetToneClass(DisplayName, Username)"
+      title="@((DisplayName ?? Username)?.Trim())">
+    @ChatInitialAvatarHelper.GetInitialLetter(DisplayName, Username)
+</span>
+
+@code {
+    [Parameter] public string? DisplayName { get; set; }
+
+    [Parameter] public string? Username { get; set; }
+
+    [Parameter] public ChatInitialAvatarSize Size { get; set; } = ChatInitialAvatarSize.Sm24;
+}

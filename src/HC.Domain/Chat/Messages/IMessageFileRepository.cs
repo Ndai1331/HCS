@@ -10,6 +10,8 @@ namespace HC.Chat.Messages;
 public interface IMessageFileRepository : IBasicRepository<MessageFile, Guid>
 {
     Task<List<MessageFile>> GetByMessageIdAsync(Guid messageId, CancellationToken cancellationToken = default);
+
+    Task<List<MessageFile>> GetListByMessageIdsAsync(IReadOnlyCollection<Guid> messageIds, CancellationToken cancellationToken = default);
     
     Task<List<MessageFile>> GetByConversationIdAsync(Guid conversationId, CancellationToken cancellationToken = default);
     

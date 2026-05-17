@@ -1,0 +1,111 @@
+@using HC.Chat.Conversations
+@using HC.Chat.Messages
+@using HC.Chat.Users
+@inherits HCComponentBase
+
+@*
+  Virtualize<T> deferred: list uses prepend pagination (InsertRange at top), scroll preservation,
+  jump-to-message, and sender canvases keyed by message id — needs coordinated scroll + lazy avatar draw.
+*@
+
+@if (IsLoadingMessages)
+{
+    <div class="card-body p-1 flex-grow-1 position-relative" style="flex: 1; min-height: 240px;">
+        <ChatLoadingSpinnerOverlay />
+    </div>
+}
+else if (ChatConversationDto == null)
+{
+    <div id="EmptyTemplate" class="card-body pt-12 pb-12 text-center">
+        <i class="fa fa-commenting-o fs-2" aria-hidden="true"></i>
+        <p>@L["NoMessageYetMessage"].Value</p>
+    </div>
+}
+else
+{
+    <div style="position: relative; flex: 1; overflow: hidden; min-height: 0; display: flex; flex-direction: column;">
+        @if (IsJumpingToMessage)
+        {
+            <ChatLoadingSpinnerOverlay ColumnLayout="true" Subtext="@L["SearchingMessage"]" />
+        }
+        <div id="chat_conversation_wrapper" class="chat-box mb-2" style="flex: 1; overflow-y: auto; min-height: 0;" @onscroll="OnConversationScroll">
+            <div class="chat-box-container" id="chat_conversation">
+                @if (IsLoadingMoreMessages)
+                {
+                    <div class="text-center py-2">
+                        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+                    </div>
+                }
+                @foreach (var message in Messages)
+                {
+                    <MessageItem @key="message.Id"
+                                 Message="@message"
+                                 CurrentChatContact="@CurrentChatContact"
+                                 OnReply="@OnReply"
+                                 OnTogglePin="@OnTogglePin"
+                                 OnForward="@OnForward"
+                                 OnCreateTask="@OnCreateTask"
+                                 OnDelete="@OnDelete"
+                                 OnJumpToMessage="@OnJumpToMessage"
+                                 OnDownloadFile="@OnDownloadFile"
+                                 GetImageUrl="@GetImageUrl"
+                                 OnOpenImageViewer="@OnOpenImageViewer"
+                                 IsDeletingEnabled="@IsDeletingEnabled.Invoke(message)" />
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsLoadingMessages { get; set; }
+
+    [Parameter]
+    public ChatConversationDto? ChatConversationDto { get; set; }
+
+    [Parameter]
+    public bool IsJumpingToMessage { get; set; }
+
+    [Parameter]
+    public bool IsLoadingMoreMessages { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<ChatMessageDto> Messages { get; set; } = Array.Empty<ChatMessageDto>();
+
+    [Parameter]
+    public ChatContactDto? CurrentChatContact { get; set; }
+
+    [Parameter]
+    public EventCallback<EventArgs> OnConversationScroll { get; set; }
+
+    [Parameter]
+    public EventCallback<ChatMessageDto> OnReply { get; set; }
+
+    [Parameter]
+    public EventCallback<ChatMessageDto> OnTogglePin { get; set; }
+
+    [Parameter]
+    public EventCallback<ChatMessageDto> OnForward { get; set; }
+
+    [Parameter]
+    public EventCallback<ChatMessageDto> OnCreateTask { get; set; }
+
+    [Parameter]
+    public EventCallback<ChatMessageDto> OnDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnJumpToMessage { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDownloadFile { get; set; }
+
+    [Parameter]
+    public Func<string, string> GetImageUrl { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<MessageFileDto> OnOpenImageViewer { get; set; }
+
+    [Parameter]
+    public Func<ChatMessageDto, bool> IsDeletingEnabled { get; set; } = _ => false;
+}

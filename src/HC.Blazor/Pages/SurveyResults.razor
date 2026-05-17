@@ -39,7 +39,10 @@
         border-radius: 4px;
         background: #fafbfc;
         padding: 24px 20px 14px 20px;
-        min-width: 230px;
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
     }
     .stat-title {
         font-weight: 700;
@@ -57,6 +60,8 @@
         align-items: center;
         margin-bottom: 10px;
         font-size: 15px;
+        min-width: 0;
+        gap: 4px;
     }
     .stat-dot {
         width: 16px;
@@ -86,6 +91,9 @@
         align-items: stretch;
         gap: 1rem;
         width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
     }
 
     .rating-distribution-layout .rating-dist-chart {
@@ -93,19 +101,45 @@
         justify-content: center;
         width: 100%;
         max-width: 100%;
+        min-width: 0;
+        flex: 1 1 auto;
     }
 
     .rating-distribution-layout .rating-dist-chart > div {
+        width: 100%;
         max-width: min(100%, 400px);
         margin-left: auto;
         margin-right: auto;
     }
 
+    .rating-distribution-layout .rating-dist-chart canvas {
+        max-width: 100%;
+    }
+
+    .rating-distribution-layout .rating-dist-stat {
+        flex: 0 0 auto;
+        align-self: stretch;
+    }
+
     @@media (min-width: 768px) {
         .rating-distribution-layout {
             flex-direction: row;
+            flex-wrap: wrap;
             justify-content: center;
             align-items: flex-start;
+        }
+
+        .rating-distribution-layout .rating-dist-chart {
+            flex: 1 1 260px;
+            min-width: 0;
+        }
+
+        .rating-distribution-layout .rating-dist-stat {
+            flex: 0 1 280px;
+            width: auto;
+            min-width: 220px;
+            max-width: min(100%, 320px);
+            align-self: flex-start;
         }
     }
 
@@ -198,14 +232,14 @@ else
                             </CardHeader>
                             <CardBody>
                                 <div class="rating-distribution-layout">
-                                    <div class="rating-dist-chart flex-shrink-0">
+                                    <div class="rating-dist-chart">
                                         <PieChart ChartId="@pieChartId"
                                                   Labels="@RatingDistributionLabels"
                                                   Data="@RatingDistributionData"
                                                   BackgroundColors="@RatingDistributionColors"
                                                   IsDoughnut="true" />
                                     </div>
-                                    <div class="stat-block flex-shrink-1">
+                                    <div class="stat-block rating-dist-stat">
                                         <div class="stat-title">@L["RatingDistributionTotal"]</div>
                                         <ul class="stat-list stat-list-mobile-flow">
                                             <li class="stat-list-item">

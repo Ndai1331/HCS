@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using HC.Chat.Messages;
-using System.Linq;
 using Microsoft.EntityFrameworkCore;
 
 namespace HC.Chat.EntityFrameworkCore.Messages;
@@ -118,5 +118,22 @@ public class EfCoreUserMessageRepository : EfCoreRepository<IChatDbContext, User
             .OrderByDescending(x => x.Message.CreationTime)
             .PageBy(skipCount, maxResultCount)
             .ToListAsync(GetCancellationToken(cancellationToken));
+    }
+
+    public virtual async Task<int> BulkMarkAsReadForMessagesAsync(Guid userId, IReadOnlyCollection<Guid> chatMessageIds, DateTime readTime,
+        CancellationToken cancellationToken = default)
+    {
+        if (chatMessageIds == null || chatMessageIds.Count == 0)
+        {
+            return 0;
+        }
+
+        return await (await GetDbSetAsync())
+            .Where(um => um.UserId == userId && chatMessageIds.Contains(um.ChatMessageId) && !um.IsRead)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(um => um.IsRead, true)
+                    .SetProperty(um => um.ReadTime, readTime),
+                GetCancellationToken(cancellationToken));
     }
 }

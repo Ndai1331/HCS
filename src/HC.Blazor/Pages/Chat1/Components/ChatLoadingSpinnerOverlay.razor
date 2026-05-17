@@ -1,0 +1,36 @@
+@inherits HCComponentBase
+
+@* Shared overlay — avoids duplicating markup between mobile/desktop chat layouts. *@
+<div class="@CssClass" style="@Style">
+    @if (!string.IsNullOrEmpty(Subtext))
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center gap-2">
+            <RadarSpinner />
+            <p class="mb-0 text-muted small">@Subtext</p>
+        </div>
+    }
+    else
+    {
+        <RadarSpinner />
+    }
+</div>
+
+@code {
+    /// <summary>Additional classes appended after hc-chat-loading.</summary>
+    [Parameter]
+    public string ExtraClass { get; set; } = "";
+
+    [Parameter]
+    public string? Subtext { get; set; }
+
+    /// <summary>When true, stacks spinner + subtext vertically (jump-to-message overlay).</summary>
+    [Parameter]
+    public bool ColumnLayout { get; set; }
+
+    [Parameter]
+    public string? Style { get; set; }
+
+    private string CssClass => ColumnLayout
+        ? $"hc-chat-loading flex-column {ExtraClass}".Trim()
+        : $"hc-chat-loading {ExtraClass}".Trim();
+}

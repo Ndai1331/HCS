@@ -15,7 +15,7 @@
 @using HC.ProjectTasks
 @using HC.ProjectTaskAssignments
 @using Microsoft.Extensions.Caching.Memory
-@using HC.Chat.Users
+@using HC.Blazor.Pages.Chat1.Components
 @using Volo.Abp.BlazoriseUI
 @using Blazorise
 
@@ -128,7 +128,9 @@
                     <Div Class="mt-1 mb-2 d-flex justify-content-center">
                     @if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.User)
                     {
-                        <canvas @ref="CanvasElementReferences[CurrentChatContact]" class="canvas-avatar mx-auto rounded-circle" Width="30" Height="30"></canvas>
+                        <ChatInitialAvatar DisplayName="@GetName(CurrentChatContact)"
+                                             Username="@CurrentChatContact.Username"
+                                             Size="ChatInitialAvatarSize.Md30" />
                     }
                     else if (CurrentChatContact != null && CurrentChatContact.Type == ConversationType.Group)
                     {
@@ -200,10 +202,18 @@
                             </Span>
                         </AccordionHeader>
                         <AccordionBody>
-                            <Button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"  @onclick="async () => await ShowPinnedMessagesAsync()">
-                                <i class="bi bi-pin-angle-fill fs-5"></i>
-                                <span class="d-block ms-2"> @L["ShowPinnedMessages"]</span>
-                            </Button>
+                            <Div Class="position-relative" Style="min-height: 52px;">
+                                @if (IsLoadingPinnedMessages)
+                                {
+                                    <div class="hc-chat-loading">
+                                        <RadarSpinner />
+                                    </div>
+                                }
+                                <Button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center" Disabled="@IsLoadingPinnedMessages" @onclick="async () => await ShowPinnedMessagesAsync()">
+                                    <i class="bi bi-pin-angle-fill fs-5"></i>
+                                    <span class="d-block ms-2"> @L["ShowPinnedMessages"]</span>
+                                </Button>
+                            </Div>
                         </AccordionBody>
                     </AccordionItem>
                     @if(CurrentChatContact != null && CurrentChatContact.Type != ConversationType.User)
@@ -215,20 +225,23 @@
                                 </Span>
                             </AccordionHeader>
                             <AccordionBody>
-                                @if(IsLoadingMembers)
-                                {
-                                    <div class="d-flex justify-content-center">
-                                        <RadarSpinner />
-                                    </div>
-                                }
-                                else
-                                {
-                                    <Div>
+                                <Div Class="position-relative" Style="min-height: 120px;">
+                                    @if (IsLoadingMembers)
+                                    {
+                                        <div class="hc-chat-loading">
+                                            <RadarSpinner />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <Div>
                                         @foreach(var member in Members)
                                         {
-                                            <Div Class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                            <Div @key="member.UserId" Class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                                 <div class="d-flex align-items-center gap-2">
-                                                    <canvas id="member-avatar-@member.UserId" class="canvas-avatar rounded-circle" Width="30" Height="30"></canvas>
+                                                    <ChatInitialAvatar DisplayName="@($"{member.UserInfo?.Surname} {member.UserInfo?.Name}".Trim())"
+                                                                         Username="@member.UserInfo?.Username"
+                                                                         Size="ChatInitialAvatarSize.Md30" />
                                                     <div class="d-flex flex-column">
                                                         <span class="@(member.Role == "ADMIN" ? "fw-bold text-brand" : "")">
                                                             @member.UserInfo?.Surname @member.UserInfo?.Name
@@ -303,7 +316,8 @@
                                             </Div> 
                                         }       
                                     </Div>
-                                }
+                                    }
+                                </Div>
                             </AccordionBody>
                         </AccordionItem>
                     }
@@ -360,10 +374,16 @@
                             </span>  
                         </Div>
 
-                        <Div Class="mb-2 text-center overflow-y-auto" id="found_messages">
+                        <Div Class="mb-2 text-center overflow-y-auto position-relative" Style="min-height: 140px;" id="found_messages">
+                            @if (IsLoadingFoundMessages)
+                            {
+                                <div class="hc-chat-loading">
+                                    <RadarSpinner />
+                                </div>
+                            }
                             @foreach(var message in FoundMessages)
                             {
-                                <a class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2
+                                <a @key="message.Id" class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2
                                 bg-white shadow rounded py-1 px-2 mb-1 position-relative"
                                    @onclick="async () => await OpenFoundMessageAsync(message.Id)">
                                     <div class="media">
@@ -401,7 +421,13 @@
                     </button>
                 </Div>
 
-                <Div Class="mb-2 text-center overflow-y-auto" id="found_media_and_files">
+                <Div Class="mb-2 text-center overflow-y-auto position-relative" Style="min-height: 200px;" id="found_media_and_files">
+                    @if (IsLoadingMediaAndFiles)
+                    {
+                        <div class="hc-chat-loading">
+                            <RadarSpinner />
+                        </div>
+                    }
                     <Tabs SelectedTab="@SelectedTabMediaFiles" SelectedTabChanged="@(async (name) => await OnSelectedTabMediaFilesChanged(name))">
                         <Items>
                             <Tab Name="images">

@@ -23,4 +23,7 @@ public interface IUserMessageRepository : IBasicRepository<UserMessage, Guid>
     Task<HashSet<Guid>> GetMessageIdsByConversationIdAsync(Guid conversationId, Guid userId, CancellationToken cancellationToken = default);
 
     Task DeleteAllMessages(Guid userId, Guid targetUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>Bulk mark user rows read for the given chat message ids (single SQL round-trip).</summary>
+    Task<int> BulkMarkAsReadForMessagesAsync(Guid userId, IReadOnlyCollection<Guid> chatMessageIds, DateTime readTime, CancellationToken cancellationToken = default);
 }

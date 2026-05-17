@@ -397,3 +397,4 @@
 /Users/user/Documents/HCS/src/HC.BackgroundJobWorker/bin/Debug/net10.0/HC.BackgroundJobWorker.xml
 /Users/user/Documents/HCS/src/HC.BackgroundJobWorker/obj/Debug/net10.0/HC.BackgroundJobWorker.genruntimeconfig.cache
 /Users/user/Documents/HCS/src/HC.BackgroundJobWorker/obj/Debug/net10.0/ref/HC.BackgroundJobWorker.dll
+/Users/user/Documents/HCS/src/HC.BackgroundJobWorker/bin/Debug/net10.0/appsettings.secrets.json

@@ -42,7 +42,17 @@ public class ContactAppService : ChatAppService, IContactAppService
         try
         {
             var currentUserId = CurrentUser.GetId();
-            var conversations = await _conversationRepository.GetListByUserIdAsync(currentUserId, input.Filter ?? string.Empty);
+
+            // When merging other contacts or loading full list (MaxResultCount <= 0), fetch all matching rows from DB; otherwise paginate in SQL.
+            var loadFullConversationSet = input.IncludeOtherContacts || input.MaxResultCount <= 0;
+            var skipDb = loadFullConversationSet ? 0 : input.SkipCount;
+            var takeDb = loadFullConversationSet ? 0 : input.MaxResultCount;
+
+            var conversations = await _conversationRepository.GetListByUserIdAsync(
+                currentUserId,
+                input.Filter ?? string.Empty,
+                skipDb,
+                takeDb);
             var conversationContacts = new List<ChatContactDto>();
 
             var conversationRows = conversations.Where(x => x?.Conversation != null).ToList();
@@ -214,8 +224,8 @@ public class ContactAppService : ChatAppService, IContactAppService
                 .ThenByDescending(c => c.LastMessageDate ?? DateTime.MinValue) // Then by last message date (newest first)
                 .ToList();
 
-            // Apply pagination
-            if (input.MaxResultCount > 0)
+            // Apply pagination when conversations were loaded in full (other contacts / unlimited)
+            if (loadFullConversationSet && input.MaxResultCount > 0)
             {
                 sortedContacts = sortedContacts
                     .Skip(input.SkipCount)

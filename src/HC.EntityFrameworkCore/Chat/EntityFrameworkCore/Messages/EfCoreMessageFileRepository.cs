@@ -29,6 +29,18 @@ public class EfCoreMessageFileRepository : EfCoreRepository<IChatDbContext, Mess
             .Where(x => x.MessageId == messageId)
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
+
+    public virtual async Task<List<MessageFile>> GetListByMessageIdsAsync(IReadOnlyCollection<Guid> messageIds, CancellationToken cancellationToken = default)
+    {
+        if (messageIds == null || messageIds.Count == 0)
+        {
+            return new List<MessageFile>();
+        }
+
+        return await (await GetDbSetAsync())
+            .Where(x => x.MessageId.HasValue && messageIds.Contains(x.MessageId.Value))
+            .ToListAsync(GetCancellationToken(cancellationToken));
+    }
     
     public virtual async Task<List<MessageFile>> GetByConversationIdAsync(Guid conversationId, CancellationToken cancellationToken = default)
     {

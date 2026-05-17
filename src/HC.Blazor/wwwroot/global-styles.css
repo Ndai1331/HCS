@@ -211,6 +211,18 @@
     pointer-events: all;
 }
 
+/* Chat list / message panel loading overlay (aligned with kanban overlay) */
+.hc-chat-loading {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, .72);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
+}
+
 .hc-kanban-column {
     min-width: 280px;
     max-width: 320px;
@@ -641,4 +653,72 @@
 
 .lpx-mobile-nav-tabs .lpx-mobile-nav-tab:nth-child(3) {
     display: none !important;
+}
+
+/*
+ * HC Chat: Bootstrap 5 removed .media / .media-body (Bootstrap 4 helpers).
+ * Volo.Chat.Blazor Index.css is not served here (404); restore minimal layout so
+ * contact-list initials align beside names.
+ */
+.contract-list .chat-contact .media {
+    display: flex;
+    align-items: flex-start;
+}
+
+.contract-list .chat-contact .media-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.chat-initial-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: 700;
+    line-height: 1;
+    user-select: none;
+}
+
+.chat-initial-avatar--sm {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: 18px;
+}
+
+.chat-initial-avatar--md {
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+}
+
+.chat-initial-avatar--msg {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 13px;
+}
+
+.chat-initial-avatar--lg {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 18px;
+}
+
+.chat-initial-tone-0 { background-color: #3cb160; color: #ffffff; }
+.chat-initial-tone-1 { background-color: #c373cc; color: #ffffff; }
+.chat-initial-tone-2 { background-color: #2b78b3; color: #ffffff; }
+.chat-initial-tone-3 { background-color: #6ac79a; color: #ffffff; }
+.chat-initial-tone-4 { background-color: #aeb140; color: #ffffff; }
+.chat-initial-tone-5 { background-color: #b773c0; color: #ffffff; }
+.chat-initial-tone-6 { background-color: #e16d7a; color: #ffffff; }
+.chat-initial-tone-7 { background-color: #ffac2a; color: #ffffff; }
+.chat-initial-tone-8 { background-color: #21bbc7; color: #ffffff; }
+.chat-initial-tone-9 { background-color: #59ab95; color: #ffffff; }
+
+.contract-list .chat-contact .chat-initial-avatar {
+    flex-shrink: 0;
 }

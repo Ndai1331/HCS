@@ -32,4 +32,12 @@ public interface IMessageRepository : IBasicRepository<Message, Guid>
         int skipCount = 0,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Load many messages in one query (DTO mapping / reply-forward batch resolution).
+    /// </summary>
+    Task<List<Message>> GetListByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
+
+    /// <summary>Bulk mark messages as all-read (single SQL round-trip).</summary>
+    Task<int> BulkMarkAsAllReadAsync(IReadOnlyCollection<Guid> messageIds, DateTime readTime, CancellationToken cancellationToken = default);
+
 }

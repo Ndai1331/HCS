@@ -131,9 +131,7 @@
                                 @if (IsLoading)
                                 {
                                     <div class="text-center py-4">
-                                        <div class="spinner-border spinner-border-sm" role="status">
-                                            <span class="visually-hidden">@L["Loading"]...</span>
-                                        </div>
+                                        <RadarSpinner />
                                     </div>
                                 }
                                 else if (!EventsByDay.ContainsKey(tab.Key) || !EventsByDay[tab.Key].Any())
@@ -217,9 +215,7 @@
                 @if (IsLoading)
                 {
                     <div class="text-center py-4">
-                        <div class="spinner-border spinner-border-sm" role="status">
-                            <span class="visually-hidden">@L["Loading"]...</span>
-                        </div>
+                        <RadarSpinner />
                     </div>
                 }
                 else if (!RecentNotificationsList.Any())
@@ -322,9 +318,7 @@
                 @if (IsLoading)
                 {
                     <div class="text-center py-4">
-                        <div class="spinner-border spinner-border-sm" role="status">
-                            <span class="visually-hidden">@L["Loading"]...</span>
-                        </div>
+                        <RadarSpinner />
                     </div>
                 }
                 else if (!RecentDocumentsList.Any())
@@ -389,9 +383,7 @@
                 @if (IsLoading)
                 {
                     <div class="text-center py-4">
-                        <div class="spinner-border text-black" role="status">
-                            <span class="visually-hidden">@L["Loading"]...</span>
-                        </div>
+                        <RadarSpinner />
                     </div>
                 }
                 else if (!ActiveProjectsList.Any())
@@ -467,9 +459,7 @@
                 @if (IsLoading)
                 {
                     <div class="d-flex justify-content-center align-items-center" style="min-height: 200px;">
-                        <div class="spinner-border" role="status">
-                            <span class="visually-hidden">@L["Loading"]...</span>
-                        </div>
+                        <RadarSpinner />
                     </div>
                 }
                 else if (TotalTasksCount == 0)
@@ -520,9 +510,7 @@
                 @if (IsLoading)
                 {
                     <div class="text-center py-4">
-                        <div class="spinner-border spinner-border-sm" role="status">
-                            <span class="visually-hidden">@L["Loading"]...</span>
-                        </div>
+                        <RadarSpinner />
                     </div>
                 }
                 else if (!MyTasksList.Any())

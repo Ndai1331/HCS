@@ -158,4 +158,34 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
             })
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
+
+    public virtual async Task<List<Message>> GetListByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        if (ids == null || ids.Count == 0)
+        {
+            return new List<Message>();
+        }
+
+        return await (await GetDbSetAsync())
+            .AsNoTracking()
+            .Where(m => ids.Contains(m.Id))
+            .ToListAsync(GetCancellationToken(cancellationToken));
+    }
+
+    public virtual async Task<int> BulkMarkAsAllReadAsync(IReadOnlyCollection<Guid> messageIds, DateTime readTime,
+        CancellationToken cancellationToken = default)
+    {
+        if (messageIds == null || messageIds.Count == 0)
+        {
+            return 0;
+        }
+
+        return await (await GetDbSetAsync())
+            .Where(m => messageIds.Contains(m.Id) && !m.IsAllRead)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(m => m.IsAllRead, true)
+                    .SetProperty(m => m.ReadTime, readTime),
+                GetCancellationToken(cancellationToken));
+    }
 }
