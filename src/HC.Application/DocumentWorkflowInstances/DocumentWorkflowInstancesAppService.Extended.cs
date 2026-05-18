@@ -38,6 +38,7 @@ using HC.DocumentHistories;
 using Volo.Abp.BlobStoring;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Uow;
+using Microsoft.EntityFrameworkCore;
 
 namespace HC.DocumentWorkflowInstances;
 
@@ -1769,7 +1770,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             return exclude;
         }
 
-        var instanceQueryable = await _documentWorkflowInstanceRepository.GetQueryableAsync();
+        var instanceQueryable = (await _documentWorkflowInstanceRepository.GetQueryableAsync()).AsNoTracking();
         var instances = await AsyncExecuter.ToListAsync(
             instanceQueryable.Where(i =>
                 candidateDocumentIds.Contains(i.DocumentId) && i.CreatorId == currentUserId));
@@ -1780,7 +1781,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 g => g.Key,
                 g => g.OrderByDescending(x => x.StartedAt).ThenByDescending(x => x.Id).First().StartedAt);
 
-        var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
+        var assignmentQueryable = (await _documentAssignmentRepository.GetQueryableAsync()).AsNoTracking();
         var signedAssignments = await AsyncExecuter.ToListAsync(
             assignmentQueryable.Where(a =>
                 candidateDocumentIds.Contains(a.DocumentId)
@@ -1817,9 +1818,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var currentUserId = CurrentUser.Id!.Value;
 
         // ===== STEP 1: Build queryable for distinct document IDs per category at DB level =====
-        var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
-        var instanceQueryable = await _documentWorkflowInstanceRepository.GetQueryableAsync();
-        var documentQueryable = await _documentRepository.GetQueryableAsync();
+        var assignmentQueryable = (await _documentAssignmentRepository.GetQueryableAsync()).AsNoTracking();
+        var instanceQueryable = (await _documentWorkflowInstanceRepository.GetQueryableAsync()).AsNoTracking();
+        var documentQueryable = (await _documentRepository.GetQueryableAsync()).AsNoTracking();
 
         // Signing documents only: SourceType = Workflow (3). Manage-documents / inbox use other source types.
         var workflowDocumentQuery = documentQueryable.Where(d => d.SourceType == DocumentSourceType.Workflow);
@@ -1943,7 +1944,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         }
 
         // ===== STEP 6: Batch load related data for paged documents only =====
-        var pagedDocIds = pagedDocuments.Select(d => d.Id).ToList();
+        var pagedDocIds = pagedDocuments.Select(d => d.Id).Distinct().ToList();
 
         // Load current user's assignments for the paged documents only (for CanAct/MyAssignment)
         var myAssignments = await AsyncExecuter.ToListAsync(
@@ -1952,9 +1953,22 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 a.ReceiverUserId == currentUserId &&
                 a.WorkflowStepTemplateId != null));
 
-        // Get all workflow instances for the paged documents
-        var allInstances = await _documentWorkflowInstanceRepository.GetListAsync(
-            x => pagedDocIds.Contains(x.DocumentId));
+        // Get only the latest workflow instance per paged document in a single projected query.
+        var latestStartedAtByDocQuery = instanceQueryable
+            .Where(i => pagedDocIds.Contains(i.DocumentId))
+            .GroupBy(i => i.DocumentId)
+            .Select(g => new { DocumentId = g.Key, StartedAt = g.Max(x => x.StartedAt) });
+        var latestInstances = await AsyncExecuter.ToListAsync(
+            instanceQueryable
+                .Where(i => pagedDocIds.Contains(i.DocumentId))
+                .Join(
+                    latestStartedAtByDocQuery,
+                    i => new { i.DocumentId, i.StartedAt },
+                    l => new { l.DocumentId, l.StartedAt },
+                    (i, l) => i)
+                .GroupBy(i => i.DocumentId)
+                .Select(g => g.OrderByDescending(x => x.Id).First()));
+        var latestInstancePerPagedDoc = latestInstances.ToDictionary(i => i.DocumentId, i => i);
 
         // Batch load MasterData for StatusId + TypeId
         var masterDataIds = pagedDocuments
@@ -1969,24 +1983,25 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             : new Dictionary<Guid, MasterData>();
 
         // Batch load Workflows referenced by instances
-        var workflowIds = allInstances.Select(i => i.WorkflowId).Distinct().ToList();
+        var workflowIds = latestInstances.Select(i => i.WorkflowId).Distinct().ToList();
         var workflowDict = workflowIds.Any()
             ? (await _workflowRepository.GetListAsync(x => workflowIds.Contains(x.Id)))
                 .ToDictionary(w => w.Id, w => w)
             : new Dictionary<Guid, Workflow>();
 
         // Batch load current steps (WorkflowStepTemplates) referenced by instances
-        var stepIds = allInstances.Select(i => i.CurrentStepId).Distinct().ToList();
+        var stepIds = latestInstances.Select(i => i.CurrentStepId).Distinct().ToList();
         var stepDict = stepIds.Any()
             ? (await _workflowStepTemplateRepository.GetListAsync(x => stepIds.Contains(x.Id)))
                 .ToDictionary(s => s.Id, s => s)
             : new Dictionary<Guid, WorkflowStepTemplate>();
 
         // Batch load total step counts per WorkflowTemplate
-        var templateIds = allInstances.Select(i => i.WorkflowTemplateId).Distinct().ToList();
+        var templateIds = latestInstances.Select(i => i.WorkflowTemplateId).Distinct().ToList();
+        var stepTemplateQueryable = (await _workflowStepTemplateRepository.GetQueryableAsync()).AsNoTracking();
         var allStepsForTemplates = templateIds.Any()
-            ? await _workflowStepTemplateRepository.GetListAsync(
-                x => templateIds.Contains(x.WorkflowTemplateId) && x.IsActive)
+            ? await AsyncExecuter.ToListAsync(stepTemplateQueryable.Where(
+                x => templateIds.Contains(x.WorkflowTemplateId) && x.IsActive))
             : new List<WorkflowStepTemplate>();
         var totalStepsDict = allStepsForTemplates
             .GroupBy(s => s.WorkflowTemplateId)
@@ -1997,16 +2012,13 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 pagedDocIds.Contains(a.DocumentId) &&
                 a.WorkflowStepTemplateId != null));
 
-        var latestInstancePerPagedDoc = allInstances
-            .GroupBy(i => i.DocumentId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.StartedAt).ThenByDescending(x => x.Id).First());
-
         var pageWorkflowTemplateIds = latestInstancePerPagedDoc.Values
             .Select(i => i.WorkflowTemplateId)
             .Distinct()
             .ToList();
+        var workflowTemplateQueryable = (await _workflowTemplateRepository.GetQueryableAsync()).AsNoTracking();
         var workflowTemplatesForPage = pageWorkflowTemplateIds.Any()
-            ? await _workflowTemplateRepository.GetListAsync(x => pageWorkflowTemplateIds.Contains(x.Id))
+            ? await AsyncExecuter.ToListAsync(workflowTemplateQueryable.Where(x => pageWorkflowTemplateIds.Contains(x.Id)))
             : new List<WorkflowTemplate>();
         var workflowTemplateDictForPage = workflowTemplatesForPage.ToDictionary(t => t.Id, t => t);
 
@@ -2025,8 +2037,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             }
         }
 
-        var committedStepTemplatesForPage = committedStepIdsForPage.Any()
-            ? await _workflowStepTemplateRepository.GetListAsync(x => committedStepIdsForPage.Contains(x.Id))
+        var committedStepIdsForPageList = committedStepIdsForPage.Distinct().ToList();
+        var committedStepTemplatesForPage = committedStepIdsForPageList.Any()
+            ? await AsyncExecuter.ToListAsync(stepTemplateQueryable.Where(x => committedStepIdsForPageList.Contains(x.Id)))
             : new List<WorkflowStepTemplate>();
         var committedStepTemplateDictForPage = committedStepTemplatesForPage.ToDictionary(s => s.Id, s => s);
 
@@ -2035,10 +2048,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         foreach (var doc in pagedDocuments)
         {
             // Get the latest (or active IN_PROGRESS) instance for this document
-            var docInstance = allInstances
-                .Where(x => x.DocumentId == doc.Id)
-                .OrderByDescending(x => x.StartedAt)
-                .FirstOrDefault();
+            latestInstancePerPagedDoc.TryGetValue(doc.Id, out var docInstance);
 
             var myDocAssignment = myAssignments
                 .Where(a => a.DocumentId == doc.Id && a.Status == nameof(DocumentAssignmentStatus.PENDING) && a.IsCurrent)
