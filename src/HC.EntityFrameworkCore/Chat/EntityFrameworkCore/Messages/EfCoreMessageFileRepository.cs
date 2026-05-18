@@ -48,6 +48,7 @@ public class EfCoreMessageFileRepository : EfCoreRepository<IChatDbContext, Mess
         
         // Get message IDs from the conversation using Message.ConversationId
         var messageIds = await dbContext.ChatMessages
+            .AsNoTracking()
             .Where(m => m.ConversationId == conversationId)
             .Select(m => m.Id)
             .ToListAsync(GetCancellationToken(cancellationToken));
@@ -78,7 +79,7 @@ public class EfCoreMessageFileRepository : EfCoreRepository<IChatDbContext, Mess
 
 
     return await (await GetQueryableAsync())
-        .Include(x => x.Message)
+        .AsNoTracking()
         .Where(x => 
         x.Message.ConversationId == conversationId 
         && fileExtensions.Contains(x.FileExtension) 

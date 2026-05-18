@@ -34,13 +34,19 @@ public class EfCoreConversationMemberRepository : EfCoreRepository<IChatDbContex
     {
         var dbSet = await GetDbSetAsync();
         var requiredCount = userIds.Count;
+        var dbContext = await GetDbContextAsync();
 
         // Find conversations where ALL provided users are active members
         var matchingConversationIds = await dbSet
-            .Include(x => x.Conversation)
-            .Where(x => userIds.Contains(x.UserId) && x.IsActive && x.Conversation.Type == type)
-            .GroupBy(x => x.ConversationId)
-            .Where(g => g.Select(m => m.UserId).Distinct().Count() >= requiredCount)
+            .AsNoTracking()
+            .Join(
+                dbContext.ChatConversations.AsNoTracking(),
+                member => member.ConversationId,
+                conversation => conversation.Id,
+                (member, conversation) => new { Member = member, ConversationType = conversation.Type })
+            .Where(x => userIds.Contains(x.Member.UserId) && x.Member.IsActive && x.ConversationType == type)
+            .GroupBy(x => x.Member.ConversationId)
+            .Where(g => g.Select(m => m.Member.UserId).Distinct().Count() >= requiredCount)
             .Select(g => g.Key)
             .ToListAsync(GetCancellationToken(cancellationToken));
 
