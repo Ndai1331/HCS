@@ -26,6 +26,7 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
     {
         // Get pinned messages by ConversationId - much simpler and more accurate
         return await (await GetDbSetAsync())
+            .AsNoTracking()
             .Where(m => m.ConversationId == conversationId && m.IsPinned)
             // .OrderByDescending(m => m.PinnedDate)
             .OrderByDescending(m => m.CreationTime)
@@ -43,6 +44,7 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
     public virtual async Task<List<Message>> GetRepliesAsync(Guid messageId, CancellationToken cancellationToken = default)
     {
         return await (await GetDbSetAsync())
+            .AsNoTracking()
             .Where(x => x.ReplyToMessageId == messageId)
             .OrderBy(x => x.CreationTime)
             .ToListAsync(GetCancellationToken(cancellationToken));
@@ -51,6 +53,7 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
     public virtual async Task<List<Message>> GetByConversationIdAsync(Guid conversationId, CancellationToken cancellationToken = default)
     {
         return await (await GetDbSetAsync())
+            .AsNoTracking()
             .Where(x => x.ConversationId == conversationId)
             .OrderBy(x => x.CreationTime)
             .ToListAsync(GetCancellationToken(cancellationToken));
@@ -59,7 +62,7 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
     public virtual async Task<List<Message>> GetMessagesInConversationAsync(Guid conversationId, string messageText, int maxResultCount = 10, int skipCount = 0, CancellationToken cancellationToken = default)
     {
         messageText = (messageText ?? string.Empty).Trim();
-        var query = (await GetDbSetAsync()).Where(x => x.ConversationId == conversationId);
+        var query = (await GetDbSetAsync()).AsNoTracking().Where(x => x.ConversationId == conversationId);
 
         if (!string.IsNullOrWhiteSpace(messageText))
         {
@@ -98,7 +101,9 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
 
         var before = await dbSet
             .AsNoTracking()
-            .Where(x => x.ConversationId == conversationId && x.CreationTime < anchor.CreationTime)
+            .Where(x => x.ConversationId == conversationId
+                        && (x.CreationTime < anchor.CreationTime
+                            || (x.CreationTime == anchor.CreationTime && x.Id < anchor.Id)))
             .OrderByDescending(x => x.CreationTime)
             .ThenByDescending(x => x.Id)
             .Take(beforeCount + 1)
@@ -113,7 +118,9 @@ public class EfCoreMessageRepository : EfCoreRepository<IChatDbContext, Message,
 
         var after = await dbSet
             .AsNoTracking()
-            .Where(x => x.ConversationId == conversationId && x.CreationTime > anchor.CreationTime)
+            .Where(x => x.ConversationId == conversationId
+                        && (x.CreationTime > anchor.CreationTime
+                            || (x.CreationTime == anchor.CreationTime && x.Id > anchor.Id)))
             .OrderBy(x => x.CreationTime)
             .ThenBy(x => x.Id)
             .Take(afterCount + 1)

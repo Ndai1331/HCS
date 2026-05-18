@@ -19,6 +19,7 @@ public class EfCoreUserMessageRepository : EfCoreRepository<IChatDbContext, User
     public virtual async Task<List<MessageWithDetails>> GetMessagesAsync(Guid userId, Guid targetUserId, int skipCount, int maxResultCount, CancellationToken cancellationToken = default)
     {
         var query = from chatUserMessage in (await GetDbSetAsync())
+                        .AsNoTracking()
                     join message in (await GetDbContextAsync()).ChatMessages on chatUserMessage.ChatMessageId equals message.Id
                     where userId == chatUserMessage.UserId && targetUserId == chatUserMessage.TargetUserId
                     select new MessageWithDetails
@@ -33,6 +34,7 @@ public class EfCoreUserMessageRepository : EfCoreRepository<IChatDbContext, User
     public virtual async Task<MessageWithDetails> GetLastMessageAsync(Guid userId, Guid targetUserId, CancellationToken cancellationToken = default)
     {
         var query = from chatUserMessage in (await GetDbSetAsync())
+                        .AsNoTracking()
                     join message in (await GetDbContextAsync()).ChatMessages on chatUserMessage.ChatMessageId equals message.Id
                     where userId == chatUserMessage.UserId && targetUserId == chatUserMessage.TargetUserId
                     select new MessageWithDetails
@@ -59,6 +61,7 @@ public class EfCoreUserMessageRepository : EfCoreRepository<IChatDbContext, User
         return await (await GetDbSetAsync()).Where(message =>
                 (message.UserId == userId && message.TargetUserId == targetUserId) ||
                 (message.UserId == targetUserId && message.TargetUserId == userId))
+            .AsNoTracking()
             .Select(message => message.ChatMessageId)
             .ToListAsync(GetCancellationToken(cancellationToken));
     }
@@ -87,17 +90,12 @@ public class EfCoreUserMessageRepository : EfCoreRepository<IChatDbContext, User
         var dbContext = await GetDbContextAsync();
         
         // Verify user is member of the conversation
-        var conversation = await dbContext.ChatConversations
-            .Include(c => c.Members)
-            .FirstOrDefaultAsync(c => c.Id == conversationId, GetCancellationToken(cancellationToken));
-        
-        if (conversation == null)
-        {
-            return new List<MessageWithDetails>();
-        }
-        
-        // Check if user is a member
-        var isMember = conversation.Members.Any(m => m.UserId == userId && m.IsActive);
+        var isMember = await dbContext.ChatConversationMembers
+            .AsNoTracking()
+            .AnyAsync(
+                m => m.ConversationId == conversationId && m.UserId == userId && m.IsActive,
+                GetCancellationToken(cancellationToken));
+
         if (!isMember)
         {
             return new List<MessageWithDetails>();
@@ -105,6 +103,7 @@ public class EfCoreUserMessageRepository : EfCoreRepository<IChatDbContext, User
         
         // Query messages by ConversationId - much simpler and more accurate
         var query = from chatUserMessage in (await GetDbSetAsync())
+                        .AsNoTracking()
                     join message in dbContext.ChatMessages on chatUserMessage.ChatMessageId equals message.Id
                     where chatUserMessage.UserId == userId 
                         && message.ConversationId == conversationId
