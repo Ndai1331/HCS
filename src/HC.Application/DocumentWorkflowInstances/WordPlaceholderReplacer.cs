@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
@@ -22,6 +23,7 @@ public static class WordPlaceholderReplacer
     private const long ImageEmuWidth = 990000L;  // ~2.6cm
     private const long ImageEmuHeight = 792000L;  // ~2.1cm
     private const string PreparedBySignPlaceholder = "<<PreparedBySign>>";
+    private static readonly char[] NewLineSeparator = ['\n'];
 
     /// <summary>
     /// Replace placeholders in Word document bytes. Returns modified .docx bytes.
@@ -149,13 +151,25 @@ public static class WordPlaceholderReplacer
         foreach (var paragraph in root.Descendants<Paragraph>())
         {
             var allTexts = paragraph.Descendants<Text>().ToList();
-            var fullText = string.Concat(allTexts.Select(t => t.Text));
-            if (string.IsNullOrEmpty(fullText)) continue;
+            if (allTexts.Count == 0) continue;
+
+            var fullTextBuilder = new StringBuilder();
+            foreach (var textNode in allTexts)
+            {
+                var text = textNode.Text;
+                if (!string.IsNullOrEmpty(text))
+                {
+                    fullTextBuilder.Append(text);
+                }
+            }
+
+            if (fullTextBuilder.Length == 0) continue;
+            var fullText = fullTextBuilder.ToString();
 
             string? modifiedFullText = null;
             foreach (var (placeholder, value) in textReplacements)
             {
-                if (fullText.Contains(placeholder))
+                if (fullText.IndexOf(placeholder, StringComparison.Ordinal) >= 0)
                 {
                     modifiedFullText ??= fullText;
                     modifiedFullText = modifiedFullText.Replace(placeholder, value);
@@ -167,7 +181,7 @@ public static class WordPlaceholderReplacer
             // Put modified text back with line breaks preserved (Break elements in Word)
             if (allTexts.Count > 0)
             {
-                if (modifiedFullText.Contains('\n'))
+                if (modifiedFullText.IndexOf('\n') >= 0)
                 {
                     ReplaceParagraphContentWithMultiline(paragraph, allTexts, modifiedFullText);
                 }
@@ -188,7 +202,7 @@ public static class WordPlaceholderReplacer
     /// </summary>
     private static void ReplaceParagraphContentWithMultiline(Paragraph paragraph, System.Collections.Generic.List<Text> allTexts, string multilineText)
     {
-        var lines = multilineText.Split('\n');
+        var lines = multilineText.Split(NewLineSeparator, StringSplitOptions.None);
 
         // Remove content elements (Run, Hyperlink, etc.) but keep ParagraphProperties
         var contentElements = paragraph.ChildElements.Where(c => c is not ParagraphProperties).ToList();
@@ -215,12 +229,22 @@ public static class WordPlaceholderReplacer
     /// </summary>
     private static void ReplaceImagePlaceholder(MainDocumentPart mainPart, OpenXmlElement root, byte[] imageBytes)
     {
-        foreach (var paragraph in root.Descendants<Paragraph>().ToList())
+        foreach (var paragraph in root.Descendants<Paragraph>())
         {
             var allTexts = paragraph.Descendants<Text>().ToList();
             if (allTexts.Count == 0) continue;
 
-            var fullText = string.Concat(allTexts.Select(t => t.Text ?? string.Empty));
+            var fullTextBuilder = new StringBuilder();
+            foreach (var textNode in allTexts)
+            {
+                if (!string.IsNullOrEmpty(textNode.Text))
+                {
+                    fullTextBuilder.Append(textNode.Text);
+                }
+            }
+
+            if (fullTextBuilder.Length == 0) continue;
+            var fullText = fullTextBuilder.ToString();
             var idx = fullText.IndexOf(PreparedBySignPlaceholder, StringComparison.Ordinal);
             if (idx < 0) continue;
 

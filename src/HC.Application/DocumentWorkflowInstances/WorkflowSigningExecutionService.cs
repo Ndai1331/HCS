@@ -4,6 +4,7 @@ using System.Diagnostics;
 using HC;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HC.BnnSoftSigns;
@@ -1097,12 +1098,18 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             pageHeights[p] = page.Height;
 
             var letters = page.Letters.ToList();
-            if (!letters.Any())
+            if (letters.Count == 0)
             {
                 continue;
             }
 
-            var fullText = string.Concat(letters.Select(l => l.Value));
+            var fullTextBuilder = new StringBuilder(letters.Count);
+            foreach (var letter in letters)
+            {
+                fullTextBuilder.Append(letter.Value);
+            }
+
+            var fullText = fullTextBuilder.ToString();
             foreach (var searchItem in searchPairs)
             {
                 var searchFromIndex = 0;
@@ -1118,17 +1125,27 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                         }
                     }
 
-                    var placeholderLetters = letters.Skip(index).Take(searchItem.Tag.Length).ToList();
-                    if (placeholderLetters.Count < searchItem.Tag.Length)
+                    var placeholderLength = searchItem.Tag.Length;
+                    var placeholderEndIndex = index + placeholderLength;
+                    if (placeholderEndIndex > letters.Count)
                     {
                         break;
                     }
 
-                    var minX = placeholderLetters.Min(l => l.GlyphRectangle.Left);
-                    var minY = placeholderLetters.Min(l => l.GlyphRectangle.Bottom);
-                    var maxX = placeholderLetters.Max(l => l.GlyphRectangle.Right);
-                    var maxY = placeholderLetters.Max(l => l.GlyphRectangle.Top);
-                    var fontSize = (double)placeholderLetters.First().FontSize;
+                    var firstLetter = letters[index];
+                    var minX = firstLetter.GlyphRectangle.Left;
+                    var minY = firstLetter.GlyphRectangle.Bottom;
+                    var maxX = firstLetter.GlyphRectangle.Right;
+                    var maxY = firstLetter.GlyphRectangle.Top;
+                    for (var i = index + 1; i < placeholderEndIndex; i++)
+                    {
+                        var rect = letters[i].GlyphRectangle;
+                        if (rect.Left < minX) minX = rect.Left;
+                        if (rect.Bottom < minY) minY = rect.Bottom;
+                        if (rect.Right > maxX) maxX = rect.Right;
+                        if (rect.Top > maxY) maxY = rect.Top;
+                    }
+                    var fontSize = (double)firstLetter.FontSize;
 
                     positions.Add(new PlaceholderPosition
                     {
@@ -1141,7 +1158,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                         Type = searchItem.Type
                     });
 
-                    searchFromIndex = index + searchItem.Tag.Length;
+                    searchFromIndex = placeholderEndIndex;
                 }
             }
         }
