@@ -434,9 +434,15 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
             }
 
             var currentLine = words[0];
+            var lineBuilder = new System.Text.StringBuilder(Math.Max(32, currentLine.Length + 16));
+            lineBuilder.Append(currentLine);
             for (var i = 1; i < words.Length; i++)
             {
-                var candidate = $"{currentLine} {words[i]}";
+                lineBuilder.Clear();
+                lineBuilder.Append(currentLine);
+                lineBuilder.Append(' ');
+                lineBuilder.Append(words[i]);
+                var candidate = lineBuilder.ToString();
                 if (gfx.MeasureString(candidate, font).Width <= maxTextWidth)
                 {
                     currentLine = candidate;
