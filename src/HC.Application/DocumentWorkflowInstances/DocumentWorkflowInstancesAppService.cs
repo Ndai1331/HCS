@@ -21,6 +21,7 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.EntityFrameworkCore;
 
 namespace HC.DocumentWorkflowInstances;
 
@@ -72,7 +73,7 @@ public abstract class DocumentWorkflowInstancesAppServiceBase : HCAppService
     {
         var query = (await _documentRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Title != null && x.Title.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.Documents.Document>();
-        var totalCount = query.Count();
+        var totalCount = await query.CountAsync();
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,
@@ -84,7 +85,7 @@ public abstract class DocumentWorkflowInstancesAppServiceBase : HCAppService
     {
         var query = (await _workflowRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.Workflows.Workflow>();
-        var totalCount = query.Count();
+        var totalCount = await query.CountAsync();
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,
@@ -96,7 +97,7 @@ public abstract class DocumentWorkflowInstancesAppServiceBase : HCAppService
     {
         var query = (await _workflowTemplateRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.WorkflowTemplates.WorkflowTemplate>();
-        var totalCount = query.Count();
+        var totalCount = await query.CountAsync();
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,
@@ -108,7 +109,7 @@ public abstract class DocumentWorkflowInstancesAppServiceBase : HCAppService
     {
         var query = (await _workflowStepTemplateRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.WorkflowStepTemplates.WorkflowStepTemplate>();
-        var totalCount = query.Count();
+        var totalCount = await query.CountAsync();
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,

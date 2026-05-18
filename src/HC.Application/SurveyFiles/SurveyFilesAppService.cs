@@ -18,6 +18,7 @@ using Volo.Abp.Content;
 using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.EntityFrameworkCore;
 
 namespace HC.SurveyFiles;
 
@@ -64,7 +65,7 @@ public abstract class SurveyFilesAppServiceBase : HCAppService
     {
         var query = (await _surveySessionRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.SessionDisplay != null && x.SessionDisplay.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.SurveySessions.SurveySession>();
-        var totalCount = query.Count();
+        var totalCount = await query.CountAsync();
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,
