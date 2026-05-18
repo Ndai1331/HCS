@@ -24,9 +24,9 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
-# x64/
-# x86/
-# bld/
+x64/
+x86/
+bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
@@ -266,16 +266,16 @@ _Pvt_Extensions
 **/.abpstudio/
 
 # # HC
-# src/HC.Web/Logs/*
-# src/HC.Web.Host/Logs/*
-# src/HC.Web.Public/Logs/*
-# src/HC.Web.Public.Host/Logs/*
-# src/HC.AuthServer/Logs/*
-# src/HC.HttpApi.Host/Logs/*
-# src/HC.HttpApi.HostWithIds/Logs/*
-# src/HC.DbMigrator/Logs/*
-# src/HC.Blazor.Server/Logs/*
-# src/HC.Blazor/Logs/*
+src/HC.Web/Logs/*
+src/HC.Web.Host/Logs/*
+src/HC.Web.Public/Logs/*
+src/HC.Web.Public.Host/Logs/*
+src/HC.AuthServer/Logs/*
+src/HC.HttpApi.Host/Logs/*
+src/HC.HttpApi.HostWithIds/Logs/*
+src/HC.DbMigrator/Logs/*
+src/HC.Blazor.Server/Logs/*
+src/HC.Blazor/Logs/*
 
 # # Use abp install-libs to restore.
 # # **/wwwroot/libs/*
