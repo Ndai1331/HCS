@@ -25,6 +25,7 @@ namespace HC.Units;
 public abstract class UnitsAppServiceBase : HCAppService
 {
     protected IDistributedCache<UnitDownloadTokenCacheItem, string> _downloadTokenCache;
+    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache;
     protected IUnitRepository _unitRepository;
     protected UnitManager _unitManager;
 
@@ -33,6 +34,7 @@ public abstract class UnitsAppServiceBase : HCAppService
         _downloadTokenCache = downloadTokenCache;
         _unitRepository = unitRepository;
         _unitManager = unitManager;
+        _lookupVersionCache = LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
     }
 
     public virtual async Task<PagedResultDto<UnitDto>> GetListAsync(GetUnitsInput input)
@@ -55,12 +57,14 @@ public abstract class UnitsAppServiceBase : HCAppService
     public virtual async Task DeleteAsync(Guid id)
     {
         await _unitRepository.DeleteAsync(id);
+        await InvalidateLookupCacheAsync();
     }
 
     [Authorize(HCPermissions.MasterDatas.UnitCreate)]
     public virtual async Task<UnitDto> CreateAsync(UnitCreateDto input)
     {
         var unit = await _unitManager.CreateAsync(input.Code, input.Name, input.SortOrder, input.IsActive);
+        await InvalidateLookupCacheAsync();
         return ObjectMapper.Map<Unit, UnitDto>(unit);
     }
 
@@ -68,6 +72,7 @@ public abstract class UnitsAppServiceBase : HCAppService
     public virtual async Task<UnitDto> UpdateAsync(Guid id, UnitUpdateDto input)
     {
         var unit = await _unitManager.UpdateAsync(id, input.Code, input.Name, input.SortOrder, input.IsActive, input.ConcurrencyStamp);
+        await InvalidateLookupCacheAsync();
         return ObjectMapper.Map<Unit, UnitDto>(unit);
     }
 
@@ -87,12 +92,14 @@ public abstract class UnitsAppServiceBase : HCAppService
     public virtual async Task DeleteByIdsAsync(List<Guid> unitIds)
     {
         await _unitRepository.DeleteManyAsync(unitIds);
+        await InvalidateLookupCacheAsync();
     }
 
     [Authorize(HCPermissions.MasterDatas.UnitDelete)]
     public virtual async Task DeleteAllAsync(GetUnitsInput input)
     {
         await _unitRepository.DeleteAllAsync(input.FilterText, input.Code, input.Name, input.SortOrderMin, input.SortOrderMax, input.IsActive);
+        await InvalidateLookupCacheAsync();
     }
 
     public virtual async Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync()
@@ -103,5 +110,14 @@ public abstract class UnitsAppServiceBase : HCAppService
         {
             Token = token
         };
+    }
+
+    protected virtual async Task InvalidateLookupCacheAsync()
+    {
+        var current = await _lookupVersionCache.GetAsync("lookup-version:unit");
+        await _lookupVersionCache.SetAsync(
+            "lookup-version:unit",
+            new LookupCacheVersionCacheItem { Version = (current?.Version ?? 1) + 1 },
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15) });
     }
 }

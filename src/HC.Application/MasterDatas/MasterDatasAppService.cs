@@ -25,6 +25,7 @@ namespace HC.MasterDatas;
 public abstract class MasterDatasAppServiceBase : HCAppService
 {
     protected IDistributedCache<MasterDataDownloadTokenCacheItem, string> _downloadTokenCache;
+    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache;
     protected IMasterDataRepository _masterDataRepository;
     protected MasterDataManager _masterDataManager;
 
@@ -33,6 +34,7 @@ public abstract class MasterDatasAppServiceBase : HCAppService
         _downloadTokenCache = downloadTokenCache;
         _masterDataRepository = masterDataRepository;
         _masterDataManager = masterDataManager;
+        _lookupVersionCache = LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
     }
 
     public virtual async Task<PagedResultDto<MasterDataDto>> GetListAsync(GetMasterDatasInput input)
@@ -55,12 +57,14 @@ public abstract class MasterDatasAppServiceBase : HCAppService
     public virtual async Task DeleteAsync(Guid id)
     {
         await _masterDataRepository.DeleteAsync(id);
+        await InvalidateLookupCacheAsync();
     }
 
     [Authorize(HCPermissions.MasterDatas.Create)]
     public virtual async Task<MasterDataDto> CreateAsync(MasterDataCreateDto input)
     {
         var masterData = await _masterDataManager.CreateAsync(input.Type, input.Code, input.Name, input.SortOrder, input.IsActive);
+        await InvalidateLookupCacheAsync();
         return ObjectMapper.Map<MasterData, MasterDataDto>(masterData);
     }
 
@@ -68,6 +72,7 @@ public abstract class MasterDatasAppServiceBase : HCAppService
     public virtual async Task<MasterDataDto> UpdateAsync(Guid id, MasterDataUpdateDto input)
     {
         var masterData = await _masterDataManager.UpdateAsync(id, input.Type, input.Code, input.Name, input.SortOrder, input.IsActive, input.ConcurrencyStamp);
+        await InvalidateLookupCacheAsync();
         return ObjectMapper.Map<MasterData, MasterDataDto>(masterData);
     }
 
@@ -87,12 +92,14 @@ public abstract class MasterDatasAppServiceBase : HCAppService
     public virtual async Task DeleteByIdsAsync(List<Guid> masterdataIds)
     {
         await _masterDataRepository.DeleteManyAsync(masterdataIds);
+        await InvalidateLookupCacheAsync();
     }
 
     [Authorize(HCPermissions.MasterDatas.Delete)]
     public virtual async Task DeleteAllAsync(GetMasterDatasInput input)
     {
         await _masterDataRepository.DeleteAllAsync(input.FilterText, input.Type, input.Code, input.Name, input.SortOrderMin, input.SortOrderMax, input.IsActive);
+        await InvalidateLookupCacheAsync();
     }
 
     public virtual async Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync()
@@ -103,5 +110,14 @@ public abstract class MasterDatasAppServiceBase : HCAppService
         {
             Token = token
         };
+    }
+
+    protected virtual async Task InvalidateLookupCacheAsync()
+    {
+        var current = await _lookupVersionCache.GetAsync("lookup-version:master-data");
+        await _lookupVersionCache.SetAsync(
+            "lookup-version:master-data",
+            new LookupCacheVersionCacheItem { Version = (current?.Version ?? 1) + 1 },
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15) });
     }
 }

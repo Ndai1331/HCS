@@ -30,6 +30,7 @@ public abstract class WorkflowsAppServiceBase : HCAppService
     protected IWorkflowRepository _workflowRepository;
     protected WorkflowManager _workflowManager;
     protected IRepository<HC.WorkflowDefinitions.WorkflowDefinition, Guid> _workflowDefinitionRepository;
+    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache;
 
     public WorkflowsAppServiceBase(IWorkflowRepository workflowRepository, WorkflowManager workflowManager, IDistributedCache<WorkflowDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.WorkflowDefinitions.WorkflowDefinition, Guid> workflowDefinitionRepository)
     {
@@ -37,6 +38,7 @@ public abstract class WorkflowsAppServiceBase : HCAppService
         _workflowRepository = workflowRepository;
         _workflowManager = workflowManager;
         _workflowDefinitionRepository = workflowDefinitionRepository;
+        _lookupVersionCache = LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
     }
 
     public virtual async Task<PagedResultDto<WorkflowWithNavigationPropertiesDto>> GetListAsync(GetWorkflowsInput input)
@@ -85,6 +87,7 @@ public abstract class WorkflowsAppServiceBase : HCAppService
     public virtual async Task DeleteAsync(Guid id)
     {
         await _workflowRepository.DeleteAsync(id);
+        await InvalidateWorkflowLookupCacheAsync();
     }
 
     [Authorize(HCPermissions.Workflows.Create)]
@@ -96,6 +99,7 @@ public abstract class WorkflowsAppServiceBase : HCAppService
         }
 
         var workflow = await _workflowManager.CreateAsync(input.WorkflowDefinitionId, input.Code, input.Name, input.IsActive, input.Description);
+        await InvalidateWorkflowLookupCacheAsync();
         return ObjectMapper.Map<Workflow, WorkflowDto>(workflow);
     }
 
@@ -108,6 +112,7 @@ public abstract class WorkflowsAppServiceBase : HCAppService
         }
 
         var workflow = await _workflowManager.UpdateAsync(id, input.WorkflowDefinitionId, input.Code, input.Name, input.IsActive, input.Description, input.ConcurrencyStamp);
+        await InvalidateWorkflowLookupCacheAsync();
         return ObjectMapper.Map<Workflow, WorkflowDto>(workflow);
     }
 
@@ -128,12 +133,14 @@ public abstract class WorkflowsAppServiceBase : HCAppService
     public virtual async Task DeleteByIdsAsync(List<Guid> workflowIds)
     {
         await _workflowRepository.DeleteManyAsync(workflowIds);
+        await InvalidateWorkflowLookupCacheAsync();
     }
 
     [Authorize(HCPermissions.Workflows.Delete)]
     public virtual async Task DeleteAllAsync(GetWorkflowsInput input)
     {
         await _workflowRepository.DeleteAllAsync(input.FilterText, input.Code, input.Name, input.Description, input.IsActive, input.WorkflowDefinitionId);
+        await InvalidateWorkflowLookupCacheAsync();
     }
 
     public virtual async Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync()
@@ -144,5 +151,14 @@ public abstract class WorkflowsAppServiceBase : HCAppService
         {
             Token = token
         };
+    }
+
+    protected virtual async Task InvalidateWorkflowLookupCacheAsync()
+    {
+        var current = await _lookupVersionCache.GetAsync("lookup-version:workflow");
+        await _lookupVersionCache.SetAsync(
+            "lookup-version:workflow",
+            new LookupCacheVersionCacheItem { Version = (current?.Version ?? 1) + 1 },
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15) });
     }
 }
