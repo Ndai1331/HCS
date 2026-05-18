@@ -12,6 +12,8 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Volo.Abp.EntityFrameworkCore.PostgreSql" Version="10.0.1" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.8" />
+
     <PackageReference Include="Volo.Abp.PermissionManagement.EntityFrameworkCore" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.SettingManagement.EntityFrameworkCore" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.BackgroundJobs.EntityFrameworkCore" Version="10.0.1" />

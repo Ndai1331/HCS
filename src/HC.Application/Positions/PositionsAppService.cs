@@ -18,7 +18,6 @@ using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using HC.Shared;
 using Volo.Abp.Linq;
-using Microsoft.EntityFrameworkCore;
 
 namespace HC.Positions;
 
@@ -65,7 +64,7 @@ public abstract class PositionsAppServiceBase : HCAppService
             .PageBy(input.SkipCount, input.MaxResultCount)
             .ToDynamicListAsync<Position>();
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await AsyncExecuter.CountAsync(query);
 
         return new PagedResultDto<LookupDto<Guid>>
         {

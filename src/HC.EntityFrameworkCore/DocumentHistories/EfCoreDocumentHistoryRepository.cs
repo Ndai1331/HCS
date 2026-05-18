@@ -16,10 +16,8 @@ namespace HC.DocumentHistories;
 
 public abstract class EfCoreDocumentHistoryRepositoryBase : EfCoreRepository<HCDbContext, DocumentHistory, Guid>
 {
-    protected ILogger<EfCoreDocumentHistoryRepositoryBase> Logger;
-    public EfCoreDocumentHistoryRepositoryBase(IDbContextProvider<HCDbContext> dbContextProvider, ILogger<EfCoreDocumentHistoryRepositoryBase> logger) : base(dbContextProvider)
+    public EfCoreDocumentHistoryRepositoryBase(IDbContextProvider<HCDbContext> dbContextProvider) : base(dbContextProvider)
     {
-        Logger = logger;
     }
 
     public virtual async Task DeleteAllAsync(string? filterText = null, string? comment = null, string? action = null, Guid? documentId = null, Guid? fromUser = null, Guid? toUser = null, CancellationToken cancellationToken = default)
@@ -158,8 +156,8 @@ public abstract class EfCoreDocumentHistoryRepositoryBase : EfCoreRepository<HCD
 
 public class EfCoreDocumentHistoryRepository : EfCoreDocumentHistoryRepositoryBase, IDocumentHistoryRepository
 {
-    public EfCoreDocumentHistoryRepository(IDbContextProvider<HCDbContext> dbContextProvider, ILogger<EfCoreDocumentHistoryRepositoryBase> logger)
-        : base(dbContextProvider, logger)
+    public EfCoreDocumentHistoryRepository(IDbContextProvider<HCDbContext> dbContextProvider)
+        : base(dbContextProvider)
     {
     }
 }

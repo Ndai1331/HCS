@@ -1992,20 +1992,21 @@
           "build/_._": {}
         }
       },
-      "Scriban/6.3.0": {
+      "Scriban/7.2.0": {
         "type": "package",
         "compile": {
-          "lib/net7.0/Scriban.dll": {
+          "lib/net8.0/Scriban.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net7.0/Scriban.dll": {
+          "lib/net8.0/Scriban.dll": {
             "related": ".xml"
           }
         },
         "build": {
-          "build/_._": {}
+          "build/Scriban.props": {},
+          "build/Scriban.targets": {}
         }
       },
       "Serilog/4.2.0": {
@@ -2510,15 +2511,15 @@
           "buildTransitive/net8.0/_._": {}
         }
       },
-      "System.Security.Cryptography.Pkcs/9.0.0": {
+      "System.Security.Cryptography.Pkcs/10.0.8": {
         "type": "package",
         "compile": {
-          "lib/net9.0/System.Security.Cryptography.Pkcs.dll": {
+          "lib/net10.0/System.Security.Cryptography.Pkcs.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net9.0/System.Security.Cryptography.Pkcs.dll": {
+          "lib/net10.0/System.Security.Cryptography.Pkcs.dll": {
             "related": ".xml"
           }
         },
@@ -2526,7 +2527,7 @@
           "buildTransitive/net8.0/_._": {}
         },
         "runtimeTargets": {
-          "runtimes/win/lib/net9.0/System.Security.Cryptography.Pkcs.dll": {
+          "runtimes/win/lib/net10.0/System.Security.Cryptography.Pkcs.dll": {
             "assetType": "runtime",
             "rid": "win"
           }
@@ -2548,18 +2549,18 @@
           "buildTransitive/net8.0/_._": {}
         }
       },
-      "System.Security.Cryptography.Xml/9.0.0": {
+      "System.Security.Cryptography.Xml/10.0.8": {
         "type": "package",
         "dependencies": {
-          "System.Security.Cryptography.Pkcs": "9.0.0"
+          "System.Security.Cryptography.Pkcs": "10.0.8"
         },
         "compile": {
-          "lib/net9.0/_._": {
+          "lib/net10.0/System.Security.Cryptography.Xml.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net9.0/System.Security.Cryptography.Xml.dll": {
+          "lib/net10.0/System.Security.Cryptography.Xml.dll": {
             "related": ".xml"
           }
         },
@@ -4826,6 +4827,7 @@
         "framework": ".NETCoreApp,Version=v10.0",
         "dependencies": {
           "HC.Domain.Shared": "1.0.0",
+          "Scriban": "7.2.0",
           "Volo.Abp.Account.Pro.Admin.Application.Contracts": "10.0.1",
           "Volo.Abp.Account.Pro.Public.Application.Contracts": "10.0.1",
           "Volo.Abp.AuditLogging.Application.Contracts": "10.0.1",
@@ -4852,6 +4854,7 @@
         "framework": ".NETCoreApp,Version=v10.0",
         "dependencies": {
           "HC.Domain.Shared": "1.0.0",
+          "Scriban": "7.2.0",
           "Volo.Abp.AuditLogging.Domain": "10.0.1",
           "Volo.Abp.BackgroundJobs.Domain": "10.0.1",
           "Volo.Abp.BlobStoring.Minio": "10.0.1",
@@ -4914,6 +4917,7 @@
         "dependencies": {
           "HC.Domain": "1.0.0",
           "Microsoft.EntityFrameworkCore.Tools": "10.0.0",
+          "System.Security.Cryptography.Xml": "10.0.8",
           "Volo.Abp.AuditLogging.EntityFrameworkCore": "10.0.1",
           "Volo.Abp.BackgroundJobs.EntityFrameworkCore": "10.0.1",
           "Volo.Abp.EntityFrameworkCore.PostgreSql": "10.0.1",
@@ -8432,21 +8436,21 @@
         "riok.mapperly.nuspec"
       ]
     },
-    "Scriban/6.3.0": {
-      "sha512": "WIOcfb9xOk6sYvYeinh3J9BLOJlZquUY3lIZmBaBNz2ci/mpB6vfjxn6dLyZSzviqzv9Pe8fbmDLjS7oCxNQNA==",
+    "Scriban/7.2.0": {
+      "sha512": "GiAuu6bCPVWJeMMK8AkJMCNX+wyqt2qgiKjVAPLvRWxzBwpDJjLhJltVP034tsZUHOkBtdfA/Otrny+n3NelBw==",
       "type": "package",
-      "path": "scriban/6.3.0",
+      "path": "scriban/7.2.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "build/Scriban.props",
         "build/Scriban.targets",
-        "lib/net7.0/Scriban.dll",
-        "lib/net7.0/Scriban.xml",
+        "lib/net8.0/Scriban.dll",
+        "lib/net8.0/Scriban.xml",
         "lib/netstandard2.0/Scriban.dll",
         "lib/netstandard2.0/Scriban.xml",
         "readme.md",
-        "scriban.6.3.0.nupkg.sha512",
+        "scriban.7.2.0.nupkg.sha512",
         "scriban.nuspec",
         "scriban.png",
         "src/Scriban/.editorconfig",
@@ -8467,7 +8471,6 @@
         "src/Scriban/Helpers/FastStack.cs",
         "src/Scriban/Helpers/InlineList.cs",
         "src/Scriban/Helpers/ReflectionHelper.cs",
-        "src/Scriban/Helpers/StringHelper.cs",
         "src/Scriban/Helpers/ThrowHelper.cs",
         "src/Scriban/LogMessageBag.cs",
         "src/Scriban/Parsing/Lexer.cs",
@@ -9512,20 +9515,21 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "System.Security.Cryptography.Pkcs/9.0.0": {
-      "sha512": "8tluJF8w9si+2yoHeL8rgVJS6lKvWomTDC8px65Z8MCzzdME5eaPtEQf4OfVGrAxB5fW93ncucy1+221O9EQaw==",
+    "System.Security.Cryptography.Pkcs/10.0.8": {
+      "sha512": "2wOycCqMyg9Tu+SDP03FFwDEWBni/3xOKgt0bRXplOvyeIcUJmWO7m3gTCF2mIdtQLROLtOP5VwWRT8YBwP/bA==",
       "type": "package",
-      "path": "system.security.cryptography.pkcs/9.0.0",
+      "path": "system.security.cryptography.pkcs/10.0.8",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
-        "LICENSE.TXT",
         "THIRD-PARTY-NOTICES.TXT",
         "buildTransitive/net461/System.Security.Cryptography.Pkcs.targets",
         "buildTransitive/net462/_._",
         "buildTransitive/net8.0/_._",
         "buildTransitive/netcoreapp2.0/System.Security.Cryptography.Pkcs.targets",
+        "lib/net10.0/System.Security.Cryptography.Pkcs.dll",
+        "lib/net10.0/System.Security.Cryptography.Pkcs.xml",
         "lib/net462/System.Security.Cryptography.Pkcs.dll",
         "lib/net462/System.Security.Cryptography.Pkcs.xml",
         "lib/net8.0/System.Security.Cryptography.Pkcs.dll",
@@ -9536,11 +9540,13 @@
         "lib/netstandard2.0/System.Security.Cryptography.Pkcs.xml",
         "lib/netstandard2.1/System.Security.Cryptography.Pkcs.dll",
         "lib/netstandard2.1/System.Security.Cryptography.Pkcs.xml",
+        "runtimes/win/lib/net10.0/System.Security.Cryptography.Pkcs.dll",
+        "runtimes/win/lib/net10.0/System.Security.Cryptography.Pkcs.xml",
         "runtimes/win/lib/net8.0/System.Security.Cryptography.Pkcs.dll",
         "runtimes/win/lib/net8.0/System.Security.Cryptography.Pkcs.xml",
         "runtimes/win/lib/net9.0/System.Security.Cryptography.Pkcs.dll",
         "runtimes/win/lib/net9.0/System.Security.Cryptography.Pkcs.xml",
-        "system.security.cryptography.pkcs.9.0.0.nupkg.sha512",
+        "system.security.cryptography.pkcs.10.0.8.nupkg.sha512",
         "system.security.cryptography.pkcs.nuspec",
         "useSharedDesignerContext.txt"
       ]
@@ -9579,20 +9585,21 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "System.Security.Cryptography.Xml/9.0.0": {
-      "sha512": "GQZn5wFd+pyOfwWaCbqxG7trQ5ox01oR8kYgWflgtux4HiUNihGEgG2TktRWyH+9bw7NoEju1D41H/upwQeFQw==",
+    "System.Security.Cryptography.Xml/10.0.8": {
+      "sha512": "Fb+L55vEJaf8RCOzrzN564sfyCL8SZEfce9z6XkuhHg+294SBfyS4fIoLU3EljofDCkp+EKDeleI8ug5WO2NtA==",
       "type": "package",
-      "path": "system.security.cryptography.xml/9.0.0",
+      "path": "system.security.cryptography.xml/10.0.8",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
-        "LICENSE.TXT",
         "THIRD-PARTY-NOTICES.TXT",
         "buildTransitive/net461/System.Security.Cryptography.Xml.targets",
         "buildTransitive/net462/_._",
         "buildTransitive/net8.0/_._",
         "buildTransitive/netcoreapp2.0/System.Security.Cryptography.Xml.targets",
+        "lib/net10.0/System.Security.Cryptography.Xml.dll",
+        "lib/net10.0/System.Security.Cryptography.Xml.xml",
         "lib/net462/System.Security.Cryptography.Xml.dll",
         "lib/net462/System.Security.Cryptography.Xml.xml",
         "lib/net8.0/System.Security.Cryptography.Xml.dll",
@@ -9601,7 +9608,7 @@
         "lib/net9.0/System.Security.Cryptography.Xml.xml",
         "lib/netstandard2.0/System.Security.Cryptography.Xml.dll",
         "lib/netstandard2.0/System.Security.Cryptography.Xml.xml",
-        "system.security.cryptography.xml.9.0.0.nupkg.sha512",
+        "system.security.cryptography.xml.10.0.8.nupkg.sha512",
         "system.security.cryptography.xml.nuspec",
         "useSharedDesignerContext.txt"
       ]
@@ -12683,10 +12690,12 @@
       "HC.Application.Contracts >= 1.0.0",
       "HC.EntityFrameworkCore >= 1.0.0",
       "Microsoft.Extensions.Hosting >= 10.0.0",
+      "Scriban >= 7.2.0",
       "Serilog.Extensions.Logging >= 9.0.2",
       "Serilog.Sinks.Async >= 2.1.0",
       "Serilog.Sinks.Console >= 6.0.0",
       "Serilog.Sinks.File >= 7.0.0",
+      "System.Security.Cryptography.Xml >= 10.0.8",
       "Volo.Abp.Autofac >= 10.0.1",
       "Volo.Abp.Caching.StackExchangeRedis >= 10.0.1"
     ]
@@ -12747,6 +12756,10 @@
             "target": "Package",
             "version": "[10.0.0, )"
           },
+          "Scriban": {
+            "target": "Package",
+            "version": "[7.2.0, )"
+          },
           "Serilog.Extensions.Logging": {
             "target": "Package",
             "version": "[9.0.2, )"
@@ -12762,6 +12775,10 @@
           "Serilog.Sinks.File": {
             "target": "Package",
             "version": "[7.0.0, )"
+          },
+          "System.Security.Cryptography.Xml": {
+            "target": "Package",
+            "version": "[10.0.8, )"
           },
           "Volo.Abp.Autofac": {
             "target": "Package",
@@ -13065,137 +13082,5 @@
         }
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1902",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-5rpf-x9jg-8j5p",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1904",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known critical severity vulnerability, https://github.com/advisories/GHSA-5wr9-m6jw-xx44",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-c875-h985-hvrc",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-grr9-747v-xvcp",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1902",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-m2p3-hwv5-xpqw",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-p6q4-fgr8-vx4p",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-v66j-x4hw-fv9g",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-wgh7-7m3c-fx25",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-x6m9-38vm-2xhf",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-xcx6-vp38-8hr5",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1902",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-xw6w-9jjh-p9cr",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'System.Security.Cryptography.Xml' 9.0.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-37gx-xxp4-5rgx",
-      "libraryId": "System.Security.Cryptography.Xml",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'System.Security.Cryptography.Xml' 9.0.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-w3x6-4m5h-cxqf",
-      "libraryId": "System.Security.Cryptography.Xml",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  }
 }

@@ -46,8 +46,12 @@
             foreach (var chatContact in ChatContactDtos)
             {
                 var contactForDelete = chatContact;
-                <a @key="chatContactKey(chatContact)" class="chat-contact cursor-pointer list-group-item list-group-item-action mb-1 mt-0 px-2 rounded-2 @(ChatContactsActive.ContainsKey(chatContact) ? ChatContactsActive[chatContact] : string.Empty)">
-                    <div class="media" @onclick="async () => await OnContactActivate.InvokeAsync(chatContact)">
+                <a @key="chatContactKey(chatContact)"
+                   role="button"
+                   class="chat-contact cursor-pointer list-group-item list-group-item-action d-block mb-1 mt-0 px-2 rounded-2 @(ChatContactsActive.ContainsKey(chatContact) ? ChatContactsActive[chatContact] : string.Empty)"
+                   @onclick="async () => await OnContactActivate.InvokeAsync(chatContact)"
+                   @onclick:preventDefault="true">
+                    <div class="media">
                         @if (chatContact.Type == ConversationType.User)
                         {
                             <ChatInitialAvatar DisplayName="@GetContactDisplayName(chatContact)"

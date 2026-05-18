@@ -45,6 +45,8 @@
     <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.UI.InMemory.Storage" Version="9.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+
+    <PackageReference Include="Scriban" Version="7.2.0" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Volo.Abp.Autofac" Version="10.0.1" />

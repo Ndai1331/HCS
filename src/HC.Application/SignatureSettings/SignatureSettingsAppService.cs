@@ -17,8 +17,8 @@ using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using HC.Shared;
-using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using HC.Documents;
 
 namespace HC.SignatureSettings;
 
@@ -29,16 +29,16 @@ public abstract class SignatureSettingsAppServiceBase : HCAppService
     protected IDistributedCache<SignatureSettingDownloadTokenCacheItem, string> _downloadTokenCache;
     protected ISignatureSettingRepository _signatureSettingRepository;
     protected SignatureSettingManager _signatureSettingManager;
-    protected IDistributedCache<DocumentsLookupCacheItem, string> _lookupCache;
-    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache;
+    protected IDistributedCache<DocumentsLookupCacheItem, string> _lookupCache
+        => LazyServiceProvider.LazyGetRequiredService<IDistributedCache<DocumentsLookupCacheItem, string>>();
+    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache
+        => LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
 
     public SignatureSettingsAppServiceBase(ISignatureSettingRepository signatureSettingRepository, SignatureSettingManager signatureSettingManager, IDistributedCache<SignatureSettingDownloadTokenCacheItem, string> downloadTokenCache)
     {
         _downloadTokenCache = downloadTokenCache;
         _signatureSettingRepository = signatureSettingRepository;
         _signatureSettingManager = signatureSettingManager;
-        _lookupCache = LazyServiceProvider.LazyGetRequiredService<IDistributedCache<DocumentsLookupCacheItem, string>>();
-        _lookupVersionCache = LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
     }
 
     public virtual async Task<PagedResultDto<SignatureSettingDto>> GetListAsync(GetSignatureSettingsInput input)
@@ -136,7 +136,7 @@ public abstract class SignatureSettingsAppServiceBase : HCAppService
 
     protected async Task<DocumentsLookupCacheItem> LoadSignatureLookupAsync(string? filter, string? defaultSignType, int skipCount, int maxResultCount)
     {
-        var query = (await _signatureSettingRepository.GetQueryableAsync()).AsNoTracking().Where(x => x.IsActive);
+        var query = (await _signatureSettingRepository.GetQueryableAsync()).Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(filter)) query = query.Where(x => x.ProviderCode != null && x.ProviderCode.Contains(filter));
         if (!string.IsNullOrWhiteSpace(defaultSignType)) query = query.Where(x => x.DefaultSignType == defaultSignType);
         var totalCount = await AsyncExecuter.LongCountAsync(query);

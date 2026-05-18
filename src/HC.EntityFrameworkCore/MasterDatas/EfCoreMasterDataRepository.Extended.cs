@@ -14,8 +14,8 @@ namespace HC.MasterDatas;
 
 public class EfCoreMasterDataRepository : EfCoreMasterDataRepositoryBase, IMasterDataRepository
 {
-    public EfCoreMasterDataRepository(IDbContextProvider<HCDbContext> dbContextProvider, ILogger<EfCoreMasterDataRepositoryBase> logger) 
-    : base(dbContextProvider, logger)
+    public EfCoreMasterDataRepository(IDbContextProvider<HCDbContext> dbContextProvider) 
+    : base(dbContextProvider)
     {
     }
 }

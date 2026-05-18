@@ -27,7 +27,7 @@
           "Microsoft.AspNetCore.DataProtection.StackExchangeRedis": "10.0.0",
           "Microsoft.AspNetCore.SignalR.Client": "10.0.0",
           "Microsoft.EntityFrameworkCore.InMemory": "10.0.0",
-          "Scriban": "7.0.6",
+          "Scriban": "7.2.0",
           "Serilog.AspNetCore": "9.0.0",
           "Serilog.Sinks.Async": "2.1.0",
           "Volo.Abp.Account.Pro.Admin.Blazor.Server": "10.0.1",
@@ -1827,11 +1827,11 @@
           }
         }
       },
-      "Scriban/7.0.6": {
+      "Scriban/7.2.0": {
         "runtime": {
           "lib/net8.0/Scriban.dll": {
             "assemblyVersion": "7.0.0.0",
-            "fileVersion": "7.0.6.0"
+            "fileVersion": "7.2.0.0"
           }
         }
       },
@@ -4200,7 +4200,7 @@
       },
       "Volo.Abp.TextTemplating.Scriban/10.0.1": {
         "dependencies": {
-          "Scriban": "7.0.6",
+          "Scriban": "7.2.0",
           "Volo.Abp.TextTemplating.Core": "10.0.1"
         },
         "runtime": {
@@ -4500,6 +4500,7 @@
       "HC.Application.Contracts/1.0.0": {
         "dependencies": {
           "HC.Domain.Shared": "1.0.0",
+          "Scriban": "7.2.0",
           "Volo.Abp.Account.Pro.Admin.Application.Contracts": "10.0.1",
           "Volo.Abp.Account.Pro.Public.Application.Contracts": "10.0.1",
           "Volo.Abp.AuditLogging.Application.Contracts": "10.0.1",
@@ -4552,6 +4553,7 @@
       "HC.HttpApi.Client/1.0.0": {
         "dependencies": {
           "HC.Application.Contracts": "1.0.0",
+          "Scriban": "7.2.0",
           "Volo.Abp.Account.Pro.Admin.HttpApi.Client": "10.0.1",
           "Volo.Abp.Account.Pro.Public.HttpApi.Client": "10.0.1",
           "Volo.Abp.AuditLogging.HttpApi.Client": "10.0.1",
@@ -5624,12 +5626,12 @@
       "path": "riok.mapperly/4.3.0",
       "hashPath": "riok.mapperly.4.3.0.nupkg.sha512"
     },
-    "Scriban/7.0.6": {
+    "Scriban/7.2.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-bOtHyk30sjl0y3+KYImIJv0ETZYLuFFJvlBF2ks2YLNtydhJqxRTGe4WaBDvg/3VRhhI6uf+qVfixuFROsOi+w==",
-      "path": "scriban/7.0.6",
-      "hashPath": "scriban.7.0.6.nupkg.sha512"
+      "sha512": "sha512-GiAuu6bCPVWJeMMK8AkJMCNX+wyqt2qgiKjVAPLvRWxzBwpDJjLhJltVP034tsZUHOkBtdfA/Otrny+n3NelBw==",
+      "path": "scriban/7.2.0",
+      "hashPath": "scriban.7.2.0.nupkg.sha512"
     },
     "Serilog/4.3.0": {
       "type": "package",

@@ -50,6 +50,10 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "dependencies": {
+            "Scriban": {
+              "target": "Package",
+              "version": "[7.2.0, )"
+            },
             "Volo.Abp.Account.Pro.Admin.Application.Contracts": {
               "target": "Package",
               "version": "[10.0.1, )"
@@ -523,7 +527,7 @@
             },
             "Scriban": {
               "target": "Package",
-              "version": "[7.0.6, )"
+              "version": "[7.2.0, )"
             },
             "Serilog.AspNetCore": {
               "target": "Package",
@@ -1542,6 +1546,10 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "dependencies": {
+            "Scriban": {
+              "target": "Package",
+              "version": "[7.2.0, )"
+            },
             "Volo.Abp.Account.Pro.Admin.HttpApi.Client": {
               "target": "Package",
               "version": "[10.0.1, )"

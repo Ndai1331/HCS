@@ -15,11 +15,9 @@ namespace HC.MasterDatas;
 
 public abstract class EfCoreMasterDataRepositoryBase : EfCoreRepository<HCDbContext, MasterData, Guid>
 {
-    protected ILogger<EfCoreMasterDataRepositoryBase> Logger { get; }
-    public EfCoreMasterDataRepositoryBase(IDbContextProvider<HCDbContext> dbContextProvider, ILogger<EfCoreMasterDataRepositoryBase> logger)
+    public EfCoreMasterDataRepositoryBase(IDbContextProvider<HCDbContext> dbContextProvider)
      : base(dbContextProvider)
     {
-        Logger = logger;
     }
 
     public virtual async Task DeleteAllAsync(string? filterText = null, string? type = null, string? code = null, string? name = null, int? sortOrderMin = null, int? sortOrderMax = null, bool? isActive = null, CancellationToken cancellationToken = default)

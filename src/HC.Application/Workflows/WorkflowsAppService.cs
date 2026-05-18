@@ -30,7 +30,8 @@ public abstract class WorkflowsAppServiceBase : HCAppService
     protected IWorkflowRepository _workflowRepository;
     protected WorkflowManager _workflowManager;
     protected IRepository<HC.WorkflowDefinitions.WorkflowDefinition, Guid> _workflowDefinitionRepository;
-    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache;
+    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache
+        => LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
 
     public WorkflowsAppServiceBase(IWorkflowRepository workflowRepository, WorkflowManager workflowManager, IDistributedCache<WorkflowDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.WorkflowDefinitions.WorkflowDefinition, Guid> workflowDefinitionRepository)
     {
@@ -38,7 +39,6 @@ public abstract class WorkflowsAppServiceBase : HCAppService
         _workflowRepository = workflowRepository;
         _workflowManager = workflowManager;
         _workflowDefinitionRepository = workflowDefinitionRepository;
-        _lookupVersionCache = LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
     }
 
     public virtual async Task<PagedResultDto<WorkflowWithNavigationPropertiesDto>> GetListAsync(GetWorkflowsInput input)

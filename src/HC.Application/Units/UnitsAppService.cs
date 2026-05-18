@@ -25,7 +25,8 @@ namespace HC.Units;
 public abstract class UnitsAppServiceBase : HCAppService
 {
     protected IDistributedCache<UnitDownloadTokenCacheItem, string> _downloadTokenCache;
-    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache;
+    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache
+        => LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
     protected IUnitRepository _unitRepository;
     protected UnitManager _unitManager;
 
@@ -34,7 +35,6 @@ public abstract class UnitsAppServiceBase : HCAppService
         _downloadTokenCache = downloadTokenCache;
         _unitRepository = unitRepository;
         _unitManager = unitManager;
-        _lookupVersionCache = LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
     }
 
     public virtual async Task<PagedResultDto<UnitDto>> GetListAsync(GetUnitsInput input)

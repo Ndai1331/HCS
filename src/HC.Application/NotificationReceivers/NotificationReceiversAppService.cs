@@ -20,7 +20,6 @@ using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using Volo.Abp.Users;
-using Microsoft.EntityFrameworkCore;
 
 namespace HC.NotificationReceivers;
 
@@ -68,7 +67,7 @@ public abstract class NotificationReceiversAppServiceBase : HCAppService
     {
         var query = (await _notificationRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Title != null && x.Title.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.Notifications.Notification>();
-        var totalCount = await query.CountAsync();
+        var totalCount = await AsyncExecuter.CountAsync(query);
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,
@@ -80,7 +79,7 @@ public abstract class NotificationReceiversAppServiceBase : HCAppService
     {
         var query = (await _identityUserRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<Volo.Abp.Identity.IdentityUser>();
-        var totalCount = await query.CountAsync();
+        var totalCount = await AsyncExecuter.CountAsync(query);
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,

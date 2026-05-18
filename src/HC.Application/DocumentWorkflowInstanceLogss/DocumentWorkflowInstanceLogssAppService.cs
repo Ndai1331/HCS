@@ -14,7 +14,6 @@ using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using HC.Permissions;
 using HC.DocumentWorkflowInstanceLogss;
-using Microsoft.EntityFrameworkCore;
 
 namespace HC.DocumentWorkflowInstanceLogss;
 
@@ -80,7 +79,7 @@ public abstract class DocumentWorkflowInstanceLogssAppServiceBase : HCAppService
     {
         var query = (await _documentAssignmentRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.ActionType != null && x.ActionType.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.DocumentAssignments.DocumentAssignment>();
-        var totalCount = await query.CountAsync();
+        var totalCount = await AsyncExecuter.CountAsync(query);
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,
@@ -92,7 +91,7 @@ public abstract class DocumentWorkflowInstanceLogssAppServiceBase : HCAppService
     {
         var query = (await _identityUserRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<Volo.Abp.Identity.IdentityUser>();
-        var totalCount = await query.CountAsync();
+        var totalCount = await AsyncExecuter.CountAsync(query);
         return new PagedResultDto<LookupDto<Guid>>
         {
             TotalCount = totalCount,

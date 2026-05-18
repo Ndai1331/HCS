@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "IinIKbXIqgs=",
+  "dgSpecHash": "Ojvm/Zh5zp8=",
   "success": true,
   "projectFilePath": "/Users/user/Documents/HCS/src/HC.Blazor/HC.Blazor.csproj",
   "expectedPackageFiles": [
@@ -159,7 +159,7 @@
     "/Users/user/.nuget/packages/pipelines.sockets.unofficial/2.2.8/pipelines.sockets.unofficial.2.2.8.nupkg.sha512",
     "/Users/user/.nuget/packages/rabbitmq.client/7.1.2/rabbitmq.client.7.1.2.nupkg.sha512",
     "/Users/user/.nuget/packages/riok.mapperly/4.3.0/riok.mapperly.4.3.0.nupkg.sha512",
-    "/Users/user/.nuget/packages/scriban/7.0.6/scriban.7.0.6.nupkg.sha512",
+    "/Users/user/.nuget/packages/scriban/7.2.0/scriban.7.2.0.nupkg.sha512",
     "/Users/user/.nuget/packages/serilog/4.3.0/serilog.4.3.0.nupkg.sha512",
     "/Users/user/.nuget/packages/serilog.aspnetcore/9.0.0/serilog.aspnetcore.9.0.0.nupkg.sha512",
     "/Users/user/.nuget/packages/serilog.extensions.hosting/9.0.0/serilog.extensions.hosting.9.0.0.nupkg.sha512",

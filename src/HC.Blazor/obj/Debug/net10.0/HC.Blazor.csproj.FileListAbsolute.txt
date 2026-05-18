@@ -3989,4 +3989,4 @@
 /Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/dyvsx4coy0-{0}-52ixmd60cj-52ixmd60cj.gz
 /Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/i4lj2ittez-{0}-9yh7ixncxw-9yh7ixncxw.gz
 /Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/npg3w51359-{0}-8q0bvdrbyz-8q0bvdrbyz.gz
-/Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/ahdcih0bc0-{0}-jt3r1afqgl-jt3r1afqgl.gz
+/Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/ahdcih0bc0-{0}-4ddqhet24f-4ddqhet24f.gz

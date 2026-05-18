@@ -25,7 +25,8 @@ namespace HC.MasterDatas;
 public abstract class MasterDatasAppServiceBase : HCAppService
 {
     protected IDistributedCache<MasterDataDownloadTokenCacheItem, string> _downloadTokenCache;
-    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache;
+    protected IDistributedCache<LookupCacheVersionCacheItem, string> _lookupVersionCache
+        => LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
     protected IMasterDataRepository _masterDataRepository;
     protected MasterDataManager _masterDataManager;
 
@@ -34,7 +35,6 @@ public abstract class MasterDatasAppServiceBase : HCAppService
         _downloadTokenCache = downloadTokenCache;
         _masterDataRepository = masterDataRepository;
         _masterDataManager = masterDataManager;
-        _lookupVersionCache = LazyServiceProvider.LazyGetRequiredService<IDistributedCache<LookupCacheVersionCacheItem, string>>();
     }
 
     public virtual async Task<PagedResultDto<MasterDataDto>> GetListAsync(GetMasterDatasInput input)

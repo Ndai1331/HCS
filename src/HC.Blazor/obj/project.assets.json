@@ -2474,7 +2474,7 @@
           "build/_._": {}
         }
       },
-      "Scriban/7.0.6": {
+      "Scriban/7.2.0": {
         "type": "package",
         "compile": {
           "lib/net8.0/Scriban.dll": {
@@ -6678,6 +6678,7 @@
         "framework": ".NETCoreApp,Version=v10.0",
         "dependencies": {
           "HC.Domain.Shared": "1.0.0",
+          "Scriban": "7.2.0",
           "Volo.Abp.Account.Pro.Admin.Application.Contracts": "10.0.1",
           "Volo.Abp.Account.Pro.Public.Application.Contracts": "10.0.1",
           "Volo.Abp.AuditLogging.Application.Contracts": "10.0.1",
@@ -6735,6 +6736,7 @@
         "framework": ".NETCoreApp,Version=v10.0",
         "dependencies": {
           "HC.Application.Contracts": "1.0.0",
+          "Scriban": "7.2.0",
           "Volo.Abp.Account.Pro.Admin.HttpApi.Client": "10.0.1",
           "Volo.Abp.Account.Pro.Public.HttpApi.Client": "10.0.1",
           "Volo.Abp.AuditLogging.HttpApi.Client": "10.0.1",
@@ -10523,10 +10525,10 @@
         "riok.mapperly.nuspec"
       ]
     },
-    "Scriban/7.0.6": {
-      "sha512": "bOtHyk30sjl0y3+KYImIJv0ETZYLuFFJvlBF2ks2YLNtydhJqxRTGe4WaBDvg/3VRhhI6uf+qVfixuFROsOi+w==",
+    "Scriban/7.2.0": {
+      "sha512": "GiAuu6bCPVWJeMMK8AkJMCNX+wyqt2qgiKjVAPLvRWxzBwpDJjLhJltVP034tsZUHOkBtdfA/Otrny+n3NelBw==",
       "type": "package",
-      "path": "scriban/7.0.6",
+      "path": "scriban/7.2.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -10537,7 +10539,7 @@
         "lib/netstandard2.0/Scriban.dll",
         "lib/netstandard2.0/Scriban.xml",
         "readme.md",
-        "scriban.7.0.6.nupkg.sha512",
+        "scriban.7.2.0.nupkg.sha512",
         "scriban.nuspec",
         "scriban.png",
         "src/Scriban/.editorconfig",
@@ -17833,7 +17835,7 @@
       "Microsoft.AspNetCore.DataProtection.StackExchangeRedis >= 10.0.0",
       "Microsoft.AspNetCore.SignalR.Client >= 10.0.0",
       "Microsoft.EntityFrameworkCore.InMemory >= 10.0.0",
-      "Scriban >= 7.0.6",
+      "Scriban >= 7.2.0",
       "Serilog.AspNetCore >= 9.0.0",
       "Serilog.Sinks.Async >= 2.1.0",
       "Volo.Abp.Account.Pro.Admin.Blazor.Server >= 10.0.1",
@@ -17995,7 +17997,7 @@
           },
           "Scriban": {
             "target": "Package",
-            "version": "[7.0.6, )"
+            "version": "[7.2.0, )"
           },
           "Serilog.AspNetCore": {
             "target": "Package",

@@ -1131,15 +1131,15 @@
           }
         }
       },
-      "Scriban/6.3.0": {
+      "Scriban/7.2.0": {
         "type": "package",
         "compile": {
-          "lib/net7.0/Scriban.dll": {
+          "lib/net8.0/Scriban.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net7.0/Scriban.dll": {
+          "lib/net8.0/Scriban.dll": {
             "related": ".xml"
           }
         },
@@ -3208,6 +3208,7 @@
         "framework": ".NETCoreApp,Version=v10.0",
         "dependencies": {
           "HC.Domain.Shared": "1.0.0",
+          "Scriban": "7.2.0",
           "Volo.Abp.Account.Pro.Admin.Application.Contracts": "10.0.1",
           "Volo.Abp.Account.Pro.Public.Application.Contracts": "10.0.1",
           "Volo.Abp.AuditLogging.Application.Contracts": "10.0.1",
@@ -4996,21 +4997,21 @@
         "pdfsharp.nuspec"
       ]
     },
-    "Scriban/6.3.0": {
-      "sha512": "WIOcfb9xOk6sYvYeinh3J9BLOJlZquUY3lIZmBaBNz2ci/mpB6vfjxn6dLyZSzviqzv9Pe8fbmDLjS7oCxNQNA==",
+    "Scriban/7.2.0": {
+      "sha512": "GiAuu6bCPVWJeMMK8AkJMCNX+wyqt2qgiKjVAPLvRWxzBwpDJjLhJltVP034tsZUHOkBtdfA/Otrny+n3NelBw==",
       "type": "package",
-      "path": "scriban/6.3.0",
+      "path": "scriban/7.2.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "build/Scriban.props",
         "build/Scriban.targets",
-        "lib/net7.0/Scriban.dll",
-        "lib/net7.0/Scriban.xml",
+        "lib/net8.0/Scriban.dll",
+        "lib/net8.0/Scriban.xml",
         "lib/netstandard2.0/Scriban.dll",
         "lib/netstandard2.0/Scriban.xml",
         "readme.md",
-        "scriban.6.3.0.nupkg.sha512",
+        "scriban.7.2.0.nupkg.sha512",
         "scriban.nuspec",
         "scriban.png",
         "src/Scriban/.editorconfig",
@@ -5031,7 +5032,6 @@
         "src/Scriban/Helpers/FastStack.cs",
         "src/Scriban/Helpers/InlineList.cs",
         "src/Scriban/Helpers/ReflectionHelper.cs",
-        "src/Scriban/Helpers/StringHelper.cs",
         "src/Scriban/Helpers/ThrowHelper.cs",
         "src/Scriban/LogMessageBag.cs",
         "src/Scriban/Parsing/Lexer.cs",
@@ -8553,117 +8553,5 @@
         }
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1902",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-5rpf-x9jg-8j5p",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1904",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known critical severity vulnerability, https://github.com/advisories/GHSA-5wr9-m6jw-xx44",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-c875-h985-hvrc",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-grr9-747v-xvcp",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1902",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-m2p3-hwv5-xpqw",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-p6q4-fgr8-vx4p",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-v66j-x4hw-fv9g",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-wgh7-7m3c-fx25",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-x6m9-38vm-2xhf",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-xcx6-vp38-8hr5",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1902",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'Scriban' 6.3.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-xw6w-9jjh-p9cr",
-      "libraryId": "Scriban",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  }
 }

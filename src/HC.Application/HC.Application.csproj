@@ -30,5 +30,7 @@
     <PackageReference Include="Volo.Abp.TextTemplateManagement.Application" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.Gdpr.Application" Version="10.0.1" />
     <PackageReference Include="Volo.Abp.BackgroundJobs" Version="10.0.1" />
+    <PackageReference Include="Scriban" Version="7.2.0" />
+
   </ItemGroup>
 </Project>

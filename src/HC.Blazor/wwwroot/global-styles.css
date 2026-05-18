@@ -660,6 +660,13 @@
  * Volo.Chat.Blazor Index.css is not served here (404); restore minimal layout so
  * contact-list initials align beside names.
  */
+.contract-list .chat-contact {
+    display: block;
+    width: 100%;
+    text-decoration: none;
+    color: inherit;
+}
+
 .contract-list .chat-contact .media {
     display: flex;
     align-items: flex-start;

@@ -38,7 +38,6 @@ using HC.DocumentHistories;
 using Volo.Abp.BlobStoring;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Uow;
-using Microsoft.EntityFrameworkCore;
 
 namespace HC.DocumentWorkflowInstances;
 
@@ -1770,7 +1769,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             return exclude;
         }
 
-        var instanceQueryable = (await _documentWorkflowInstanceRepository.GetQueryableAsync()).AsNoTracking();
+        var instanceQueryable = (await _documentWorkflowInstanceRepository.GetQueryableAsync());
         var instances = await AsyncExecuter.ToListAsync(
             instanceQueryable.Where(i =>
                 candidateDocumentIds.Contains(i.DocumentId) && i.CreatorId == currentUserId));
@@ -1781,7 +1780,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 g => g.Key,
                 g => g.OrderByDescending(x => x.StartedAt).ThenByDescending(x => x.Id).First().StartedAt);
 
-        var assignmentQueryable = (await _documentAssignmentRepository.GetQueryableAsync()).AsNoTracking();
+        var assignmentQueryable = (await _documentAssignmentRepository.GetQueryableAsync());
         var signedAssignments = await AsyncExecuter.ToListAsync(
             assignmentQueryable.Where(a =>
                 candidateDocumentIds.Contains(a.DocumentId)
@@ -1818,9 +1817,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var currentUserId = CurrentUser.Id!.Value;
 
         // ===== STEP 1: Build queryable for distinct document IDs per category at DB level =====
-        var assignmentQueryable = (await _documentAssignmentRepository.GetQueryableAsync()).AsNoTracking();
-        var instanceQueryable = (await _documentWorkflowInstanceRepository.GetQueryableAsync()).AsNoTracking();
-        var documentQueryable = (await _documentRepository.GetQueryableAsync()).AsNoTracking();
+        var assignmentQueryable = (await _documentAssignmentRepository.GetQueryableAsync());
+        var instanceQueryable = (await _documentWorkflowInstanceRepository.GetQueryableAsync());
+        var documentQueryable = (await _documentRepository.GetQueryableAsync());
 
         // Signing documents only: SourceType = Workflow (3). Manage-documents / inbox use other source types.
         var workflowDocumentQuery = documentQueryable.Where(d => d.SourceType == DocumentSourceType.Workflow);
@@ -1998,7 +1997,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         // Batch load total step counts per WorkflowTemplate
         var templateIds = latestInstances.Select(i => i.WorkflowTemplateId).Distinct().ToList();
-        var stepTemplateQueryable = (await _workflowStepTemplateRepository.GetQueryableAsync()).AsNoTracking();
+        var stepTemplateQueryable = (await _workflowStepTemplateRepository.GetQueryableAsync());
         var allStepsForTemplates = templateIds.Any()
             ? await AsyncExecuter.ToListAsync(stepTemplateQueryable.Where(
                 x => templateIds.Contains(x.WorkflowTemplateId) && x.IsActive))
@@ -2016,7 +2015,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             .Select(i => i.WorkflowTemplateId)
             .Distinct()
             .ToList();
-        var workflowTemplateQueryable = (await _workflowTemplateRepository.GetQueryableAsync()).AsNoTracking();
+        var workflowTemplateQueryable = (await _workflowTemplateRepository.GetQueryableAsync());
         var workflowTemplatesForPage = pageWorkflowTemplateIds.Any()
             ? await AsyncExecuter.ToListAsync(workflowTemplateQueryable.Where(x => pageWorkflowTemplateIds.Contains(x.Id)))
             : new List<WorkflowTemplate>();

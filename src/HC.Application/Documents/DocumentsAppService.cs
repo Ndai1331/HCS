@@ -17,7 +17,6 @@ using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
-using Microsoft.EntityFrameworkCore;
 
 namespace HC.Documents;
 
@@ -97,7 +96,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
     private async Task<DocumentsLookupCacheItem> LoadMasterDataLookupPageAsync(LookupRequestDto input)
     {
         var baseQuery = (await _masterDataRepository.GetQueryableAsync())
-            .AsNoTracking()
+            
             .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
 
         // Project to LookupDto in SQL so we only pull Id/Name and skip ObjectMapper round-trips.
@@ -124,7 +123,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
     private async Task<DocumentsLookupCacheItem> LoadUnitLookupPageAsync(LookupRequestDto input)
     {
         var baseQuery = (await _unitRepository.GetQueryableAsync())
-            .AsNoTracking()
+            
             .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
 
         var lookupQuery = baseQuery
@@ -150,7 +149,7 @@ public abstract class DocumentsAppServiceBase : HCAppService
     private async Task<DocumentsLookupCacheItem> LoadWorkflowLookupPageAsync(LookupRequestDto input)
     {
         var baseQuery = (await _workflowRepository.GetQueryableAsync())
-            .AsNoTracking()
+            
             .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
 
         var lookupQuery = baseQuery
