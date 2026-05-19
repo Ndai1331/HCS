@@ -1,4 +1,39 @@
+# LVT: push notification is OFF by default (no mobile FCM for this tenant).
+# Enable only when needed:
+#   docker compose -f docker-compose-lvt-Production.yml --profile push-notification up -d
+# Or set in .env next to this file: COMPOSE_PROFILES=push-notification
 services:
+  hc-pushnotificationworker:
+    profiles:
+      - push-notification
+    image: longnguyen1331/hc-pushnotificationworker:latestlvt
+    container_name: hc-pushnotificationworker
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__Default=User ID=postgres;Password=Bv199;Host=113.160.232.208;Port=5400;Database=AxisHCS;Pooling=false;
+      - Redis__Configuration=redis
+      - RabbitMQ__Connections__Default__HostName=rabbitmq
+      - RabbitMQ__Connections__Default__Port=5672
+      - RabbitMQ__Connections__Default__UserName=guest
+      - RabbitMQ__Connections__Default__Password=guest
+      - RabbitMQ__EventBus__ClientName=HC_PushNotificationWorker
+      - RabbitMQ__EventBus__ExchangeName=HC
+      - MinIO__EndPoint=minio:9000
+      - MinIO__AccessKey=hcsadmin
+      - MinIO__SecretKey=hcsadminpassword
+      - MinIO__BucketName=hcs_bucket
+      - MinIO__WithSSL=false
+      - MinIO__CreateBucketIfNotExists=true
+      - Firebase__CredentialPath=/app/secrets/hanh-chinh-so-firebase.json
+    volumes:
+      - ./secrets/firebase/hanh-chinh-so-firebase.json:/app/secrets/hanh-chinh-so-firebase.json:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - abp-network
+
   hc-blazor:
     image: longnguyen1331/hc-blazor:latest01042026
     container_name: hc-blazor

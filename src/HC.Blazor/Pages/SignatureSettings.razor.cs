@@ -365,7 +365,7 @@ public partial class SignatureSettings : HCComponentBase
             isValid = false;
         }
 
-        if (NewSignatureSetting.AllowDigitalSign && string.IsNullOrWhiteSpace(NewSignatureSetting.LayoutImg))
+        if (IsDigitalLayoutImageRequired(NewSignatureSetting.AllowDigitalSign, NewSignatureSetting.ProviderType))
         {
             CreateFieldErrors["LayoutImg"] = L["LayoutImgRequiredForDigitalSign"];
             if (isValid)
@@ -382,6 +382,17 @@ public partial class SignatureSettings : HCComponentBase
     {
         EditLayoutImgPickerKey++;
         await EditSignatureSettingModal.Hide();
+    }
+
+    private static bool IsRemoteCaSignatureProviderType(string? providerTypeString)
+    {
+        return Enum.TryParse<ProviderType>(providerTypeString ?? string.Empty, ignoreCase: true, out var pt)
+               && pt == ProviderType.REMOTE_CA;
+    }
+
+    private bool IsDigitalLayoutImageRequired(bool allowDigitalSign, string? providerType)
+    {
+        return allowDigitalSign && !IsRemoteCaSignatureProviderType(providerType);
     }
 
     private async Task UpdateSignatureSettingAsync()
@@ -497,7 +508,7 @@ public partial class SignatureSettings : HCComponentBase
             isValid = false;
         }
 
-        if (EditingSignatureSetting.AllowDigitalSign && string.IsNullOrWhiteSpace(EditingSignatureSetting.LayoutImg))
+        if (IsDigitalLayoutImageRequired(EditingSignatureSetting.AllowDigitalSign, EditingSignatureSetting.ProviderType))
         {
             EditFieldErrors["LayoutImg"] = L["LayoutImgRequiredForDigitalSign"];
             if (isValid)

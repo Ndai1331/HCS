@@ -98,6 +98,7 @@ public partial class MyProfile
     // Signature Settings Lookup
     protected IReadOnlyList<LookupDto<Guid>> SignatureSettingsCollection { get; set; } = new List<LookupDto<Guid>>();
     protected Dictionary<Guid, string> SignatureSettingsIdToCodeMap { get; set; } = new Dictionary<Guid, string>();
+    protected Dictionary<Guid, string> SignatureSettingsIdToProviderTypeMap { get; set; } = new Dictionary<Guid, string>();
     protected List<LookupDto<Guid>> SelectedSignatureSettingForCreate { get; set; } = new();
     protected List<LookupDto<Guid>> SelectedSignatureSettingForEdit { get; set; } = new();
     
@@ -513,7 +514,7 @@ public partial class MyProfile
                 isValid = false;
             }
 
-            if (string.IsNullOrWhiteSpace(NewUserSignature?.SealImg))
+            if (!IsRemoteCaSelectedSignatureSetting(SelectedSignatureSettingForCreate) && string.IsNullOrWhiteSpace(NewUserSignature?.SealImg))
             {
                 CreateSignatureFieldErrors["SealImg"] = L["SealImgRequiredForDigitalSign"];
                 if (isValid) CreateSignatureValidationErrorKey = "SealImgRequiredForDigitalSign";
@@ -635,7 +636,7 @@ public partial class MyProfile
 
             // Secret is not loaded on edit (API does not return it); leave blank to keep existing
 
-            if (string.IsNullOrWhiteSpace(EditingUserSignature?.SealImg))
+            if (!IsRemoteCaSelectedSignatureSetting(SelectedSignatureSettingForEdit) && string.IsNullOrWhiteSpace(EditingUserSignature?.SealImg))
             {
                 EditSignatureFieldErrors["SealImg"] = L["SealImgRequiredForDigitalSign"];
                 if (isValid) EditSignatureValidationErrorKey = "SealImgRequiredForDigitalSign";
@@ -1161,6 +1162,22 @@ public partial class MyProfile
 
         SignatureSettingsCollection = result.Items;
         
+        SignatureSettingsIdToProviderTypeMap.Clear();
+        if (string.Equals(signType, nameof(SignType.DIGITAL), StringComparison.OrdinalIgnoreCase))
+        {
+            var settingsPage = await SignatureSettingsAppService.GetListAsync(new GetSignatureSettingsInput
+            {
+                MaxResultCount = 512,
+                SkipCount = 0,
+                AllowDigitalSign = true,
+                IsActive = true,
+                Sorting = "ProviderCode"
+            });
+            SignatureSettingsIdToProviderTypeMap = settingsPage.Items
+                .GroupBy(x => x.Id)
+                .ToDictionary(g => g.Key, g => g.First().ProviderType);
+        }
+
         // Build mapper from SignatureSetting Id to ProviderCode
         SignatureSettingsIdToCodeMap.Clear();
         foreach (var item in SignatureSettingsCollection)
@@ -1189,5 +1206,22 @@ public partial class MyProfile
     protected virtual void OnSignatureSettingChangedForEdit()
     {
         EditSignatureFieldErrors.Remove("ProviderCode");
+    }
+
+    private bool IsRemoteCaSelectedSignatureSetting(IReadOnlyList<LookupDto<Guid>>? selection)
+    {
+        if (selection == null || selection.Count == 0)
+        {
+            return false;
+        }
+
+        var id = selection[0].Id;
+        if (!SignatureSettingsIdToProviderTypeMap.TryGetValue(id, out var providerTypeStr))
+        {
+            return false;
+        }
+
+        return Enum.TryParse<ProviderType>(providerTypeStr ?? string.Empty, ignoreCase: true, out var parsed)
+               && parsed == ProviderType.REMOTE_CA;
     }
 }

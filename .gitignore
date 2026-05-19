@@ -288,3 +288,6 @@ src/HC.Blazor/Logs/*
 *firebase*.json
 *-firebase*.json
 **/secrets/*firebase*.json
+
+*mework-src*
+*mework-src/**

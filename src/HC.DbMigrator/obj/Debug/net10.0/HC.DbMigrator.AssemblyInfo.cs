@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HC.DbMigrator")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+99ec60b29bceb1320c2ca76c8dd5579d0c7f6f02")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8da08d84c482787dafbcf4cbb3a766cb2049282d")]
 [assembly: System.Reflection.AssemblyProductAttribute("HC.DbMigrator")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HC.DbMigrator")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

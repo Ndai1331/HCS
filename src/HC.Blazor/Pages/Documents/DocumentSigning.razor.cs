@@ -112,6 +112,14 @@ public partial class DocumentSigning
     // All workflow steps with their signing status (for action modal step overview)
     private List<WorkflowStepStatusDto> AllStepsWithStatus { get; set; } = new();
 
+    /// <summary>Aligned with REMOTE_CA default API timeout (~30s) for predictable UX.</summary>
+    private const int WorkflowActionSigningUiTimeoutSeconds = 30;
+
+    /// <summary>Shows RadarSpinner overlay on the workflow action modal body while confirming.</summary>
+    private bool IsWorkflowActionSubmitting { get; set; }
+
+    private int WorkflowActionCountdownRemaining { get; set; } = WorkflowActionSigningUiTimeoutSeconds;
+
     // Debounce
     private CancellationTokenSource? SearchDebounceCts { get; set; }
     private bool IsInitialDataLoaded { get; set; }
@@ -723,56 +731,89 @@ public partial class DocumentSigning
         await HideWorkflowActionModalAsync();
     }
 
-    private async Task ConfirmWorkflowActionAsync()
+    private async Task RunWorkflowActionCountdownAsync(CancellationToken cancellationToken)
     {
-        var isBlocked = false;
+        WorkflowActionCountdownRemaining = WorkflowActionSigningUiTimeoutSeconds;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
         try
         {
-            if (SelectedDocumentForAction == null || string.IsNullOrEmpty(SelectedAction))
+            while (WorkflowActionCountdownRemaining > 0
+                   && IsWorkflowActionSubmitting
+                   && !cancellationToken.IsCancellationRequested)
             {
-                await UiMessageService.Error(L["PleaseSelectAction"],
-                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                return;
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+                if (!IsWorkflowActionSubmitting || cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                WorkflowActionCountdownRemaining--;
+                await InvokeAsync(StateHasChanged).ConfigureAwait(false);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // Countdown cancelled when the API completes or the modal resets.
+        }
+    }
 
-            if (!SelectedDocumentForAction.WorkflowInstanceId.HasValue || !SelectedDocumentForAction.MyAssignmentId.HasValue)
-            {
-                await UiMessageService.Error(L["NoActiveAssignment"],
+    private async Task ConfirmWorkflowActionAsync()
+    {
+        if (SelectedDocumentForAction == null || string.IsNullOrEmpty(SelectedAction))
+        {
+            await UiMessageService.Error(L["PleaseSelectAction"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                return;
-            }
+            return;
+        }
 
-            // Validate signing method is selected when approving
-            if (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && !SelectedSigningMethodId.HasValue)
-            {
-                await UiMessageService.Error(L["PleaseSelectSigningMethod"],
+        if (!SelectedDocumentForAction.WorkflowInstanceId.HasValue || !SelectedDocumentForAction.MyAssignmentId.HasValue)
+        {
+            await UiMessageService.Error(L["NoActiveAssignment"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                return;
-            }
+            return;
+        }
 
-            if (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE)
-                && AvailableUserSignaturesForMethod.Count > 1
-                && !SelectedUserSignatureId.HasValue)
-            {
-                await UiMessageService.Error(L["PleaseSelectUserSignature"],
+        // Validate signing method is selected when approving
+        if (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && !SelectedSigningMethodId.HasValue)
+        {
+            await UiMessageService.Error(L["PleaseSelectSigningMethod"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                return;
-            }
+            return;
+        }
 
-            // Confirmation message based on action
-            var confirmMessage = SelectedAction switch
-            {
-                nameof(WorkflowInstanceLogAction.APPROVE) => L["ConfirmApprove"],
-                nameof(WorkflowInstanceLogAction.RETURN) => L["ConfirmReturn"],
-                nameof(WorkflowInstanceLogAction.REJECT) => L["ConfirmReject"],
-                _ => L["ConfirmAction"]
-            };
+        if (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE)
+            && AvailableUserSignaturesForMethod.Count > 1
+            && !SelectedUserSignatureId.HasValue)
+        {
+            await UiMessageService.Error(L["PleaseSelectUserSignature"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+            return;
+        }
 
-            var confirmed = await UiMessageService.Confirm(confirmMessage);
-            if (!confirmed) return;
+        // Confirmation message based on action
+        var confirmMessage = SelectedAction switch
+        {
+            nameof(WorkflowInstanceLogAction.APPROVE) => L["ConfirmApprove"],
+            nameof(WorkflowInstanceLogAction.RETURN) => L["ConfirmReturn"],
+            nameof(WorkflowInstanceLogAction.REJECT) => L["ConfirmReject"],
+            _ => L["ConfirmAction"]
+        };
 
-            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            isBlocked = true;
+        var confirmed = await UiMessageService.Confirm(confirmMessage);
+        if (!confirmed)
+        {
+            return;
+        }
+
+        using var countdownCts = new CancellationTokenSource();
+        var countdownTask = Task.CompletedTask;
+
+        try
+        {
+            IsWorkflowActionSubmitting = true;
+            WorkflowActionCountdownRemaining = WorkflowActionSigningUiTimeoutSeconds;
+            countdownTask = RunWorkflowActionCountdownAsync(countdownCts.Token);
+            await InvokeAsync(StateHasChanged);
 
             // Blazor binding updates on blur; get note from editor to ensure we have latest content for <<NoteContentXX>>
             var actionNote = ActionNote?.Trim();
@@ -795,9 +836,19 @@ public partial class DocumentSigning
                 UserSignatureId = SelectedUserSignatureId
             };
 
-            await DocumentWorkflowInstancesAppService.ProcessWorkflowActionAsync(input);
+            var apiTask = DocumentWorkflowInstancesAppService.ProcessWorkflowActionAsync(input);
+            var delayTask = Task.Delay(TimeSpan.FromSeconds(WorkflowActionSigningUiTimeoutSeconds));
+            await Task.WhenAny(apiTask, delayTask);
 
-            // Success message based on action
+            if (!apiTask.IsCompleted)
+            {
+                await UiMessageService.Error(L["RemoteSigningConnectionFailed"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                return;
+            }
+
+            await apiTask;
+
             var successMessage = SelectedAction switch
             {
                 nameof(WorkflowInstanceLogAction.APPROVE) => L["DocumentApprovedSuccessfully"],
@@ -806,31 +857,31 @@ public partial class DocumentSigning
                 _ => L["ActionCompletedSuccessfully"]
             };
 
-            await BlockUiService.UnBlock();
-            isBlocked = false;
-
             await UiMessageService.Success(successMessage,
-            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await HideWorkflowActionModalAsync();
             await LoadDocumentSigningListAsync();
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {
-            if (isBlocked)
-            {
-                await BlockUiService.UnBlock();
-                isBlocked = false;
-            }
-
             await HandleErrorAsync(ex);
         }
         finally
         {
-            if (isBlocked)
+            countdownCts.Cancel();
+            try
             {
-                await BlockUiService.UnBlock();
+                await countdownTask.ConfigureAwait(false);
             }
+            catch (OperationCanceledException)
+            {
+                // Ignore torn-down countdown.
+            }
+
+            IsWorkflowActionSubmitting = false;
+            WorkflowActionCountdownRemaining = WorkflowActionSigningUiTimeoutSeconds;
+            await InvokeAsync(StateHasChanged);
         }
     }
 

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using HC;
+using System.Net.Http;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -11,6 +13,7 @@ using HC.BnnSoftSigns;
 using HC.DocumentAssignments;
 using HC.DocumentFiles;
 using HC.Localization;
+using HC.RemoteSigns;
 using HC.SignatureSettings;
 using HC.UserSignatures;
 using Microsoft.Extensions.Configuration;
@@ -155,11 +158,6 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             throw new UserFriendlyException(_localizer["DigitalSignatureSecretRequired"]);
         }
 
-        if (string.IsNullOrWhiteSpace(signature.SealImg))
-        {
-            throw new UserFriendlyException(_localizer["DigitalSignatureSealImageRequired"]);
-        }
-
         if (signature.ValidFrom.HasValue && signature.ValidFrom.Value > now)
         {
             throw new UserFriendlyException(_localizer["SignatureNotYetValid"]);
@@ -172,7 +170,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         var settingQueryable = await _signatureSettingRepository.GetQueryableAsync();
         var signatureSetting = await _asyncExecuter.FirstOrDefaultAsync(
-            settingQueryable.Where(x => 
+            settingQueryable.Where(x =>
             x.ProviderCode == signature.ProviderCode
              && x.IsActive));
 
@@ -181,7 +179,15 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             throw new UserFriendlyException(_localizer["DigitalSignatureProviderNotFound"]);
         }
 
-        if (string.IsNullOrWhiteSpace(signatureSetting.LayoutImg))
+        var isRemoteCa = Enum.TryParse<ProviderType>(signatureSetting.ProviderType, ignoreCase: true, out var providerKind)
+            && providerKind == ProviderType.REMOTE_CA;
+
+        if (!isRemoteCa && string.IsNullOrWhiteSpace(signature.SealImg))
+        {
+            throw new UserFriendlyException(_localizer["DigitalSignatureSealImageRequired"]);
+        }
+
+        if (!isRemoteCa && string.IsNullOrWhiteSpace(signatureSetting.LayoutImg))
         {
             throw new UserFriendlyException(_localizer["DigitalSignatureLayoutImageRequired"]);
         }
@@ -199,18 +205,34 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         var pdfBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
         var signatureImageBytes = await ResolveSignatureImageBytesAsync(signature.SignatureImage);
-        var sealImageBytes = await ResolveSignatureImageBytesAsync(signature.SealImg!);
-        var layoutImageBytes = await ResolveSignatureImageBytesAsync(signatureSetting.LayoutImg!);
-        var layoutHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(layoutImageBytes));
-        _logger.LogInformation(
-            "[DIGITAL_SIGN] Loaded signing assets | AssignmentId={AssignmentId} | ProviderCode={ProviderCode} | LayoutPath={LayoutPath} | LayoutBytes={LayoutBytes} | LayoutSha256={LayoutSha256} | SignatureBytes={SignatureBytes} | SealBytes={SealBytes}",
-            assignment.Id,
-            signature.ProviderCode,
-            signatureSetting.LayoutImg,
-            layoutImageBytes.Length,
-            layoutHash,
-            signatureImageBytes.Length,
-            sealImageBytes.Length);
+        byte[] sealImageBytes;
+        byte[] layoutImageBytes;
+
+        if (isRemoteCa)
+        {
+            sealImageBytes = Array.Empty<byte>();
+            layoutImageBytes = Array.Empty<byte>();
+            _logger.LogInformation(
+                "[DIGITAL_SIGN] REMOTE_CA (TAG-style) signing assets | AssignmentId={AssignmentId} | ProviderCode={ProviderCode} | SignatureBytes={SignatureBytes}",
+                assignment.Id,
+                signature.ProviderCode,
+                signatureImageBytes.Length);
+        }
+        else
+        {
+            sealImageBytes = await ResolveSignatureImageBytesAsync(signature.SealImg!);
+            layoutImageBytes = await ResolveSignatureImageBytesAsync(signatureSetting.LayoutImg!);
+            var layoutHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(layoutImageBytes));
+            _logger.LogInformation(
+                "[DIGITAL_SIGN] Loaded signing assets | AssignmentId={AssignmentId} | ProviderCode={ProviderCode} | LayoutPath={LayoutPath} | LayoutBytes={LayoutBytes} | LayoutSha256={LayoutSha256} | SignatureBytes={SignatureBytes} | SealBytes={SealBytes}",
+                assignment.Id,
+                signature.ProviderCode,
+                signatureSetting.LayoutImg,
+                layoutImageBytes.Length,
+                layoutHash,
+                signatureImageBytes.Length,
+                sealImageBytes.Length);
+        }
 
         var user = await _identityUserRepository.GetAsync(currentUserId);
         var fullName = $"{user.Surname} {user.Name}".Trim();
@@ -220,8 +242,6 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
 
         var placeholderTag = $"<<Sign{assignment.StepOrder:D2}>>";
-        var signTextLogger = _loggerFactory.CreateLogger<SignText>();
-        var signer = new SignText(signature.TokenRef, signature.Secret, signatureSetting.ApiEndpoint, signTextLogger);
 
         var pdfForSigning = ReplacePdfNameAndNotePlaceholders(
             pdfBytes,
@@ -232,29 +252,45 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         byte[]? signedPdfBytes;
         try
         {
-            signedPdfBytes = signer.SignTextLocationCustomizeV2(new SignPdfInput
+            if (isRemoteCa)
             {
-                datapdf = pdfForSigning,
-                chukytuoi = signatureImageBytes,
-                condau = sealImageBytes,
-                anhkhung = layoutImageBytes,
-                signaturename = Guid.NewGuid().ToString("N"),
-                nguoiky = fullName,
-                chucvu = string.Empty,
-                fontsize = 9,
-                fontcolor = "#002f7a",
-                fontname = "Times New Roman",
-                pagesign = -1,
-                typesignature = 3,
-                hashalg = "SHA-256",
-                textsign = placeholderTag,
-                width = signatureSetting.SignWidth > 0 ? signatureSetting.SignWidth : 150,
-                height = signatureSetting.SignHeight > 0 ? signatureSetting.SignHeight : 70,
-                imgwidth = signatureSetting.SignWidth > 0 ? signatureSetting.SignWidth : 150,
-                imgheight = signatureSetting.SignHeight > 0 ? signatureSetting.SignHeight : 70,
-                borderstyle = 0,
-                bordercolor = "#000000"
-            }, xOffset: 10, yOffset: 42);
+                signedPdfBytes = await ApplyRemoteCaDigitalPdfSignAsync(
+                    assignment.Id,
+                    signature,
+                    signatureSetting,
+                    pdfForSigning,
+                    fullName,
+                    placeholderTag,
+                    signatureImageBytes);
+            }
+            else
+            {
+                var signTextLogger = _loggerFactory.CreateLogger<SignText>();
+                var signer = new SignText(signature.TokenRef, signature.Secret, signatureSetting.ApiEndpoint, signTextLogger);
+                signedPdfBytes = signer.SignTextLocationCustomizeV2(new SignPdfInput
+                {
+                    datapdf = pdfForSigning,
+                    chukytuoi = signatureImageBytes,
+                    condau = sealImageBytes,
+                    anhkhung = layoutImageBytes,
+                    signaturename = Guid.NewGuid().ToString("N"),
+                    nguoiky = fullName,
+                    chucvu = string.Empty,
+                    fontsize = 9,
+                    fontcolor = "#002f7a",
+                    fontname = "Times New Roman",
+                    pagesign = -1,
+                    typesignature = 3,
+                    hashalg = "SHA-256",
+                    textsign = placeholderTag,
+                    width = signatureSetting.SignWidth > 0 ? signatureSetting.SignWidth : 150,
+                    height = signatureSetting.SignHeight > 0 ? signatureSetting.SignHeight : 70,
+                    imgwidth = signatureSetting.SignWidth > 0 ? signatureSetting.SignWidth : 150,
+                    imgheight = signatureSetting.SignHeight > 0 ? signatureSetting.SignHeight : 70,
+                    borderstyle = 0,
+                    bordercolor = "#000000"
+                }, xOffset: 10, yOffset: 42);
+            }
         }
         catch (SignPlaceholderNotFoundException ex)
         {
@@ -264,6 +300,10 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 ex.TextSign,
                 ex.PageSign);
             throw new UserFriendlyException(_localizer["PlaceholderNotFoundInPdf", ex.TextSign]);
+        }
+        catch (UserFriendlyException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -1211,6 +1251,101 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
 
         return (positions, pageHeights);
+    }
+
+    private async Task<byte[]?> ApplyRemoteCaDigitalPdfSignAsync(
+        Guid assignmentId,
+        UserSignature signature,
+        SignatureSetting signatureSetting,
+        byte[] pdfForSigning,
+        string fullName,
+        string placeholderTag,
+        byte[] signatureImageBytes)
+    {
+        try
+        {
+            _ = Convert.FromBase64String(signature.Secret);
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogError(ex, "[SIGN_V2] Invalid secret encoding for REMOTE_CA. AssignmentId={AssignmentId}", assignmentId);
+            throw new UserFriendlyException(_localizer["DigitalSigningFailed", _localizer["RemoteCaSecretMustBeBase64"]]);
+        }
+
+        // Default matches UI signing wait (~30s). Admins may raise ApiTimeout (clamped below).
+        var timeoutSeconds = signatureSetting.ApiTimeout > 0 ? signatureSetting.ApiTimeout : 30;
+        // UX: REMOTE_CA should fail within a predictable window; admins can tune ApiTimeout lower than this cap if needed.
+        timeoutSeconds = Math.Clamp(timeoutSeconds, 30, 240);
+        var signV2Logger = _loggerFactory.CreateLogger<SignTextV2>();
+
+        SignTextV2 signerV2;
+        try
+        {
+            signerV2 = new SignTextV2(
+                signature.TokenRef,
+                signature.Secret,
+                signatureSetting.ApiEndpoint.Trim(),
+                TimeSpan.FromSeconds(timeoutSeconds),
+                signV2Logger);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "[SIGN_V2] Invalid ApiEndpoint for REMOTE_CA. AssignmentId={AssignmentId}", assignmentId);
+            throw new UserFriendlyException(_localizer["DigitalSigningFailed", ex.Message]);
+        }
+
+        var hit = PdfPigSignLocator.Find(pdfForSigning, placeholderTag);
+        if (hit == null)
+        {
+            throw new SignPlaceholderNotFoundException(placeholderTag, -1);
+        }
+
+        var width = signatureSetting.SignWidth > 0 ? signatureSetting.SignWidth : 150;
+        var height = signatureSetting.SignHeight > 0 ? signatureSetting.SignHeight : 70;
+        var base64SignImg = Convert.ToBase64String(signatureImageBytes);
+
+        var req = new PdfSignRequest
+        {
+            base64pdf = Convert.ToBase64String(pdfForSigning),
+            hashalg = "SHA256",
+            typesignature = 3,
+            textout = fullName,
+            base64image = base64SignImg,
+            base64SignImage = base64SignImg,
+            signaturename = placeholderTag,
+            xpoint = (int)(hit.X - 5),
+            ypoint = (int)(hit.Y - 30),
+            pagesign = hit.Page,
+            TextLocationIdentifier = placeholderTag,
+            width = width,
+            height = height,
+            AppendDateSign = true,
+            DateFormatString = "dd/MM/yyyy HH:mm:ss",
+            FontSize = 9f
+        };
+
+        using var requestDeadlineCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+
+        try
+        {
+            var result = await signerV2.SignatureAsync(req, requestDeadlineCts.Token).ConfigureAwait(false);
+            if (result == null || result.Length == 0)
+            {
+                _logger.LogWarning("[SIGN_V2] Empty signing result for AssignmentId={AssignmentId}", assignmentId);
+            }
+
+            return result;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "[SIGN_V2] HTTP error while contacting REMOTE_CA sign server. AssignmentId={AssignmentId}", assignmentId);
+            throw new UserFriendlyException(_localizer["DigitalSigningFailed", _localizer["RemoteSigningConnectionFailed"]]);
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogError(ex, "[SIGN_V2] Sign request cancelled/timed out. AssignmentId={AssignmentId}", assignmentId);
+            throw new UserFriendlyException(_localizer["DigitalSigningFailed", _localizer["RemoteSigningConnectionFailed"]]);
+        }
     }
 
 }
