@@ -47,8 +47,11 @@ public static class WordPlaceholderReplacer
         var replacements = new (string Placeholder, string Value)[]
         {
             ("<<DD>>", currentDate.ToString("dd")),
+            ("<<Day>>", currentDate.ToString("dd")),
             ("<<MM>>", currentDate.ToString("MM")),
+            ("<<Month>>", currentDate.ToString("MM")),
             ("<<YYYY>>", currentDate.ToString("yyyy")),
+            ("<<Year>>", currentDate.ToString("yyyy")),
             ("<<ContentToBeApproved>>", contentValue),
             ("<<PreparedFullName>>", fullName),
             ("<<PositionName>>", positionText),

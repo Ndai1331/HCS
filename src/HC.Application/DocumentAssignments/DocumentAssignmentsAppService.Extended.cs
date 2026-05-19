@@ -57,9 +57,7 @@ public class DocumentAssignmentsAppService : DocumentAssignmentsAppServiceBase, 
     // Override CreateAsync to add notification logic
     public override async Task<DocumentAssignmentDto> CreateAsync(DocumentAssignmentCreateDto input)
     {
-        // Call base method to create assignment
         var result = await base.CreateAsync(input);
-        // Get document, step and user information
         var document = await _documentRepository.GetAsync(input.DocumentId);
         WorkflowStepTemplate? step = null;
         if (input.WorkflowStepTemplateId.HasValue && input.WorkflowStepTemplateId.Value != Guid.Empty)
@@ -68,18 +66,14 @@ public class DocumentAssignmentsAppService : DocumentAssignmentsAppServiceBase, 
         }
         var receiverUser = await _identityUserRepository.GetAsync(input.ReceiverUserId);
         string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
-        // Store localization keys instead of translated text
-        // Format: "Key|param1|param2|param3" for Content with parameters
         var notificationTitleKey = "WorkflowAssigned";
         var notificationContentKey = $"WorkflowAssignedMessage|{document.StorageNumber}|{document.Title}|{step.Name}|{userFullName ?? L["System"]}";
         var notification = new Notification(GuidGenerator.Create(), notificationTitleKey, notificationContentKey, SourceType.WORKFLOW.ToString(), EventType.WORKFLOW_ASSIGNED.ToString(), RelatedType.DOCUMENT.ToString(), "NORMAL", document.Id.ToString());
         notification.TenantId = CurrentTenant.Id;
         await _notificationRepository.InsertAsync(notification);
-        // Create notification receiver
         var notificationReceiver = new NotificationReceiver(GuidGenerator.Create(), notification.Id, input.ReceiverUserId, false);
         notificationReceiver.TenantId = CurrentTenant.Id;
         await _notificationReceiverRepository.InsertAsync(notificationReceiver);
-        // Publish event to RabbitMQ
         await _distributedEventBus.PublishAsync(new NotificationCreatedEto { NotificationId = notification.Id, ReceiverUserIds = new List<Guid> { input.ReceiverUserId } });
         return result;
     }
@@ -93,20 +87,15 @@ public class DocumentAssignmentsAppService : DocumentAssignmentsAppServiceBase, 
         var step = assignmentWithNav.WorkflowStepTemplate;
         var receiverUser = assignmentWithNav.ReceiverUser;
         string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
-        // Call base method to delete assignment
         await base.DeleteAsync(id);
-        // Store localization keys instead of translated text
-        // Format: "Key|param1|param2|param3" for Content with parameters
         var notificationTitleKey = "WorkflowAssignRemoved";
         var notificationContentKey = $"WorkflowAssignRemovedMessage|{document.StorageNumber}|{document.Title}|{step.Name}|{userFullName ?? L["System"]}";
         var notification = new Notification(GuidGenerator.Create(), notificationTitleKey, notificationContentKey, SourceType.WORKFLOW.ToString(), EventType.WORKFLOW_ASSIGN_REMOVED.ToString(), RelatedType.DOCUMENT.ToString(), "NORMAL", document.Id.ToString());
         notification.TenantId = CurrentTenant.Id;
         await _notificationRepository.InsertAsync(notification);
-        // Create notification receiver
         var notificationReceiver = new NotificationReceiver(GuidGenerator.Create(), notification.Id, receiverUser.Id, false);
         notificationReceiver.TenantId = CurrentTenant.Id;
         await _notificationReceiverRepository.InsertAsync(notificationReceiver);
-        // Publish event to RabbitMQ
         await _distributedEventBus.PublishAsync(new NotificationCreatedEto { NotificationId = notification.Id, ReceiverUserIds = new List<Guid> { receiverUser.Id } });
     }
 
