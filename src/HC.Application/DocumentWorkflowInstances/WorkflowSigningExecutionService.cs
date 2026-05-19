@@ -59,7 +59,10 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
     private readonly IRepository<DocumentFile, Guid> _documentFileRepository;
     private readonly IUserSignatureRepository _userSignatureRepository;
     private readonly IRepository<IdentityUser, Guid> _identityUserRepository;
+    private readonly IRepository<OrganizationUnit, Guid> _organizationUnitRepository;
     private readonly IRepository<SignatureSetting, Guid> _signatureSettingRepository;
+
+    private const string PositionIdTextExtraPropertyKey = "PositionId_Text";
     private readonly IBlobContainer _blobContainer;
     private readonly ICurrentUser _currentUser;
     private readonly ICurrentTenant _currentTenant;
@@ -76,6 +79,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         IRepository<DocumentFile, Guid> documentFileRepository,
         IUserSignatureRepository userSignatureRepository,
         IRepository<IdentityUser, Guid> identityUserRepository,
+        IRepository<OrganizationUnit, Guid> organizationUnitRepository,
         IRepository<SignatureSetting, Guid> signatureSettingRepository,
         IBlobContainer blobContainer,
         ICurrentUser currentUser,
@@ -92,6 +96,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         _documentFileRepository = documentFileRepository;
         _userSignatureRepository = userSignatureRepository;
         _identityUserRepository = identityUserRepository;
+        _organizationUnitRepository = organizationUnitRepository;
         _signatureSettingRepository = signatureSettingRepository;
         _blobContainer = blobContainer;
         _currentUser = currentUser;
@@ -320,7 +325,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             throw new UserFriendlyException(_localizer["NoFileToSign"]);
         }
 
-        var (signature, _, fullName) = await GetValidatedElectronicSignatureAsync(currentUserId);
+        var (signature, user, fullName) = await GetValidatedElectronicSignatureAsync(currentUserId);
+        var (positionText, departmentText) = await ResolvePreparedUserPlaceholdersAsync(user);
 
         byte[] fileBytes;
         byte[] signatureImageBytes;
@@ -359,7 +365,9 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 signatureImageBytes,
                 fullName,
                 htmlContent ?? string.Empty,
-                _clock.Now);
+                _clock.Now,
+                positionText,
+                departmentText);
         }
         else
         {
@@ -375,7 +383,9 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 signatureImageBytes,
                 fullName,
                 htmlContent ?? string.Empty,
-                _clock.Now);
+                _clock.Now,
+                positionText,
+                departmentText);
 
             pdfBytes = await ConvertWordToPdfAsync(replacedWordBytes, ".docx");
         }
@@ -636,6 +646,33 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         return (signature, user, fullName);
     }
 
+    private async Task<(string PositionText, string DepartmentText)> ResolvePreparedUserPlaceholdersAsync(IdentityUser user)
+    {
+        var positionText = string.Empty;
+        if (user.ExtraProperties.TryGetValue(PositionIdTextExtraPropertyKey, out var positionRaw)
+            && positionRaw != null)
+        {
+            positionText = positionRaw.ToString()?.Trim() ?? string.Empty;
+        }
+
+        var departmentText = string.Empty;
+        var userQueryable = await _identityUserRepository.GetQueryableAsync();
+        var organizationUnitId = await _asyncExecuter.FirstOrDefaultAsync(
+            userQueryable
+                .Where(u => u.Id == user.Id)
+                .SelectMany(u => u.OrganizationUnits)
+                .OrderBy(ou => ou.CreationTime)
+                .Select(ou => (Guid?)ou.OrganizationUnitId));
+
+        if (organizationUnitId.HasValue)
+        {
+            var organizationUnit = await _organizationUnitRepository.FindAsync(organizationUnitId.Value);
+            departmentText = organizationUnit?.DisplayName?.Trim() ?? string.Empty;
+        }
+
+        return (positionText, departmentText);
+    }
+
     private static string ResolveFileExtension(DocumentFile sourceFile)
     {
         var extension = Path.GetExtension(sourceFile.Name);
@@ -772,11 +809,6 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         public string Type { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// Replaces placeholders for electronic signing. Uses same logic as PrepareSubmissionPlaceholders:
-    /// - Step-based: &lt;&lt;SignXX&gt;&gt;, &lt;&lt;FullNameXX&gt;&gt;, &lt;&lt;NoteContentXX&gt;&gt;
-    /// - Prepared (trình ký style): &lt;&lt;PreparedBySign&gt;&gt;, &lt;&lt;PreparedFullName&gt;&gt; - replaced with signer's image/name
-    /// </summary>
     public byte[] ReplacePdfPlaceholders(
         byte[] pdfBytes,
         int stepOrder,
@@ -790,7 +822,6 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             new() { Tag = $"<<Sign{suffix}>>", Type = "SIGN" },
             new() { Tag = $"<<FullName{suffix}>>", Type = "FULLNAME" },
             new() { Tag = $"<<NoteContent{suffix}>>", Type = "NOTE" },
-            // Same as trình ký (prepare): replace Prepared placeholders with signer's image/name
             new() { Tag = "<<PreparedBySign>>", Type = "PREPARED_SIGN" },
             new() { Tag = "<<PreparedFullName>>", Type = "PREPARED_FULLNAME" },
         };
@@ -802,10 +833,6 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             noteContent);
     }
 
-    /// <summary>
-    /// Replaces FullName and NoteContent placeholders for digital signing. Same placeholders as electronic signing.
-    /// Also replaces &lt;&lt;PreparedFullName&gt;&gt; (trình ký style) with signer's name.
-    /// </summary>
     private byte[] ReplacePdfNameAndNotePlaceholders(
         byte[] pdfBytes,
         int stepOrder,
@@ -817,7 +844,6 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         {
             new() { Tag = $"<<FullName{suffix}>>", Type = "FULLNAME" },
             new() { Tag = $"<<NoteContent{suffix}>>", Type = "NOTE" },
-            // Same as trình ký: replace PreparedFullName with signer's name
             new() { Tag = "<<PreparedFullName>>", Type = "PREPARED_FULLNAME" },
         };
         return ReplacePdfPlaceholdersInternal(
@@ -850,16 +876,25 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         byte[] signatureImageBytes,
         string fullName,
         string htmlContent,
-        DateTime currentDate)
+        DateTime currentDate,
+        string positionText,
+        string departmentText)
     {
         var searchPairs = new List<PlaceholderSearchItem>
         {
+            new() { Tag = "<<Day>>", Type = "CURRENT_DAY" },
             new() { Tag = "<<DD>>", Type = "CURRENT_DAY" },
             new() { Tag = "<<MM>>", Type = "CURRENT_MONTH" },
+            new() { Tag = "<<Month>>", Type = "CURRENT_MONTH" },
+            new() { Tag = "<<Year>>", Type = "CURRENT_YEAR" },
             new() { Tag = "<<YYYY>>", Type = "CURRENT_YEAR" },
             new() { Tag = "<<ContentToBeApproved>>", Type = "HTML_CONTENT" },
             new() { Tag = "<<PreparedBySign>>", Type = "PREPARED_SIGN" },
             new() { Tag = "<<PreparedFullName>>", Type = "PREPARED_FULLNAME" },
+            new() { Tag = "<<PositionName>>", Type = "PREPARED_USER_POSITION" },
+            new() { Tag = "<<ViTriLamViec>>", Type = "PREPARED_USER_POSITION" },
+            new() { Tag = "<<PhongBan>>", Type = "PREPARED_USER_ORGANIZATION_UNIT" },
+            new() { Tag = "<<Department>>", Type = "PREPARED_USER_ORGANIZATION_UNIT" },
         };
 
         var (positions, pageHeights) = FindPlaceholderPositions(pdfBytes, searchPairs);
@@ -918,6 +953,18 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                     case "PREPARED_FULLNAME":
                         var preparedNameFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, pos.FontSize);
                         gfx.DrawString(fullName, preparedNameFont, PdfSharpDrawing.XBrushes.Black,
+                            whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
+                        break;
+
+                    case "PREPARED_USER_POSITION":
+                        var positionFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, pos.FontSize);
+                        gfx.DrawString(positionText, positionFont, PdfSharpDrawing.XBrushes.Black,
+                            whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
+                        break;
+
+                    case "PREPARED_USER_ORGANIZATION_UNIT":
+                        var departmentFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, pos.FontSize);
+                        gfx.DrawString(departmentText, departmentFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 

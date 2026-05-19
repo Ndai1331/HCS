@@ -28,14 +28,17 @@ public static class WordPlaceholderReplacer
     /// <summary>
     /// Replace placeholders in Word document bytes. Returns modified .docx bytes.
     /// Placeholders: &lt;&lt;DD&gt;&gt;, &lt;&lt;MM&gt;&gt;, &lt;&lt;YYYY&gt;&gt;,
-    /// &lt;&lt;ContentToBeApproved&gt;&gt;, &lt;&lt;PreparedBySign&gt;&gt;, &lt;&lt;PreparedFullName&gt;&gt;
+    /// &lt;&lt;ContentToBeApproved&gt;&gt;, &lt;&lt;PreparedBySign&gt;&gt;, &lt;&lt;PreparedFullName&gt;&gt;,
+    /// &lt;&lt;PositionName&gt;&gt;, &lt;&lt;ViTriLamViec&gt;&gt;, &lt;&lt;PhongBan&gt;&gt;, &lt;&lt;Department&gt;&gt;
     /// </summary>
     public static byte[] ReplacePlaceholders(
         byte[] docxBytes,
         byte[]? signatureImageBytes,
         string fullName,
         string htmlContent,
-        DateTime currentDate)
+        DateTime currentDate,
+        string positionText,
+        string departmentText)
     {
         var plainContent = HtmlToPlainWithLineBreaks(htmlContent ?? string.Empty);
         var useHtmlForContent = !string.IsNullOrWhiteSpace(htmlContent) && htmlContent.Contains("<") && htmlContent.Contains(">");
@@ -48,6 +51,10 @@ public static class WordPlaceholderReplacer
             ("<<YYYY>>", currentDate.ToString("yyyy")),
             ("<<ContentToBeApproved>>", contentValue),
             ("<<PreparedFullName>>", fullName),
+            ("<<PositionName>>", positionText),
+            ("<<ViTriLamViec>>", positionText),
+            ("<<PhongBan>>", departmentText),
+            ("<<Department>>", departmentText),
         };
 
         // Copy to new stream for editing (Open modifies in place)

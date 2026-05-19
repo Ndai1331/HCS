@@ -26,6 +26,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System.IO;
 using Volo.Abp.BlobStoring;
 using HC.Blazor.BlobStoring;
+using HC.BlobStoring;
 using Volo.Abp.Application.Dtos;
 using HC.SignatureSettings;
 
@@ -1022,12 +1023,13 @@ public partial class MyProfile
 
             var fileBytes = memoryStream.ToArray();
 
-            // Generate unique file name
-            var fileName = $"{Guid.NewGuid()}_{file.Name}";
+            // Generate unique file name (sanitize to avoid oversized object keys)
+            var safeFileName = BlobStoragePathHelper.SanitizeFileName(file.Name);
+            var fileName = $"{Guid.NewGuid()}_{safeFileName}";
             var filePath = $"user-signature-images/{fileName}";
 
-            // Upload to blob storage
-            await BlobContainer.SaveAsync(filePath, fileBytes);
+            // Upload to blob storage (overwrite if re-uploading same path)
+            await BlobContainer.SaveAsync(filePath, fileBytes, overrideExisting: true);
 
             // Update state based on mode
             UploadedSignatureImagePath = filePath;
@@ -1102,8 +1104,9 @@ public partial class MyProfile
             using var memoryStream = new MemoryStream();
             await file.OpenReadStream(long.MaxValue).CopyToAsync(memoryStream);
             memoryStream.Position = 0;
-            var filePath = $"user-seal-images/{Guid.NewGuid()}_{file.Name}";
-            await BlobContainer.SaveAsync(filePath, memoryStream.ToArray());
+            var safeFileName = BlobStoragePathHelper.SanitizeFileName(file.Name);
+            var filePath = $"user-seal-images/{Guid.NewGuid()}_{safeFileName}";
+            await BlobContainer.SaveAsync(filePath, memoryStream.ToArray(), overrideExisting: true);
 
             if (isEditMode)
             {

@@ -7,6 +7,7 @@ using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Data;
+using HC.BlobStoring;
 
 namespace HC.UserSignatures;
 
@@ -35,6 +36,12 @@ public abstract class UserSignatureManagerBase : DomainService
         Check.NotNullOrWhiteSpace(signType, nameof(signType));
         Check.NotNullOrWhiteSpace(providerCode, nameof(providerCode));
         Check.NotNullOrWhiteSpace(signatureImage, nameof(signatureImage));
+        ValidateBlobImagePath(signatureImage, nameof(signatureImage));
+        if (!string.IsNullOrWhiteSpace(sealImg))
+        {
+            ValidateBlobImagePath(sealImg, nameof(sealImg));
+        }
+
         var userSignature = new UserSignature(GuidGenerator.Create(), identityUserId, signType, providerCode, signatureImage, isActive, tokenRef, secret, sealImg, validFrom, validTo);
         return await _userSignatureRepository.InsertAsync(userSignature);
     }
@@ -57,6 +64,12 @@ public abstract class UserSignatureManagerBase : DomainService
         Check.NotNullOrWhiteSpace(signType, nameof(signType));
         Check.NotNullOrWhiteSpace(providerCode, nameof(providerCode));
         Check.NotNullOrWhiteSpace(signatureImage, nameof(signatureImage));
+        ValidateBlobImagePath(signatureImage, nameof(signatureImage));
+        if (!string.IsNullOrWhiteSpace(sealImg))
+        {
+            ValidateBlobImagePath(sealImg, nameof(sealImg));
+        }
+
         var userSignature = await _userSignatureRepository.GetAsync(id);
         userSignature.IdentityUserId = identityUserId;
         userSignature.SignType = signType;
@@ -73,5 +86,14 @@ public abstract class UserSignatureManagerBase : DomainService
         userSignature.ValidTo = validTo;
         userSignature.SetConcurrencyStampIfNotNull(concurrencyStamp);
         return await _userSignatureRepository.UpdateAsync(userSignature);
+    }
+
+    private static void ValidateBlobImagePath(string path, string parameterName)
+    {
+        if (!BlobStoragePathHelper.IsBlobStoragePath(path))
+        {
+            throw new BusinessException("HC:InvalidBlobImagePath")
+                .WithData("ParameterName", parameterName);
+        }
     }
 }

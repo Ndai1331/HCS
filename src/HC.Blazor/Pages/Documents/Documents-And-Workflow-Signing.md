@@ -123,7 +123,7 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
 - Có thể dùng **file mẫu workflow** (`UseWorkflowTemplateFile`) → tạo document mới `SourceType = Workflow` (không có parent trừ khi sau này mở rộng).
 - Hoặc chọn văn bản từ **0/1/2** → luồng **duplicate** như trên.
 - File **.doc/.docx**: bắt buộc nội dung trình ký (RichText); replace placeholder trong Word rồi convert PDF (`WorkflowSigningExecutionService`, OpenXml, LibreOffice).
-- Placeholders tiêu biểu: `<<DD>>`, `<<MM>>`, `<<YYYY>>`, `<<ContentToBeApproved>>`, `<<PreparedBySign>>`, `<<PreparedFullName>>`, v.v.
+- Placeholders tiêu biểu: `<<DD>>`, `<<MM>>`, `<<YYYY>>`, `<<ContentToBeApproved>>`, `<<PreparedBySign>>`, `<<PreparedFullName>>`, `<<PositionName>>` / `<<ViTriLamViec>>` (chức danh đầy đủ từ `PositionId_Text`, ví dụ `KT - Kế toán`), `<<PhongBan>>` / `<<Department>>` (một OU đầu tiên của user), v.v.
 
 ### 3.3.1 Cách chọn `WorkflowTemplate` để submit
 

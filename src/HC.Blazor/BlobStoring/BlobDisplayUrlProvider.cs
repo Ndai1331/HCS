@@ -32,6 +32,12 @@ public class BlobDisplayUrlProvider : IBlobDisplayUrlProvider, ITransientDepende
             return path;
         }
 
+        // Never build a MinIO URL for data URLs, base64, or invalid blob paths.
+        if (!BlobStoragePathHelper.IsBlobStoragePath(path))
+        {
+            return string.Empty;
+        }
+
         var usePublic = _configuration.GetValue("MinIO:UseDirectPublicUrlsForImages", false);
         var publicBase = (_configuration["MinIO:PublicBaseUrl"] ?? string.Empty).TrimEnd('/');
         var bucket = _configuration["MinIO:BucketName"] ?? "hcsbucket";
