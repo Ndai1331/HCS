@@ -73,3 +73,5 @@ cd src/HC.AuthServer && dotnet dev-certs https -v -ep openiddict.pfx -p 9fafa8e6
 - The database is remote (not local). Connection string points to `113.160.232.208:5400`.
 - RabbitMQ and MinIO are optional — services start without them but real-time chat/file features won't work.
 
+
+
