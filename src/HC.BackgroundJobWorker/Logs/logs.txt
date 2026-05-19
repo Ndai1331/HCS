@@ -10,3 +10,9 @@ System.OperationCanceledException: The operation was canceled.
    at System.Threading.CancellationToken.ThrowIfCancellationRequested()
    at Microsoft.Extensions.Caching.StackExchangeRedis.RedisCache.GetAsync(String key, CancellationToken token)
    at Volo.Abp.Caching.DistributedCache`2.GetAsync(TCacheKey key, Nullable`1 hideErrors, Boolean considerUow, CancellationToken token)
+2026-05-19 09:00:14.305 +07:00 [INF] Starting HC.BackgroundJobWorker host.
+2026-05-19 09:00:19.463 +07:00 [INF] HC Background Job Worker started — processing ABP background jobs from queue.
+2026-05-19 09:02:46.053 +07:00 [INF] Starting HC.BackgroundJobWorker host.
+2026-05-19 09:02:47.884 +07:00 [INF] HC Background Job Worker started — processing ABP background jobs from queue.
+2026-05-19 09:16:04.965 +07:00 [INF] Starting HC.BackgroundJobWorker host.
+2026-05-19 09:16:06.824 +07:00 [INF] HC Background Job Worker started — processing ABP background jobs from queue.

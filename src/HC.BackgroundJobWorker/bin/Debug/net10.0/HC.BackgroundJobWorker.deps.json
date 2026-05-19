@@ -13,6 +13,7 @@
           "HC.EntityFrameworkCore": "1.0.0",
           "Microsoft.Extensions.Configuration.Json": "10.0.0",
           "Microsoft.Extensions.Hosting": "10.0.0",
+          "Scriban": "7.2.0",
           "Serilog.Extensions.Logging": "9.0.2",
           "Serilog.Sinks.Async": "2.1.0",
           "Serilog.Sinks.Console": "6.0.0",
@@ -334,9 +335,9 @@
           "System.Diagnostics.EventLog": "10.0.0",
           "System.Formats.Nrbf": "9.0.0",
           "System.Resources.Extensions": "9.0.0",
-          "System.Security.Cryptography.Pkcs": "9.0.0",
+          "System.Security.Cryptography.Pkcs": "10.0.8",
           "System.Security.Cryptography.ProtectedData": "9.0.0",
-          "System.Security.Cryptography.Xml": "9.0.0"
+          "System.Security.Cryptography.Xml": "10.0.8"
         },
         "runtime": {
           "lib/net9.0/Microsoft.Build.Tasks.Core.dll": {
@@ -590,9 +591,9 @@
           "System.Configuration.ConfigurationManager": "9.0.0",
           "System.Diagnostics.EventLog": "10.0.0",
           "System.Resources.Extensions": "9.0.0",
-          "System.Security.Cryptography.Pkcs": "9.0.0",
+          "System.Security.Cryptography.Pkcs": "10.0.8",
           "System.Security.Cryptography.ProtectedData": "9.0.0",
-          "System.Security.Cryptography.Xml": "9.0.0",
+          "System.Security.Cryptography.Xml": "10.0.8",
           "System.Security.Permissions": "9.0.0",
           "System.Windows.Extensions": "9.0.0"
         },
@@ -1405,7 +1406,7 @@
       "PDFsharp/6.2.4": {
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
-          "System.Security.Cryptography.Pkcs": "9.0.0"
+          "System.Security.Cryptography.Pkcs": "10.0.8"
         },
         "runtime": {
           "lib/net10.0/PdfSharp.BarCodes.dll": {
@@ -1492,11 +1493,11 @@
           }
         }
       },
-      "Scriban/6.3.0": {
+      "Scriban/7.2.0": {
         "runtime": {
-          "lib/net7.0/Scriban.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.3.0.0"
+          "lib/net8.0/Scriban.dll": {
+            "assemblyVersion": "7.0.0.0",
+            "fileVersion": "7.2.0.0"
           }
         }
       },
@@ -1813,19 +1814,19 @@
           }
         }
       },
-      "System.Security.Cryptography.Pkcs/9.0.0": {
+      "System.Security.Cryptography.Pkcs/10.0.8": {
         "runtime": {
-          "lib/net9.0/System.Security.Cryptography.Pkcs.dll": {
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.24.52809"
+          "lib/net10.0/System.Security.Cryptography.Pkcs.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.826.23019"
           }
         },
         "runtimeTargets": {
-          "runtimes/win/lib/net9.0/System.Security.Cryptography.Pkcs.dll": {
+          "runtimes/win/lib/net10.0/System.Security.Cryptography.Pkcs.dll": {
             "rid": "win",
             "assetType": "runtime",
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.24.52809"
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.826.23019"
           }
         }
       },
@@ -1837,14 +1838,14 @@
           }
         }
       },
-      "System.Security.Cryptography.Xml/9.0.0": {
+      "System.Security.Cryptography.Xml/10.0.8": {
         "dependencies": {
-          "System.Security.Cryptography.Pkcs": "9.0.0"
+          "System.Security.Cryptography.Pkcs": "10.0.8"
         },
         "runtime": {
-          "lib/net9.0/System.Security.Cryptography.Xml.dll": {
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.24.52809"
+          "lib/net10.0/System.Security.Cryptography.Xml.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.826.23019"
           }
         }
       },
@@ -3511,7 +3512,7 @@
       },
       "Volo.Abp.TextTemplating.Scriban/10.0.1": {
         "dependencies": {
-          "Scriban": "6.3.0",
+          "Scriban": "7.2.0",
           "Volo.Abp.TextTemplating.Core": "10.0.1"
         },
         "runtime": {
@@ -3845,6 +3846,7 @@
           "HC.Domain": "1.0.0",
           "HtmlToOpenXml.dll": "3.3.1",
           "MiniExcel": "1.41.4",
+          "Scriban": "7.2.0",
           "Volo.Abp.Account.Pro.Admin.Application": "10.0.1",
           "Volo.Abp.Account.Pro.Public.Application": "10.0.1",
           "Volo.Abp.AuditLogging.Application": "10.0.1",
@@ -3870,6 +3872,7 @@
       "HC.Application.Contracts/1.0.0": {
         "dependencies": {
           "HC.Domain.Shared": "1.0.0",
+          "Scriban": "7.2.0",
           "Volo.Abp.Account.Pro.Admin.Application.Contracts": "10.0.1",
           "Volo.Abp.Account.Pro.Public.Application.Contracts": "10.0.1",
           "Volo.Abp.AuditLogging.Application.Contracts": "10.0.1",
@@ -3894,6 +3897,7 @@
       "HC.Domain/1.0.0": {
         "dependencies": {
           "HC.Domain.Shared": "1.0.0",
+          "Scriban": "7.2.0",
           "Volo.Abp.AuditLogging.Domain": "10.0.1",
           "Volo.Abp.BackgroundJobs.Domain": "10.0.1",
           "Volo.Abp.BlobStoring.Minio": "10.0.1",
@@ -3952,6 +3956,7 @@
         "dependencies": {
           "HC.Domain": "1.0.0",
           "Microsoft.EntityFrameworkCore.Tools": "10.0.0",
+          "System.Security.Cryptography.Xml": "10.0.8",
           "Volo.Abp.AuditLogging.EntityFrameworkCore": "10.0.1",
           "Volo.Abp.BackgroundJobs.EntityFrameworkCore": "10.0.1",
           "Volo.Abp.EntityFrameworkCore.PostgreSql": "10.0.1",
@@ -4695,12 +4700,12 @@
       "path": "riok.mapperly/4.3.0",
       "hashPath": "riok.mapperly.4.3.0.nupkg.sha512"
     },
-    "Scriban/6.3.0": {
+    "Scriban/7.2.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-WIOcfb9xOk6sYvYeinh3J9BLOJlZquUY3lIZmBaBNz2ci/mpB6vfjxn6dLyZSzviqzv9Pe8fbmDLjS7oCxNQNA==",
-      "path": "scriban/6.3.0",
-      "hashPath": "scriban.6.3.0.nupkg.sha512"
+      "sha512": "sha512-GiAuu6bCPVWJeMMK8AkJMCNX+wyqt2qgiKjVAPLvRWxzBwpDJjLhJltVP034tsZUHOkBtdfA/Otrny+n3NelBw==",
+      "path": "scriban/7.2.0",
+      "hashPath": "scriban.7.2.0.nupkg.sha512"
     },
     "Serilog/4.2.0": {
       "type": "package",
@@ -4905,12 +4910,12 @@
       "path": "system.resources.extensions/9.0.0",
       "hashPath": "system.resources.extensions.9.0.0.nupkg.sha512"
     },
-    "System.Security.Cryptography.Pkcs/9.0.0": {
+    "System.Security.Cryptography.Pkcs/10.0.8": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-8tluJF8w9si+2yoHeL8rgVJS6lKvWomTDC8px65Z8MCzzdME5eaPtEQf4OfVGrAxB5fW93ncucy1+221O9EQaw==",
-      "path": "system.security.cryptography.pkcs/9.0.0",
-      "hashPath": "system.security.cryptography.pkcs.9.0.0.nupkg.sha512"
+      "sha512": "sha512-2wOycCqMyg9Tu+SDP03FFwDEWBni/3xOKgt0bRXplOvyeIcUJmWO7m3gTCF2mIdtQLROLtOP5VwWRT8YBwP/bA==",
+      "path": "system.security.cryptography.pkcs/10.0.8",
+      "hashPath": "system.security.cryptography.pkcs.10.0.8.nupkg.sha512"
     },
     "System.Security.Cryptography.ProtectedData/9.0.0": {
       "type": "package",
@@ -4919,12 +4924,12 @@
       "path": "system.security.cryptography.protecteddata/9.0.0",
       "hashPath": "system.security.cryptography.protecteddata.9.0.0.nupkg.sha512"
     },
-    "System.Security.Cryptography.Xml/9.0.0": {
+    "System.Security.Cryptography.Xml/10.0.8": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-GQZn5wFd+pyOfwWaCbqxG7trQ5ox01oR8kYgWflgtux4HiUNihGEgG2TktRWyH+9bw7NoEju1D41H/upwQeFQw==",
-      "path": "system.security.cryptography.xml/9.0.0",
-      "hashPath": "system.security.cryptography.xml.9.0.0.nupkg.sha512"
+      "sha512": "sha512-Fb+L55vEJaf8RCOzrzN564sfyCL8SZEfce9z6XkuhHg+294SBfyS4fIoLU3EljofDCkp+EKDeleI8ug5WO2NtA==",
+      "path": "system.security.cryptography.xml/10.0.8",
+      "hashPath": "system.security.cryptography.xml.10.0.8.nupkg.sha512"
     },
     "System.Security.Permissions/9.0.0": {
       "type": "package",

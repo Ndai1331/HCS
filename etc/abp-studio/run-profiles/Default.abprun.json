@@ -15,6 +15,21 @@
         }
       }
     },
+    "HC.PushNotificationWorker": {
+      "type": "dotnet-project",
+      "launchUrl": "",
+      "path": "../../../src/HC.PushNotificationWorker/HC.PushNotificationWorker.csproj",
+      "execution": {
+        "order": 2
+      },
+      "debug": {
+        "enabled": true,
+        "launchBrowser": false,
+        "environmentVariables": {
+          "ASPNETCORE_ENVIRONMENT": "Development"
+        }
+      }
+    },
     "HC.AuthServer": {
       "type": "dotnet-project",
       "launchUrl": "https://localhost:44301",
@@ -23,7 +38,7 @@
       "healthCheckEndpoint": "/health-status",
       "healthUiEndpoint": "/health-ui",
       "execution": {
-        "order": 2
+        "order": 3
       }
     },
     "HC.HttpApi.Host": {
@@ -34,7 +49,7 @@
       "healthCheckEndpoint": "/health-status",
       "healthUiEndpoint": "/health-ui",
       "execution": {
-        "order": 3
+        "order": 4
       }
     },
     "HC.Blazor": {
@@ -45,7 +60,7 @@
       "healthCheckEndpoint": "/health-status",
       "healthUiEndpoint": "/health-ui",
       "execution": {
-        "order": 4
+        "order": 5
       }
     }
   },

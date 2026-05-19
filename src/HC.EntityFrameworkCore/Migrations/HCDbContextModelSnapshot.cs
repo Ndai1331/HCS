@@ -1281,13 +1281,13 @@ namespace HC.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("No");
 
-                    b.Property<Guid?>("ParentDocumentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("ParentDocumentId");
-
                     b.Property<Guid?>("OrganizationUnitId")
                         .HasColumnType("uuid")
                         .HasColumnName("OrganizationUnitId");
+
+                    b.Property<Guid?>("ParentDocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ParentDocumentId");
 
                     b.Property<Guid?>("ReceiverUserId")
                         .HasColumnType("uuid")
@@ -1338,9 +1338,9 @@ namespace HC.Migrations
 
                     b.HasIndex("FromUserId");
 
-                    b.HasIndex("ParentDocumentId");
-
                     b.HasIndex("OrganizationUnitId");
+
+                    b.HasIndex("ParentDocumentId");
 
                     b.HasIndex("ReceiverUserId");
 
@@ -2264,6 +2264,83 @@ namespace HC.Migrations
                     b.HasIndex("OwnerDepartmentId");
 
                     b.ToTable("AppProjects", (string)null);
+                });
+
+            modelBuilder.Entity("HC.PushNotifications.UserPushDeviceToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<string>("DeviceId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("DeviceId");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<string>("FcmToken")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("FcmToken");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsActive");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<DateTime>("LastSeenTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastSeenTime");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("Platform");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("UserId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FcmToken");
+
+                    b.HasIndex("TenantId", "UserId", "DeviceId");
+
+                    b.HasIndex("TenantId", "UserId", "IsActive");
+
+                    b.ToTable("AppUserPushDeviceTokens", (string)null);
                 });
 
             modelBuilder.Entity("HC.Reports.Report", b =>
@@ -3886,6 +3963,54 @@ namespace HC.Migrations
                     b.HasIndex("IsAbandoned", "NextTryTime");
 
                     b.ToTable("AbpBackgroundJobs", (string)null);
+                });
+
+            modelBuilder.Entity("Volo.Abp.EntityFrameworkCore.DistributedEvents.IncomingEventRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<byte[]>("EventData")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("EventName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<DateTime?>("HandledTime")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("MessageId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("NextRetryTime")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("Status", "CreationTime");
+
+                    b.ToTable("AbpEventInbox", (string)null);
                 });
 
             modelBuilder.Entity("Volo.Abp.FeatureManagement.FeatureDefinitionRecord", b =>

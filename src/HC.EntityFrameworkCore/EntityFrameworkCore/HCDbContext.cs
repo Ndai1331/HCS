@@ -33,7 +33,9 @@ using HC.Workflows;
 using HC.WorkflowDefinitions;
 using HC.MasterDatas;
 using HC.Positions;
+using HC.PushNotifications;
 using Volo.Abp.EntityFrameworkCore.Modeling;
+using Volo.Abp.EntityFrameworkCore.DistributedEvents;
 using Microsoft.EntityFrameworkCore;
 using Volo.Abp.Data;
 using Volo.Abp.MultiTenancy;
@@ -41,8 +43,10 @@ using Volo.Abp.MultiTenancy;
 namespace HC.EntityFrameworkCore;
 
 [ConnectionStringName("Default")]
-public class HCDbContext : HCDbContextBase<HCDbContext>
+public class HCDbContext : HCDbContextBase<HCDbContext>, IHasEventInbox
 {
+    public DbSet<IncomingEventRecord> IncomingEvents { get; set; } = null!;
+    public DbSet<UserPushDeviceToken> PushDeviceTokens { get; set; } = null!;
     public DbSet<Report> Reports { get; set; } = null!;
     public DbSet<DocumentWorkflowInstanceLogs> DocumentWorkflowInstanceLogss { get; set; } = null!;
     public DbSet<DocumentWorkflowInstanceFile> DocumentWorkflowInstanceFiles { get; set; } = null!;
@@ -515,6 +519,21 @@ public class HCDbContext : HCDbContextBase<HCDbContext>
             b.Property(x => x.ErrorMessage).HasColumnName(nameof(NotificationOutbox.ErrorMessage));
             b.HasIndex(x => new { x.ProcessedTime, x.CreationTime });
         });
+        builder.Entity<UserPushDeviceToken>(b => {
+            b.ToTable(HCConsts.DbTablePrefix + "UserPushDeviceTokens", HCConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.TenantId).HasColumnName(nameof(UserPushDeviceToken.TenantId));
+            b.Property(x => x.UserId).HasColumnName(nameof(UserPushDeviceToken.UserId));
+            b.Property(x => x.FcmToken).HasColumnName(nameof(UserPushDeviceToken.FcmToken)).IsRequired().HasMaxLength(PushDeviceTokenConsts.FcmTokenMaxLength);
+            b.Property(x => x.Platform).HasColumnName(nameof(UserPushDeviceToken.Platform)).IsRequired().HasMaxLength(PushDeviceTokenConsts.PlatformMaxLength);
+            b.Property(x => x.DeviceId).HasColumnName(nameof(UserPushDeviceToken.DeviceId)).HasMaxLength(PushDeviceTokenConsts.DeviceIdMaxLength);
+            b.Property(x => x.IsActive).HasColumnName(nameof(UserPushDeviceToken.IsActive));
+            b.Property(x => x.LastSeenTime).HasColumnName(nameof(UserPushDeviceToken.LastSeenTime));
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.IsActive });
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.DeviceId });
+            b.HasIndex(x => x.FcmToken);
+        });
+        builder.ConfigureEventInbox();
         if (builder.IsHostDatabase())
         {
             builder.Entity<Report>(b => {

@@ -283,3 +283,8 @@ src/HC.Blazor/Logs/*
 # # IdentityServer temp files
 # tempkey.rsa
 # tempkey.jwk
+
+# Firebase / Google service account keys (never commit)
+*firebase*.json
+*-firebase*.json
+**/secrets/*firebase*.json
