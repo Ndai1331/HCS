@@ -62,6 +62,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     private readonly IParallelSigningMergeService _parallelSigningMergeService;
     private readonly IWorkflowSigningExecutionService _workflowSigningExecutionService;
     private readonly IReadOnlyList<IWorkflowSigningStrategy> _workflowSigningStrategies;
+    private readonly IWorkflowAssigneeResolver _workflowAssigneeResolver;
+    private readonly IRepository<IdentityRole, Guid> _identityRoleRepository;
 
     public DocumentWorkflowInstancesAppService(
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
@@ -89,7 +91,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         IBlobContainer blobContainer,
         IParallelSigningMergeService parallelSigningMergeService,
         IWorkflowSigningExecutionService workflowSigningExecutionService,
-        IEnumerable<IWorkflowSigningStrategy> workflowSigningStrategies
+        IEnumerable<IWorkflowSigningStrategy> workflowSigningStrategies,
+        IWorkflowAssigneeResolver workflowAssigneeResolver,
+        IRepository<IdentityRole, Guid> identityRoleRepository
     ) : base(documentWorkflowInstanceRepository, documentWorkflowInstanceManager, downloadTokenCache, documentRepository, workflowRepository, workflowTemplateRepository, workflowStepTemplateRepository)
     {
         _workflowStepAssignmentRepository = workflowStepAssignmentRepository;
@@ -111,6 +115,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         _parallelSigningMergeService = parallelSigningMergeService;
         _workflowSigningExecutionService = workflowSigningExecutionService;
         _workflowSigningStrategies = workflowSigningStrategies.ToList();
+        _workflowAssigneeResolver = workflowAssigneeResolver;
+        _identityRoleRepository = identityRoleRepository;
     }
 
     #region GetWorkflowSubmitInfoAsync
@@ -161,14 +167,15 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var allAssignments = await _workflowStepAssignmentRepository.GetListAsync(
             x => stepIds.Contains(x.StepId!.Value) && x.IsActive);
 
-        // Get user info for all assigned users
-        var userIds = allAssignments.Where(a => a.DefaultUserId.HasValue).Select(a => a.DefaultUserId!.Value).Distinct().ToList();
-        var users = userIds.Any()
-            ? await _identityUserRepository.GetListAsync(x => userIds.Contains(x.Id))
-            : new List<IdentityUser>();
-        var userDict = users.ToDictionary(u => u.Id, u => u);
+        var submitterUserId = CurrentUser.Id!.Value;
+        await EnsureWorkflowTemplateRunnableAsync(activeTemplate, stepTemplates, allAssignments, submitterUserId);
 
-        await EnsureWorkflowTemplateRunnableAsync(activeTemplate, stepTemplates, allAssignments);
+        var stepDetails = new List<WorkflowStepDetailDto>();
+        foreach (var step in stepTemplates)
+        {
+            var stepAssignments = allAssignments.Where(a => a.StepId == step.Id && a.IsActive).ToList();
+            stepDetails.Add(await BuildWorkflowStepDetailAsync(step, stepAssignments, submitterUserId));
+        }
 
         // Build result
         var result = new WorkflowSubmitInfoDto
@@ -183,24 +190,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 || !string.IsNullOrWhiteSpace(activeTemplate.PdfTemplatePath),
             SignMode = activeTemplate.SignMode,
             IsTemplateFileWordFormat = IsWordFormatPath(activeTemplate.WordTemplatePath ?? activeTemplate.PdfTemplatePath),
-            Steps = stepTemplates.Select(step => new WorkflowStepDetailDto
-            {
-                StepId = step.Id,
-                Order = step.Order,
-                Name = step.Name,
-                Type = step.Type,
-                SLADays = step.SLADays,
-                AllowReturn = step.AllowReturn,
-                AssignedUsers = allAssignments
-                    .Where(a => a.StepId == step.Id && a.DefaultUserId.HasValue)
-                    .Select(a => new WorkflowStepUserDto
-                    {
-                        UserId = a.DefaultUserId!.Value,
-                        UserName = userDict.ContainsKey(a.DefaultUserId.Value) ? userDict[a.DefaultUserId.Value].UserName : "Unknown",
-                        FullName = userDict.ContainsKey(a.DefaultUserId.Value) ? userDict[a.DefaultUserId.Value].Surname + " " +userDict[a.DefaultUserId.Value].Name : null,
-                        IsPrimary = a.IsPrimary
-                    }).ToList()
-            }).ToList()
+            Steps = stepDetails
         };
 
         return result;
@@ -217,7 +207,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
     private async Task EnsureWorkflowTemplateRunnableAsync(
         WorkflowTemplate template,
         IReadOnlyList<WorkflowStepTemplate> stepTemplates,
-        IReadOnlyList<WorkflowStepAssignment> allAssignments)
+        IReadOnlyList<WorkflowStepAssignment> allAssignments,
+        Guid submitterUserId)
     {
         if (!stepTemplates.Any())
         {
@@ -226,21 +217,156 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
 
         var orderedSteps = stepTemplates.OrderBy(x => x.Order).ToList();
         var firstStep = orderedSteps.First();
-        var firstStepHasAssignee = allAssignments.Any(a => a.StepId == firstStep.Id && a.DefaultUserId.HasValue);
-        if (!firstStepHasAssignee)
+        if (!await StepHasResolvableAssigneesAsync(firstStep.Id, allAssignments, submitterUserId))
         {
             throw new UserFriendlyException(L["FirstStepMustHaveAssignedUsers"]);
         }
 
         if (template.SignMode == nameof(SignMode.PARALLEL))
         {
-            var hasStepWithoutAssignee = orderedSteps.Any(step =>
-                !allAssignments.Any(a => a.StepId == step.Id && a.DefaultUserId.HasValue));
-            if (hasStepWithoutAssignee)
+            foreach (var step in orderedSteps)
             {
-                throw new UserFriendlyException(L["AllStepsMustHaveAssignedUsers"]);
+                if (!await StepHasResolvableAssigneesAsync(step.Id, allAssignments, submitterUserId))
+                {
+                    throw new UserFriendlyException(L["AllStepsMustHaveAssignedUsers"]);
+                }
             }
         }
+    }
+
+    private static bool IsRoleBasedAssignment(WorkflowStepAssignment assignment)
+    {
+        return assignment.AssigneeType == WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit;
+    }
+
+    private static bool IsConfiguredAssignment(WorkflowStepAssignment assignment)
+    {
+        if (!assignment.IsActive)
+        {
+            return false;
+        }
+
+        if (IsRoleBasedAssignment(assignment))
+        {
+            return assignment.RoleId.HasValue;
+        }
+
+        return assignment.DefaultUserId.HasValue;
+    }
+
+    private async Task<bool> StepHasResolvableAssigneesAsync(
+        Guid stepId,
+        IReadOnlyList<WorkflowStepAssignment> allAssignments,
+        Guid submitterUserId)
+    {
+        var stepAssignments = allAssignments.Where(a => a.StepId == stepId && IsConfiguredAssignment(a)).ToList();
+        if (!stepAssignments.Any())
+        {
+            return false;
+        }
+
+        foreach (var assignment in stepAssignments.Where(IsRoleBasedAssignment))
+        {
+            var candidates = await _workflowAssigneeResolver.ResolveCandidatesByRoleAsync(assignment.RoleId!.Value, submitterUserId, assignment.IsPrimary);
+            if (!candidates.Any())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private async Task<WorkflowStepDetailDto> BuildWorkflowStepDetailAsync(
+        WorkflowStepTemplate step,
+        IReadOnlyList<WorkflowStepAssignment> stepAssignments,
+        Guid submitterUserId)
+    {
+        var detail = new WorkflowStepDetailDto
+        {
+            StepId = step.Id,
+            Order = step.Order,
+            Name = step.Name,
+            Type = step.Type,
+            SLADays = step.SLADays,
+            AllowReturn = step.AllowReturn
+        };
+
+        var candidateMap = new Dictionary<Guid, WorkflowStepUserDto>();
+
+        foreach (var assignment in stepAssignments.Where(IsConfiguredAssignment))
+        {
+            if (IsRoleBasedAssignment(assignment))
+            {
+                detail.AssigneeType = assignment.AssigneeType;
+                detail.RoleId = assignment.RoleId;
+                if (assignment.RoleId.HasValue)
+                {
+                    var role = await _identityRoleRepository.FindAsync(assignment.RoleId.Value);
+                    detail.RoleName = role?.Name;
+                }
+
+                var candidates = await _workflowAssigneeResolver.ResolveCandidatesByRoleAsync(assignment.RoleId!.Value, submitterUserId, assignment.IsPrimary);
+                foreach (var candidate in candidates)
+                {
+                    if (!candidateMap.TryGetValue(candidate.UserId, out var existing)
+                        || candidate.OrganizationUnitDepth < existing.OrganizationUnitDepth)
+                    {
+                        candidateMap[candidate.UserId] = candidate;
+                    }
+                }
+            }
+            else if (assignment.DefaultUserId.HasValue)
+            {
+                var user = await _identityUserRepository.FindAsync(assignment.DefaultUserId.Value);
+                var dto = new WorkflowStepUserDto
+                {
+                    UserId = assignment.DefaultUserId.Value,
+                    UserName = user?.UserName ?? "Unknown",
+                    FullName = user == null ? null : $"{user.Surname} {user.Name}".Trim(),
+                    IsPrimary = assignment.IsPrimary,
+                    OrganizationUnitDepth = 0
+                };
+                candidateMap[dto.UserId] = dto;
+            }
+        }
+
+        detail.CandidateUsers = candidateMap.Values
+            .OrderBy(x => x.OrganizationUnitDepth)
+            .ThenBy(x => x.FullName)
+            .ToList();
+        detail.AssignedUsers = detail.CandidateUsers.ToList();
+
+        return detail;
+    }
+
+    private List<WorkflowStepUserDto> ResolveReceiversForSubmit(
+        WorkflowStepDetailDto step,
+        IReadOnlyList<WorkflowStepSignerSelectionDto>? selections)
+    {
+        if (!step.CandidateUsers.Any())
+        {
+            throw new UserFriendlyException(L["NoWorkflowAssigneeCandidatesFound"]);
+        }
+
+        if (step.CandidateUsers.Count == 1)
+        {
+            return step.CandidateUsers;
+        }
+
+        var selection = selections?.FirstOrDefault(s => s.StepId == step.StepId);
+        if (selection == null)
+        {
+            throw new UserFriendlyException(L["WorkflowSignerSelectionRequired"]);
+        }
+
+        var selected = step.CandidateUsers.FirstOrDefault(c => c.UserId == selection.SelectedUserId);
+        if (selected == null)
+        {
+            throw new UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
+        }
+
+        return new List<WorkflowStepUserDto> { selected };
     }
 
     #endregion
@@ -410,7 +536,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var isParallel = workflowInfo.SignMode == nameof(SignMode.PARALLEL);
 
         // Validate: step 1 must have assigned users (for both SEQUENTIAL and PARALLEL)
-        if (!firstStep.AssignedUsers.Any())
+        if (!firstStep.CandidateUsers.Any())
         {
             throw new UserFriendlyException(L["FirstStepMustHaveAssignedUsers"]);
         }
@@ -420,7 +546,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         {
             foreach (var step in allStepsOrdered)
             {
-                if (!step.AssignedUsers.Any())
+                if (!step.CandidateUsers.Any())
                 {
                     throw new UserFriendlyException(L["AllStepsMustHaveAssignedUsers"]);
                 }
@@ -523,7 +649,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 }
             }
 
-            foreach (var user in step.AssignedUsers)
+            var receivers = ResolveReceiversForSubmit(step, input.StepSignerSelections);
+            foreach (var user in receivers)
             {
                 await _documentAssignmentManager.CreateAsync(
                     documentId,
@@ -545,7 +672,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         // 4. Create DocumentHistory records (FromUser = current user, ToUser = each receiver)
         foreach (var step in stepsToAssign)
         {
-            foreach (var user in step.AssignedUsers)
+            foreach (var user in ResolveReceiversForSubmit(step, input.StepSignerSelections))
             {
                 await _documentHistoryManager.CreateAsync(
                     documentId,
@@ -783,7 +910,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         switch (input.Action.ToUpper())
         {
             case nameof(WorkflowInstanceLogAction.APPROVE):
-                await HandleApproveAsync(instance, assignment, now, input.Note);
+                await HandleApproveAsync(instance, assignment, now, input.Note, input.NextStepSignerUserId);
                 break;
             case nameof(WorkflowInstanceLogAction.RETURN):
                 await HandleReturnAsync(instance, assignment, now, input.Note);
@@ -802,7 +929,12 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         return ObjectMapper.Map<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>(instance);
     }
 
-    private async Task HandleApproveAsync(DocumentWorkflowInstance instance, DocumentAssignment assignment, DateTime now, string? note)
+    private async Task HandleApproveAsync(
+        DocumentWorkflowInstance instance,
+        DocumentAssignment assignment,
+        DateTime now,
+        string? note,
+        Guid? nextStepSignerUserId = null)
     {
         // 1. Update the current user's assignment
         assignment.Status = nameof(DocumentAssignmentStatus.DONE);
@@ -950,12 +1082,38 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 var document = await _documentRepository.GetAsync(instance.DocumentId);
                 var nextUserIds = new List<Guid>();
 
-                foreach (var sa in stepAssignments.Where(a => a.DefaultUserId.HasValue))
+                var nextStepDetail = await BuildWorkflowStepDetailAsync(
+                    nextStep,
+                    stepAssignments,
+                    instance.CreatorId!.Value);
+
+                List<WorkflowStepUserDto> nextReceivers;
+                if (nextStepDetail.CandidateUsers.Count <= 1)
+                {
+                    nextReceivers = nextStepDetail.CandidateUsers;
+                }
+                else if (nextStepSignerUserId.HasValue)
+                {
+                    var selected = nextStepDetail.CandidateUsers.FirstOrDefault(
+                        c => c.UserId == nextStepSignerUserId.Value);
+                    if (selected == null)
+                    {
+                        throw new UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
+                    }
+
+                    nextReceivers = new List<WorkflowStepUserDto> { selected };
+                }
+                else
+                {
+                    throw new UserFriendlyException(L["WorkflowSignerSelectionRequired"]);
+                }
+
+                foreach (var receiver in nextReceivers)
                 {
                     await _documentAssignmentManager.CreateAsync(
                         instance.DocumentId,
                         nextStep.Id,
-                        sa.DefaultUserId!.Value,
+                        receiver.UserId,
                         nextStep.Order,
                         nextStep.Type,
                         nameof(DocumentAssignmentStatus.PENDING),
@@ -964,7 +1122,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                         true,
                         nextStepFileId
                     );
-                    nextUserIds.Add(sa.DefaultUserId.Value);
+                    nextUserIds.Add(receiver.UserId);
                 }
 
                 if (nextUserIds.Any())
@@ -1318,7 +1476,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var firstStep = allStepsOrdered.First();
         var isParallel = submitInfo.SignMode == nameof(SignMode.PARALLEL);
 
-        if (!firstStep.AssignedUsers.Any())
+        if (!firstStep.CandidateUsers.Any())
         {
             throw new UserFriendlyException(L["FirstStepMustHaveAssignedUsers"]);
         }
@@ -1327,7 +1485,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         {
             foreach (var step in allStepsOrdered)
             {
-                if (!step.AssignedUsers.Any())
+                if (!step.CandidateUsers.Any())
                     throw new UserFriendlyException(L["AllStepsMustHaveAssignedUsers"]);
             }
         }
@@ -1397,7 +1555,8 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 }
             }
 
-            foreach (var user in step.AssignedUsers)
+            var receivers = ResolveReceiversForSubmit(step, input.StepSignerSelections);
+            foreach (var user in receivers)
             {
                 await _documentAssignmentManager.CreateAsync(
                     documentId,
@@ -1418,7 +1577,7 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         // 11. Create DocumentHistory records
         foreach (var step in stepsToAssign)
         {
-            foreach (var user in step.AssignedUsers)
+            foreach (var user in ResolveReceiversForSubmit(step, input.StepSignerSelections))
             {
                 await _documentHistoryManager.CreateAsync(
                     documentId,

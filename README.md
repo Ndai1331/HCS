@@ -101,10 +101,15 @@ cd /Users/nguyenlong/Documents/Projects/HCS/src/HC.HttpApi.Host && docker build 
 
 cd /Users/nguyenlong/Documents/Projects/HCS/src/HC.AuthServer && docker build --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-authserver:latest . --push
 
-kill -9 $(lsof -ti :44301)
-kill -9 $(lsof -ti :44302)
-kill -9 $(lsof -ti :44379)
-kill -9 $(lsof -ti :44303)
+for port in 44301 44302 44379 44303; do
+  pid=$(lsof -ti :$port)
+  if [ -n "$pid" ]; then
+    kill -9 $pid
+    echo "Killed process on port $port (PID $pid)"
+  else
+    echo "No process using port $port"
+  fi
+done
 
 
 

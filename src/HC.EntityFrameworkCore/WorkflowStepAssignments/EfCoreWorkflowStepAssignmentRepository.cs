@@ -50,11 +50,14 @@ public abstract class EfCoreWorkflowStepAssignmentRepositoryBase : EfCoreReposit
                from step in workflowStepTemplates.DefaultIfEmpty()
                join defaultUser in (await GetDbContextAsync()).Set<IdentityUser>() on workflowStepAssignment.DefaultUserId equals defaultUser.Id into identityUsers
                from defaultUser in identityUsers.DefaultIfEmpty()
+               join role in (await GetDbContextAsync()).Set<IdentityRole>() on workflowStepAssignment.RoleId equals role.Id into identityRoles
+               from role in identityRoles.DefaultIfEmpty()
                select new WorkflowStepAssignmentWithNavigationProperties
                {
                    WorkflowStepAssignment = workflowStepAssignment,
                    Step = step,
-                   DefaultUser = defaultUser
+                   DefaultUser = defaultUser,
+                   Role = role
                };
     }
 

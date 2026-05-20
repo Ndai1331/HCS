@@ -31,14 +31,16 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
     protected WorkflowStepAssignmentManager _workflowStepAssignmentManager;
     protected IRepository<HC.WorkflowStepTemplates.WorkflowStepTemplate, Guid> _workflowStepTemplateRepository;
     protected IRepository<Volo.Abp.Identity.IdentityUser, Guid> _identityUserRepository;
+    protected IRepository<IdentityRole, Guid> _identityRoleRepository;
 
-    public WorkflowStepAssignmentsAppServiceBase(IWorkflowStepAssignmentRepository workflowStepAssignmentRepository, WorkflowStepAssignmentManager workflowStepAssignmentManager, IDistributedCache<WorkflowStepAssignmentDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.WorkflowStepTemplates.WorkflowStepTemplate, Guid> workflowStepTemplateRepository, IRepository<Volo.Abp.Identity.IdentityUser, Guid> identityUserRepository)
+    public WorkflowStepAssignmentsAppServiceBase(IWorkflowStepAssignmentRepository workflowStepAssignmentRepository, WorkflowStepAssignmentManager workflowStepAssignmentManager, IDistributedCache<WorkflowStepAssignmentDownloadTokenCacheItem, string> downloadTokenCache, IRepository<HC.WorkflowStepTemplates.WorkflowStepTemplate, Guid> workflowStepTemplateRepository, IRepository<Volo.Abp.Identity.IdentityUser, Guid> identityUserRepository, IRepository<IdentityRole, Guid> identityRoleRepository)
     {
         _downloadTokenCache = downloadTokenCache;
         _workflowStepAssignmentRepository = workflowStepAssignmentRepository;
         _workflowStepAssignmentManager = workflowStepAssignmentManager;
         _workflowStepTemplateRepository = workflowStepTemplateRepository;
         _identityUserRepository = identityUserRepository;
+        _identityRoleRepository = identityRoleRepository;
     }
 
     public virtual async Task<PagedResultDto<WorkflowStepAssignmentWithNavigationPropertiesDto>> GetListAsync(GetWorkflowStepAssignmentsInput input)
@@ -93,16 +95,48 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
     }
 
     [Authorize(HCPermissions.WorkflowStepAssignments.Create)]
+    public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetIdentityRoleLookupAsync(LookupRequestDto input)
+    {
+        var query = (await _identityRoleRepository.GetQueryableAsync())
+            .WhereIf(!string.IsNullOrWhiteSpace(input.Filter),
+                x => x.Name != null && x.Name.Contains(input.Filter));
+        var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<IdentityRole>();
+        var totalCount = await AsyncExecuter.CountAsync(query);
+        return new PagedResultDto<LookupDto<Guid>>
+        {
+            TotalCount = totalCount,
+            Items = lookupData.Select(x => new LookupDto<Guid>
+            {
+                Id = x.Id,
+                DisplayName = x.Name ?? x.Id.ToString()
+            }).ToList()
+        };
+    }
+
     public virtual async Task<WorkflowStepAssignmentDto> CreateAsync(WorkflowStepAssignmentCreateDto input)
     {
-        var workflowStepAssignment = await _workflowStepAssignmentManager.CreateAsync(input.StepId, input.DefaultUserId, input.IsPrimary, input.IsActive);
+        var workflowStepAssignment = await _workflowStepAssignmentManager.CreateAsync(
+            input.StepId,
+            input.DefaultUserId,
+            input.IsPrimary,
+            input.IsActive,
+            input.AssigneeType,
+            input.RoleId);
         return ObjectMapper.Map<WorkflowStepAssignment, WorkflowStepAssignmentDto>(workflowStepAssignment);
     }
 
     [Authorize(HCPermissions.WorkflowStepAssignments.Edit)]
     public virtual async Task<WorkflowStepAssignmentDto> UpdateAsync(Guid id, WorkflowStepAssignmentUpdateDto input)
     {
-        var workflowStepAssignment = await _workflowStepAssignmentManager.UpdateAsync(id, input.StepId, input.DefaultUserId, input.IsPrimary, input.IsActive, input.ConcurrencyStamp);
+        var workflowStepAssignment = await _workflowStepAssignmentManager.UpdateAsync(
+            id,
+            input.StepId,
+            input.DefaultUserId,
+            input.IsPrimary,
+            input.IsActive,
+            input.AssigneeType,
+            input.RoleId,
+            input.ConcurrencyStamp);
         return ObjectMapper.Map<WorkflowStepAssignment, WorkflowStepAssignmentDto>(workflowStepAssignment);
     }
 

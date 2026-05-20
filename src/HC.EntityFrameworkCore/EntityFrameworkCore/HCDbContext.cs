@@ -372,7 +372,10 @@ public class HCDbContext : HCDbContextBase<HCDbContext>, IHasEventInbox
             b.Property(x => x.IsPrimary).HasColumnName(nameof(WorkflowStepAssignment.IsPrimary));
             b.Property(x => x.IsActive).HasColumnName(nameof(WorkflowStepAssignment.IsActive));
             b.HasOne<WorkflowStepTemplate>().WithMany().HasForeignKey(x => x.StepId).OnDelete(DeleteBehavior.SetNull);
+            b.Property(x => x.AssigneeType).HasColumnName(nameof(WorkflowStepAssignment.AssigneeType)).IsRequired().HasMaxLength(64);
+            b.Property(x => x.RoleId).HasColumnName(nameof(WorkflowStepAssignment.RoleId));
             b.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.DefaultUserId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<IdentityRole>().WithMany().HasForeignKey(x => x.RoleId).OnDelete(DeleteBehavior.SetNull);
         });
         builder.Entity<WorkflowStepTemplate>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "WorkflowStepTemplates", HCConsts.DbSchema);

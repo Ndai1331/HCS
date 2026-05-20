@@ -65,7 +65,7 @@ namespace HC.BnnSoftSigns
 
         private static string GetAvailableSystemFontFamilyName()
         {
-            // Production: prefer Liberation Sans; dev/local: prefer Helvetica (see PdfFontEnvironment).
+            // Linux/production: DejaVu Sans; dev desktop: Helvetica (see PdfFontEnvironment).
             var primary = PdfFontEnvironment.DefaultPdfFontFamily;
             var preferred = new List<string> { primary };
             foreach (var name in new[] { "Arial", "Helvetica", "Liberation Sans", "DejaVu Sans", "Noto Sans", "FreeSans" })

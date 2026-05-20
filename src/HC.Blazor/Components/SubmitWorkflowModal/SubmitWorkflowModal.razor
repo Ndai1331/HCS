@@ -133,23 +133,51 @@
                                             <i class="bi bi-clock"></i> @step.SLADays @L["Days"]
                                         </small>
                                     }
-                                    <div class="mt-1">
-                                        @foreach (var user in step.AssignedUsers)
-                                        {
+                                    @if (!IsStepVisibleAtSubmit(step))
+                                    {
+                                        <div class="mt-1">
+                                            <small class="text-muted">@L["WorkflowStepAssignedOnAdvance"]</small>
+                                        </div>
+                                    }
+                                    else if (!step.CandidateUsers.Any())
+                                    {
+                                        <div class="mt-1">
+                                            <small class="text-danger">@L["NoWorkflowAssigneeCandidatesFound"]</small>
+                                        </div>
+                                    }
+                                    else if (step.RequiresSignerSelection)
+                                    {
+                                        <div class="mt-2">
+                                            @if (!string.IsNullOrWhiteSpace(step.RoleName))
+                                            {
+                                                <small class="text-muted d-block mb-1">@L["Role"]: @step.RoleName</small>
+                                            }
+                                            <FieldLabel>@L["SelectWorkflowSigner"] *</FieldLabel>
+                                            <Select TValue="Guid?" SelectedValue="@(StepSignerSelections.TryGetValue(step.StepId, out var sel) ? sel : null)" SelectedValueChanged="@(v => OnSignerSelectionChanged(step.StepId, v))">
+                                                <SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["PleaseSelect"]</SelectItem>
+                                                @foreach (var user in step.CandidateUsers)
+                                                {
+                                                    <SelectItem TValue="Guid?" Value="@user.UserId">@GetCandidateDisplayLabel(user)</SelectItem>
+                                                }
+                                            </Select>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="mt-1">
+                                            @{
+                                                var single = step.CandidateUsers.First();
+                                            }
                                             <small class="badge bg-light text-dark me-1">
                                                 <i class="bi bi-person"></i>
-                                                @(user.FullName ?? user.UserName)
-                                                @if (user.IsPrimary)
+                                                @GetCandidateDisplayLabel(single)
+                                                @if (single.IsPrimary)
                                                 {
                                                     <i class="bi bi-star-fill text-warning ms-1"></i>
                                                 }
                                             </small>
-                                        }
-                                        @if (!step.AssignedUsers.Any())
-                                        {
-                                            <small class="text-danger">@L["NoUsersAssigned"]</small>
-                                        }
-                                    </div>
+                                        </div>
+                                    }
                                 </div>
                             </div>
                         }

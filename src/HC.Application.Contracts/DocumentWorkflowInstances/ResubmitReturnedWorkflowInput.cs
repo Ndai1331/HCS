@@ -43,6 +43,11 @@ public class ResubmitReturnedWorkflowInput
     /// Optional: List of old file IDs to delete
     /// </summary>
     public List<Guid>? DeleteFileIds { get; set; }
+
+    /// <summary>
+    /// Per-step signer selection when role-based assignment resolves multiple candidates.
+    /// </summary>
+    public List<WorkflowStepSignerSelectionDto> StepSignerSelections { get; set; } = new();
 }
 
 /// <summary>

@@ -58,6 +58,7 @@ public partial class SubmitWorkflowModal
 
     private FilePicker? WorkflowFilePicker { get; set; }
     private List<UploadedFileInfo> UploadedFiles { get; set; } = new();
+    private Dictionary<Guid, Guid?> StepSignerSelections { get; set; } = new();
 
     private class UploadedFileInfo
     {
@@ -80,6 +81,7 @@ public partial class SubmitWorkflowModal
         UseWorkflowTemplateFile = preSelectedDocument != null ? false : UseWorkflowTemplateFile;
         SigningContent = null;
         UploadedFiles.Clear();
+        StepSignerSelections.Clear();
         ModalResetKey++;
         IsSelectedDocumentWordFormat = false;
 
@@ -188,6 +190,7 @@ public partial class SubmitWorkflowModal
             {
                 await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
                 WorkflowSubmitInfo = await DocumentWorkflowInstancesAppService.GetWorkflowSubmitInfoAsync(workflowId.Value);
+                StepSignerSelections.Clear();
             }
             catch (Exception ex)
             {
@@ -268,9 +271,16 @@ public partial class SubmitWorkflowModal
             }
 
             var firstStep = WorkflowSubmitInfo.Steps.OrderBy(s => s.Order).FirstOrDefault();
-            if (firstStep == null || !firstStep.AssignedUsers.Any())
+            if (firstStep == null || !firstStep.CandidateUsers.Any())
             {
                 await UiMessageService.Error(L["FirstStepMustHaveAssignedUsers"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                return;
+            }
+
+            if (!ValidateSignerSelections())
+            {
+                await UiMessageService.Error(L["WorkflowSignerSelectionRequired"],
                     options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
@@ -307,7 +317,8 @@ public partial class SubmitWorkflowModal
                 SigningContent = signingContent,
                 AttachedFileIds = UploadedFiles.Any()
                     ? UploadedFiles.Select(f => f.DocumentFileId).ToList()
-                    : null
+                    : null,
+                StepSignerSelections = BuildStepSignerSelections()
             };
 
             await DocumentWorkflowInstancesAppService.SubmitToWorkflowAsync(input);
@@ -325,6 +336,69 @@ public partial class SubmitWorkflowModal
         {
             await BlockUiService.UnBlock();
         }
+    }
+
+    private IEnumerable<WorkflowStepDetailDto> GetStepsToAssignAtSubmit()
+    {
+        if (WorkflowSubmitInfo == null)
+        {
+            return Enumerable.Empty<WorkflowStepDetailDto>();
+        }
+
+        var ordered = WorkflowSubmitInfo.Steps.OrderBy(s => s.Order).ToList();
+        if (WorkflowSubmitInfo.SignMode == nameof(HC.WorkflowTemplates.SignMode.PARALLEL))
+        {
+            return ordered;
+        }
+
+        return ordered.Take(1);
+    }
+
+    private bool IsStepVisibleAtSubmit(WorkflowStepDetailDto step)
+    {
+        return GetStepsToAssignAtSubmit().Any(s => s.StepId == step.StepId);
+    }
+
+    private bool ValidateSignerSelections()
+    {
+        foreach (var step in GetStepsToAssignAtSubmit())
+        {
+            if (step.RequiresSignerSelection
+                && (!StepSignerSelections.TryGetValue(step.StepId, out var selectedId) || !selectedId.HasValue))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private List<WorkflowStepSignerSelectionDto> BuildStepSignerSelections()
+    {
+        return StepSignerSelections
+            .Where(x => x.Value.HasValue)
+            .Select(x => new WorkflowStepSignerSelectionDto
+            {
+                StepId = x.Key,
+                SelectedUserId = x.Value!.Value
+            })
+            .ToList();
+    }
+
+    private static string GetCandidateDisplayLabel(WorkflowStepUserDto user)
+    {
+        var name = string.IsNullOrWhiteSpace(user.FullName) ? user.UserName : user.FullName;
+        if (!string.IsNullOrWhiteSpace(user.OrganizationUnitName))
+        {
+            return $"{name} — {user.OrganizationUnitName}";
+        }
+
+        return name;
+    }
+
+    private void OnSignerSelectionChanged(Guid stepId, Guid? userId)
+    {
+        StepSignerSelections[stepId] = userId;
     }
 
     private static string? GetWorkflowTemplateFilePath(WorkflowSubmitInfoDto? workflowInfo)

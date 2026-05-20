@@ -15,6 +15,7 @@ public partial interface IWorkflowStepAssignmentsAppService : IApplicationServic
     Task<WorkflowStepAssignmentDto> GetAsync(Guid id);
     Task<PagedResultDto<LookupDto<Guid>>> GetWorkflowStepTemplateLookupAsync(LookupRequestDto input);
     Task<PagedResultDto<LookupDto<Guid>>> GetIdentityUserLookupAsync(LookupRequestDto input);
+    Task<PagedResultDto<LookupDto<Guid>>> GetIdentityRoleLookupAsync(LookupRequestDto input);
     Task DeleteAsync(Guid id);
     Task<WorkflowStepAssignmentDto> CreateAsync(WorkflowStepAssignmentCreateDto input);
     Task<WorkflowStepAssignmentDto> UpdateAsync(Guid id, WorkflowStepAssignmentUpdateDto input);

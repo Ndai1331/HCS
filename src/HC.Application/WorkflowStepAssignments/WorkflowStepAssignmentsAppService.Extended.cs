@@ -50,12 +50,13 @@ public class WorkflowStepAssignmentsAppService : WorkflowStepAssignmentsAppServi
         IDistributedCache<WorkflowStepAssignmentDownloadTokenCacheItem, string> downloadTokenCache, 
         IRepository<HC.WorkflowStepTemplates.WorkflowStepTemplate, Guid> workflowStepTemplateRepository, 
         IRepository<Volo.Abp.Identity.IdentityUser, Guid> identityUserRepository,
+        IRepository<IdentityRole, Guid> identityRoleRepository,
         INotificationRepository notificationRepository,
         INotificationReceiverRepository notificationReceiverRepository,
         IDistributedEventBus distributedEventBus,
         IRepository<HC.DocumentAssignments.DocumentAssignment, Guid> documentAssignmentRepository,
         IRepository<HC.Documents.Document, Guid> documentRepository) 
-        : base(workflowStepAssignmentRepository, workflowStepAssignmentManager, downloadTokenCache, workflowStepTemplateRepository, identityUserRepository)
+        : base(workflowStepAssignmentRepository, workflowStepAssignmentManager, downloadTokenCache, workflowStepTemplateRepository, identityUserRepository, identityRoleRepository)
     {
         _notificationRepository = notificationRepository;
         _notificationReceiverRepository = notificationReceiverRepository;

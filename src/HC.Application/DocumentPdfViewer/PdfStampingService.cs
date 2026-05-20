@@ -63,7 +63,7 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
     {
         var primary = PdfFontEnvironment.DefaultPdfFontFamily;
         var ordered = new List<string> { primary };
-        foreach (var name in new[] { "Liberation Sans", "Helvetica", "Arial", "DejaVu Sans", "Noto Sans", "FreeSans" })
+        foreach (var name in new[] { "DejaVu Sans", "Noto Sans", "Liberation Sans", "Helvetica", "Arial", "FreeSans" })
         {
             if (!ordered.Contains(name, StringComparer.OrdinalIgnoreCase))
             {
@@ -188,7 +188,7 @@ public class PdfStampingService : IPdfStampingService, ITransientDependency
             {
                 _logger.LogError(
                     "Failed to add text note: no usable font. Candidates tried: {Candidates}. " +
-                    "On Linux set HC_PDF_FONT_ENV=production or install fonts (e.g. fonts-liberation) and optionally HC_FONT_DIRS.",
+                    "On Linux install fonts-dejavu / fonts-noto-core and optionally set HC_FONT_DIRS.",
                     string.Join(", ", GetWatermarkFontCandidates()));
                 LogRuntimeFontDiagnostics();
                 return pdfBytes;

@@ -110,12 +110,21 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     // Lookup collections for Select2
     private IReadOnlyList<LookupDto<Guid>> WorkflowStepTemplatesCollection { get; set; } = new List<LookupDto<Guid>>();
     private IReadOnlyList<LookupDto<Guid>> IdentityUsersCollection { get; set; } = new List<LookupDto<Guid>>();
+    private IReadOnlyList<LookupDto<Guid>> IdentityRolesCollection { get; set; } = new List<LookupDto<Guid>>();
 
     // Selected values for Select2
     private List<LookupDto<Guid>> SelectedNewStepTemplate { get; set; } = new();
     private List<LookupDto<Guid>> SelectedNewIdentityUser { get; set; } = new();
+    private List<LookupDto<Guid>> SelectedNewIdentityRole { get; set; } = new();
     private List<LookupDto<Guid>> SelectedEditStepTemplate { get; set; } = new();
     private List<LookupDto<Guid>> SelectedEditIdentityUser { get; set; } = new();
+    private List<LookupDto<Guid>> SelectedEditIdentityRole { get; set; } = new();
+
+    private string NewStepAssigneeType { get; set; } = WorkflowStepAssigneeTypeNames.SpecificUser;
+    private string EditingStepAssigneeType { get; set; } = WorkflowStepAssigneeTypeNames.SpecificUser;
+
+    private bool IsNewRoleAssignee => NewStepAssigneeType == WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit;
+    private bool IsEditRoleAssignee => EditingStepAssigneeType == WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit;
 
     // File upload state for WordTemplatePath
     private FilePicker WordTemplateFilePicker { get; set; } = new();
@@ -928,12 +937,16 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
 
         NewStepAssignment = new WorkflowStepAssignmentCreateDto
         {
-            IsActive = true
+            IsActive = true,
+            AssigneeType = WorkflowStepAssigneeTypeNames.SpecificUser
         };
+        NewStepAssigneeType = WorkflowStepAssigneeTypeNames.SpecificUser;
         SelectedNewStepTemplate = new List<LookupDto<Guid>>();
         SelectedNewIdentityUser = new List<LookupDto<Guid>>();
+        SelectedNewIdentityRole = new List<LookupDto<Guid>>();
         await LoadWorkflowStepTemplateLookupAsync();
         await LoadIdentityUserLookupAsync();
+        await LoadIdentityRoleLookupAsync();
         StepAssignmentCreateValidation.Reset();
         await CreateStepAssignmentModal.Show();
     }
@@ -950,6 +963,15 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         StepAssignmentCreateValidation.Reset();
         
         StepAssignmentCreateValidation.ValidateRequiredGuid("StepId", SelectedNewStepTemplate?.FirstOrDefault()?.Id ?? default, "StepRequired", () => L["The {0} field is required.", L["Step"]]);
+
+        if (IsNewRoleAssignee)
+        {
+            StepAssignmentCreateValidation.ValidateRequiredGuid("RoleId", SelectedNewIdentityRole?.FirstOrDefault()?.Id ?? default, "RoleRequired", () => L["The {0} field is required.", L["Role"]]);
+        }
+        else
+        {
+            StepAssignmentCreateValidation.ValidateRequiredGuid("DefaultUserId", SelectedNewIdentityUser?.FirstOrDefault()?.Id ?? default, "UserRequired", () => L["The {0} field is required.", L["IdentityUser"]]);
+        }
         
         return StepAssignmentCreateValidation.IsValid;
     }
@@ -966,7 +988,17 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             NewStepAssignment.StepId = SelectedNewStepTemplate?.FirstOrDefault()?.Id;
-            NewStepAssignment.DefaultUserId = SelectedNewIdentityUser?.FirstOrDefault()?.Id;
+            NewStepAssignment.AssigneeType = NewStepAssigneeType;
+            if (IsNewRoleAssignee)
+            {
+                NewStepAssignment.RoleId = SelectedNewIdentityRole?.FirstOrDefault()?.Id;
+                NewStepAssignment.DefaultUserId = null;
+            }
+            else
+            {
+                NewStepAssignment.DefaultUserId = SelectedNewIdentityUser?.FirstOrDefault()?.Id;
+                NewStepAssignment.RoleId = null;
+            }
             await WorkflowStepAssignmentsAppService.CreateAsync(NewStepAssignment);
             await LoadWorkflowStepAssignmentsAsync();
             await CloseCreateStepAssignmentModalAsync();
@@ -985,9 +1017,13 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     {
         EditingStepAssignmentId = input.WorkflowStepAssignment.Id;
         EditingStepAssignment = ObjectMapper.Map<WorkflowStepAssignmentDto, WorkflowStepAssignmentUpdateDto>(input.WorkflowStepAssignment);
+        EditingStepAssigneeType = string.IsNullOrWhiteSpace(input.WorkflowStepAssignment.AssigneeType)
+            ? WorkflowStepAssigneeTypeNames.SpecificUser
+            : input.WorkflowStepAssignment.AssigneeType;
         
         await LoadWorkflowStepTemplateLookupAsync();
         await LoadIdentityUserLookupAsync();
+        await LoadIdentityRoleLookupAsync();
         
         if (input.WorkflowStepAssignment.StepId.HasValue)
         {
@@ -1006,6 +1042,18 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
                 SelectedEditIdentityUser = new List<LookupDto<Guid>> { user };
             }
         }
+
+        SelectedEditIdentityRole = new List<LookupDto<Guid>>();
+        if (input.WorkflowStepAssignment.RoleId.HasValue)
+        {
+            var roleName = input.Role?.Name
+                ?? IdentityRolesCollection.FirstOrDefault(x => x.Id == input.WorkflowStepAssignment.RoleId.Value)?.DisplayName
+                ?? input.WorkflowStepAssignment.RoleId.Value.ToString();
+            SelectedEditIdentityRole = new List<LookupDto<Guid>>
+            {
+                new LookupDto<Guid> { Id = input.WorkflowStepAssignment.RoleId.Value, DisplayName = roleName }
+            };
+        }
         
         StepAssignmentEditValidation.Reset();
         await EditStepAssignmentModal.Show();
@@ -1022,6 +1070,15 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         StepAssignmentEditValidation.Reset();
         
         StepAssignmentEditValidation.ValidateRequiredGuid("StepId", SelectedEditStepTemplate?.FirstOrDefault()?.Id ?? default, "StepRequired", () => L["The {0} field is required.", L["Step"]]);
+
+        if (IsEditRoleAssignee)
+        {
+            StepAssignmentEditValidation.ValidateRequiredGuid("RoleId", SelectedEditIdentityRole?.FirstOrDefault()?.Id ?? default, "RoleRequired", () => L["The {0} field is required.", L["Role"]]);
+        }
+        else
+        {
+            StepAssignmentEditValidation.ValidateRequiredGuid("DefaultUserId", SelectedEditIdentityUser?.FirstOrDefault()?.Id ?? default, "UserRequired", () => L["The {0} field is required.", L["IdentityUser"]]);
+        }
         
         return StepAssignmentEditValidation.IsValid;
     }
@@ -1038,7 +1095,17 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
 
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);            
             EditingStepAssignment.StepId = SelectedEditStepTemplate?.FirstOrDefault()?.Id;
-            EditingStepAssignment.DefaultUserId = SelectedEditIdentityUser?.FirstOrDefault()?.Id;
+            EditingStepAssignment.AssigneeType = EditingStepAssigneeType;
+            if (IsEditRoleAssignee)
+            {
+                EditingStepAssignment.RoleId = SelectedEditIdentityRole?.FirstOrDefault()?.Id;
+                EditingStepAssignment.DefaultUserId = null;
+            }
+            else
+            {
+                EditingStepAssignment.DefaultUserId = SelectedEditIdentityUser?.FirstOrDefault()?.Id;
+                EditingStepAssignment.RoleId = null;
+            }
             await WorkflowStepAssignmentsAppService.UpdateAsync(EditingStepAssignmentId, EditingStepAssignment);
             await LoadWorkflowStepAssignmentsAsync();
             await CloseEditStepAssignmentModalAsync();
@@ -1146,6 +1213,24 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         IdentityUsersCollection = result.Items;
     }
 
+    private async Task LoadIdentityRoleLookupAsync()
+    {
+        var result = await WorkflowStepAssignmentsAppService.GetIdentityRoleLookupAsync(new LookupRequestDto
+        {
+            Filter = null,
+            MaxResultCount = 200,
+            SkipCount = 0
+        });
+        IdentityRolesCollection = result.Items;
+    }
+
+    private async Task<List<LookupDto<Guid>>> GetIdentityRoleCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
+    {
+        var result = await WorkflowStepAssignmentsAppService.GetIdentityRoleLookupAsync(new LookupRequestDto { Filter = filter });
+        IdentityRolesCollection = result.Items;
+        return result.Items.ToList();
+    }
+
     private async Task<List<LookupDto<Guid>>> GetIdentityUserCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
     {
         var result = await WorkflowStepAssignmentsAppService.GetIdentityUserLookupAsync(new LookupRequestDto { Filter = filter });
@@ -1162,6 +1247,32 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     private async Task OnNewIdentityUserChanged()
     {
         NewStepAssignment.DefaultUserId = SelectedNewIdentityUser?.FirstOrDefault()?.Id;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnNewIdentityRoleChanged()
+    {
+        NewStepAssignment.RoleId = SelectedNewIdentityRole?.FirstOrDefault()?.Id;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnNewAssigneeTypeChanged(string assigneeType)
+    {
+        NewStepAssigneeType = assigneeType;
+        NewStepAssignment.AssigneeType = assigneeType;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnEditAssigneeTypeChanged(string assigneeType)
+    {
+        EditingStepAssigneeType = assigneeType;
+        EditingStepAssignment.AssigneeType = assigneeType;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnEditIdentityRoleChanged()
+    {
+        EditingStepAssignment.RoleId = SelectedEditIdentityRole?.FirstOrDefault()?.Id;
         await InvokeAsync(StateHasChanged);
     }
 

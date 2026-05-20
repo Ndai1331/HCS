@@ -15,5 +15,9 @@ public abstract class WorkflowStepAssignmentUpdateDtoBase : IHasConcurrencyStamp
 
     public Guid? DefaultUserId { get; set; }
 
+    public string AssigneeType { get; set; } = WorkflowStepAssigneeTypeNames.SpecificUser;
+
+    public Guid? RoleId { get; set; }
+
     public string ConcurrencyStamp { get; set; } = null!;
 }

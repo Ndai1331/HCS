@@ -12,4 +12,6 @@ public abstract class WorkflowStepAssignmentWithNavigationPropertiesBase
     public WorkflowStepTemplate? Step { get; set; }
 
     public IdentityUser? DefaultUser { get; set; }
+
+    public IdentityRole? Role { get; set; }
 }

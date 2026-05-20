@@ -43,4 +43,9 @@ public class SubmitToWorkflowInput
     /// Signing content/comment - saved to DocumentHistory.Comment
     /// </summary>
     public string? SigningContent { get; set; }
+
+    /// <summary>
+    /// Per-step signer selection when role-based assignment resolves multiple candidates.
+    /// </summary>
+    public List<WorkflowStepSignerSelectionDto> StepSignerSelections { get; set; } = new();
 }

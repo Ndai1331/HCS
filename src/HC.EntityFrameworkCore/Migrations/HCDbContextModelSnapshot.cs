@@ -3293,6 +3293,12 @@ namespace HC.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("CreatorId");
 
+                    b.Property<string>("AssigneeType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("AssigneeType");
+
                     b.Property<Guid?>("DefaultUserId")
                         .HasColumnType("uuid");
 
@@ -3331,6 +3337,10 @@ namespace HC.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("LastModifierId");
 
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("RoleId");
+
                     b.Property<Guid?>("StepId")
                         .HasColumnType("uuid");
 
@@ -3341,6 +3351,8 @@ namespace HC.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DefaultUserId");
+
+                    b.HasIndex("RoleId");
 
                     b.HasIndex("StepId");
 
@@ -6468,6 +6480,11 @@ namespace HC.Migrations
                     b.HasOne("Volo.Abp.Identity.IdentityUser", null)
                         .WithMany()
                         .HasForeignKey("DefaultUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Volo.Abp.Identity.IdentityRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("HC.WorkflowStepTemplates.WorkflowStepTemplate", null)

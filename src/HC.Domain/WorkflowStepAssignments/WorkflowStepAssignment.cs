@@ -1,3 +1,4 @@
+using HC.WorkflowStepAssignments;
 using HC.WorkflowStepTemplates;
 using Volo.Abp.Identity;
 using System;
@@ -24,16 +25,23 @@ public abstract class WorkflowStepAssignmentBase : FullAuditedAggregateRoot<Guid
 
     public Guid? DefaultUserId { get; set; }
 
+    [NotNull]
+    public virtual string AssigneeType { get; set; } = WorkflowStepAssigneeTypeNames.SpecificUser;
+
+    public virtual Guid? RoleId { get; set; }
+
     protected WorkflowStepAssignmentBase()
     {
     }
 
-    public WorkflowStepAssignmentBase(Guid id, Guid? stepId, Guid? defaultUserId, bool isPrimary, bool isActive)
+    public WorkflowStepAssignmentBase(Guid id, Guid? stepId, Guid? defaultUserId, bool isPrimary, bool isActive, string? assigneeType = null, Guid? roleId = null)
     {
         Id = id;
         IsPrimary = isPrimary;
         IsActive = isActive;
         StepId = stepId;
         DefaultUserId = defaultUserId;
+        AssigneeType = assigneeType ?? WorkflowStepAssigneeTypeNames.SpecificUser;
+        RoleId = roleId;
     }
 }

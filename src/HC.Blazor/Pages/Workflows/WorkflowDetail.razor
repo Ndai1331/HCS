@@ -555,10 +555,17 @@
                                                 Caption="@L["Step"]">
                                         </DataGridColumn>
                                         <DataGridColumn TItem="WorkflowStepAssignmentWithNavigationPropertiesDto"
-                                                Field="DefaultUser.Name"
-                                                Caption="@L["DefaultUser"]">
+                                                Caption="@L["Assignee"]">
                                                 <DisplayTemplate>
-                                                    @(context.DefaultUser?.Surname + " " + context.DefaultUser?.Name)
+                                                    @if (context.WorkflowStepAssignment.AssigneeType == WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit)
+                                                    {
+                                                        <span class="badge bg-info text-dark">@L["RoleAssignee"]</span>
+                                                        <span class="ms-1">@(context.Role?.Name ?? "-")</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        @(context.DefaultUser?.Surname + " " + context.DefaultUser?.Name)
+                                                    }
                                                 </DisplayTemplate>
                                         </DataGridColumn>
 
@@ -837,17 +844,53 @@
                     }
                 </Field>
                 <Field>
-                    <FieldLabel>@L["IdentityUser"]</FieldLabel>
-                    <div class="hc-select2-full">
-                        <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
-                                 GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
-                                 Datasource="IdentityUsersCollection"
-                                 Value="@SelectedNewIdentityUser"
-                                 ValueChanged="@(async (List<LookupDto<Guid>> v) => { SelectedNewIdentityUser = v ?? new(); await OnNewIdentityUserChanged(); })"
-                                 Cache="__MemoryCache"
-                                 Multiselect="false" />
-                    </div>
+                    <FieldLabel>@L["AssigneeType"]</FieldLabel>
+                    <RadioGroup TValue="string" Name="NewAssigneeType" CheckedValue="@NewStepAssigneeType" CheckedValueChanged="OnNewAssigneeTypeChanged">
+                        <Radio Value="@WorkflowStepAssigneeTypeNames.SpecificUser">@L["AssigneeTypeSpecificUser"]</Radio>
+                        <Radio Value="@WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit">@L["AssigneeTypeRoleInOrganizationUnit"]</Radio>
+                    </RadioGroup>
                 </Field>
+                @if (IsNewRoleAssignee)
+                {
+                    <Field>
+                        <FieldLabel>@L["Role"] *</FieldLabel>
+                        <div class="hc-select2-full">
+                            <Select2 IdSelector="c => c.Id.ToString()"
+                                     TextSelector="c => c.DisplayName"
+                                     FilterFunction="GetIdentityRoleCollectionLookupAsync"
+                                     GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                     Datasource="IdentityRolesCollection"
+                                     Value="@SelectedNewIdentityRole"
+                                     OnValueChanged="@(() => { OnNewIdentityRoleChanged(); StepAssignmentCreateValidation.RemoveFieldError("RoleId"); })"
+                                     Cache="__MemoryCache"
+                                     Multiselect="false" />
+                        </div>
+                        @if (StepAssignmentCreateValidation.HasFieldError("RoleId"))
+                        {
+                            <div class="invalid-feedback d-block">@StepAssignmentCreateValidation.GetFieldError("RoleId")</div>
+                        }
+                        <small class="text-muted d-block mt-1">@L["RoleAssigneeHint"]</small>
+                    </Field>
+                }
+                else
+                {
+                    <Field>
+                        <FieldLabel>@L["IdentityUser"] *</FieldLabel>
+                        <div class="hc-select2-full">
+                            <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
+                                     GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                     Datasource="IdentityUsersCollection"
+                                     Value="@SelectedNewIdentityUser"
+                                     ValueChanged="@(async (List<LookupDto<Guid>> v) => { SelectedNewIdentityUser = v ?? new(); await OnNewIdentityUserChanged(); })"
+                                     Cache="__MemoryCache"
+                                     Multiselect="false" />
+                        </div>
+                        @if (StepAssignmentCreateValidation.HasFieldError("DefaultUserId"))
+                        {
+                            <div class="invalid-feedback d-block">@StepAssignmentCreateValidation.GetFieldError("DefaultUserId")</div>
+                        }
+                    </Field>
+                }
 
                  <Row>
                     <Column ColumnSize="ColumnSize.Is12">
@@ -912,17 +955,53 @@
                     }
                 </Field>
                 <Field>
-                    <FieldLabel>@L["IdentityUser"]</FieldLabel>
-                    <div class="hc-select2-full">
-                        <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
-                                 GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
-                                 Datasource="IdentityUsersCollection"
-                                 Value="@SelectedEditIdentityUser"
-                                 ValueChanged="@(async (List<LookupDto<Guid>> v) => { SelectedEditIdentityUser = v ?? new(); await OnEditIdentityUserChanged(); })"
-                                 Cache="__MemoryCache"
-                                 Multiselect="false" />
-                    </div>
+                    <FieldLabel>@L["AssigneeType"]</FieldLabel>
+                    <RadioGroup TValue="string" Name="EditAssigneeType" CheckedValue="@EditingStepAssigneeType" CheckedValueChanged="OnEditAssigneeTypeChanged">
+                        <Radio Value="@WorkflowStepAssigneeTypeNames.SpecificUser">@L["AssigneeTypeSpecificUser"]</Radio>
+                        <Radio Value="@WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit">@L["AssigneeTypeRoleInOrganizationUnit"]</Radio>
+                    </RadioGroup>
                 </Field>
+                @if (IsEditRoleAssignee)
+                {
+                    <Field>
+                        <FieldLabel>@L["Role"] *</FieldLabel>
+                        <div class="hc-select2-full">
+                            <Select2 IdSelector="c => c.Id.ToString()"
+                                     TextSelector="c => c.DisplayName"
+                                     FilterFunction="GetIdentityRoleCollectionLookupAsync"
+                                     GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                     Datasource="IdentityRolesCollection"
+                                     Value="@SelectedEditIdentityRole"
+                                     OnValueChanged="@(() => { OnEditIdentityRoleChanged(); StepAssignmentEditValidation.RemoveFieldError("RoleId"); })"
+                                     Cache="__MemoryCache"
+                                     Multiselect="false" />
+                        </div>
+                        @if (StepAssignmentEditValidation.HasFieldError("RoleId"))
+                        {
+                            <div class="invalid-feedback d-block">@StepAssignmentEditValidation.GetFieldError("RoleId")</div>
+                        }
+                        <small class="text-muted d-block mt-1">@L["RoleAssigneeHint"]</small>
+                    </Field>
+                }
+                else
+                {
+                    <Field>
+                        <FieldLabel>@L["IdentityUser"] *</FieldLabel>
+                        <div class="hc-select2-full">
+                            <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
+                                     GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                     Datasource="IdentityUsersCollection"
+                                     Value="@SelectedEditIdentityUser"
+                                     ValueChanged="@(async (List<LookupDto<Guid>> v) => { SelectedEditIdentityUser = v ?? new(); await OnEditIdentityUserChanged(); })"
+                                     Cache="__MemoryCache"
+                                     Multiselect="false" />
+                        </div>
+                        @if (StepAssignmentEditValidation.HasFieldError("DefaultUserId"))
+                        {
+                            <div class="invalid-feedback d-block">@StepAssignmentEditValidation.GetFieldError("DefaultUserId")</div>
+                        }
+                    </Field>
+                }
             </ModalBody>
             <ModalFooter>
                 <Button Color="Color.Secondary" Clicked="CloseEditStepAssignmentModalAsync">

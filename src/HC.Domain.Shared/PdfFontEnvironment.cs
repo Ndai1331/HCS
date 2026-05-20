@@ -30,20 +30,20 @@ public static class PdfFontEnvironment
 
     /// <summary>
     /// Primary font family for PDFsharp / stamping / placeholders.
-    /// Linux servers and containers rarely ship Helvetica; default to Liberation Sans unless HC_PDF_FONT_ENV=dev/local.
+    /// Linux: DejaVu Sans (full Vietnamese glyphs). Windows/macOS dev: Helvetica.
     /// </summary>
     public static string DefaultPdfFontFamily
     {
         get
         {
-            if (IsProductionFontProfile())
-            {
-                return "Liberation Sans";
-            }
-
             if (OperatingSystem.IsLinux())
             {
-                return "Liberation Sans";
+                return "DejaVu Sans";
+            }
+
+            if (IsProductionFontProfile())
+            {
+                return "DejaVu Sans";
             }
 
             return "Helvetica";

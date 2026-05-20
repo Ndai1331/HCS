@@ -55,7 +55,7 @@ public interface IWorkflowSigningExecutionService
 
 public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionService, ITransientDependency
 {
-    /// <summary>PDFsharp family name; production uses Liberation Sans, dev uses Helvetica (see <see cref="PdfFontEnvironment"/>).</summary>
+    /// <summary>PDFsharp family name; Linux/production uses DejaVu Sans, dev desktop uses Helvetica (see <see cref="PdfFontEnvironment"/>).</summary>
     private static string PdfPlaceholderTextFontFamily => PdfFontEnvironment.DefaultPdfFontFamily;
 
     private readonly IDocumentAssignmentRepository _documentAssignmentRepository;

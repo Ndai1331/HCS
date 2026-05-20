@@ -11,4 +11,8 @@ public abstract class WorkflowStepAssignmentCreateDtoBase
     public Guid? StepId { get; set; }
 
     public Guid? DefaultUserId { get; set; }
+
+    public string AssigneeType { get; set; } = WorkflowStepAssigneeTypeNames.SpecificUser;
+
+    public Guid? RoleId { get; set; }
 }

@@ -15,6 +15,20 @@ public class WorkflowStepDetailDto
     public string Type { get; set; } = null!;
     public int? SLADays { get; set; }
     public bool AllowReturn { get; set; }
+
+    public string? AssigneeType { get; set; }
+
+    public Guid? RoleId { get; set; }
+
+    public string? RoleName { get; set; }
+
+    public List<WorkflowStepUserDto> CandidateUsers { get; set; } = new();
+
+    public bool RequiresSignerSelection => CandidateUsers.Count > 1;
+
+    /// <summary>
+    /// Resolved receivers for display; same as CandidateUsers at submit preview, or selected users after submit.
+    /// </summary>
     public List<WorkflowStepUserDto> AssignedUsers { get; set; } = new();
 }
 
@@ -27,6 +41,14 @@ public class WorkflowStepUserDto
     public string UserName { get; set; } = null!;
     public string? FullName { get; set; }
     public bool IsPrimary { get; set; }
+
+    public Guid? OrganizationUnitId { get; set; }
+
+    public string? OrganizationUnitName { get; set; }
+
+    public bool IsFromParentOrganizationUnit { get; set; }
+
+    public int OrganizationUnitDepth { get; set; }
 }
 
 /// <summary>

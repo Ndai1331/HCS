@@ -36,4 +36,9 @@ public class WorkflowActionInput
     /// Used when user has multiple active/valid signatures for the same sign type.
     /// </summary>
     public Guid? UserSignatureId { get; set; }
+
+    /// <summary>
+    /// When advancing to the next SEQUENTIAL step with multiple role-based candidates, the selected receiver user id.
+    /// </summary>
+    public Guid? NextStepSignerUserId { get; set; }
 }

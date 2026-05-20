@@ -204,11 +204,11 @@ public class CustomFontResolver : IFontResolver
         if (normalizedFamily == "arial")
         {
             string? substitute;
-            if (PdfFontEnvironment.IsProductionFontProfile())
+            if (PdfFontEnvironment.IsProductionFontProfile() || OperatingSystem.IsLinux())
             {
-                substitute = FindFontPath("liberation sans", isBold, isItalic)
-                    ?? FindFontPath("dejavu sans", isBold, isItalic)
-                    ?? FindFontPath("noto sans", isBold, isItalic);
+                substitute = FindFontPath("dejavu sans", isBold, isItalic)
+                    ?? FindFontPath("noto sans", isBold, isItalic)
+                    ?? FindFontPath("liberation sans", isBold, isItalic);
             }
             else
             {
