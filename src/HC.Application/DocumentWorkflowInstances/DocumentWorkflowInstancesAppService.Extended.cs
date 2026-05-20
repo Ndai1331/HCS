@@ -1784,14 +1784,15 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             && x.CreationTime >= instance.StartedAt);
 
         // Batch load all involved user IDs
-        var allUserIds = stepAssignments
-            .Where(sa => sa.DefaultUserId.HasValue)
-            .Select(sa => sa.DefaultUserId!.Value)
-            .Union(docAssignments.Select(a => a.ReceiverUserId))
-            .Distinct()
-            .ToList();
-        var users = await _identityUserRepository.GetListAsync(x => allUserIds.Contains(x.Id));
+        var allUserIds = docAssignments.Select(a => a.ReceiverUserId).Distinct().ToList();
+        var users = allUserIds.Any()
+            ? await _identityUserRepository.GetListAsync(x => allUserIds.Contains(x.Id))
+            : new List<IdentityUser>();
         var userDict = users.ToDictionary(u => u.Id);
+
+        var isCreator = CurrentUser.Id.HasValue && instance.CreatorId == CurrentUser.Id;
+        var canEditSigners = isCreator && instance.Status == nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS);
+        var submitterUserId = instance.CreatorId ?? CurrentUser.Id!.Value;
 
         var result = new List<WorkflowStepStatusDto>();
 
@@ -1807,51 +1808,181 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 Users = new List<StepAssignmentUserDto>()
             };
 
-            // Get step's assigned users from step assignments
-            var thisStepAssignments = stepAssignments.Where(sa => sa.StepId == step.Id).ToList();
+            var thisStepTemplateAssignments = stepAssignments.Where(sa => sa.StepId == step.Id).ToList();
 
-            // Check document assignments for this step
             var thisStepDocAssignments = docAssignments
                 .Where(a => a.WorkflowStepTemplateId == step.Id)
                 .ToList();
 
-            bool hasCompletedUser = false;
+            var displayedUserIds = new HashSet<Guid>();
 
-            foreach (var sa in thisStepAssignments)
+            foreach (var docAssignment in thisStepDocAssignments.OrderByDescending(a => a.IsCurrent).ThenBy(a => a.CreationTime))
             {
-                if (!sa.DefaultUserId.HasValue) continue;
-
-                var userId = sa.DefaultUserId.Value;
-                userDict.TryGetValue(userId, out var user);
-
-                // Find the document assignment for this user at this step
-                var docAssignment = thisStepDocAssignments
-                    .FirstOrDefault(a => a.ReceiverUserId == userId);
-
-                var userStatus = docAssignment?.Status;
-                if (userStatus == nameof(DocumentAssignmentStatus.DONE))
+                if (!displayedUserIds.Add(docAssignment.ReceiverUserId))
                 {
-                    hasCompletedUser = true;
+                    continue;
                 }
+
+                userDict.TryGetValue(docAssignment.ReceiverUserId, out var user);
+                var templateAssignment = thisStepTemplateAssignments.FirstOrDefault(sa =>
+                    sa.DefaultUserId == docAssignment.ReceiverUserId);
 
                 stepDto.Users.Add(new StepAssignmentUserDto
                 {
-                    UserId = userId,
+                    UserId = docAssignment.ReceiverUserId,
                     FullName = user != null ? $"{user.Surname} {user.Name}".Trim() : null,
                     UserName = user?.UserName,
-                    IsPrimary = sa.IsPrimary,
-                    Status = userStatus,
-                    ProcessedAt = docAssignment?.ProcessedAt > DateTime.MinValue ? docAssignment.ProcessedAt : null,
-                    // SigningIndex = step order (matches placeholder <<Sign{NN}>> in PDF)
-                    SigningIndex = userStatus == nameof(DocumentAssignmentStatus.DONE) ? step.Order : null
+                    IsPrimary = templateAssignment?.IsPrimary ?? false,
+                    Status = docAssignment.Status,
+                    ProcessedAt = docAssignment.ProcessedAt > DateTime.MinValue ? docAssignment.ProcessedAt : null,
+                    SigningIndex = docAssignment.Status == nameof(DocumentAssignmentStatus.DONE) ? step.Order : null
                 });
             }
 
-            stepDto.IsCompleted = hasCompletedUser;
+            stepDto.IsCompleted = thisStepDocAssignments.Any(a => a.Status == nameof(DocumentAssignmentStatus.DONE));
+
+            var pendingAssignments = thisStepDocAssignments
+                .Where(a => a.Status == nameof(DocumentAssignmentStatus.PENDING) && a.IsCurrent)
+                .ToList();
+
+            if (pendingAssignments.Any())
+            {
+                stepDto.CurrentPendingReceiverUserId = pendingAssignments.First().ReceiverUserId;
+
+                if (canEditSigners && !stepDto.IsCompleted)
+                {
+                    var stepDetail = await BuildWorkflowStepDetailAsync(step, thisStepTemplateAssignments, submitterUserId);
+                    stepDto.CanEditSigner = true;
+                    stepDto.CandidateUsers = stepDetail.CandidateUsers;
+                    stepDto.RoleName = stepDetail.RoleName;
+                }
+            }
+
             result.Add(stepDto);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Allows the workflow creator to change pending signers on steps that have not been completed.
+    /// </summary>
+    [Authorize(HCPermissions.Documents.SubmitForSigning)]
+    public async Task UpdateWorkflowStepSignersAsync(UpdateWorkflowStepSignersInput input)
+    {
+        if (input.WorkflowInstanceId == Guid.Empty)
+        {
+            throw new UserFriendlyException(L["The {0} field is required.", "WorkflowInstanceId"]);
+        }
+
+        var instance = await _documentWorkflowInstanceRepository.GetAsync(input.WorkflowInstanceId);
+        if (instance.CreatorId != CurrentUser.Id)
+        {
+            throw new UserFriendlyException(L["NotAuthorizedForThisAction"]);
+        }
+
+        if (instance.Status != nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS))
+        {
+            throw new UserFriendlyException(L["WorkflowNotInProgress"]);
+        }
+
+        var allSteps = await LoadCommittedWorkflowStepsOrderedAsync(instance);
+        var stepIds = allSteps.Select(s => s.Id).ToList();
+        var stepAssignments = await _workflowStepAssignmentRepository.GetListAsync(
+            x => x.StepId.HasValue && stepIds.Contains(x.StepId.Value) && x.IsActive);
+
+        var docAssignments = await _documentAssignmentRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId && x.CreationTime >= instance.StartedAt);
+
+        var stepsStatus = await GetAllStepsWithStatusAsync(input.WorkflowInstanceId);
+        var editableSteps = stepsStatus.Where(s => s.CanEditSigner).ToDictionary(s => s.StepId);
+
+        if (!input.StepSignerSelections.Any())
+        {
+            return;
+        }
+
+        var now = Clock.Now;
+        var notifyUserIds = new List<Guid>();
+        var document = await _documentRepository.GetAsync(instance.DocumentId);
+        var workflow = await _workflowRepository.GetAsync(instance.WorkflowId);
+
+        foreach (var selection in input.StepSignerSelections)
+        {
+            if (!editableSteps.TryGetValue(selection.StepId, out var stepStatus))
+            {
+                throw new UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
+            }
+
+            if (!stepStatus.CandidateUsers.Any(c => c.UserId == selection.SelectedUserId))
+            {
+                throw new UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
+            }
+
+            if (stepStatus.CurrentPendingReceiverUserId == selection.SelectedUserId)
+            {
+                continue;
+            }
+
+            var step = allSteps.First(s => s.Id == selection.StepId);
+            var pendingOnStep = docAssignments
+                .Where(a => a.WorkflowStepTemplateId == step.Id
+                    && a.Status == nameof(DocumentAssignmentStatus.PENDING)
+                    && a.IsCurrent)
+                .ToList();
+
+            if (!pendingOnStep.Any())
+            {
+                throw new UserFriendlyException(L["WorkflowStepSignerNotEditable"]);
+            }
+
+            var sourceAssignment = pendingOnStep.First();
+            var stepFileId = sourceAssignment.DocumentFileResultId;
+
+            foreach (var pending in pendingOnStep)
+            {
+                pending.Status = nameof(DocumentAssignmentStatus.REVOKE);
+                pending.ProcessedAt = now;
+                pending.IsCurrent = false;
+            }
+
+            await _documentAssignmentRepository.UpdateManyAsync(pendingOnStep);
+
+            await _documentAssignmentManager.CreateAsync(
+                instance.DocumentId,
+                step.Id,
+                selection.SelectedUserId,
+                step.Order,
+                step.Type,
+                nameof(DocumentAssignmentStatus.PENDING),
+                now,
+                DateTime.MinValue,
+                true,
+                stepFileId);
+
+            notifyUserIds.Add(selection.SelectedUserId);
+
+            await _documentWorkflowInstanceLogsManager.CreateAsync(
+                instance.Id,
+                sourceAssignment.Id,
+                CurrentUser.Id,
+                nameof(WorkflowInstanceLogAction.UPDATE_SIGNER),
+                step.Type,
+                nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
+                nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
+                $"Step {step.Order}: {selection.SelectedUserId}");
+        }
+
+        if (notifyUserIds.Any())
+        {
+            var distinctNotify = notifyUserIds.Distinct().ToList();
+            var currentStep = await _workflowStepTemplateRepository.GetAsync(instance.CurrentStepId);
+            await SendWorkflowNotificationAsync(
+                document,
+                distinctNotify,
+                "WorkflowAssigned",
+                $"WorkflowAssignedMessage|{document.StorageNumber}|{document.Title}|{workflow.Name}|{currentStep.Name}");
+        }
     }
 
     #endregion
@@ -2080,13 +2211,44 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             modeFilteredQuery = modeFilteredQuery.Where(d => d.Id == focusId);
         }
 
-        // ===== STEP 5: Count + page at DB level =====
+        // ===== STEP 5: Count + page (needs-signature first, then soonest deadline) =====
         var totalCount = await AsyncExecuter.CountAsync(modeFilteredQuery);
-        var pagedDocuments = await AsyncExecuter.ToListAsync(
-            modeFilteredQuery
-                .OrderByDescending(d => d.IncommingDate)
+
+        var myPendingAssignmentDocIdsQuery = assignmentQueryable
+            .Where(a =>
+                a.ReceiverUserId == currentUserId
+                && a.WorkflowStepTemplateId != null
+                && a.Status == nameof(DocumentAssignmentStatus.PENDING)
+                && a.IsCurrent)
+            .Select(a => a.DocumentId)
+            .Distinct();
+
+        var latestInstanceStartedAtQuery = instanceQueryable
+            .GroupBy(i => i.DocumentId)
+            .Select(g => new { DocumentId = g.Key, MaxStartedAt = g.Max(x => x.StartedAt) });
+
+        var documentSigningSortQuery =
+            from d in modeFilteredQuery
+            join latest in latestInstanceStartedAtQuery on d.Id equals latest.DocumentId into latestJoin
+            from latest in latestJoin.DefaultIfEmpty()
+            join inst in instanceQueryable on new { d.Id, latest.MaxStartedAt } equals new { Id = inst.DocumentId, MaxStartedAt = inst.StartedAt } into instJoin
+            from inst in instJoin.DefaultIfEmpty()
+            select new
+            {
+                Document = d,
+                NeedsMySignature = myPendingAssignmentDocIdsQuery.Contains(d.Id),
+                DeadlineSort = inst != null && inst.FinishedAt > DateTime.MinValue ? inst.FinishedAt : DateTime.MaxValue
+            };
+
+        var pagedSortRows = await AsyncExecuter.ToListAsync(
+            documentSigningSortQuery
+                .OrderByDescending(x => x.NeedsMySignature)
+                .ThenBy(x => x.DeadlineSort)
+                .ThenByDescending(x => x.Document.IncommingDate)
                 .Skip(input.SkipCount)
                 .Take(input.MaxResultCount));
+
+        var pagedDocuments = pagedSortRows.Select(x => x.Document).ToList();
 
         if (!pagedDocuments.Any())
         {
@@ -2284,6 +2446,9 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
                 ParallelSignStepsCompleted = parallelSignDone,
                 ParallelSignStepsTotal = parallelSignTotal,
                 WorkflowStartedAt = docInstance?.StartedAt,
+                WorkflowFinishedAt = docInstance != null && docInstance.FinishedAt > DateTime.MinValue
+                    ? docInstance.FinishedAt
+                    : null,
                 MyAssignmentStatus = myDocAssignment?.Status,
                 CanAct = myDocAssignment != null && myDocAssignment.Status == nameof(DocumentAssignmentStatus.PENDING),
                 MyAssignmentId = myDocAssignment?.Id,

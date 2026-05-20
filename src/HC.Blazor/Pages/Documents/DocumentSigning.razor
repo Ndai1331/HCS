@@ -174,12 +174,12 @@
                                     @* View workflow info (read-only modal) *@
                                     @if (context.WorkflowInstanceId.HasValue)
                                     {
-                                        <Button @onclick="@(() => ShowActionModalAsync(context, viewOnly: true))"
+                                        <Button @onclick="@(() => ShowActionModalAsync(context, viewOnly: !context.CanAct))"
                                             Color="Color.Info"
                                             Outline
                                             Size="Size.Small"
                                             Class="mb-1"
-                                            title="@L["ViewWorkflowInfo"]">
+                                            title="@(context.CanAct ? L["ProcessSigning"] : L["ViewWorkflowInfo"])">
                                             <Icon Name="IconName.Search" />
                                         </Button>
                                     }
@@ -240,13 +240,22 @@
                         <DataGridColumn TItem="DocumentSigningItemDto"
                             Field="WorkflowStatus"
                             Caption="@L["WorkflowStatus"]"
-                            Width="180px">
+                            Width="280px">
                             <DisplayTemplate>
                                 @if (context.WorkflowStatus != null)
                                 {
-                                    <small class="badge @GetWorkflowStatusBadgeClass(context.WorkflowStatus)">
-                                        @L[context.WorkflowStatus]
-                                    </small>
+                                    <div class="d-flex flex-column gap-1">
+                                        <small class="badge @GetWorkflowStatusBadgeClass(context.WorkflowStatus) align-self-start">
+                                            @L[context.WorkflowStatus]
+                                        </small>
+                                        @{
+                                            var expiryText = GetWorkflowExpiryCountdownText(context);
+                                        }
+                                        @if (!string.IsNullOrEmpty(expiryText))
+                                        {
+                                            <small class="@GetWorkflowExpiryTextClass(context)">@expiryText</small>
+                                        }
+                                    </div>
                                 }
                                 else
                                 {
@@ -400,6 +409,25 @@
                                                                     @L[step.Type]
                                                                 </span>
                                                             </div>
+                                                            @if (step.CanEditSigner && step.CandidateUsers.Any())
+                                                            {
+                                                                <div class="mt-2 ms-3">
+                                                                    @if (!string.IsNullOrWhiteSpace(step.RoleName))
+                                                                    {
+                                                                        <small class="text-muted d-block mb-1">@L["Role"]: @step.RoleName</small>
+                                                                    }
+                                                                    <label class="form-label mb-0" style="font-size: 0.7rem;">@L["EditWorkflowSigner"]</label>
+                                                                    <Select TValue="Guid?"
+                                                                            SelectedValue="@(EditedStepSigners.TryGetValue(step.StepId, out var edited) ? edited : step.CurrentPendingReceiverUserId)"
+                                                                            SelectedValueChanged="@(v => OnEditedStepSignerChanged(step.StepId, v))"
+                                                                            Size="Size.Small">
+                                                                        @foreach (var candidate in step.CandidateUsers)
+                                                                        {
+                                                                            <SelectItem TValue="Guid?" Value="@candidate.UserId">@GetCandidateDisplayLabel(candidate)</SelectItem>
+                                                                        }
+                                                                    </Select>
+                                                                </div>
+                                                            }
                                                             @if (step.Users.Any())
                                                             {
                                                                 <div class="mt-1 ms-3">
@@ -920,10 +948,16 @@
             }
         </ModalBody>
         <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="CloseActionModalAsync" Disabled="@IsWorkflowActionSubmitting">@L["Close"]</Button>
+            <Button Color="Color.Secondary" Clicked="CloseActionModalAsync" Disabled="@(IsWorkflowActionSubmitting || IsSavingWorkflowSigners)">@L["Close"]</Button>
+            @if (CanEditWorkflowSigners)
+            {
+                <Button Color="Color.Primary" Outline Clicked="SaveWorkflowStepSignersAsync" Disabled="@(IsWorkflowActionSubmitting || IsSavingWorkflowSigners || !HasWorkflowSignerChanges)">
+                    <Icon Name="IconName.Save" Class="me-1" />@L["SaveWorkflowSigners"]
+                </Button>
+            }
             @if (!IsViewOnly)
             {
-                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsWorkflowActionSubmitting || IsOverdue || string.IsNullOrEmpty(SelectedAction) || (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && (!SelectedSigningMethodId.HasValue || (AvailableUserSignaturesForMethod.Count > 1 && !SelectedUserSignatureId.HasValue))))">
+                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsWorkflowActionSubmitting || IsSavingWorkflowSigners || IsOverdue || string.IsNullOrEmpty(SelectedAction) || (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && (!SelectedSigningMethodId.HasValue || (AvailableUserSignaturesForMethod.Count > 1 && !SelectedUserSignatureId.HasValue))))">
                     <Icon Name="IconName.Check" Class="me-1" />@L["Confirm"]
                 </Button>
             }

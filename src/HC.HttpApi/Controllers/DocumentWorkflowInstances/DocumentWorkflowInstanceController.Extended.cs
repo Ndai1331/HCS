@@ -121,4 +121,11 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     {
         return _documentWorkflowInstancesAppService.GetActionBundleAsync(input);
     }
+
+    [HttpPut]
+    [Route("update-workflow-step-signers")]
+    public Task UpdateWorkflowStepSignersAsync(UpdateWorkflowStepSignersInput input)
+    {
+        return _documentWorkflowInstancesAppService.UpdateWorkflowStepSignersAsync(input);
+    }
 }

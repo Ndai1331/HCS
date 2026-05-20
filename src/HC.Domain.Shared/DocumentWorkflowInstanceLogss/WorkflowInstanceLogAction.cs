@@ -39,5 +39,8 @@ public enum WorkflowInstanceLogAction
     WORKFLOW_COMPLETED,
 
     /// <summary>Quy trình bị hủy</summary>
-    WORKFLOW_CANCELLED
+    WORKFLOW_CANCELLED,
+
+    /// <summary>Đổi người ký bước chưa ký (người trình ký)</summary>
+    UPDATE_SIGNER
 }

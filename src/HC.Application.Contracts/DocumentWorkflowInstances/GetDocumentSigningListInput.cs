@@ -104,6 +104,11 @@ public class DocumentSigningItemDto
     public DateTime? WorkflowStartedAt { get; set; }
 
     /// <summary>
+    /// Workflow signing deadline (instance FinishedAt).
+    /// </summary>
+    public DateTime? WorkflowFinishedAt { get; set; }
+
+    /// <summary>
     /// Current user's assignment status for this document
     /// </summary>
     public string? MyAssignmentStatus { get; set; }

@@ -112,6 +112,19 @@ public partial class DocumentSigning
     // All workflow steps with their signing status (for action modal step overview)
     private List<WorkflowStepStatusDto> AllStepsWithStatus { get; set; } = new();
 
+    private Dictionary<Guid, Guid?> EditedStepSigners { get; set; } = new();
+    private bool IsSavingWorkflowSigners { get; set; }
+
+    private bool CanEditWorkflowSigners =>
+        AllStepsWithStatus.Any(s => s.CanEditSigner);
+
+    private bool HasWorkflowSignerChanges =>
+        AllStepsWithStatus
+            .Where(s => s.CanEditSigner)
+            .Any(s => EditedStepSigners.TryGetValue(s.StepId, out var selected)
+                && selected.HasValue
+                && selected != s.CurrentPendingReceiverUserId);
+
     /// <summary>Aligned with REMOTE_CA default API timeout (~30s) for predictable UX.</summary>
     private const int WorkflowActionSigningUiTimeoutSeconds = 30;
 
@@ -430,12 +443,160 @@ public partial class DocumentSigning
         try
         {
             AllStepsWithStatus = await DocumentWorkflowInstancesAppService.GetAllStepsWithStatusAsync(workflowInstanceId);
+            InitializeEditedStepSigners();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading all steps with status for workflow instance {InstanceId}", workflowInstanceId);
             AllStepsWithStatus = new();
+            EditedStepSigners = new();
         }
+    }
+
+    private void InitializeEditedStepSigners()
+    {
+        EditedStepSigners = AllStepsWithStatus
+            .Where(s => s.CanEditSigner && s.CurrentPendingReceiverUserId.HasValue)
+            .ToDictionary(s => s.StepId, s => s.CurrentPendingReceiverUserId);
+    }
+
+    private void OnEditedStepSignerChanged(Guid stepId, Guid? userId)
+    {
+        EditedStepSigners[stepId] = userId;
+        UpdateSigningActionVisibility();
+    }
+
+    /// <summary>
+    /// Effective pending signer for a step (unsaved edit takes precedence).
+    /// </summary>
+    private Guid? GetEffectivePendingSignerUserId(WorkflowStepStatusDto step)
+    {
+        if (EditedStepSigners.TryGetValue(step.StepId, out var edited) && edited.HasValue)
+        {
+            return edited;
+        }
+
+        return step.CurrentPendingReceiverUserId;
+    }
+
+    /// <summary>
+    /// True when the current user still has the active PENDING assignment on the current workflow step.
+    /// </summary>
+    private bool CanUserProcessCurrentWorkflowStep()
+    {
+        if (SelectedDocumentForAction == null
+            || !SelectedDocumentForAction.MyAssignmentId.HasValue
+            || !string.Equals(
+                SelectedDocumentForAction.MyAssignmentStatus,
+                nameof(DocumentAssignmentStatus.PENDING),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var currentStep = AllStepsWithStatus.FirstOrDefault(s => s.IsCurrentStep);
+        if (currentStep == null)
+        {
+            return SelectedDocumentForAction.CanAct;
+        }
+
+        var effectiveSignerId = GetEffectivePendingSignerUserId(currentStep);
+        if (!effectiveSignerId.HasValue)
+        {
+            return SelectedDocumentForAction.CanAct;
+        }
+
+        return CurrentUser.Id.HasValue && effectiveSignerId.Value == CurrentUser.Id.Value;
+    }
+
+    /// <summary>
+    /// Signing actions are shown only when the current user is the active pending signer on the current step.
+    /// Opening via "view" still allows signing when the user has a pending assignment (e.g. after reassignment).
+    /// </summary>
+    private void UpdateSigningActionVisibility()
+    {
+        IsViewOnly = !CanUserProcessCurrentWorkflowStep();
+    }
+
+    private async Task RefreshSelectedDocumentActionStateAsync()
+    {
+        if (SelectedDocumentForAction == null)
+        {
+            return;
+        }
+
+        var updated = await FetchSigningItemForNotificationAsync(SelectedDocumentForAction.DocumentId);
+        if (updated != null)
+        {
+            SelectedDocumentForAction = updated;
+        }
+
+        UpdateSigningActionVisibility();
+    }
+
+    private async Task SaveWorkflowStepSignersAsync()
+    {
+        if (SelectedDocumentForAction?.WorkflowInstanceId == null || !HasWorkflowSignerChanges)
+        {
+            return;
+        }
+
+        var selections = AllStepsWithStatus
+            .Where(s => s.CanEditSigner
+                && EditedStepSigners.TryGetValue(s.StepId, out var selected)
+                && selected.HasValue
+                && selected != s.CurrentPendingReceiverUserId)
+            .Select(s => new WorkflowStepSignerSelectionDto
+            {
+                StepId = s.StepId,
+                SelectedUserId = EditedStepSigners[s.StepId]!.Value
+            })
+            .ToList();
+
+        if (!selections.Any())
+        {
+            return;
+        }
+
+        try
+        {
+            IsSavingWorkflowSigners = true;
+            await BlockUiService.Block(selectors: ".signing-action-modal", busy: true);
+
+            await DocumentWorkflowInstancesAppService.UpdateWorkflowStepSignersAsync(
+                new UpdateWorkflowStepSignersInput
+                {
+                    WorkflowInstanceId = SelectedDocumentForAction.WorkflowInstanceId.Value,
+                    StepSignerSelections = selections
+                });
+
+            await UiMessageService.Success(L["WorkflowSignersUpdatedSuccessfully"]);
+            await LoadAllStepsWithStatusAsync(SelectedDocumentForAction.WorkflowInstanceId.Value);
+            await LoadWorkflowLogsAsync(SelectedDocumentForAction.WorkflowInstanceId.Value);
+            await RefreshSelectedDocumentActionStateAsync();
+            await SearchAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsSavingWorkflowSigners = false;
+            await BlockUiService.UnBlock();
+        }
+    }
+
+    private static string GetCandidateDisplayLabel(WorkflowStepUserDto user)
+    {
+        var name = string.IsNullOrWhiteSpace(user.FullName) ? user.UserName : user.FullName;
+        if (!string.IsNullOrWhiteSpace(user.OrganizationUnitName))
+        {
+            return $"{name} — {user.OrganizationUnitName}";
+        }
+
+        return name ?? string.Empty;
     }
 
     #endregion
@@ -615,6 +776,8 @@ public partial class DocumentSigning
             CurrentStepDetailInfo = null;
             WorkflowInstanceInfo = null;
             AllStepsWithStatus = new();
+            EditedStepSigners = new();
+            IsSavingWorkflowSigners = false;
             IsOverdue = false;
             AllowReturnAction = false;
             IsViewOnly = viewOnly;
@@ -642,6 +805,7 @@ public partial class DocumentSigning
                     WorkflowFiles = bundle.Files ?? new();
                     DocumentHistories = bundle.DocumentHistories ?? new();
                     AllStepsWithStatus = bundle.AllStepsWithStatus ?? new();
+                    InitializeEditedStepSigners();
                     SigningMethods = bundle.SigningMethods ?? new();
 
                     await LoadSigningDocumentFilesAsync(document.DocumentId);
@@ -660,6 +824,7 @@ public partial class DocumentSigning
                         LoadSigningDocumentFilesAsync(document.DocumentId)
                     };
                     await Task.WhenAll(tasks);
+                    InitializeEditedStepSigners();
                 }
             }
             else
@@ -696,6 +861,7 @@ public partial class DocumentSigning
                 }
             }
 
+            UpdateSigningActionVisibility();
             loadSucceeded = true;
         }
         catch (Exception ex)
@@ -1134,6 +1300,49 @@ public partial class DocumentSigning
         _ => "bg-secondary text-white"
     };
 
+    private string? GetWorkflowExpiryCountdownText(DocumentSigningItemDto item)
+    {
+        if (!string.Equals(item.WorkflowStatus, nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS), StringComparison.OrdinalIgnoreCase)
+            || !item.WorkflowFinishedAt.HasValue
+            || item.WorkflowFinishedAt.Value <= DateTime.MinValue)
+        {
+            return null;
+        }
+
+        var remaining = item.WorkflowFinishedAt.Value - Clock.Now;
+        if (remaining <= TimeSpan.Zero)
+        {
+            return L["WorkflowSigningExpired"];
+        }
+
+        return L["WorkflowTimeBeforeExpiry", remaining.Days, remaining.Hours, remaining.Minutes];
+    }
+
+    private string GetWorkflowExpiryTextClass(DocumentSigningItemDto item)
+    {
+        if (!item.WorkflowFinishedAt.HasValue)
+        {
+            return "text-muted";
+        }
+
+        if (item.WorkflowFinishedAt.Value <= Clock.Now)
+        {
+            return "text-danger fw-semibold";
+        }
+
+        if (item.CanAct && item.WorkflowFinishedAt.Value <= Clock.Now.AddDays(1))
+        {
+            return "text-danger";
+        }
+
+        if (item.CanAct)
+        {
+            return "text-warning fw-semibold";
+        }
+
+        return "text-muted";
+    }
+
     private string GetAssignmentStatusBadgeClass(string status) => status switch
     {
         nameof(DocumentAssignmentStatus.PENDING) => "bg-warning text-dark",
@@ -1158,6 +1367,7 @@ public partial class DocumentSigning
         nameof(WorkflowInstanceLogAction.RETURN) => "bg-warning text-dark",
         nameof(WorkflowInstanceLogAction.REJECT) => "bg-danger text-white",
         nameof(WorkflowInstanceLogAction.SIGN) => "bg-success text-white",
+        nameof(WorkflowInstanceLogAction.UPDATE_SIGNER) => "bg-info text-white",
         _ => "bg-secondary text-white"
     };
 
@@ -1168,6 +1378,7 @@ public partial class DocumentSigning
         nameof(WorkflowInstanceLogAction.RETURN) => "bi bi-arrow-return-left",
         nameof(WorkflowInstanceLogAction.REJECT) => "bi bi-x-circle-fill",
         nameof(WorkflowInstanceLogAction.SIGN) => "bi bi-pen-fill",
+        nameof(WorkflowInstanceLogAction.UPDATE_SIGNER) => "bi bi-person-gear",
         _ => "bi bi-circle"
     };
 

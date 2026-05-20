@@ -137,6 +137,19 @@ public class WorkflowStepStatusDto
     /// Users assigned to this step with their signing status
     /// </summary>
     public List<StepAssignmentUserDto> Users { get; set; } = new();
+
+    /// <summary>
+    /// True when the workflow creator may change the pending signer for this step (not yet signed).
+    /// </summary>
+    public bool CanEditSigner { get; set; }
+
+    public Guid? CurrentPendingReceiverUserId { get; set; }
+
+    public string? RoleName { get; set; }
+
+    public List<WorkflowStepUserDto> CandidateUsers { get; set; } = new();
+
+    public bool RequiresSignerSelection => CandidateUsers.Count > 1;
 }
 
 /// <summary>

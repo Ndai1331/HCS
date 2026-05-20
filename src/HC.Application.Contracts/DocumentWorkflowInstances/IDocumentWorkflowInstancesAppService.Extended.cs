@@ -91,4 +91,9 @@ public partial interface IDocumentWorkflowInstancesAppService
     /// files, histories, all-step status, signing methods) into one round-trip.
     /// </summary>
     Task<WorkflowInstanceActionBundleDto> GetActionBundleAsync(GetWorkflowInstanceActionBundleInput input);
+
+    /// <summary>
+    /// Workflow creator updates pending signers for steps that have not been completed yet.
+    /// </summary>
+    Task UpdateWorkflowStepSignersAsync(UpdateWorkflowStepSignersInput input);
 }
