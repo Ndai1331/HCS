@@ -92,3 +92,4 @@ jobs:
         shell: pwsh
         run: |
           ./build-api-blazor-linux-amd64.ps1 -version '${{ steps.version.outputs.version }}' -ClearDockerCache
+
