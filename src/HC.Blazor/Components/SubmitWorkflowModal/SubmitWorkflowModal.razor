@@ -14,7 +14,8 @@
             <ModalTitle>@L["CreateSigning"]</ModalTitle>
             <CloseButton Clicked="CloseModalAsync" />
         </ModalHeader>
-        <ModalBody>
+        <ModalBody Style="position: relative; min-height: 320px;">
+            <div class="@(IsModalBusy ? "pe-none user-select-none" : null)" style="@(IsModalBusy ? "opacity: 0.55;" : null)">
             @* Pre-selected document info (when opened from Documents page) *@
             @if (HasPreSelectedDocument && PreSelectedDocument != null)
             {
@@ -33,7 +34,8 @@
                 <FieldLabel>@L["SelectWorkflow"] <span class="text-danger">*</span></FieldLabel>
                 <Select TValue="Guid?"
                     SelectedValue="@SelectedWorkflowId"
-                    SelectedValueChanged="@OnWorkflowSelectedAsync">
+                    SelectedValueChanged="@OnWorkflowSelectedAsync"
+                    Disabled="@IsModalBusy">
                     <SelectItem TValue="Guid?" Value="@null">-- @L["SelectWorkflow"] --</SelectItem>
                     @foreach (var wf in AvailableWorkflows)
                     {
@@ -239,11 +241,19 @@
                     </div>
                 }
             </Field>
+            </div>
+            @if (IsModalBusy)
+            {
+                <div class="d-flex align-items-center justify-content-center"
+                     style="position: absolute; inset: 0; z-index: 10; background: rgba(255, 255, 255, 0.94);">
+                    <RadarSpinner />
+                </div>
+            }
         </ModalBody>
         <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="CloseModalAsync">@L["Cancel"]</Button>
+            <Button Color="Color.Secondary" Clicked="CloseModalAsync" Disabled="@IsModalBusy">@L["Cancel"]</Button>
             <Button Color="Color.Primary" Clicked="ConfirmSubmitAsync"
-                    Disabled="@((!UseWorkflowTemplateFile && !SelectedDocumentId.HasValue) || !SelectedWorkflowId.HasValue || WorkflowSubmitInfo == null)">
+                    Disabled="@(IsModalBusy || (!UseWorkflowTemplateFile && !SelectedDocumentId.HasValue) || !SelectedWorkflowId.HasValue || WorkflowSubmitInfo == null)">
                 <Icon Name="IconName.Check" Class="me-1" />@L["Submit"]
             </Button>
         </ModalFooter>

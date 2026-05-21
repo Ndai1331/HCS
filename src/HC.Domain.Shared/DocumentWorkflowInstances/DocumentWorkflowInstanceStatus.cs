@@ -11,6 +11,9 @@ public enum DocumentWorkflowInstanceStatus
     /// <summary>Đang xử lý</summary>
     IN_PROGRESS,
 
+    /// <summary>Quá hạn — còn ân hạn 1 ngày làm việc trước khi hủy</summary>
+    OVERDUE,
+
     /// <summary>Đã hoàn thành</summary>
     COMPLETED,
 

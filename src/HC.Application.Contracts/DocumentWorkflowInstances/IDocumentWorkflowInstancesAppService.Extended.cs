@@ -96,4 +96,11 @@ public partial interface IDocumentWorkflowInstancesAppService
     /// Workflow creator updates pending signers for steps that have not been completed yet.
     /// </summary>
     Task UpdateWorkflowStepSignersAsync(UpdateWorkflowStepSignersInput input);
+
+    /// <summary>
+    /// Extend signing deadline (business days). Allowed for current-step signer or ADMIN/admin role.
+    /// </summary>
+    Task ExtendWorkflowAsync(ExtendWorkflowInput input);
+
+    Task<WorkflowExtensionSummaryDto> GetWorkflowExtensionSummaryAsync(Guid workflowInstanceId);
 }

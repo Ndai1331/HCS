@@ -42,5 +42,8 @@ public enum WorkflowInstanceLogAction
     WORKFLOW_CANCELLED,
 
     /// <summary>Đổi người ký bước chưa ký (người trình ký)</summary>
-    UPDATE_SIGNER
+    UPDATE_SIGNER,
+
+    /// <summary>Gia hạn thời gian trình ký</summary>
+    EXTEND_WORKFLOW
 }

@@ -90,7 +90,17 @@ public partial class DocumentSigning
 
     // Overdue & AllowReturn state for Action Modal
     private bool IsOverdue { get; set; }
+    private bool IsSigningBlocked { get; set; }
+    private bool CanExtendWorkflow { get; set; }
+    private DateTime? WorkflowGraceCancelAt { get; set; }
+    private int WorkflowExtensionCount { get; set; }
+    private int WorkflowTotalExtensionBusinessDays { get; set; }
     private bool AllowReturnAction { get; set; }
+
+    private Modal ExtendWorkflowModal { get; set; } = new();
+    private int ExtensionBusinessDaysInput { get; set; } = 1;
+    private string? ExtensionReasonInput { get; set; }
+    private bool IsExtendingWorkflow { get; set; }
 
     // View-only mode for Action Modal (no actions allowed)
     private bool IsViewOnly { get; set; }
@@ -128,10 +138,19 @@ public partial class DocumentSigning
     /// <summary>Aligned with REMOTE_CA default API timeout (~30s) for predictable UX.</summary>
     private const int WorkflowActionSigningUiTimeoutSeconds = 30;
 
-    /// <summary>Shows RadarSpinner overlay on the workflow action modal body while confirming.</summary>
+    private bool IsActionModalLoading { get; set; }
+
+    /// <summary>Shows RadarSpinner overlay on the workflow action modal body while busy.</summary>
     private bool IsWorkflowActionSubmitting { get; set; }
 
+    private bool IsActionModalBusy =>
+        IsActionModalLoading || IsSavingWorkflowSigners || IsExtendingWorkflow || IsWorkflowActionSubmitting;
+
     private int WorkflowActionCountdownRemaining { get; set; } = WorkflowActionSigningUiTimeoutSeconds;
+
+    private bool IsResubmitModalLoading { get; set; }
+
+    private bool IsResubmitModalBusy => IsResubmitModalLoading;
 
     // Debounce
     private CancellationTokenSource? SearchDebounceCts { get; set; }
@@ -561,7 +580,6 @@ public partial class DocumentSigning
         try
         {
             IsSavingWorkflowSigners = true;
-            await BlockUiService.Block(selectors: ".signing-action-modal", busy: true);
 
             await DocumentWorkflowInstancesAppService.UpdateWorkflowStepSignersAsync(
                 new UpdateWorkflowStepSignersInput
@@ -571,11 +589,8 @@ public partial class DocumentSigning
                 });
 
             await UiMessageService.Success(L["WorkflowSignersUpdatedSuccessfully"]);
-            await LoadAllStepsWithStatusAsync(SelectedDocumentForAction.WorkflowInstanceId.Value);
-            await LoadWorkflowLogsAsync(SelectedDocumentForAction.WorkflowInstanceId.Value);
-            await RefreshSelectedDocumentActionStateAsync();
+            await RefreshActionModalDataAsync();
             await SearchAsync();
-            await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {
@@ -584,7 +599,7 @@ public partial class DocumentSigning
         finally
         {
             IsSavingWorkflowSigners = false;
-            await BlockUiService.UnBlock();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -758,14 +773,77 @@ public partial class DocumentSigning
         return result.Items.FirstOrDefault();
     }
 
+    private async Task ApplyOverdueCheckAsync(Guid workflowInstanceId)
+    {
+        var overdueResult = await DocumentWorkflowInstancesAppService.CheckAndHandleOverdueAsync(workflowInstanceId);
+        IsOverdue = overdueResult.IsOverdue;
+        CanExtendWorkflow = overdueResult.CanExtend;
+        WorkflowGraceCancelAt = overdueResult.GraceCancelAt;
+        WorkflowExtensionCount = overdueResult.ExtensionCount;
+        WorkflowTotalExtensionBusinessDays = overdueResult.TotalExtensionBusinessDays;
+        AllowReturnAction = overdueResult.AllowReturn;
+        IsSigningBlocked = overdueResult.WorkflowStatus == nameof(DocumentWorkflowInstanceStatus.CANCELLED)
+            || (overdueResult.WorkflowStatus == nameof(DocumentWorkflowInstanceStatus.OVERDUE)
+                && overdueResult.GraceCancelAt.HasValue
+                && Clock.Now >= overdueResult.GraceCancelAt.Value);
+    }
+
+    private async Task RefreshActionModalDataAsync()
+    {
+        if (SelectedDocumentForAction?.WorkflowInstanceId == null)
+        {
+            return;
+        }
+
+        var workflowInstanceId = SelectedDocumentForAction.WorkflowInstanceId.Value;
+        var documentId = SelectedDocumentForAction.DocumentId;
+
+        try
+        {
+            var bundle = await DocumentWorkflowInstancesAppService.GetActionBundleAsync(
+                new GetWorkflowInstanceActionBundleInput
+                {
+                    WorkflowInstanceId = workflowInstanceId,
+                    DocumentId = documentId,
+                    SigningMethodsMaxResultCount = 100
+                });
+
+            WorkflowInstanceInfo = bundle.Instance;
+            CurrentStepDetailInfo = bundle.CurrentStepDetail;
+            WorkflowLogs = bundle.Logs ?? new();
+            WorkflowFiles = bundle.Files ?? new();
+            DocumentHistories = bundle.DocumentHistories ?? new();
+            AllStepsWithStatus = bundle.AllStepsWithStatus ?? new();
+            InitializeEditedStepSigners();
+
+            if (WorkflowInstanceInfo != null)
+            {
+                SelectedDocumentForAction.WorkflowStatus = WorkflowInstanceInfo.Status;
+                SelectedDocumentForAction.WorkflowFinishedAt = WorkflowInstanceInfo.FinishedAt > DateTime.MinValue
+                    ? WorkflowInstanceInfo.FinishedAt
+                    : null;
+                SelectedDocumentForAction.WorkflowOverdueAt = WorkflowInstanceInfo.OverdueAt;
+                SelectedDocumentForAction.ExtensionCount = WorkflowInstanceInfo.ExtensionCount;
+                SelectedDocumentForAction.TotalExtensionBusinessDays = WorkflowInstanceInfo.TotalExtensionBusinessDays;
+                SelectedDocumentForAction.WorkflowGraceCancelAt = WorkflowInstanceInfo.OverdueAt.HasValue
+                    ? HC.Workflows.BusinessDayCalculator.GetOverdueGraceCancelAt(WorkflowInstanceInfo.OverdueAt.Value)
+                    : null;
+            }
+
+            await ApplyOverdueCheckAsync(workflowInstanceId);
+            UpdateSigningActionVisibility();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "RefreshActionModalDataAsync failed for instance {InstanceId}", workflowInstanceId);
+        }
+    }
+
     private async Task ShowActionModalAsync(DocumentSigningItemDto document, bool viewOnly = false)
     {
         var loadSucceeded = false;
         _showActionModalRichTextEditors = false;
-        try
-        {
-            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            SelectedDocumentForAction = document;
+        SelectedDocumentForAction = document;
             SelectedAction = nameof(WorkflowInstanceLogAction.APPROVE);
             ActionNote = null;
             ActionModalActiveTab = "general";
@@ -779,12 +857,24 @@ public partial class DocumentSigning
             EditedStepSigners = new();
             IsSavingWorkflowSigners = false;
             IsOverdue = false;
+            IsSigningBlocked = false;
+            CanExtendWorkflow = false;
+            WorkflowGraceCancelAt = null;
+            WorkflowExtensionCount = 0;
+            WorkflowTotalExtensionBusinessDays = 0;
             AllowReturnAction = false;
             IsViewOnly = viewOnly;
             SelectedSigningMethodId = null;
             AvailableUserSignaturesForMethod = new();
             SelectedUserSignatureId = null;
+            IsActionModalLoading = true;
 
+            _actionModalEditorSessionKey++;
+            await InvokeAsync(WorkflowActionModal.Show);
+            await InvokeAsync(StateHasChanged);
+
+            try
+            {
             // M3: pull everything the modal needs in a single bundle call instead of 7 parallel HTTPs.
             // `LoadSigningDocumentFilesAsync` stays separate because it comes from DocumentAssignmentsAppService.
             if (document.WorkflowInstanceId.HasValue)
@@ -845,43 +935,31 @@ public partial class DocumentSigning
                 await OnSigningMethodChangedAsync(defaultSigningMethod.Id);
             }
 
-            // Check overdue and get AllowReturn for current step
             if (document.WorkflowInstanceId.HasValue)
             {
-                try
-                {
-                    var overdueResult = await DocumentWorkflowInstancesAppService
-                        .CheckAndHandleOverdueAsync(document.WorkflowInstanceId.Value);
-                    IsOverdue = overdueResult.IsOverdue;
-                    AllowReturnAction = overdueResult.AllowReturn;
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "Error checking overdue for workflow instance {InstanceId}", document.WorkflowInstanceId.Value);
-                }
+                await ApplyOverdueCheckAsync(document.WorkflowInstanceId.Value);
             }
 
             UpdateSigningActionVisibility();
             loadSucceeded = true;
-        }
-        catch (Exception ex)
-        {
-            SelectedDocumentForAction = null;
-            _showActionModalRichTextEditors = false;
-            await HandleErrorAsync(ex);
-        }
-        finally
-        {
-            await BlockUiService.UnBlock();
-            if (loadSucceeded)
-            {
-                _actionModalEditorSessionKey++;
-                await InvokeAsync(WorkflowActionModal.Show);
-                await Task.Delay(100);
-                _showActionModalRichTextEditors = true;
-                await InvokeAsync(StateHasChanged);
             }
-        }
+            catch (Exception ex)
+            {
+                SelectedDocumentForAction = null;
+                _showActionModalRichTextEditors = false;
+                await HandleErrorAsync(ex);
+                await InvokeAsync(WorkflowActionModal.Hide);
+            }
+            finally
+            {
+                IsActionModalLoading = false;
+                if (loadSucceeded)
+                {
+                    await Task.Delay(100);
+                    _showActionModalRichTextEditors = true;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
     }
 
     private async Task HideWorkflowActionModalAsync()
@@ -1063,11 +1141,8 @@ public partial class DocumentSigning
     {
         var loadSucceeded = false;
         _showResubmitModalRichTextEditors = false;
-        try
-        {
-            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
 
-            // Reset resubmit modal state
+        // Reset resubmit modal state
             ReturnedWorkflowInfo = null;
             ResubmitSigningContent = null;
             ResubmitUseWorkflowTemplateFile = false;
@@ -1078,15 +1153,20 @@ public partial class DocumentSigning
             ResubmitDeleteFileIds.Clear();
             ResubmitModalResetKey++;
 
-            if (ResubmitFilePicker != null)
-            {
-                await ResubmitFilePicker.Clear();
-            }
+        if (ResubmitFilePicker != null)
+        {
+            await ResubmitFilePicker.Clear();
+        }
 
-            // Load personal documents for selection
+        IsResubmitModalLoading = true;
+        _resubmitModalEditorSessionKey++;
+        await InvokeAsync(ResubmitWorkflowModal.Show);
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
             await LoadMyDocumentsAsync();
 
-            // Load returned workflow info
             if (document.WorkflowInstanceId.HasValue)
             {
                 ReturnedWorkflowInfo = await DocumentWorkflowInstancesAppService
@@ -1094,7 +1174,6 @@ public partial class DocumentSigning
 
                 if (ReturnedWorkflowInfo != null)
                 {
-                    // Pre-populate with previous data
                     ResubmitSigningContent = ReturnedWorkflowInfo.LastSigningContent;
                     ResubmitExistingFiles = ReturnedWorkflowInfo.AttachedFiles.ToList();
                     ResubmitSelectedDocumentId = ReturnedWorkflowInfo.DocumentId;
@@ -1110,14 +1189,13 @@ public partial class DocumentSigning
             ReturnedWorkflowInfo = null;
             _showResubmitModalRichTextEditors = false;
             await HandleErrorAsync(ex);
+            await InvokeAsync(ResubmitWorkflowModal.Hide);
         }
         finally
         {
-            await BlockUiService.UnBlock();
+            IsResubmitModalLoading = false;
             if (loadSucceeded)
             {
-                _resubmitModalEditorSessionKey++;
-                await InvokeAsync(ResubmitWorkflowModal.Show);
                 await Task.Delay(100);
                 _showResubmitModalRichTextEditors = true;
                 await InvokeAsync(StateHasChanged);
@@ -1234,7 +1312,8 @@ public partial class DocumentSigning
             var confirmed = await UiMessageService.Confirm(L["ConfirmResubmitForSigning"]);
             if (!confirmed) return;
 
-            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+            IsResubmitModalLoading = true;
+            await InvokeAsync(StateHasChanged);
 
             // Blazor binding updates on blur; get value directly from editor to ensure we have latest content.
             var resubmitSigningContent = ResubmitSigningContent?.Trim();
@@ -1274,7 +1353,8 @@ public partial class DocumentSigning
         }
         finally
         {
-            await BlockUiService.UnBlock();
+            IsResubmitModalLoading = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -1289,20 +1369,22 @@ public partial class DocumentSigning
             : "list-group-item-action cursor-pointer";
     }
 
-    private string GetWorkflowStatusBadgeClass(string status) => status switch
-    {
-        nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS) => "bg-info text-white",
-        nameof(DocumentWorkflowInstanceStatus.COMPLETED) => "bg-success text-white",
-        nameof(DocumentWorkflowInstanceStatus.REJECTED) => "bg-danger text-white",
-        nameof(DocumentWorkflowInstanceStatus.RETURNED) => "bg-warning text-dark",
-        nameof(DocumentWorkflowInstanceStatus.CANCELLED) => "bg-secondary text-white",
-        nameof(DocumentWorkflowInstanceStatus.DRAFT) => "bg-light text-dark",
-        _ => "bg-secondary text-white"
-    };
-
     private string? GetWorkflowExpiryCountdownText(DocumentSigningItemDto item)
     {
+        if (string.Equals(item.WorkflowStatus, nameof(DocumentWorkflowInstanceStatus.OVERDUE), StringComparison.OrdinalIgnoreCase)
+            && item.WorkflowGraceCancelAt.HasValue)
+        {
+            var graceRemaining = item.WorkflowGraceCancelAt.Value - Clock.Now;
+            if (graceRemaining <= TimeSpan.Zero)
+            {
+                return L["WorkflowOverdueGraceExpired"];
+            }
+
+            return L["WorkflowGracePeriodRemaining", graceRemaining.Days, graceRemaining.Hours, graceRemaining.Minutes];
+        }
+
         if (!string.Equals(item.WorkflowStatus, nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS), StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(item.WorkflowStatus, nameof(DocumentWorkflowInstanceStatus.OVERDUE), StringComparison.OrdinalIgnoreCase)
             || !item.WorkflowFinishedAt.HasValue
             || item.WorkflowFinishedAt.Value <= DateTime.MinValue)
         {
@@ -1318,8 +1400,25 @@ public partial class DocumentSigning
         return L["WorkflowTimeBeforeExpiry", remaining.Days, remaining.Hours, remaining.Minutes];
     }
 
+    private string GetWorkflowStatusBadgeClass(string status) => status switch
+    {
+        nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS) => "bg-info text-white",
+        nameof(DocumentWorkflowInstanceStatus.OVERDUE) => "bg-danger text-white",
+        nameof(DocumentWorkflowInstanceStatus.COMPLETED) => "bg-success text-white",
+        nameof(DocumentWorkflowInstanceStatus.REJECTED) => "bg-danger text-white",
+        nameof(DocumentWorkflowInstanceStatus.RETURNED) => "bg-warning text-dark",
+        nameof(DocumentWorkflowInstanceStatus.CANCELLED) => "bg-secondary text-white",
+        nameof(DocumentWorkflowInstanceStatus.DRAFT) => "bg-light text-dark",
+        _ => "bg-secondary text-white"
+    };
+
     private string GetWorkflowExpiryTextClass(DocumentSigningItemDto item)
     {
+        if (string.Equals(item.WorkflowStatus, nameof(DocumentWorkflowInstanceStatus.OVERDUE), StringComparison.OrdinalIgnoreCase))
+        {
+            return "text-danger fw-semibold";
+        }
+
         if (!item.WorkflowFinishedAt.HasValue)
         {
             return "text-muted";
@@ -1343,6 +1442,64 @@ public partial class DocumentSigning
         return "text-muted";
     }
 
+    private async Task ShowExtendWorkflowModalAsync()
+    {
+        ExtensionBusinessDaysInput = 1;
+        ExtensionReasonInput = null;
+        await ExtendWorkflowModal.Show();
+    }
+
+    private async Task CloseExtendWorkflowModalAsync()
+    {
+        await ExtendWorkflowModal.Hide();
+    }
+
+    private async Task ConfirmExtendWorkflowAsync()
+    {
+        if (SelectedDocumentForAction?.WorkflowInstanceId == null)
+        {
+            return;
+        }
+
+        if (ExtensionBusinessDaysInput < 1)
+        {
+            await UiMessageService.Warn(L["ExtensionBusinessDaysMustBePositive"]);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(ExtensionReasonInput))
+        {
+            await UiMessageService.Warn(L["ExtensionReasonRequired"]);
+            return;
+        }
+
+        try
+        {
+            IsExtendingWorkflow = true;
+
+            await DocumentWorkflowInstancesAppService.ExtendWorkflowAsync(new ExtendWorkflowInput
+            {
+                WorkflowInstanceId = SelectedDocumentForAction.WorkflowInstanceId.Value,
+                ExtensionBusinessDays = ExtensionBusinessDaysInput,
+                Reason = ExtensionReasonInput.Trim()
+            });
+
+            await UiMessageService.Success(L["WorkflowExtendedSuccessfully"]);
+            await CloseExtendWorkflowModalAsync();
+            await RefreshActionModalDataAsync();
+            await SearchAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsExtendingWorkflow = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     private string GetAssignmentStatusBadgeClass(string status) => status switch
     {
         nameof(DocumentAssignmentStatus.PENDING) => "bg-warning text-dark",
@@ -1360,6 +1517,10 @@ public partial class DocumentSigning
         _ => Color.Primary
     };
 
+    private static bool IsPlainTextWorkflowLog(string? action) =>
+        string.Equals(action, nameof(WorkflowInstanceLogAction.EXTEND_WORKFLOW), StringComparison.OrdinalIgnoreCase)
+        || string.Equals(action, nameof(WorkflowInstanceLogAction.UPDATE_SIGNER), StringComparison.OrdinalIgnoreCase);
+
     private string GetLogActionBadgeClass(string action) => action switch
     {
         nameof(WorkflowInstanceLogAction.SUBMIT_WORKFLOW) => "bg-primary text-white",
@@ -1368,6 +1529,7 @@ public partial class DocumentSigning
         nameof(WorkflowInstanceLogAction.REJECT) => "bg-danger text-white",
         nameof(WorkflowInstanceLogAction.SIGN) => "bg-success text-white",
         nameof(WorkflowInstanceLogAction.UPDATE_SIGNER) => "bg-info text-white",
+        nameof(WorkflowInstanceLogAction.EXTEND_WORKFLOW) => "bg-info text-white",
         _ => "bg-secondary text-white"
     };
 
@@ -1379,6 +1541,7 @@ public partial class DocumentSigning
         nameof(WorkflowInstanceLogAction.REJECT) => "bi bi-x-circle-fill",
         nameof(WorkflowInstanceLogAction.SIGN) => "bi bi-pen-fill",
         nameof(WorkflowInstanceLogAction.UPDATE_SIGNER) => "bi bi-person-gear",
+        nameof(WorkflowInstanceLogAction.EXTEND_WORKFLOW) => "bi bi-calendar-plus",
         _ => "bi bi-circle"
     };
 

@@ -12,7 +12,6 @@ using HC.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Application.Dtos;
-using Volo.Abp.AspNetCore.Components.BlockUi;
 using Volo.Abp.AspNetCore.Components.Messages;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.Timing;
@@ -31,8 +30,13 @@ public partial class SubmitWorkflowModal
     [Inject] private IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService { get; set; } = default!;
     [Inject] private IDocumentsAppService DocumentsAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
-    [Inject] private IBlockUiService BlockUiService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
+
+    private bool IsLoadingWorkflowInfo { get; set; }
+
+    private bool IsSubmitting { get; set; }
+
+    private bool IsModalBusy => IsLoadingWorkflowInfo || IsSubmitting;
     [Inject] private IClock Clock { get; set; } = default!;
 
     private Modal ModalRef { get; set; } = new();
@@ -72,6 +76,8 @@ public partial class SubmitWorkflowModal
     /// </summary>
     public async Task ShowAsync(DocumentWithNavigationPropertiesDto? preSelectedDocument = null)
     {
+        IsSubmitting = false;
+        IsLoadingWorkflowInfo = false;
         PreSelectedDocument = preSelectedDocument;
         SelectedDocumentId = preSelectedDocument?.Document?.Id;
         SelectedDocumentDto = preSelectedDocument;
@@ -186,9 +192,11 @@ public partial class SubmitWorkflowModal
 
         if (workflowId.HasValue && workflowId.Value != Guid.Empty)
         {
+            IsLoadingWorkflowInfo = true;
+            await InvokeAsync(StateHasChanged);
+
             try
             {
-                await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
                 WorkflowSubmitInfo = await DocumentWorkflowInstancesAppService.GetWorkflowSubmitInfoAsync(workflowId.Value);
                 StepSignerSelections.Clear();
             }
@@ -198,11 +206,14 @@ public partial class SubmitWorkflowModal
             }
             finally
             {
-                await BlockUiService.UnBlock();
+                IsLoadingWorkflowInfo = false;
+                await InvokeAsync(StateHasChanged);
             }
         }
-
-        await InvokeAsync(StateHasChanged);
+        else
+        {
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task CloseModalAsync()
@@ -285,11 +296,6 @@ public partial class SubmitWorkflowModal
                 return;
             }
 
-            var confirmed = await UiMessageService.Confirm(L["ConfirmSubmitForSigning"]);
-            if (!confirmed) return;
-
-            await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-
             var signingContent = SigningContent?.Trim();
             if (SigningContentEditorRef != null)
             {
@@ -304,9 +310,14 @@ public partial class SubmitWorkflowModal
             {
                 await UiMessageService.Error(L["The {0} field is required.", L["SigningContent"]],
                     options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-                await BlockUiService.UnBlock();
                 return;
             }
+
+            var confirmed = await UiMessageService.Confirm(L["ConfirmSubmitForSigning"]);
+            if (!confirmed) return;
+
+            IsSubmitting = true;
+            await InvokeAsync(StateHasChanged);
 
             var input = new SubmitToWorkflowInput
             {
@@ -334,7 +345,8 @@ public partial class SubmitWorkflowModal
         }
         finally
         {
-            await BlockUiService.UnBlock();
+            IsSubmitting = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 

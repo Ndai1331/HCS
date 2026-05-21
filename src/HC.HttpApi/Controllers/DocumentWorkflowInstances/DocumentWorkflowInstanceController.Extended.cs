@@ -128,4 +128,18 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     {
         return _documentWorkflowInstancesAppService.UpdateWorkflowStepSignersAsync(input);
     }
+
+    [HttpPost]
+    [Route("extend-workflow")]
+    public Task ExtendWorkflowAsync(ExtendWorkflowInput input)
+    {
+        return _documentWorkflowInstancesAppService.ExtendWorkflowAsync(input);
+    }
+
+    [HttpGet]
+    [Route("workflow-extension-summary/{workflowInstanceId}")]
+    public Task<WorkflowExtensionSummaryDto> GetWorkflowExtensionSummaryAsync(Guid workflowInstanceId)
+    {
+        return _documentWorkflowInstancesAppService.GetWorkflowExtensionSummaryAsync(workflowInstanceId);
+    }
 }

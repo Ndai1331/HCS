@@ -334,7 +334,7 @@
             <CloseButton Clicked="CloseActionModalAsync" />
         </ModalHeader>
         <ModalBody Style="padding: 5px !important; position: relative; min-height: 360px;">
-            <div class="@(IsWorkflowActionSubmitting ? "pe-none user-select-none" : null)" style="@(IsWorkflowActionSubmitting ? "opacity: 0.55;" : null)">
+            <div class="@(IsActionModalBusy ? "pe-none user-select-none" : null)" style="@(IsActionModalBusy ? "opacity: 0.55;" : null)">
             <Row>
                 @* ===== LEFT COLUMN: Info + Action Form ===== *@
                 <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
@@ -361,8 +361,27 @@
                                         <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.3rem;"></i>
                                         <div>
                                             <strong>@L["WorkflowOverdue"]</strong>
-                                            <div class="small">@L["WorkflowOverdueDescription"]</div>
+                                            <div class="small">
+                                                @if (WorkflowGraceCancelAt.HasValue && !IsSigningBlocked)
+                                                {
+                                                    var graceLeft = WorkflowGraceCancelAt.Value - Clock.Now;
+                                                    if (graceLeft > TimeSpan.Zero)
+                                                    {
+                                                        <span>@L["WorkflowGracePeriodRemaining", graceLeft.Days, graceLeft.Hours, graceLeft.Minutes]</span>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span>@L["WorkflowOverdueDescription"]</span>
+                                                }
+                                            </div>
                                         </div>
+                                    </div>
+                                }
+                                @if (WorkflowExtensionCount > 0)
+                                {
+                                    <div class="alert alert-info py-2 mb-3" role="alert">
+                                        <small>@L["WorkflowExtensionSummary", WorkflowExtensionCount, WorkflowTotalExtensionBusinessDays]</small>
                                     </div>
                                 }
 
@@ -551,7 +570,7 @@
                             @* Action selection + Note - only shown when NOT view-only *@
                             @if (!IsViewOnly)
                             {
-                                <fieldset disabled="@IsOverdue">
+                                <fieldset disabled="@IsSigningBlocked">
                                     <Field>
                                         <FieldLabel class="fw-bold">@L["SelectAction"] <span class="text-danger">*</span></FieldLabel>
                                         <div class="d-flex flex-wrap align-items-center gap-3">
@@ -741,7 +760,14 @@
                                                         @if (!string.IsNullOrWhiteSpace(log.DocumentWorkflowInstanceLogs.Note))
                                                         {
                                                             <div class="mt-1 p-1 bg-light rounded" style="font-size: 0.8rem;">
-                                                                <div class="small rich-text-preview">@ToMarkupString(log.DocumentWorkflowInstanceLogs.Note)</div>
+                                                                @if (IsPlainTextWorkflowLog(log.DocumentWorkflowInstanceLogs.Action))
+                                                                {
+                                                                    <div class="small text-muted mb-0" style="white-space: pre-wrap;">@log.DocumentWorkflowInstanceLogs.Note</div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <div class="small rich-text-preview">@ToMarkupString(log.DocumentWorkflowInstanceLogs.Note)</div>
+                                                                }
                                                             </div>
                                                         }
                                                     </div>
@@ -938,26 +964,35 @@
                 </Column>
             </Row>
             </div>
-            @if (IsWorkflowActionSubmitting)
+            @if (IsActionModalBusy)
             {
                 <div class="d-flex flex-column align-items-center justify-content-center px-4"
                      style="position: absolute; inset: 0; z-index: 10; background: rgba(255, 255, 255, 0.94); backdrop-filter: blur(1px);">
                     <RadarSpinner />
-                    <p class="small text-muted text-center mb-0 mt-3">@L["SigningActionWaitWithCountdown", WorkflowActionCountdownRemaining]</p>
+                    @if (IsWorkflowActionSubmitting)
+                    {
+                        <p class="small text-muted text-center mb-0 mt-3">@L["SigningActionWaitWithCountdown", WorkflowActionCountdownRemaining]</p>
+                    }
                 </div>
             }
         </ModalBody>
         <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="CloseActionModalAsync" Disabled="@(IsWorkflowActionSubmitting || IsSavingWorkflowSigners)">@L["Close"]</Button>
+            <Button Color="Color.Secondary" Clicked="CloseActionModalAsync" Disabled="@IsActionModalBusy">@L["Close"]</Button>
+            @if (CanExtendWorkflow)
+            {
+                <Button Color="Color.Warning" Outline Clicked="ShowExtendWorkflowModalAsync" Disabled="@IsActionModalBusy">
+                    <Icon Name="IconName.Calendar" Class="me-1" />@L["ExtendWorkflow"]
+                </Button>
+            }
             @if (CanEditWorkflowSigners)
             {
-                <Button Color="Color.Primary" Outline Clicked="SaveWorkflowStepSignersAsync" Disabled="@(IsWorkflowActionSubmitting || IsSavingWorkflowSigners || !HasWorkflowSignerChanges)">
+                <Button Color="Color.Primary" Outline Clicked="SaveWorkflowStepSignersAsync" Disabled="@(IsActionModalBusy || !HasWorkflowSignerChanges)">
                     <Icon Name="IconName.Save" Class="me-1" />@L["SaveWorkflowSigners"]
                 </Button>
             }
             @if (!IsViewOnly)
             {
-                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsWorkflowActionSubmitting || IsSavingWorkflowSigners || IsOverdue || string.IsNullOrEmpty(SelectedAction) || (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && (!SelectedSigningMethodId.HasValue || (AvailableUserSignaturesForMethod.Count > 1 && !SelectedUserSignatureId.HasValue))))">
+                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsActionModalBusy || IsSigningBlocked || string.IsNullOrEmpty(SelectedAction) || (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && (!SelectedSigningMethodId.HasValue || (AvailableUserSignaturesForMethod.Count > 1 && !SelectedUserSignatureId.HasValue))))">
                     <Icon Name="IconName.Check" Class="me-1" />@L["Confirm"]
                 </Button>
             }
@@ -989,6 +1024,40 @@
 
 <ProjectTaskCreateModal @ref="CreateTaskModalRef" OnTaskCreated="OnTaskCreatedFromPdfAsync" />
 
+@* ************************* MODAL: EXTEND WORKFLOW ************************* *@
+<Modal @ref="ExtendWorkflowModal" Closing="@ExtendWorkflowModal.CancelClosingModalWhenFocusLost">
+    <ModalContent Centered="true">
+        <ModalHeader>
+            <ModalTitle>@L["ExtendWorkflow"]</ModalTitle>
+            <CloseButton Clicked="CloseExtendWorkflowModalAsync" />
+        </ModalHeader>
+        <ModalBody Style="position: relative; min-height: 200px;">
+            <Field>
+                <FieldLabel>@L["ExtensionBusinessDays"] <span class="text-danger">*</span></FieldLabel>
+                <NumericEdit TValue="int" @bind-Value="@ExtensionBusinessDaysInput" Min="1" Max="365" Disabled="@IsExtendingWorkflow" />
+                <FieldHelp>@L["SLADaysBusinessDayHint"]</FieldHelp>
+            </Field>
+            <Field>
+                <FieldLabel>@L["ExtensionReason"] <span class="text-danger">*</span></FieldLabel>
+                <MemoEdit @bind-Text="@ExtensionReasonInput" Rows="3" Disabled="@IsExtendingWorkflow" />
+            </Field>
+            @if (IsExtendingWorkflow)
+            {
+                <div class="d-flex align-items-center justify-content-center"
+                     style="position: absolute; inset: 0; z-index: 10; background: rgba(255, 255, 255, 0.94);">
+                    <RadarSpinner />
+                </div>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseExtendWorkflowModalAsync" Disabled="@IsExtendingWorkflow">@L["Close"]</Button>
+            <Button Color="Color.Warning" Clicked="ConfirmExtendWorkflowAsync" Disabled="@IsExtendingWorkflow">
+                <Icon Name="IconName.Check" Class="me-1" />@L["ExtendWorkflow"]
+            </Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
 @* ************************* MODAL: RESUBMIT RETURNED WORKFLOW ************************* *@
 <Modal @ref="ResubmitWorkflowModal" Closing="@ResubmitWorkflowModal.CancelClosingModalWhenFocusLost">
     <ModalContent Centered="true" Size="ModalSize.Large">
@@ -999,9 +1068,10 @@
             </ModalTitle>
             <CloseButton Clicked="CloseResubmitModalAsync" />
         </ModalHeader>
-        <ModalBody>
+        <ModalBody Style="position: relative; min-height: 280px;">
             @if (ReturnedWorkflowInfo != null)
             {
+                <div class="@(IsResubmitModalBusy ? "pe-none user-select-none" : null)" style="@(IsResubmitModalBusy ? "opacity: 0.55;" : null)">
                 @* Info banner about returned workflow *@
                 <Alert Color="Color.Warning" Visible="true" Class="mb-3">
                     <AlertMessage>
@@ -1229,18 +1299,20 @@
                         </div>
                     }
                 </Field>
+                </div>
             }
-            else
+            @if (IsResubmitModalBusy)
             {
-                <Div TextAlignment="TextAlignment.Center" Class="p-4">
+                <div class="d-flex align-items-center justify-content-center"
+                     style="position: absolute; inset: 0; z-index: 10; background: rgba(255, 255, 255, 0.94);">
                     <RadarSpinner />
-                </Div>
+                </div>
             }
         </ModalBody>
         <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="CloseResubmitModalAsync">@L["Cancel"]</Button>
+            <Button Color="Color.Secondary" Clicked="CloseResubmitModalAsync" Disabled="@IsResubmitModalBusy">@L["Cancel"]</Button>
             <Button Color="Color.Success" Clicked="ConfirmResubmitWorkflowAsync"
-                    Disabled="@(ReturnedWorkflowInfo == null || (!ResubmitUseWorkflowTemplateFile && !ResubmitSelectedDocumentId.HasValue))">
+                    Disabled="@(IsResubmitModalBusy || ReturnedWorkflowInfo == null || (!ResubmitUseWorkflowTemplateFile && !ResubmitSelectedDocumentId.HasValue))">
                 <Icon Name="IconName.Redo" Class="me-1" />@L["ResubmitWorkflow"]
             </Button>
         </ModalFooter>

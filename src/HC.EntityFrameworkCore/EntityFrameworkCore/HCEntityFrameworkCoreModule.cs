@@ -83,6 +83,7 @@ public class HCEntityFrameworkCoreModule : AbpModule
             options.AddRepository<Document, Documents.EfCoreDocumentRepository>();
             options.AddRepository<DocumentFile, DocumentFiles.EfCoreDocumentFileRepository>();
             options.AddRepository<DocumentWorkflowInstance, DocumentWorkflowInstances.EfCoreDocumentWorkflowInstanceRepository>();
+            options.AddRepository<DocumentWorkflowInstanceExtension, DocumentWorkflowInstances.EfCoreDocumentWorkflowInstanceExtensionRepository>();
             options.AddRepository<DocumentAssignment, DocumentAssignments.EfCoreDocumentAssignmentRepository>();
             options.AddRepository<DocumentHistory, DocumentHistories.EfCoreDocumentHistoryRepository>();
             options.AddRepository<Project, Projects.EfCoreProjectRepository>();

@@ -730,6 +730,7 @@
                 <Field>
                     <FieldLabel>@L["SLADays"]</FieldLabel>
                     <NumericEdit TValue="int?" @bind-Value="@NewStepTemplate.SLADays" />
+                    <FieldHelp>@L["SLADaysBusinessDayHint"]</FieldHelp>
                 </Field>
                 <Field>
                     <Check TValue="bool" @bind-Checked="@NewStepTemplate.AllowReturn">@L["AllowReturn"]</Check>

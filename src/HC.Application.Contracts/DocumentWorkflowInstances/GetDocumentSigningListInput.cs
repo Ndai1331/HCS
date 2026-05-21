@@ -108,6 +108,14 @@ public class DocumentSigningItemDto
     /// </summary>
     public DateTime? WorkflowFinishedAt { get; set; }
 
+    public DateTime? WorkflowOverdueAt { get; set; }
+
+    public DateTime? WorkflowGraceCancelAt { get; set; }
+
+    public int ExtensionCount { get; set; }
+
+    public int TotalExtensionBusinessDays { get; set; }
+
     /// <summary>
     /// Current user's assignment status for this document
     /// </summary>
@@ -129,8 +137,7 @@ public class DocumentSigningItemDto
 public class WorkflowOverdueCheckResultDto
 {
     /// <summary>
-    /// True if FinishedAt <= DateTime.Now and status is not COMPLETED/REJECTED/CANCELLED.
-    /// When true, all actions are disabled and the overdue updates have already been applied.
+    /// True when deadline passed (IN_PROGRESS past FinishedAt) or status is OVERDUE.
     /// </summary>
     public bool IsOverdue { get; set; }
 
@@ -139,4 +146,14 @@ public class WorkflowOverdueCheckResultDto
     /// Used to show/hide the Return action in the modal.
     /// </summary>
     public bool AllowReturn { get; set; }
+
+    public bool CanExtend { get; set; }
+
+    public DateTime? GraceCancelAt { get; set; }
+
+    public int ExtensionCount { get; set; }
+
+    public int TotalExtensionBusinessDays { get; set; }
+
+    public string? WorkflowStatus { get; set; }
 }

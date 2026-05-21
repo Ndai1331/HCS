@@ -42,6 +42,15 @@ public abstract class DocumentWorkflowInstanceBase : FullAuditedAggregateRoot<Gu
     [CanBeNull]
     public virtual string? CommittedStepTemplateIdsJson { get; set; }
 
+    /// <summary>When status became OVERDUE (signing deadline passed).</summary>
+    public virtual DateTime? OverdueAt { get; set; }
+
+    /// <summary>Number of deadline extensions applied to this instance.</summary>
+    public virtual int ExtensionCount { get; set; }
+
+    /// <summary>Total business days added via extensions.</summary>
+    public virtual int TotalExtensionBusinessDays { get; set; }
+
     public ICollection<DocumentWorkflowInstanceFile> DocumentWorkflowInstanceFiles { get; private set; }
 
     public ICollection<DocumentWorkflowInstanceLogs> DocumentWorkflowInstanceLogss { get; private set; }

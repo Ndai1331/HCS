@@ -16,7 +16,11 @@ using Volo.Abp.TextTemplateManagement;
 using Volo.Saas.Host;
 // using Volo.Forms;
 using PdfSharp.Fonts;
+using HC.DocumentWorkflowInstances;
 using HC.Helpers;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Volo.Abp;
 
 namespace HC;
 
@@ -45,6 +49,7 @@ namespace HC;
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
         context.Services.AddMapperlyObjectMapper<HCApplicationModule>();
+        Configure<WorkflowSigningOptions>(context.Services.GetConfiguration().GetSection(WorkflowSigningOptions.SectionName));
 
         if (GlobalFontSettings.FontResolver == null || GlobalFontSettings.FontResolver is not CustomFontResolver)
         {

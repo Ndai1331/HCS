@@ -2,15 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using HC.DocumentAssignments;
-using HC.DocumentHistories;
-using HC.Documents;
-using HC.DocumentWorkflowInstanceLogss;
-using HC.MasterDatas;
+using HC.Workflows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.BackgroundWorkers;
-using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Threading;
 using Volo.Abp.Timing;
 using Volo.Abp.Uow;
@@ -24,7 +19,6 @@ public class WorkflowOverdueBackgroundWorker : AsyncPeriodicBackgroundWorkerBase
         IServiceScopeFactory serviceScopeFactory)
         : base(timer, serviceScopeFactory)
     {
-        // Run every 3 minutes (300,000 ms)
         Timer.Period = 3 * 60 * 1000;
     }
 
@@ -35,147 +29,61 @@ public class WorkflowOverdueBackgroundWorker : AsyncPeriodicBackgroundWorkerBase
 
         var clock = workerContext.ServiceProvider.GetRequiredService<IClock>();
         var instanceRepository = workerContext.ServiceProvider.GetRequiredService<IDocumentWorkflowInstanceRepository>();
-        var assignmentRepository = workerContext.ServiceProvider.GetRequiredService<IDocumentAssignmentRepository>();
-        var documentRepository = workerContext.ServiceProvider.GetRequiredService<IRepository<Document, Guid>>();
-        var masterDataRepository = workerContext.ServiceProvider.GetRequiredService<IRepository<MasterData, Guid>>();
-        var historyManager = workerContext.ServiceProvider.GetRequiredService<DocumentHistoryManager>();
-        var logsManager = workerContext.ServiceProvider.GetRequiredService<DocumentWorkflowInstanceLogsManager>();
+        var cancellationService = workerContext.ServiceProvider.GetRequiredService<WorkflowOverdueCancellationService>();
 
         var now = clock.Now;
 
-        var overdueInstances = await instanceRepository.GetListAsync(
+        var markOverdueCandidates = await instanceRepository.GetListAsync(
             x => x.Status == nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS)
-            && x.FinishedAt > DateTime.MinValue
-            && x.FinishedAt <= now);
+                 && x.FinishedAt > DateTime.MinValue
+                 && x.FinishedAt <= now);
 
-        if (!overdueInstances.Any())
-        {
-            Logger.LogDebug("[OVERDUE_WORKER] No overdue instances found.");
-            return;
-        }
-
-        Logger.LogInformation("[OVERDUE_WORKER] Found {Count} overdue workflow instances.", overdueInstances.Count);
-
-        var cancelledCount = 0;
-
-        foreach (var instance in overdueInstances)
+        foreach (var instance in markOverdueCandidates)
         {
             try
             {
-                // 1. Update instance status to CANCELLED
-                instance.Status = nameof(DocumentWorkflowInstanceStatus.CANCELLED);
-                instance.FinishedAt = now;
+                instance.Status = nameof(DocumentWorkflowInstanceStatus.OVERDUE);
+                instance.OverdueAt = now;
                 await instanceRepository.UpdateAsync(instance);
-
-                // 2. Update document status to DA_HUY
-                try
-                {
-                    var document = await documentRepository.GetAsync(instance.DocumentId);
-                    var statusCode = DocumentStatusCode.DA_HUY.GetCode();
-                    var statusList = await masterDataRepository.GetListAsync(
-                        x => x.Code == statusCode && x.Type == MasterDataType.Status.GetTypeValue());
-                    var status = statusList.FirstOrDefault();
-
-                    if (status != null)
-                    {
-                        document.StatusId = status.Id;
-                        await documentRepository.UpdateAsync(document);
-
-                        // Mirror cancel status on original manage-documents row when child is a workflow duplicate.
-                        if (document.ParentDocumentId.HasValue)
-                        {
-                            var parent = await documentRepository.GetAsync(document.ParentDocumentId.Value);
-                            parent.StatusId = status.Id;
-                            await documentRepository.UpdateAsync(parent);
-                        }
-                    }
-                    else
-                    {
-                        Logger.LogWarning("[OVERDUE_WORKER] MasterData status DA_HUY not found. DocumentId={DocumentId}", instance.DocumentId);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "[OVERDUE_WORKER] Error updating document status. DocumentId={DocumentId}", instance.DocumentId);
-                }
-
-                // 3. Create document history (toUser = instance creator, who initiated the workflow)
-                try
-                {
-                    if (instance.CreatorId.HasValue)
-                    {
-                        await historyManager.CreateAsync(
-                            instance.DocumentId,
-                            null, // fromUser: system action
-                            instance.CreatorId.Value, // toUser: notify creator
-                            nameof(WorkflowInstanceLogAction.WORKFLOW_CANCELLED),
-                            "Hết hạn xử lý tài liệu - Tự động hủy bởi hệ thống"
-                        );
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "[OVERDUE_WORKER] Error creating document history. InstanceId={InstanceId}", instance.Id);
-                }
-
-                // 4. Create workflow instance log
-                try
-                {
-                    await logsManager.CreateAsync(
-                        instance.Id,
-                        null, // No assignment
-                        null, // System user
-                        nameof(WorkflowInstanceLogAction.WORKFLOW_CANCELLED),
-                        WorkflowConstants.RoleSystem,
-                        nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
-                        nameof(DocumentWorkflowInstanceStatus.CANCELLED),
-                        "Hết hạn xử lý - Tự động hủy bởi hệ thống"
-                    );
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "[OVERDUE_WORKER] Error creating workflow log. InstanceId={InstanceId}", instance.Id);
-                }
-
-                // 5. Revoke all pending assignments for this document's workflow
-                try
-                {
-                    var pendingAssignments = await assignmentRepository.GetListAsync(
-                        x => x.DocumentId == instance.DocumentId
-                        && x.IsCurrent
-                        && x.Status == nameof(DocumentAssignmentStatus.PENDING));
-
-                    foreach (var assignment in pendingAssignments)
-                    {
-                        assignment.Status = nameof(DocumentAssignmentStatus.REVOKE);
-                        assignment.ProcessedAt = now;
-                        assignment.IsCurrent = false;
-                        await assignmentRepository.UpdateAsync(assignment);
-                    }
-
-                    if (pendingAssignments.Any())
-                    {
-                        Logger.LogInformation("[OVERDUE_WORKER] Revoked {Count} pending assignments for instance {InstanceId}",
-                            pendingAssignments.Count, instance.Id);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "[OVERDUE_WORKER] Error revoking assignments. InstanceId={InstanceId}", instance.Id);
-                }
-
-                cancelledCount++;
-                Logger.LogInformation("[OVERDUE_WORKER] Cancelled overdue workflow. InstanceId={InstanceId}, DocumentId={DocumentId}",
-                    instance.Id, instance.DocumentId);
+                Logger.LogInformation(
+                    "[OVERDUE_WORKER] Marked instance {InstanceId} as OVERDUE at {OverdueAt}",
+                    instance.Id, now);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "[OVERDUE_WORKER] Error processing overdue instance {InstanceId}", instance.Id);
-                // Continue with next instance
+                Logger.LogError(ex, "[OVERDUE_WORKER] Failed to mark OVERDUE for instance {InstanceId}", instance.Id);
             }
         }
 
-        Logger.LogInformation("[OVERDUE_WORKER] Completed. Cancelled {Count}/{Total} overdue workflows.",
-            cancelledCount, overdueInstances.Count);
+        var overdueInstances = await instanceRepository.GetListAsync(
+            x => x.Status == nameof(DocumentWorkflowInstanceStatus.OVERDUE)
+                 && x.OverdueAt.HasValue);
+
+        var cancelCount = 0;
+        foreach (var instance in overdueInstances)
+        {
+            var graceCancelAt = BusinessDayCalculator.GetOverdueGraceCancelAt(instance.OverdueAt!.Value);
+            if (now < graceCancelAt)
+            {
+                continue;
+            }
+
+            try
+            {
+                await cancellationService.CancelOverdueInstanceAsync(instance, now, Logger);
+                cancelCount++;
+                Logger.LogInformation(
+                    "[OVERDUE_WORKER] Cancelled instance {InstanceId} after grace (OverdueAt={OverdueAt}, GraceEnd={GraceEnd})",
+                    instance.Id, instance.OverdueAt, graceCancelAt);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "[OVERDUE_WORKER] Failed to cancel instance {InstanceId}", instance.Id);
+            }
+        }
+
+        Logger.LogInformation(
+            "[OVERDUE_WORKER] Completed. Marked {Marked} overdue, cancelled {Cancelled} after grace.",
+            markOverdueCandidates.Count, cancelCount);
     }
 }
