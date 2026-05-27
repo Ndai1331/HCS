@@ -29,6 +29,7 @@ namespace HC.PushNotificationWorker;
     typeof(AbpCachingStackExchangeRedisModule),
     typeof(AbpEventBusRabbitMqModule),
     typeof(AbpDistributedLockingModule),
+    typeof(HCDomainSharedModule),
     typeof(HCEntityFrameworkCoreModule)
 )]
 public class HCPushNotificationWorkerModule : AbpModule

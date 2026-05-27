@@ -24,6 +24,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HC.Application.Contracts\HC.Application.Contracts.csproj" />
+    <ProjectReference Include="..\HC.Domain.Shared\HC.Domain.Shared.csproj" />
     <ProjectReference Include="..\HC.EntityFrameworkCore\HC.EntityFrameworkCore.csproj" />
   </ItemGroup>
   <ItemGroup>
