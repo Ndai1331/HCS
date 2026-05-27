@@ -313,7 +313,6 @@
 /Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/bin/Release/net10.0/runtimes/win/lib/net9.0/System.Diagnostics.EventLog.Messages.dll
 /Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/bin/Release/net10.0/runtimes/win/lib/net9.0/System.Diagnostics.EventLog.dll
 /Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/bin/Release/net10.0/runtimes/win/lib/net10.0/System.Management.dll
-/Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/bin/Release/net10.0/runtimes/win/lib/net9.0/System.Security.Cryptography.Pkcs.dll
 /Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/bin/Release/net10.0/runtimes/win/lib/net9.0/System.Windows.Extensions.dll
 /Users/user/Documents/HCS/src/HC.EntityFrameworkCore/bin/Release/net10.0/HC.EntityFrameworkCore.deps.json
 /Users/user/Documents/HCS/src/HC.EntityFrameworkCore/bin/Release/net10.0/HC.EntityFrameworkCore.runtimeconfig.json
@@ -632,3 +631,4 @@
 /Users/user/Documents/HCS/src/HC.EntityFrameworkCore/obj/Release/net10.0/HC.EntityFrameworkCore.pdb
 /Users/user/Documents/HCS/src/HC.EntityFrameworkCore/obj/Release/net10.0/HC.EntityFrameworkCore.genruntimeconfig.cache
 /Users/user/Documents/HCS/src/HC.EntityFrameworkCore/obj/Release/net10.0/ref/HC.EntityFrameworkCore.dll
+/Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/bin/Release/net10.0/runtimes/win/lib/net10.0/System.Security.Cryptography.Pkcs.dll

@@ -1,0 +1,49 @@
+# Build HC.PushNotificationWorker Docker image (linux/amd64)
+
+Publish runs **inside** the Docker build (SDK image) to avoid corrupted DLLs (`Bad IL range`) from cross-platform publish.
+
+## Local build
+
+```powershell
+# Default tags: latest01042026 + latest
+./build-pushnotification-linux-amd64.ps1
+
+# Custom tag
+./build-pushnotification-linux-amd64.ps1 -version latestlvt
+
+# Clear local image cache before build
+./build-pushnotification-linux-amd64.ps1 -version latest01042026 -ClearDockerCache
+```
+
+## GitHub Actions (CI/CD)
+
+Workflow: `.github/workflows/build-pushnotification-docker.yml`
+
+| Trigger | Condition |
+|---------|-----------|
+| Push | Commit message contains `[pushnoti]` |
+| Manual | Actions → **Build PushNotificationWorker Docker image** → Run workflow |
+
+**Image tag** (optional in commit message; default `latest01042026`):
+
+| Tag in commit | Docker tag pushed |
+|---------------|-------------------|
+| `[latest01042026]` | `longnguyen1331/hc-pushnotificationworker:latest01042026` (+ `latest`) |
+| `[latestlvt]` | `longnguyen1331/hc-pushnotificationworker:latestlvt` (+ `latest`) |
+
+Example commit:
+
+```text
+[pushnoti] fix FCM credential validation [latest01042026]
+```
+
+Secrets required: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` (same as API/Blazor workflow).
+
+## Deploy on server
+
+```bash
+docker compose -f etc/docker-compose/docker-compose-bv199-Production.yml pull hc-pushnotificationworker
+docker compose -f etc/docker-compose/docker-compose-bv199-Production.yml up -d hc-pushnotificationworker
+```
+
+Firebase: replace `./secrets/firebase/hanh-chinh-so-firebase.json` with a **new** GCP service account key (old key `c8fb6af6...` is invalid/revoked).

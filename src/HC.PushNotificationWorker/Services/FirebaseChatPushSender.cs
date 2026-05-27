@@ -90,6 +90,14 @@ public class FirebaseChatPushSender : ITransientDependency
                     await _tokenRepository.UpdateAsync(device, autoSave: true);
                 }
             }
+            catch (Exception ex) when (FirebaseCredentialHelper.IsCredentialError(ex))
+            {
+                _logger.LogError(
+                    ex,
+                    "FCM aborted: Firebase service account credentials are invalid (invalid_grant / Invalid JWT Signature). "
+                    + "This affects all devices — regenerate the service account JSON key on the server and restart the worker.");
+                return;
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Unexpected error sending FCM to device {DeviceId}", device.Id);

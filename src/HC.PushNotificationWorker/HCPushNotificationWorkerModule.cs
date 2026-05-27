@@ -5,6 +5,8 @@ using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.DistributedEvents;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.Responses;
+using HC.PushNotificationWorker.Services;
 using Medallion.Threading;
 using Medallion.Threading.Redis;
 using Microsoft.Extensions.Configuration;
@@ -71,20 +73,38 @@ public class HCPushNotificationWorkerModule : AbpModule
             return;
         }
 
+        var metadata = FirebaseCredentialHelper.TryReadCredentialMetadata(path);
         try
         {
-            if (FirebaseApp.DefaultInstance == null)
+            if (FirebaseApp.DefaultInstance != null)
             {
-                FirebaseApp.Create(new AppOptions
-                {
-                    Credential = GoogleCredential.FromFile(path)
-                });
-                logger.LogInformation("Firebase Admin SDK initialized from {Path}.", path);
+                return;
             }
+
+            var credential = FirebaseCredentialHelper.LoadCredential(path);
+            FirebaseCredentialHelper.ValidateAccessTokenAsync(credential).GetAwaiter().GetResult();
+
+            FirebaseApp.Create(new AppOptions { Credential = credential });
+            logger.LogInformation(
+                "Firebase Admin SDK initialized and OAuth token validated. Path={Path}. {Metadata}",
+                path,
+                metadata);
+        }
+        catch (TokenResponseException ex) when (FirebaseCredentialHelper.IsCredentialError(ex))
+        {
+            logger.LogError(
+                ex,
+                "Firebase service account rejected by Google ({Error}: {Description}). "
+                + "Regenerate the JSON key in GCP (project hanh-chinh-so), replace the mounted file, and restart. "
+                + "Path={Path}. {Metadata}",
+                ex.Error?.Error,
+                ex.Error?.ErrorDescription,
+                path,
+                metadata);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to initialize Firebase Admin SDK from {Path}.", path);
+            logger.LogError(ex, "Failed to initialize Firebase Admin SDK from {Path}. {Metadata}", path, metadata);
         }
     }
 
