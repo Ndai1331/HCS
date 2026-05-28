@@ -14,6 +14,8 @@ public interface IConversationAppService : IApplicationService
     Task DeleteMessageAsync(DeleteMessageInput input);
 
     Task<ChatConversationDto> GetConversationAsync(GetConversationInput input);
+    
+    Task<ConversationDto> GetConversationInfoAsync(Guid conversationId);
 
     Task MarkConversationAsReadAsync(MarkConversationAsReadInput input);
     

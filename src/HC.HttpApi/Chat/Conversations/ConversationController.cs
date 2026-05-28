@@ -40,6 +40,13 @@ public class ConversationController : ChatController, IConversationAppService
         return _conversationAppService.GetConversationAsync(input);
     }
 
+    [HttpGet]
+    [Route("{id}/info")]
+    public Task<ConversationDto> GetConversationInfoAsync(Guid id)
+    {
+        return _conversationAppService.GetConversationInfoAsync(id);
+    }
+
     [HttpPost]
     [Route("mark-conversation-as-read")]
     public Task MarkConversationAsReadAsync(MarkConversationAsReadInput input)

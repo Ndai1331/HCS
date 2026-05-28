@@ -306,6 +306,19 @@ public class ConversationAppService : ChatAppService, IConversationAppService
 
         return chatConversation;
     }
+    
+    public virtual async Task<ConversationDto> GetConversationInfoAsync(Guid conversationId)
+    {
+        var currentUserId = CurrentUser.GetId();
+        var isMember = await _conversationRepository.IsUserMemberAsync(conversationId, currentUserId);
+        if (!isMember)
+        {
+            throw new BusinessException("HC.Chat:UserNotMember");
+        }
+        
+        var conversation = await _conversationRepository.GetAsync(conversationId);
+        return await MapToConversationDtoAsync(conversation, currentUserId);
+    }
 
     public virtual async Task MarkConversationAsReadAsync(MarkConversationAsReadInput input)
     {
