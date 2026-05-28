@@ -6,6 +6,11 @@ namespace HC.SurveyResults;
 public class SurveyResultStatisticsDto
 {
     /// <summary>
+    /// Total number of review rows by selected location
+    /// </summary>
+    public int TotalReviews { get; set; }
+
+    /// <summary>
     /// Rating distribution: Key = Rating (0-5), Value = Count
     /// </summary>
     public Dictionary<int, int> RatingDistribution { get; set; } = new();

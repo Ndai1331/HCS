@@ -136,30 +136,27 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
     {
         var resultQueryable = await _surveyResultRepository.GetQueryableAsync();
         var sessionQueryable = await _surveySessionRepository.GetQueryableAsync();
+        var criteriaQueryable = await _surveyCriteriaRepository.GetQueryableAsync();
 
         var query =
-            from session in sessionQueryable
-            join result in resultQueryable on session.Id equals result.SurveySessionId
+            from result in resultQueryable
+            join session in sessionQueryable on result.SurveySessionId equals session.Id
+            join criteria in criteriaQueryable on result.SurveyCriteriaId equals criteria.Id
             where !input.SurveyLocationId.HasValue || session.SurveyLocationId == input.SurveyLocationId.Value
-            group result by new
-            {
-                session.Id,
-                session.FullName,
-                session.PhoneNumber,
-                session.PatientCode,
-                session.Note,
-                session.SurveyTime
-            }
-            into grouped
             select new SurveyResultSessionSummaryDto
             {
-                SurveySessionId = grouped.Key.Id,
-                AverageRating = grouped.Average(x => (double)x.Rating),
-                FullName = grouped.Key.FullName,
-                PhoneNumber = grouped.Key.PhoneNumber,
-                PatientCode = grouped.Key.PatientCode,
-                Note = grouped.Key.Note,
-                SurveyTime = grouped.Key.SurveyTime
+                SurveyResultId = result.Id,
+                SurveySessionId = session.Id,
+                SurveyCriteriaId = criteria.Id,
+                SurveyCriteriaName = criteria.Name,
+                Rating = result.Rating,
+                // Keep for backward compatibility on clients still reading this field.
+                AverageRating = result.Rating,
+                FullName = session.FullName,
+                PhoneNumber = session.PhoneNumber,
+                PatientCode = session.PatientCode,
+                Note = session.Note,
+                SurveyTime = session.SurveyTime
             };
 
         var sorting = string.IsNullOrWhiteSpace(input.Sorting) ? "SurveyTime desc" : input.Sorting;
@@ -168,11 +165,6 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
             query.OrderBy(sorting)
                 .PageBy(input.SkipCount, input.MaxResultCount)
         );
-
-        foreach (var item in items)
-        {
-            item.AverageRating = Math.Round(item.AverageRating, 2);
-        }
 
         return new PagedResultDto<SurveyResultSessionSummaryDto>
         {
@@ -222,27 +214,26 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
             var sessionQueryable = await _surveySessionRepository.GetQueryableAsync();
             var criteriaQueryable = await _surveyCriteriaRepository.GetQueryableAsync();
 
-            // Join SurveyResults with SurveySessions
             var query = from result in queryable
                        join session in sessionQueryable on result.SurveySessionId equals session.Id
                        join criteria in criteriaQueryable on result.SurveyCriteriaId equals criteria.Id
                        where !surveyLocationId.HasValue || session.SurveyLocationId == surveyLocationId.Value
+                       where criteria.IsActive
                        select new
                        {
                            result.Rating,
+                           criteria.Id,
                            criteria.Name,
                            criteria.Code
                        };
-            _logger.LogInformation($"GetStatisticsByLocationAsync Query: {JsonSerializer.Serialize(query)}");
             var data = await AsyncExecuter.ToListAsync(query);
 
-            _logger.LogInformation($"GetStatisticsByLocationAsync Data: {JsonSerializer.Serialize(data)}");
+            statistics.TotalReviews = data.Count;
+
             // Calculate rating distribution
             statistics.RatingDistribution = data
                 .GroupBy(x => x.Rating)
                 .ToDictionary(g => g.Key, g => g.Count());
-
-            _logger.LogInformation($"GetStatisticsByLocationAsync Rating Distribution: {JsonSerializer.Serialize(statistics.RatingDistribution)}");
 
             // Ensure all ratings 0-5 are present
             for (int i = 0; i <= 5; i++)
@@ -252,17 +243,29 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
                     statistics.RatingDistribution[i] = 0;
                 }
             }
-            _logger.LogInformation($"GetStatisticsByLocationAsync Rating Distribution: {JsonSerializer.Serialize(statistics.RatingDistribution)}");
-            // Calculate criteria average ratings
-            statistics.CriteriaAverageRatings = data
-                .GroupBy(x => x.Name)
+
+            // Calculate criteria average ratings by criteria id to avoid collapsing duplicated names.
+            var criteriaAverages = data
+                .GroupBy(x => new { x.Id, x.Name, x.Code })
                 .Select(g => new
                 {
-                    CriteriaName = g.Key,
+                    CriteriaName = g.Key.Name,
+                    CriteriaCode = g.Key.Code,
                     AverageRating = g.Average(x => x.Rating)
                 })
                 .OrderBy(x => x.CriteriaName)
-                .ToDictionary(x => x.CriteriaName, x => Math.Round(x.AverageRating, 1));
+                .ToList();
+
+            statistics.CriteriaAverageRatings = criteriaAverages
+                .GroupBy(x => x.CriteriaName)
+                .SelectMany(group => group.Select(item => new
+                {
+                    Label = group.Count() > 1 && !item.CriteriaCode.IsNullOrWhiteSpace()
+                        ? $"{item.CriteriaName} ({item.CriteriaCode})"
+                        : item.CriteriaName,
+                    item.AverageRating
+                }))
+                .ToDictionary(x => x.Label, x => Math.Round(x.AverageRating, 1));
             _logger.LogInformation($"GetStatisticsByLocationAsync Criteria Average Ratings: {JsonSerializer.Serialize(statistics.CriteriaAverageRatings)}");
             return statistics;
         }

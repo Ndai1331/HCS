@@ -177,15 +177,17 @@
             <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
                 <Field>
                     <FieldLabel>@L["SurveyLocation"]</FieldLabel>
-                    <Select TValue="Guid?"
-                            SelectedValue="@SelectedSurveyLocationId"
-                            SelectedValueChanged="@OnSurveyLocationChanged">
-                        <SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["All"]</SelectItem>
+                    <select id="@surveyLocationSelectElementId"
+                            class="form-control"
+                            @onchange="OnSurveyLocationNativeChanged">
+                        <option value="">@L["All"]</option>
                         @foreach (var location in SurveyLocations)
                         {
-                            <SelectItem TValue="Guid" Value="@location.Id">@location.Name</SelectItem>
+                            <option value="@location.Id" selected="@(SelectedSurveyLocationId == location.Id)">
+                                @location.Name
+                            </option>
                         }
-                    </Select>
+                    </select>
                 </Field>
             </Column>
         </Row>
@@ -245,7 +247,7 @@ else
                                             <li class="stat-list-item">
                                                 <span class="stat-dot dot-primary text-brand"></span>
                                                 @L["RatingDistributionTotal"]
-                                                <span class="stat-value text-brand">@RatingDistributionData.Sum()</span>
+                                                <span class="stat-value text-brand">@TotalReviews</span>
                                             </li>
                                             <li class="stat-list-item">
                                                 <span class="stat-dot dot-secondary"></span>
@@ -331,9 +333,14 @@ else
                                 </Row>
                             </EmptyTemplate>
                             <DataGridColumns>
-                                <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Trung bình điểm đánh giá" Sortable="false">
+                                <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Điểm đánh giá" Sortable="false">
                                     <DisplayTemplate>
-                                        @context.AverageRating.ToString("0.##")
+                                        @context.Rating
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Tiêu chí đánh giá" Sortable="false">
+                                    <DisplayTemplate>
+                                        @context.SurveyCriteriaName
                                     </DisplayTemplate>
                                 </DataGridColumn>
                                 <DataGridColumn TItem="SurveyResultSessionSummaryDto" Caption="Khách hàng" Sortable="false">
