@@ -1,4 +1,4 @@
-name: Build API + Blazor Docker images
+name: Build PushNotificationWorker Docker image
 
 on:
   push:
@@ -15,23 +15,18 @@ on:
           - latestlvt
 
 concurrency:
-  group: build-api-blazor-docker-${{ github.ref }}
+  group: build-pushnotification-docker-${{ github.ref }}
   cancel-in-progress: true
-
 
 jobs:
   build-and-push:
     # workflow_dispatch has no head_commit; only inspect message on push.
     if: |
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && (
-        contains(github.event.head_commit.message, '[latest01042026]') ||
-        contains(github.event.head_commit.message, '[latestlvt]')
-      ))
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[pushnoti]'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
 
     steps:
       - name: Checkout
@@ -50,22 +45,16 @@ jobs:
             exit 0
           fi
           COMMIT_MSG="$(git log -1 --pretty=%B)"
-          if echo "$COMMIT_MSG" | grep -qF '[latest01042026]'; then
-            echo "version=latest01042026" >> "$GITHUB_OUTPUT"
-            echo "Resolved version (commit): latest01042026"
-          elif echo "$COMMIT_MSG" | grep -qF '[latestlvt]'; then
+          if echo "$COMMIT_MSG" | grep -qF '[latestlvt]'; then
             echo "version=latestlvt" >> "$GITHUB_OUTPUT"
             echo "Resolved version (commit): latestlvt"
+          elif echo "$COMMIT_MSG" | grep -qF '[latest01042026]'; then
+            echo "version=latest01042026" >> "$GITHUB_OUTPUT"
+            echo "Resolved version (commit): latest01042026"
           else
-            echo "version=" >> "$GITHUB_OUTPUT"
-            echo "::error::No recognized tag in commit message."
-            exit 1
+            echo "version=latest01042026" >> "$GITHUB_OUTPUT"
+            echo "Resolved version (commit): latest01042026 (default)"
           fi
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -76,8 +65,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push (Blazor + API)
+      - name: Build and push (PushNotificationWorker)
         shell: pwsh
         run: |
-          ./build-api-blazor-linux-amd64.ps1 -version '${{ steps.version.outputs.version }}' -ClearDockerCache
-
+          ./build-pushnotification-linux-amd64.ps1 -version '${{ steps.version.outputs.version }}' -ClearDockerCache

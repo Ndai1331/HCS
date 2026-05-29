@@ -13,10 +13,11 @@ using Microsoft.Extensions.Logging;
 using Volo.Abp.Http.Client;
 using System.Globalization;
 using Volo.Abp.Application.Dtos;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace HC.Blazor.Pages;
 
-public partial class SurveyResults
+public partial class SurveyResults : IAsyncDisposable
 {
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems = new List<Volo.Abp.BlazoriseUI.BreadcrumbItem>();
     protected PageToolbar Toolbar { get; } = new PageToolbar();
@@ -42,6 +43,10 @@ public partial class SurveyResults
     protected SurveyResultSessionSummaryDto? SelectedSurveySessionSummary { get; set; }
     protected IReadOnlyList<SurveyResultSessionDetailDto> SelectedSurveySessionDetails { get; set; } = new List<SurveyResultSessionDetailDto>();
     protected bool IsDetailModalLoading { get; set; }
+    protected string surveyLocationSelectElementId { get; } = $"survey-location-select-{Guid.NewGuid():N}";
+    private DotNetObjectReference<SurveyResults>? _surveyLocationSelect2DotNetRef;
+    private bool _surveyLocationSelect2Initialized;
+    private bool _pendingSurveyLocationSelect2Init;
 
     [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
     [Inject] private ILogger<SurveyResults> _logger { get; set; } = null!;
@@ -80,6 +85,7 @@ public partial class SurveyResults
 
     protected List<string> CriteriaAverageRatingsLabels => Statistics?.CriteriaAverageRatings?.Keys.ToList() ?? new();
     protected List<double> CriteriaAverageRatingsData => Statistics?.CriteriaAverageRatings?.Values.ToList() ?? new();
+    protected int TotalReviews => Statistics?.TotalReviews ?? 0;
     protected List<string> CriteriaAverageRatingsColors => Statistics?.CriteriaAverageRatings?.Keys.Count() > 0 ?
     Enumerable.Repeat("#3498db", Statistics.CriteriaAverageRatings.Keys.Count()).ToList() : new();
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -92,6 +98,15 @@ public partial class SurveyResults
             await SetBreadcrumbItemsAsync();
             await LoadSurveyLocationsAsync();
             await LoadStatisticsAsync();
+            _pendingSurveyLocationSelect2Init = true;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        if (_pendingSurveyLocationSelect2Init && SurveyLocations.Count > 0)
+        {
+            await InitializeSurveyLocationSelect2Async();
+            _pendingSurveyLocationSelect2Init = false;
         }
     }
 
@@ -131,6 +146,25 @@ public partial class SurveyResults
     {
         SelectedSurveyLocationId = locationId;
         await SearchAsync();
+    }
+
+    protected virtual async Task OnSurveyLocationNativeChanged(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString();
+        var parsed = Guid.TryParse(value, out var locationId) ? locationId : (Guid?)null;
+        await OnSurveyLocationChanged(parsed);
+    }
+
+    [JSInvokable]
+    public async Task OnSurveyLocationSelect2Changed(string? value)
+    {
+        var parsed = Guid.TryParse(value, out var locationId) ? locationId : (Guid?)null;
+        if (parsed == SelectedSurveyLocationId)
+        {
+            return;
+        }
+
+        await OnSurveyLocationChanged(parsed);
     }
 
     /// <summary>
@@ -252,4 +286,32 @@ public partial class SurveyResults
         NavigationManager.NavigateTo($"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/survey-results/as-excel-file?DownloadToken={token}&SurveyLocationId={SelectedSurveyLocationId}", forceLoad: true);
     }
 
+    private async Task InitializeSurveyLocationSelect2Async()
+    {
+        _surveyLocationSelect2DotNetRef ??= DotNetObjectReference.Create(this);
+        await JSRuntime.InvokeVoidAsync("HcSurveyResultsLocationSelect2.init", surveyLocationSelectElementId, _surveyLocationSelect2DotNetRef);
+        _surveyLocationSelect2Initialized = true;
+        await JSRuntime.InvokeVoidAsync("HcSurveyResultsLocationSelect2.setValue", surveyLocationSelectElementId, SelectedSurveyLocationId?.ToString());
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_surveyLocationSelect2Initialized)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("HcSurveyResultsLocationSelect2.destroy", surveyLocationSelectElementId);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Browser circuit was disconnected.
+            }
+            catch (TaskCanceledException)
+            {
+                // Ignore cancellation during shutdown.
+            }
+        }
+
+        _surveyLocationSelect2DotNetRef?.Dispose();
+    }
 }

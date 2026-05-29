@@ -1,0 +1,11 @@
+**/.git
+**/.vs
+**/.idea
+**/bin/
+**/obj/
+**/Logs/
+**/node_modules/
+**/*.user
+**/*.suo
+**/secrets/
+**/*firebase*.json

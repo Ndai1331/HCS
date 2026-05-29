@@ -4,7 +4,11 @@ namespace HC.SurveyResults;
 
 public class SurveyResultSessionSummaryDto
 {
+    public Guid SurveyResultId { get; set; }
     public Guid SurveySessionId { get; set; }
+    public Guid SurveyCriteriaId { get; set; }
+    public string? SurveyCriteriaName { get; set; }
+    public int Rating { get; set; }
     public double AverageRating { get; set; }
     public string? FullName { get; set; }
     public string? PhoneNumber { get; set; }

@@ -11,7 +11,8 @@ $blazorBaseImage = "longnguyen1331/hc-blazor-base:$BaseTag"
 $apiBaseImage = "longnguyen1331/hc-api-base:$BaseTag"
 $blazorAppImage = "longnguyen1331/hc-blazor"
 $apiAppImage = "longnguyen1331/hc-api"
-$backgroundJobWorkerAppImage = "longnguyen1331/hc-backgroundjobworker"
+# $backgroundJobWorkerAppImage = "longnguyen1331/hc-backgroundjobworker"
+$pushNotificationWorkerAppImage = "longnguyen1331/hc-pushnotificationworker"
 
 if ($ClearDockerCache) {
     Write-Host "Clearing safe Docker cache (preserve buildx cache for base images)..." -ForegroundColor Yellow
@@ -172,6 +173,34 @@ try {
 }
 Write-Host "Docker image built and pushed successfully for API (tags: $version, latest)" -ForegroundColor Green
 
+Write-Host "********* BUILDING HC.PushNotificationWorker (linux/amd64, in-container publish) *********" -ForegroundColor Green
+$pushNotificationWorkerFolder = Join-Path $slnFolder "src/HC.PushNotificationWorker"
+$pushNotificationDockerfile = Join-Path $pushNotificationWorkerFolder "Dockerfile"
+
+if (-not (Test-Path $pushNotificationDockerfile)) {
+    Write-Host "ERROR: Dockerfile not found: $pushNotificationDockerfile" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+
+Set-Location $slnFolder
+Write-Host "Building and pushing Docker image for HC.PushNotificationWorker (SDK publish inside linux/amd64)..." -ForegroundColor Yellow
+try {
+    docker buildx build --pull --no-cache --platform linux/amd64 `
+        -f src/HC.PushNotificationWorker/Dockerfile `
+        -t "${pushNotificationWorkerAppImage}:$version" `
+        -t "${pushNotificationWorkerAppImage}:latest" `
+        . --push
+    if (-not $?) {
+        throw "docker build failed"
+    }
+} catch {
+    Write-Host "ERROR: Docker build failed for HC.PushNotificationWorker" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+Write-Host "Docker image built and pushed successfully for HC.PushNotificationWorker (tags: $version, latest) -> $pushNotificationWorkerAppImage" -ForegroundColor Green
+
 # Write-Host "********* BUILDING HC.BackgroundJobWorker (AbpBackgroundJobs) *********" -ForegroundColor Green
 # $bjwFolder = Join-Path $slnFolder "src/HC.BackgroundJobWorker"
 # Set-Location $bjwFolder
@@ -237,3 +266,7 @@ Write-Host "Docker image built and pushed successfully for API (tags: $version, 
 # docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-api:latest -t longnguyen1331/hc-api:latest . --push
 # docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-authserver:latest -t longnguyen1331/hc-authserver:latest . --push
 # docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-db-migrator:latest -t longnguyen1331/hc-db-migrator:latest . --push
+
+Write-Host "********* BUILD COMPLETED (Blazor + API + HC.PushNotificationWorker) *********" -ForegroundColor Green
+Set-Location $currentFolder
+exit 0

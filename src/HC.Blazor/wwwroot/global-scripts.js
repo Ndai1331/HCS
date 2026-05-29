@@ -122,3 +122,51 @@ window.HcChatMobileResize = {
         this._dotnetHelper = null;
     }
 };
+
+window.HcSurveyResultsLocationSelect2 = {
+    init: function (selectId, dotnetHelper) {
+        var $el = $("#" + selectId);
+        if (!$el.length || typeof $el.select2 !== "function") {
+            return;
+        }
+
+        if ($el.data("select2")) {
+            $el.off(".hcSurveyResultsLocation");
+            $el.select2("destroy");
+        }
+
+        $el.select2({
+            width: "100%",
+            allowClear: true,
+            placeholder: "Chọn vị trí khảo sát",
+            language: "vi"
+        });
+
+        $el.on("change.hcSurveyResultsLocation", function () {
+            var value = $el.val();
+            var normalized = Array.isArray(value) ? (value[0] || "") : (value || "");
+            dotnetHelper.invokeMethodAsync("OnSurveyLocationSelect2Changed", normalized);
+        });
+    },
+
+    setValue: function (selectId, value) {
+        var $el = $("#" + selectId);
+        if (!$el.length) {
+            return;
+        }
+
+        $el.val(value || "").trigger("change.select2");
+    },
+
+    destroy: function (selectId) {
+        var $el = $("#" + selectId);
+        if (!$el.length) {
+            return;
+        }
+
+        $el.off(".hcSurveyResultsLocation");
+        if ($el.data("select2")) {
+            $el.select2("destroy");
+        }
+    }
+};
