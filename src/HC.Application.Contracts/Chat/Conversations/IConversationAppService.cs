@@ -15,6 +15,7 @@ public interface IConversationAppService : IApplicationService
 
     Task<ChatConversationDto> GetConversationAsync(GetConversationInput input);
     
+    
     Task<ConversationDto> GetConversationInfoAsync(Guid conversationId);
 
     Task MarkConversationAsReadAsync(MarkConversationAsReadInput input);
