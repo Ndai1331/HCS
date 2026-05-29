@@ -10996,20 +10996,20 @@
     ]
   },
   "packageFolders": {
-    "/Users/user/.nuget/packages/": {}
+    "/Users/nguyenlong/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/user/Documents/HCS/src/HC.EntityFrameworkCore/HC.EntityFrameworkCore.csproj",
+      "projectUniqueName": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/HC.EntityFrameworkCore.csproj",
       "projectName": "HC.EntityFrameworkCore",
-      "projectPath": "/Users/user/Documents/HCS/src/HC.EntityFrameworkCore/HC.EntityFrameworkCore.csproj",
-      "packagesPath": "/Users/user/.nuget/packages/",
-      "outputPath": "/Users/user/Documents/HCS/src/HC.EntityFrameworkCore/obj/",
+      "projectPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/HC.EntityFrameworkCore.csproj",
+      "packagesPath": "/Users/nguyenlong/.nuget/packages/",
+      "outputPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/user/Documents/HCS/NuGet.Config",
-        "/Users/user/.nuget/NuGet/NuGet.Config"
+        "/Users/nguyenlong/Documents/Projects/HCS/NuGet.Config",
+        "/Users/nguyenlong/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
@@ -11022,8 +11022,8 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "/Users/user/Documents/HCS/src/HC.Domain/HC.Domain.csproj": {
-              "projectPath": "/Users/user/Documents/HCS/src/HC.Domain/HC.Domain.csproj"
+            "/Users/nguyenlong/Documents/Projects/HCS/src/HC.Domain/HC.Domain.csproj": {
+              "projectPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.Domain/HC.Domain.csproj"
             }
           }
         }
@@ -11038,7 +11038,7 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.200"
+      "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
       "net10.0": {
@@ -11123,7 +11123,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.203/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",

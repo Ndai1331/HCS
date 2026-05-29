@@ -1460,7 +1460,7 @@
           "build/_._": {}
         }
       },
-      "Microsoft.AspNetCore.App.Internal.Assets/10.0.7": {
+      "Microsoft.AspNetCore.App.Internal.Assets/10.0.1": {
         "type": "package",
         "build": {
           "build/Microsoft.AspNetCore.App.Internal.Assets.props": {},
@@ -8710,10 +8710,10 @@
         "messagepackanalyzer.nuspec"
       ]
     },
-    "Microsoft.AspNetCore.App.Internal.Assets/10.0.7": {
-      "sha512": "ao3i+ks0uOQ7FWacI1hqHkUczebmXrGkUB63Xhkc34QbSzG9nYBlDv9v5l6rtCrHMsDW+13kZlpJrSj1HXddqg==",
+    "Microsoft.AspNetCore.App.Internal.Assets/10.0.1": {
+      "sha512": "rafnWkNfJPA0nCZ5u9bFLiIhCv+aGDWBPJMejuROFMHEpsNhTdv8Cvhv+2jIH+b5485FhndbiwOQJUBMeBa6BQ==",
       "type": "package",
-      "path": "microsoft.aspnetcore.app.internal.assets/10.0.7",
+      "path": "microsoft.aspnetcore.app.internal.assets/10.0.1",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -8729,7 +8729,7 @@
         "build/Microsoft.AspNetCore.App.Internal.Assets.targets",
         "buildMultiTargeting/Microsoft.AspNetCore.App.Internal.Assets.targets",
         "buildTransitive/Microsoft.AspNetCore.App.Internal.Assets.targets",
-        "microsoft.aspnetcore.app.internal.assets.10.0.7.nupkg.sha512",
+        "microsoft.aspnetcore.app.internal.assets.10.0.1.nupkg.sha512",
         "microsoft.aspnetcore.app.internal.assets.nuspec"
       ]
     },
@@ -17829,7 +17829,7 @@
       "IdentityModel >= 7.0.0",
       "KeudellCoding.Blazor.AdvancedBlazorSelect2 >= 1.3.0",
       "KubernetesClient >= 18.0.5",
-      "Microsoft.AspNetCore.App.Internal.Assets >= 10.0.7",
+      "Microsoft.AspNetCore.App.Internal.Assets >= 10.0.1",
       "Microsoft.AspNetCore.Authentication.JwtBearer >= 10.0.0",
       "Microsoft.AspNetCore.Components.WebAssembly.Server >= 10.0.0",
       "Microsoft.AspNetCore.DataProtection.StackExchangeRedis >= 10.0.0",
@@ -17869,20 +17869,20 @@
     ]
   },
   "packageFolders": {
-    "/Users/user/.nuget/packages/": {}
+    "/Users/nguyenlong/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Blazor/HC.Blazor.csproj",
+      "projectUniqueName": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/HC.Blazor.csproj",
       "projectName": "HC.Blazor",
-      "projectPath": "/Users/user/Documents/HCS/src/HC.Blazor/HC.Blazor.csproj",
-      "packagesPath": "/Users/user/.nuget/packages/",
-      "outputPath": "/Users/user/Documents/HCS/src/HC.Blazor/obj/",
+      "projectPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/HC.Blazor.csproj",
+      "packagesPath": "/Users/nguyenlong/.nuget/packages/",
+      "outputPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/user/Documents/HCS/NuGet.Config",
-        "/Users/user/.nuget/NuGet/NuGet.Config"
+        "/Users/nguyenlong/Documents/Projects/HCS/NuGet.Config",
+        "/Users/nguyenlong/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
@@ -17895,8 +17895,8 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "/Users/user/Documents/HCS/src/HC.HttpApi.Client/HC.HttpApi.Client.csproj": {
-              "projectPath": "/Users/user/Documents/HCS/src/HC.HttpApi.Client/HC.HttpApi.Client.csproj"
+            "/Users/nguyenlong/Documents/Projects/HCS/src/HC.HttpApi.Client/HC.HttpApi.Client.csproj": {
+              "projectPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.HttpApi.Client/HC.HttpApi.Client.csproj"
             }
           }
         }
@@ -17911,7 +17911,7 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.200"
+      "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
       "net10.0": {
@@ -17972,7 +17972,7 @@
           "Microsoft.AspNetCore.App.Internal.Assets": {
             "suppressParent": "All",
             "target": "Package",
-            "version": "[10.0.7, )",
+            "version": "[10.0.1, )",
             "autoReferenced": true
           },
           "Microsoft.AspNetCore.Authentication.JwtBearer": {
@@ -18139,7 +18139,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.203/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
