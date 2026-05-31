@@ -43,7 +43,7 @@ using Volo.Abp.Uow;
 
 namespace HC.DocumentWorkflowInstances;
 
-public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppServiceBase, IDocumentWorkflowInstancesAppService
+public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppServiceBase, IDocumentWorkflowInstancesAppService
 {
     private readonly IRepository<WorkflowStepAssignment, Guid> _workflowStepAssignmentRepository;
     private readonly IDocumentAssignmentRepository _documentAssignmentRepository;
@@ -2120,122 +2120,36 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         var currentUserId = CurrentUser.Id!.Value;
         var now = Clock.Now;
 
-        // ===== STEP 1: Build queryable for distinct document IDs per category at DB level =====
-        var assignmentQueryable = (await _documentAssignmentRepository.GetQueryableAsync());
-        var instanceQueryable = (await _documentWorkflowInstanceRepository.GetQueryableAsync());
-        var documentQueryable = (await _documentRepository.GetQueryableAsync());
+        var filterState = await BuildSigningFilterStateAsync(
+            currentUserId,
+            input.FilterText,
+            input.FilterMode,
+            DocumentSigningDateFilterField.IncomingDate,
+            input.FromDate,
+            input.ToDate,
+            input.FocusDocumentId);
 
-        // Signing documents only: SourceType = Workflow (3). Manage-documents / inbox use other source types.
-        var workflowDocumentQuery = documentQueryable.Where(d => d.SourceType == DocumentSourceType.Workflow);
-
-        // Distinct document IDs where user is receiver on a real workflow step (not VIEW/send-only assignments)
-        var receivedDocIdQuery = assignmentQueryable
-            .Where(a => a.ReceiverUserId == currentUserId && a.WorkflowStepTemplateId != null)
-            .Join(workflowDocumentQuery, a => a.DocumentId, d => d.Id, (a, d) => d.Id)
-            .Distinct();
-
-        // SentByMe candidates: user INITIATED the workflow AND sent to at least one other person (not only self).
-        var initiatedDocIdQuery = instanceQueryable
-            .Where(i => i.CreatorId == currentUserId)
-            .Join(workflowDocumentQuery, i => i.DocumentId, d => d.Id, (i, d) => d.Id)
-            .Distinct();
-        var sentToOthersDocIdQuery = assignmentQueryable
-            .Where(a => a.ReceiverUserId != currentUserId && a.WorkflowStepTemplateId != null)
-            .Join(workflowDocumentQuery, a => a.DocumentId, d => d.Id, (a, d) => d.Id)
-            .Distinct();
-        var sentByMeCandidateQuery = initiatedDocIdQuery.Intersect(sentToOthersDocIdQuery);
-
-        var sentByMeCandidateList = await AsyncExecuter.ToListAsync(sentByMeCandidateQuery);
-        var excludeSentByMeBecauseCreatorSigned = await GetSentByMeExcludeBecauseCreatorSignedAsync(currentUserId, sentByMeCandidateList);
-        var sentByMeAllowedSet = sentByMeCandidateList
-            .Where(id => !excludeSentByMeBecauseCreatorSigned.Contains(id))
-            .ToHashSet();
-
-        // All = union of received + initiator candidates (still show in "All" after user signed a step)
-        var allDocIdQuery = receivedDocIdQuery.Union(sentByMeCandidateQuery);
-
-        // ===== STEP 2: Build filtered document base query at DB level =====
-        var baseDocQuery = documentQueryable.Where(d => allDocIdQuery.Contains(d.Id));
-
-        // Apply date filter at DB level
-        if (input.FromDate.HasValue)
+        if (input.FilterMode == DocumentSigningFilterMode.Following)
         {
-            var fromDate = input.FromDate.Value.Date;
-            baseDocQuery = baseDocQuery.Where(d => d.IncommingDate >= fromDate);
-        }
-        if (input.ToDate.HasValue)
-        {
-            var toDateEnd = input.ToDate.Value.Date.AddDays(1).AddSeconds(-1);
-            baseDocQuery = baseDocQuery.Where(d => d.IncommingDate <= toDateEnd);
+            return new DocumentSigningPageResultDto
+            {
+                TotalCount = 0,
+                Items = new List<DocumentSigningItemDto>(),
+                AllCount = filterState.AllCount,
+                SentToMeCount = filterState.SentToMeCount,
+                SentByMeCount = filterState.SentByMeCount,
+                FollowingCount = filterState.FollowingCount
+            };
         }
 
-        // Apply text filter at DB level
-        if (!string.IsNullOrWhiteSpace(input.FilterText))
-        {
-            var filterText = input.FilterText.Trim();
-            baseDocQuery = baseDocQuery.Where(d =>
-                (d.Title != null && d.Title.Contains(filterText)) ||
-                (d.No != null && d.No.Contains(filterText)) ||
-                (d.StorageNumber != null && d.StorageNumber.Contains(filterText)));
-        }
-
-        // ===== STEP 3: Count per category at DB level =====
-        var filteredDocIds = baseDocQuery.Select(d => d.Id);
-
-        int sentToMeCount = await AsyncExecuter.CountAsync(
-            filteredDocIds.Where(id => receivedDocIdQuery.Contains(id)));
-        int sentByMeCount = sentByMeAllowedSet.Count == 0
-            ? 0
-            : await AsyncExecuter.CountAsync(
-                filteredDocIds.Where(id => sentByMeAllowedSet.Contains(id)));
-        int followingCount = 0; // No logic for now
-        int allCount = await AsyncExecuter.CountAsync(filteredDocIds);
-
-        // ===== STEP 4: Apply filter mode at DB level =====
-        IQueryable<Document> modeFilteredQuery;
-        switch (input.FilterMode)
-        {
-            case DocumentSigningFilterMode.SentToMe:
-                modeFilteredQuery = baseDocQuery.Where(d => receivedDocIdQuery.Contains(d.Id));
-                break;
-            case DocumentSigningFilterMode.SentByMe:
-                modeFilteredQuery = sentByMeAllowedSet.Count == 0
-                    ? baseDocQuery.Where(d => false)
-                    : baseDocQuery.Where(d => sentByMeAllowedSet.Contains(d.Id));
-                break;
-            case DocumentSigningFilterMode.Following:
-                // Return empty result for Following mode
-                return new DocumentSigningPageResultDto
-                {
-                    TotalCount = 0,
-                    Items = new List<DocumentSigningItemDto>(),
-                    AllCount = allCount,
-                    SentToMeCount = sentToMeCount,
-                    SentByMeCount = sentByMeCount,
-                    FollowingCount = followingCount
-                };
-            default: // All
-                modeFilteredQuery = baseDocQuery;
-                break;
-        }
-
-        if (input.FocusDocumentId.HasValue)
-        {
-            var focusId = input.FocusDocumentId.Value;
-            modeFilteredQuery = modeFilteredQuery.Where(d => d.Id == focusId);
-        }
+        var modeFilteredQuery = filterState.ModeFilteredQuery;
+        var instanceQueryable = filterState.InstanceQueryable;
+        var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
 
         // ===== STEP 5: Count + page (needs-signature first, then soonest deadline) =====
         var totalCount = await AsyncExecuter.CountAsync(modeFilteredQuery);
 
-        var myPendingAssignmentDocIdsQuery = assignmentQueryable
-            .Where(a =>
-                a.ReceiverUserId == currentUserId
-                && a.WorkflowStepTemplateId != null
-                && a.Status == nameof(DocumentAssignmentStatus.PENDING)
-                && a.IsCurrent)
-            .Select(a => a.DocumentId)
-            .Distinct();
+        var myPendingAssignmentDocIdsQuery = filterState.MyPendingAssignmentDocIdsQuery;
 
         var latestInstanceStartedAtQuery = instanceQueryable
             .GroupBy(i => i.DocumentId)
@@ -2276,10 +2190,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
             {
                 TotalCount = totalCount,
                 Items = new List<DocumentSigningItemDto>(),
-                AllCount = allCount,
-                SentToMeCount = sentToMeCount,
-                SentByMeCount = sentByMeCount,
-                FollowingCount = followingCount
+                AllCount = filterState.AllCount,
+                SentToMeCount = filterState.SentToMeCount,
+                SentByMeCount = filterState.SentByMeCount,
+                FollowingCount = filterState.FollowingCount
             };
         }
 
@@ -2489,10 +2403,10 @@ public class DocumentWorkflowInstancesAppService : DocumentWorkflowInstancesAppS
         {
             TotalCount = totalCount,
             Items = items,
-            AllCount = allCount,
-            SentToMeCount = sentToMeCount,
-            SentByMeCount = sentByMeCount,
-            FollowingCount = followingCount
+            AllCount = filterState.AllCount,
+            SentToMeCount = filterState.SentToMeCount,
+            SentByMeCount = filterState.SentByMeCount,
+            FollowingCount = filterState.FollowingCount
         };
     }
 

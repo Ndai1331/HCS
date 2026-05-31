@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Web;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -51,6 +53,8 @@ public partial class DocumentSigning
     private DateTime? ToDate { get; set; }
     private string? FilterText { get; set; }
     private DocumentSigningFilterMode CurrentFilterMode { get; set; } = DocumentSigningFilterMode.All;
+    private DocumentSigningDateFilterField ExportDateFilterField { get; set; } = DocumentSigningDateFilterField.IncomingDate;
+    private bool IsExporting { get; set; }
 
     // Data grid
     private List<DocumentSigningItemDto> DocumentSigningList { get; set; } = new();
@@ -238,12 +242,62 @@ public partial class DocumentSigning
 
     private Task SetToolbarItemsAsync()
     {
+        Toolbar.AddButton(L["ExportToExcel"], async () =>
+        {
+            await DownloadAsExcelAsync();
+        }, IconName.Download, requiredPolicyName: HCPermissions.Documents.SubmitForSigning);
+
         Toolbar.AddButton(L["CreateSigning"], async () =>
         {
             await ShowSubmitWorkflowModalAsync();
         }, IconName.Add, requiredPolicyName: HCPermissions.Documents.SubmitForSigning);
 
         return Task.CompletedTask;
+    }
+
+    private Task OnExportDateFilterFieldChanged(DocumentSigningDateFilterField value)
+    {
+        ExportDateFilterField = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task DownloadAsExcelAsync()
+    {
+        if (IsExporting)
+        {
+            await UiMessageService.Info(L["Exporting"], options: options => options.OkButtonText = L["Ok"]);
+            return;
+        }
+
+        IsExporting = true;
+        await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
+        try
+        {
+            await UiMessageService.Info(L["Exporting"], options: options => options.OkButtonText = L["Ok"]);
+            var token = (await DocumentWorkflowInstancesAppService.GetDownloadTokenAsync()).Token;
+            var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("HC")
+                ?? await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
+            var culture = CultureInfo.CurrentUICulture.Name ?? CultureInfo.CurrentCulture.Name;
+            if (!culture.IsNullOrEmpty())
+            {
+                culture = "&culture=" + culture;
+            }
+
+            var url = $"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/document-workflow-instances/document-signing-as-excel-file" +
+                      $"?DownloadToken={HttpUtility.UrlEncode(token)}{culture}" +
+                      $"&FilterText={HttpUtility.UrlEncode(FilterText)}" +
+                      $"&FilterMode={(int)CurrentFilterMode}" +
+                      $"&DateFilterField={(int)ExportDateFilterField}" +
+                      $"&FromDate={FromDate?.ToString("O")}" +
+                      $"&ToDate={ToDate?.ToString("O")}";
+
+            NavigationManager.NavigateTo(url, forceLoad: true);
+        }
+        finally
+        {
+            await BlockUiService.UnBlock();
+            IsExporting = false;
+        }
     }
 
     #endregion

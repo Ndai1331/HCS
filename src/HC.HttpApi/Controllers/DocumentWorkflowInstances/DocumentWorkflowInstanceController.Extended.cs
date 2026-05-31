@@ -11,6 +11,7 @@ using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.DocumentHistories;
 using HC.Shared;
+using Volo.Abp.Content;
 
 namespace HC.Controllers.DocumentWorkflowInstances;
 
@@ -64,6 +65,13 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     public Task<DocumentSigningPageResultDto> GetDocumentSigningListAsync([FromQuery] GetDocumentSigningListInput input)
     {
         return _documentWorkflowInstancesAppService.GetDocumentSigningListAsync(input);
+    }
+
+    [HttpGet]
+    [Route("document-signing-as-excel-file")]
+    public Task<IRemoteStreamContent> GetDocumentSigningListAsExcelFileAsync([FromQuery] DocumentSigningExcelDownloadDto input)
+    {
+        return _documentWorkflowInstancesAppService.GetDocumentSigningListAsExcelFileAsync(input);
     }
 
     [HttpGet]

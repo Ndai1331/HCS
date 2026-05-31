@@ -5,6 +5,7 @@ using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.DocumentHistories;
 using Volo.Abp.Application.Dtos;
+using Volo.Abp.Content;
 
 namespace HC.DocumentWorkflowInstances;
 
@@ -42,6 +43,11 @@ public partial interface IDocumentWorkflowInstancesAppService
     /// Filter modes: All, SentToMe, SentByMe, Following
     /// </summary>
     Task<DocumentSigningPageResultDto> GetDocumentSigningListAsync(GetDocumentSigningListInput input);
+
+    /// <summary>
+    /// Export the signing list to Excel (all rows matching filters, not paged).
+    /// </summary>
+    Task<IRemoteStreamContent> GetDocumentSigningListAsExcelFileAsync(DocumentSigningExcelDownloadDto input);
 
     /// <summary>
     /// Get workflow instance logs (with navigation properties) for the action modal
