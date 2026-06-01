@@ -49,6 +49,7 @@ public partial class DocumentSigning
 
     // Filter properties
     // BUG-4 FIX: Initialized in OnAfterRenderAsync using Clock.Now (IClock) for timezone consistency
+    private IReadOnlyList<DateTime?> SelectedDateRange { get; set; } = new List<DateTime?>();
     private DateTime? FromDate { get; set; }
     private DateTime? ToDate { get; set; }
     private string? FilterText { get; set; }
@@ -214,15 +215,17 @@ public partial class DocumentSigning
         if (firstRender)
         {
             // BUG-4 FIX: Initialize filter dates using Clock.Now (IClock) for timezone consistency
-            FromDate = Clock.Now.AddDays(-60);
-            ToDate = Clock.Now;
+            var today = Clock.Now.Date;
+            var from = today.AddDays(-60);
+            SelectedDateRange = new List<DateTime?> { from, today };
+            SyncFilterDatesFromRange();
 
             BreadcrumbItems.Add(new Volo.Abp.BlazoriseUI.BreadcrumbItem(L["DocumentSigning"]));
             await SetToolbarItemsAsync();
             await LoadDocumentSigningListAsync();
             IsInitialDataLoaded = true;
             await TryAutoOpenActionModalFromNotificationAsync();
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
         }
     }
 
@@ -274,6 +277,7 @@ public partial class DocumentSigning
         try
         {
             await UiMessageService.Info(L["Exporting"], options: options => options.OkButtonText = L["Ok"]);
+            SyncFilterDatesFromRange();
             var token = (await DocumentWorkflowInstancesAppService.GetDownloadTokenAsync()).Token;
             var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("HC")
                 ?? await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
@@ -306,6 +310,7 @@ public partial class DocumentSigning
 
     private async Task LoadDocumentSigningListAsync()
     {
+        SyncFilterDatesFromRange();
         IsLoading = true;
         try
         {
@@ -653,7 +658,7 @@ public partial class DocumentSigning
         finally
         {
             IsSavingWorkflowSigners = false;
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
         }
     }
 
@@ -672,16 +677,30 @@ public partial class DocumentSigning
 
     #region Filter Events
 
-    private async Task OnFromDateChanged(DateTime? date)
+    private Task OnSelectedDateRangeChanged(IReadOnlyList<DateTime?> dates)
     {
-        FromDate = date;
+        SelectedDateRange = dates;
+        return Task.CompletedTask;
+    }
+
+    private async Task OnFilterSearchAsync()
+    {
+        SyncFilterDatesFromRange();
         await SearchAsync();
     }
 
-    private async Task OnToDateChanged(DateTime? date)
+    private void SyncFilterDatesFromRange()
     {
-        ToDate = date;
-        await SearchAsync();
+        if (SelectedDateRange != null && SelectedDateRange.Count >= 2)
+        {
+            FromDate = SelectedDateRange[0];
+            ToDate = SelectedDateRange[1];
+            return;
+        }
+
+        var today = Clock.Now.Date;
+        FromDate = today.AddDays(-60);
+        ToDate = today;
     }
 
     private async Task OnFilterTextChanged(string? text)
@@ -695,14 +714,14 @@ public partial class DocumentSigning
         CurrentFilterMode = mode;
         CurrentPage = 1;
         await LoadDocumentSigningListAsync();
-        await InvokeAsync(StateHasChanged);
+        await RequestRenderAsync();
     }
 
     private async Task SearchAsync()
     {
         CurrentPage = 1;
         await LoadDocumentSigningListAsync();
-        await InvokeAsync(StateHasChanged);
+        await RequestRenderAsync();
     }
 
     private async Task DebouncedSearchAsync()
@@ -734,7 +753,7 @@ public partial class DocumentSigning
             .JoinAsString(",");
         CurrentPage = e.Page;
         await LoadDocumentSigningListAsync();
-        await InvokeAsync(StateHasChanged);
+        await RequestRenderAsync();
     }
 
     #endregion
@@ -752,7 +771,7 @@ public partial class DocumentSigning
     private async Task OnSubmitWorkflowCompletedAsync()
     {
         await LoadDocumentSigningListAsync();
-        await InvokeAsync(StateHasChanged);
+        await RequestRenderAsync();
     }
 
     private Task OnSubmitWorkflowClosedAsync()
@@ -925,7 +944,7 @@ public partial class DocumentSigning
 
             _actionModalEditorSessionKey++;
             await InvokeAsync(WorkflowActionModal.Show);
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
 
             try
             {
@@ -1011,7 +1030,7 @@ public partial class DocumentSigning
                 {
                     await Task.Delay(100);
                     _showActionModalRichTextEditors = true;
-                    await InvokeAsync(StateHasChanged);
+                    await RequestRenderAsync();
                 }
             }
     }
@@ -1019,7 +1038,7 @@ public partial class DocumentSigning
     private async Task HideWorkflowActionModalAsync()
     {
         _showActionModalRichTextEditors = false;
-        await InvokeAsync(StateHasChanged);
+        await RequestRenderAsync();
         await Task.Delay(50);
         await InvokeAsync(WorkflowActionModal.Hide);
     }
@@ -1032,7 +1051,7 @@ public partial class DocumentSigning
     private async Task RunWorkflowActionCountdownAsync(CancellationToken cancellationToken)
     {
         WorkflowActionCountdownRemaining = WorkflowActionSigningUiTimeoutSeconds;
-        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await RequestRenderAsync().ConfigureAwait(false);
         try
         {
             while (WorkflowActionCountdownRemaining > 0
@@ -1046,7 +1065,7 @@ public partial class DocumentSigning
                 }
 
                 WorkflowActionCountdownRemaining--;
-                await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+                await RequestRenderAsync().ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -1111,7 +1130,7 @@ public partial class DocumentSigning
             IsWorkflowActionSubmitting = true;
             WorkflowActionCountdownRemaining = WorkflowActionSigningUiTimeoutSeconds;
             countdownTask = RunWorkflowActionCountdownAsync(countdownCts.Token);
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
 
             // Blazor binding updates on blur; get note from editor to ensure we have latest content for <<NoteContentXX>>
             var actionNote = ActionNote?.Trim();
@@ -1159,7 +1178,7 @@ public partial class DocumentSigning
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await HideWorkflowActionModalAsync();
             await LoadDocumentSigningListAsync();
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
         }
         catch (Exception ex)
         {
@@ -1179,7 +1198,7 @@ public partial class DocumentSigning
 
             IsWorkflowActionSubmitting = false;
             WorkflowActionCountdownRemaining = WorkflowActionSigningUiTimeoutSeconds;
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
         }
     }
 
@@ -1215,7 +1234,7 @@ public partial class DocumentSigning
         IsResubmitModalLoading = true;
         _resubmitModalEditorSessionKey++;
         await InvokeAsync(ResubmitWorkflowModal.Show);
-        await InvokeAsync(StateHasChanged);
+        await RequestRenderAsync();
 
         try
         {
@@ -1252,7 +1271,7 @@ public partial class DocumentSigning
             {
                 await Task.Delay(100);
                 _showResubmitModalRichTextEditors = true;
-                await InvokeAsync(StateHasChanged);
+                await RequestRenderAsync();
             }
         }
     }
@@ -1260,7 +1279,7 @@ public partial class DocumentSigning
     private async Task HideResubmitWorkflowModalAsync()
     {
         _showResubmitModalRichTextEditors = false;
-        await InvokeAsync(StateHasChanged);
+        await RequestRenderAsync();
         await Task.Delay(50);
         await InvokeAsync(ResubmitWorkflowModal.Hide);
     }
@@ -1337,7 +1356,7 @@ public partial class DocumentSigning
         }
         finally
         {
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
         }
     }
 
@@ -1367,7 +1386,7 @@ public partial class DocumentSigning
             if (!confirmed) return;
 
             IsResubmitModalLoading = true;
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
 
             // Blazor binding updates on blur; get value directly from editor to ensure we have latest content.
             var resubmitSigningContent = ResubmitSigningContent?.Trim();
@@ -1399,7 +1418,7 @@ public partial class DocumentSigning
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
             await HideResubmitWorkflowModalAsync();
             await LoadDocumentSigningListAsync();
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
         }
         catch (Exception ex)
         {
@@ -1408,7 +1427,7 @@ public partial class DocumentSigning
         finally
         {
             IsResubmitModalLoading = false;
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
         }
     }
 
@@ -1550,7 +1569,7 @@ public partial class DocumentSigning
         finally
         {
             IsExtendingWorkflow = false;
-            await InvokeAsync(StateHasChanged);
+            await RequestRenderAsync();
         }
     }
 

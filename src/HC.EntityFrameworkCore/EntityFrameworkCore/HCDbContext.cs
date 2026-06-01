@@ -451,6 +451,8 @@ public class HCDbContext : HCDbContextBase<HCDbContext>, IHasEventInbox
             // Filtered (partial) index – ApplyPendingApprovalFlagsAsync, GetSentToMeDocumentIdsAsync,
             // ApplySubmitSigningButtonVisibilityAsync, RevokeDocumentAsync all filter by IsCurrent = true on a document.
             b.HasIndex(x => new { x.DocumentId, x.IsCurrent }).HasDatabaseName("IX_AppDocumentAssignments_DocumentId_IsCurrent").HasFilter("\"IsCurrent\" = true");
+            b.HasIndex(x => new { x.ReceiverUserId, x.Status, x.WorkflowStepTemplateId })
+                .HasDatabaseName("IX_AppDocumentAssignments_ReceiverUserId_Status_WorkflowStepTemplateId");
         });
         builder.Entity<DocumentWorkflowInstanceFile>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "DocumentWorkflowInstanceFiles", HCConsts.DbSchema);
@@ -469,6 +471,8 @@ public class HCDbContext : HCDbContextBase<HCDbContext>, IHasEventInbox
             b.Property(x => x.IsSigned).HasColumnName(nameof(DocumentFile.IsSigned));
             b.Property(x => x.UploadedAt).HasColumnName(nameof(DocumentFile.UploadedAt));
             b.HasOne<Document>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.SetNull);
+            b.HasIndex(x => new { x.DocumentId, x.UploadedAt })
+                .HasDatabaseName("IX_AppDocumentFiles_DocumentId_UploadedAt");
         });
         builder.Entity<DocumentWorkflowInstance>(b => {
             b.ToTable(HCConsts.DbTablePrefix + "DocumentWorkflowInstances", HCConsts.DbSchema);
@@ -486,6 +490,11 @@ public class HCDbContext : HCDbContextBase<HCDbContext>, IHasEventInbox
             b.HasOne<WorkflowStepTemplate>().WithMany().IsRequired().HasForeignKey(x => x.CurrentStepId).OnDelete(DeleteBehavior.NoAction);
             b.HasMany(x => x.DocumentWorkflowInstanceFiles).WithOne().HasForeignKey(x => x.DocumentWorkflowInstanceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
             b.HasMany(x => x.DocumentWorkflowInstanceLogss).WithOne().HasForeignKey(x => x.DocumentWorkflowInstanceId).IsRequired().OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(x => new { x.DocumentId, x.StartedAt })
+                .HasDatabaseName("IX_AppDocumentWorkflowInstances_DocumentId_StartedAt");
+            b.HasIndex(x => new { x.Status, x.FinishedAt })
+                .HasDatabaseName("IX_AppDocumentWorkflowInstances_Status_FinishedAt")
+                .HasFilter("\"Status\" IN ('IN_PROGRESS', 'OVERDUE')");
         });
         builder.Entity<DocumentWorkflowInstanceExtension>(b =>
         {

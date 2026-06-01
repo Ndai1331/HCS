@@ -1,0 +1,90 @@
+@using HC.DocumentWorkflowInstances
+@using Blazorise
+@inherits HCComponentBase
+
+<Card Class="hc-document-signing-filter">
+    <CardBody>
+        <Row Class="align-items-end g-3">
+            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnTablet.Is7.OnDesktop">
+                <Row Class="align-items-center g-2">
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                        <label class="fw-bold mb-2 mb-md-0">@L["FilterByDateRange"]</label>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop">
+                        <DatePicker TValue="DateTime?"
+                                    Dates="@SelectedDateRange"
+                                    DatesChanged="OnSelectedDateRangeChanged"
+                                    InputMode="DateInputMode.Date"
+                                    SelectionMode="DateInputSelectionMode.Range"
+                                    Placeholder="@L["SelectDateRange"]"
+                                    DisplayFormat="dd/MM/yyyy"
+                                    DatePickerLocalizer="DatePickerLocalizer" />
+                    </Column>
+                </Row>
+            </Column>
+            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnTablet.Is5.OnDesktop">
+                <Field Margin="Margin.Is0">
+                    <FieldLabel>@L["SigningExportDateFilter"]</FieldLabel>
+                    <Select TValue="DocumentSigningDateFilterField"
+                            SelectedValue="@ExportDateFilterField"
+                            SelectedValueChanged="@ExportDateFilterFieldChanged">
+                        <SelectItem Value="DocumentSigningDateFilterField.IncomingDate">@L["SigningExportDateFilterIncoming"]</SelectItem>
+                        <SelectItem Value="DocumentSigningDateFilterField.WorkflowDeadline">@L["SigningExportDateFilterWorkflow"]</SelectItem>
+                    </Select>
+                </Field>
+            </Column>
+        </Row>
+        <Row Class="align-items-end g-3 mt-0">
+            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnTablet.Is7.OnDesktop">
+                <Row Class="align-items-center g-2">
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
+                        <label class="fw-bold mb-2 mb-md-0">@L["Search"]</label>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is12.OnMobile.Is8.OnDesktop">
+                        <TextEdit Text="@FilterText"
+                                  TextChanged="@FilterTextChanged"
+                                  Placeholder="@L["SearchByTitleOrNumber"]" />
+                    </Column>
+                </Row>
+            </Column>
+            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnTablet.Is5.OnDesktop" Class="d-flex align-items-center">
+                <Button Color="Color.Primary"
+                        Clicked="@SearchClicked"
+                        Class="w-100 mt-2 mt-md-0">
+                    <Icon Name="IconName.Search" Class="me-1" />@L["Search"]
+                </Button>
+            </Column>
+        </Row>
+    </CardBody>
+</Card>
+
+@code {
+    [Parameter] public IReadOnlyList<DateTime?> SelectedDateRange { get; set; } = new List<DateTime?>();
+    [Parameter] public EventCallback<IReadOnlyList<DateTime?>> SelectedDateRangeChanged { get; set; }
+    [Parameter] public DocumentSigningDateFilterField ExportDateFilterField { get; set; }
+    [Parameter] public EventCallback<DocumentSigningDateFilterField> ExportDateFilterFieldChanged { get; set; }
+    [Parameter] public string? FilterText { get; set; }
+    [Parameter] public EventCallback<string?> FilterTextChanged { get; set; }
+    [Parameter] public EventCallback SearchClicked { get; set; }
+
+    private async Task OnSelectedDateRangeChanged(IReadOnlyList<DateTime?> dates)
+    {
+        await SelectedDateRangeChanged.InvokeAsync(dates);
+    }
+
+    private string DatePickerLocalizer(string name, params object[] arguments)
+    {
+        return name switch
+        {
+            "To" => L["DatePicker:To"],
+            "From" => L["DatePicker:From"],
+            "SelectDateRange" => L["DatePicker:SelectDateRange"],
+            "FilterByDateRange" => L["DatePicker:FilterByDateRange"],
+            "Search" => L["DatePicker:Search"],
+            "Clear" => L["DatePicker:Clear"],
+            "Cancel" => L["DatePicker:Cancel"],
+            "Confirm" => L["DatePicker:Confirm"],
+            _ => L[name] ?? name
+        };
+    }
+}

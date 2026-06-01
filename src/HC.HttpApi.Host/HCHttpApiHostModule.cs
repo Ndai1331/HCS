@@ -327,18 +327,21 @@ public class HCHttpApiHostModule : AbpModule
         app.UseUnitOfWork();
         app.UseDynamicClaims();
         
-        // Debug: Log tenant ID for troubleshooting permission issues
-        app.Use(async (httpContext, next) =>
+        if (env.IsDevelopment() && MultiTenancyConsts.IsEnabled)
         {
-            if (MultiTenancyConsts.IsEnabled)
+            app.Use(async (httpContext, next) =>
             {
-                var currentTenant = httpContext.RequestServices.GetRequiredService<Volo.Abp.MultiTenancy.ICurrentTenant>();
-                var logger = httpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HCHttpApiHostModule>>();
-                logger.LogWarning($"[DEBUG] TenantId: {currentTenant.Id}, Name: {currentTenant.Name}, IsAvailable: {currentTenant.IsAvailable}");
-            }
-            await next();
-        });
-        
+                var currentTenant = httpContext.RequestServices.GetRequiredService<ICurrentTenant>();
+                var logger = httpContext.RequestServices.GetRequiredService<ILogger<HCHttpApiHostModule>>();
+                logger.LogDebug(
+                    "Tenant context: Id={TenantId}, Name={TenantName}, IsAvailable={IsAvailable}",
+                    currentTenant.Id,
+                    currentTenant.Name,
+                    currentTenant.IsAvailable);
+                await next();
+            });
+        }
+
         app.UseAuthorization();
 
         app.UseSwagger();

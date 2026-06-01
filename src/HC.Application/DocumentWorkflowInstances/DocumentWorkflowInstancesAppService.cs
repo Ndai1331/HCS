@@ -204,7 +204,14 @@ public abstract class DocumentWorkflowInstancesAppServiceBase : HCAppService
     public virtual async Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync()
     {
         var token = Guid.NewGuid().ToString("N");
-        await _downloadTokenCache.SetAsync(token, new DocumentWorkflowInstanceDownloadTokenCacheItem { Token = token }, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30) });
+        await _downloadTokenCache.SetAsync(
+            token,
+            new DocumentWorkflowInstanceDownloadTokenCacheItem
+            {
+                Token = token,
+                UserId = CurrentUser.Id
+            },
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30) });
         return new HC.Shared.DownloadTokenResultDto
         {
             Token = token

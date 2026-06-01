@@ -55,5 +55,14 @@ namespace HC;
         {
             GlobalFontSettings.FontResolver = new CustomFontResolver();
         }
+
+        context.Services.AddTransient<IDocumentSigningQueryService, DocumentSigningQueryService>();
+        context.Services.AddTransient<IWorkflowSubmissionService, WorkflowSubmissionService>();
+        context.Services.AddTransient<IDocumentSigningFilterQueryBuilder, DocumentSigningFilterQueryBuilder>();
+        context.Services.AddTransient<IWorkflowSubmitInfoQueryService, WorkflowSubmitInfoQueryService>();
+        context.Services.AddTransient<IWorkflowDocumentFileService, WorkflowDocumentFileService>();
+        context.Services.AddTransient<IWorkflowNotificationService, WorkflowNotificationService>();
+        context.Services.AddTransient<IWorkflowActionService, WorkflowActionService>();
+        context.Services.AddTransient<IWorkflowCommittedStepsQueryService, WorkflowCommittedStepsQueryService>();
     }
 }

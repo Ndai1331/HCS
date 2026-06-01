@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Globalization;
 using System.Web;
+using System.Threading;
 using Blazorise;
 using Blazorise.DataGrid;
 using Volo.Abp.BlazoriseUI.Components;
@@ -25,9 +26,9 @@ namespace HC.Blazor.Pages;
 
 public abstract class MasterDataPageBase : HCComponentBase
 {
-    protected abstract string DefaultType { get; }
-    protected abstract string PageTitle { get; }
-    protected abstract string PageRoute { get; }
+    protected virtual string DefaultType { get; } = string.Empty;
+    protected virtual string PageTitle { get; } = string.Empty;
+    protected virtual string PageRoute { get; } = string.Empty;
 
     protected List<Volo.Abp.BlazoriseUI.BreadcrumbItem> BreadcrumbItems = new List<Volo.Abp.BlazoriseUI.BreadcrumbItem>();
 
@@ -65,6 +66,10 @@ public abstract class MasterDataPageBase : HCComponentBase
 
     protected List<MasterDataDto> SelectedMasterDatas { get; set; } = new();
     protected bool AllMasterDatasSelected { get; set; }
+
+    protected bool IsFilterLoading { get; set; }
+
+    private CancellationTokenSource? _searchDebounceCts;
 
     [Inject] protected IMasterDatasAppService MasterDatasAppService { get; set; }
     [Inject] protected IUiMessageService UiMessageService { get; set; }
@@ -145,6 +150,41 @@ public abstract class MasterDataPageBase : HCComponentBase
         CurrentPage = 1;
         await GetMasterDatasAsync();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task DebouncedSearchAsync()
+    {
+        var previous = _searchDebounceCts;
+        _searchDebounceCts = new CancellationTokenSource();
+        previous?.Cancel();
+        previous?.Dispose();
+        var token = _searchDebounceCts.Token;
+
+        try
+        {
+            await Task.Delay(400, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        IsFilterLoading = true;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await SearchAsync();
+        }
+        finally
+        {
+            IsFilterLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task DownloadAsExcelAsync()
@@ -264,25 +304,25 @@ public abstract class MasterDataPageBase : HCComponentBase
     protected virtual async Task OnCodeChangedAsync(string? code)
     {
         Filter.Code = code;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnNameChangedAsync(string? name)
     {
         Filter.Name = name;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnSortOrderMinChangedAsync(int? sortOrderMin)
     {
         Filter.SortOrderMin = sortOrderMin;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     protected virtual async Task OnSortOrderMaxChangedAsync(int? sortOrderMax)
     {
         Filter.SortOrderMax = sortOrderMax;
-        await SearchAsync();
+        await DebouncedSearchAsync();
     }
 
     // Use string for Select display - "All" (empty) works correctly (same pattern as WorkflowDefinitions)

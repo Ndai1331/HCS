@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using MiniExcelLibs;
 using Volo.Abp;
+using Volo.Abp.Authorization;
 using Volo.Abp.Content;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
@@ -24,30 +25,16 @@ public partial class DocumentWorkflowInstancesAppService
 {
     private const int SigningExportMaxRows = 10_000;
 
-    private sealed class SigningFilterState
-    {
-        public required IQueryable<Document> ModeFilteredQuery { get; init; }
-        public required IQueryable<DocumentWorkflowInstance> InstanceQueryable { get; init; }
-        public required IQueryable<Guid> MyPendingAssignmentDocIdsQuery { get; init; }
-        public int AllCount { get; init; }
-        public int SentToMeCount { get; init; }
-        public int SentByMeCount { get; init; }
-        public int FollowingCount { get; init; }
-    }
-
     /// <summary>
     /// Excel export for the document signing page (all matching rows, same scope as the grid).
     /// </summary>
     [AllowAnonymous]
     public async Task<IRemoteStreamContent> GetDocumentSigningListAsExcelFileAsync(DocumentSigningExcelDownloadDto input)
     {
-        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(
-            _downloadTokenCache, input.DownloadToken, x => x.Token);
-
-        var currentUserId = CurrentUser.Id!.Value;
+        var currentUserId = await ValidateAndConsumeSigningExportTokenAsync(input.DownloadToken);
         var now = Clock.Now;
 
-        var filterState = await BuildSigningFilterStateAsync(
+        var filterState = await _signingFilterQueryBuilder.BuildSigningFilterStateAsync(
             currentUserId,
             input.FilterText,
             input.FilterMode,
@@ -114,167 +101,6 @@ public partial class DocumentWorkflowInstancesAppService
             memoryStream,
             fileName,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    }
-
-    private async Task<SigningFilterState> BuildSigningFilterStateAsync(
-        Guid currentUserId,
-        string? filterText,
-        DocumentSigningFilterMode filterMode,
-        DocumentSigningDateFilterField dateFilterField,
-        DateTime? fromDate,
-        DateTime? toDate,
-        Guid? focusDocumentId)
-    {
-        var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
-        var instanceQueryable = await _documentWorkflowInstanceRepository.GetQueryableAsync();
-        var documentQueryable = await _documentRepository.GetQueryableAsync();
-
-        var workflowDocumentQuery = documentQueryable.Where(d => d.SourceType == DocumentSourceType.Workflow);
-
-        var receivedDocIdQuery = assignmentQueryable
-            .Where(a => a.ReceiverUserId == currentUserId && a.WorkflowStepTemplateId != null)
-            .Join(workflowDocumentQuery, a => a.DocumentId, d => d.Id, (a, d) => d.Id)
-            .Distinct();
-
-        var initiatedDocIdQuery = instanceQueryable
-            .Where(i => i.CreatorId == currentUserId)
-            .Join(workflowDocumentQuery, i => i.DocumentId, d => d.Id, (i, d) => d.Id)
-            .Distinct();
-
-        var sentToOthersDocIdQuery = assignmentQueryable
-            .Where(a => a.ReceiverUserId != currentUserId && a.WorkflowStepTemplateId != null)
-            .Join(workflowDocumentQuery, a => a.DocumentId, d => d.Id, (a, d) => d.Id)
-            .Distinct();
-
-        var sentByMeCandidateQuery = initiatedDocIdQuery.Intersect(sentToOthersDocIdQuery);
-        var sentByMeCandidateList = await AsyncExecuter.ToListAsync(sentByMeCandidateQuery);
-        var excludeSentByMeBecauseCreatorSigned =
-            await GetSentByMeExcludeBecauseCreatorSignedAsync(currentUserId, sentByMeCandidateList);
-        var sentByMeAllowedSet = sentByMeCandidateList
-            .Where(id => !excludeSentByMeBecauseCreatorSigned.Contains(id))
-            .ToHashSet();
-
-        var allDocIdQuery = receivedDocIdQuery.Union(sentByMeCandidateQuery);
-        var baseDocQuery = documentQueryable.Where(d => allDocIdQuery.Contains(d.Id));
-        baseDocQuery = ApplySigningDateFilter(baseDocQuery, instanceQueryable, dateFilterField, fromDate, toDate);
-
-        if (!string.IsNullOrWhiteSpace(filterText))
-        {
-            var trimmed = filterText.Trim();
-            baseDocQuery = baseDocQuery.Where(d =>
-                (d.Title != null && d.Title.Contains(trimmed)) ||
-                (d.No != null && d.No.Contains(trimmed)) ||
-                (d.StorageNumber != null && d.StorageNumber.Contains(trimmed)));
-        }
-
-        var filteredDocIds = baseDocQuery.Select(d => d.Id);
-        var sentToMeCount = await AsyncExecuter.CountAsync(
-            filteredDocIds.Where(id => receivedDocIdQuery.Contains(id)));
-        var sentByMeCount = sentByMeAllowedSet.Count == 0
-            ? 0
-            : await AsyncExecuter.CountAsync(
-                filteredDocIds.Where(id => sentByMeAllowedSet.Contains(id)));
-        const int followingCount = 0;
-        var allCount = await AsyncExecuter.CountAsync(filteredDocIds);
-
-        IQueryable<Document> modeFilteredQuery;
-        switch (filterMode)
-        {
-            case DocumentSigningFilterMode.SentToMe:
-                modeFilteredQuery = baseDocQuery.Where(d => receivedDocIdQuery.Contains(d.Id));
-                break;
-            case DocumentSigningFilterMode.SentByMe:
-                modeFilteredQuery = sentByMeAllowedSet.Count == 0
-                    ? baseDocQuery.Where(d => false)
-                    : baseDocQuery.Where(d => sentByMeAllowedSet.Contains(d.Id));
-                break;
-            case DocumentSigningFilterMode.Following:
-                modeFilteredQuery = baseDocQuery.Where(d => false);
-                break;
-            default:
-                modeFilteredQuery = baseDocQuery;
-                break;
-        }
-
-        if (focusDocumentId.HasValue)
-        {
-            modeFilteredQuery = modeFilteredQuery.Where(d => d.Id == focusDocumentId.Value);
-        }
-
-        var myPendingAssignmentDocIdsQuery = assignmentQueryable
-            .Where(a =>
-                a.ReceiverUserId == currentUserId
-                && a.WorkflowStepTemplateId != null
-                && a.Status == nameof(DocumentAssignmentStatus.PENDING)
-                && a.IsCurrent)
-            .Select(a => a.DocumentId)
-            .Distinct();
-
-        return new SigningFilterState
-        {
-            ModeFilteredQuery = modeFilteredQuery,
-            InstanceQueryable = instanceQueryable,
-            MyPendingAssignmentDocIdsQuery = myPendingAssignmentDocIdsQuery,
-            AllCount = allCount,
-            SentToMeCount = sentToMeCount,
-            SentByMeCount = sentByMeCount,
-            FollowingCount = followingCount
-        };
-    }
-
-    private static IQueryable<Document> ApplySigningDateFilter(
-        IQueryable<Document> baseDocQuery,
-        IQueryable<DocumentWorkflowInstance> instanceQueryable,
-        DocumentSigningDateFilterField dateFilterField,
-        DateTime? fromDate,
-        DateTime? toDate)
-    {
-        if (!fromDate.HasValue && !toDate.HasValue)
-        {
-            return baseDocQuery;
-        }
-
-        if (dateFilterField == DocumentSigningDateFilterField.IncomingDate)
-        {
-            if (fromDate.HasValue)
-            {
-                var from = fromDate.Value.Date;
-                baseDocQuery = baseDocQuery.Where(d => d.IncommingDate >= from);
-            }
-
-            if (toDate.HasValue)
-            {
-                var toEnd = toDate.Value.Date.AddDays(1).AddSeconds(-1);
-                baseDocQuery = baseDocQuery.Where(d => d.IncommingDate <= toEnd);
-            }
-
-            return baseDocQuery;
-        }
-
-        var latestStartedAtByDoc = instanceQueryable
-            .GroupBy(i => i.DocumentId)
-            .Select(g => new { DocumentId = g.Key, StartedAt = g.Max(x => x.StartedAt) });
-
-        var latestInstancesQuery =
-            from i in instanceQueryable
-            join l in latestStartedAtByDoc on new { i.DocumentId, i.StartedAt } equals new { l.DocumentId, l.StartedAt }
-            select i;
-
-        if (fromDate.HasValue)
-        {
-            var from = fromDate.Value.Date;
-            latestInstancesQuery = latestInstancesQuery.Where(i => i.StartedAt >= from);
-        }
-
-        if (toDate.HasValue)
-        {
-            var toEnd = toDate.Value.Date.AddDays(1).AddSeconds(-1);
-            latestInstancesQuery = latestInstancesQuery.Where(i =>
-                i.FinishedAt > DateTime.MinValue && i.FinishedAt <= toEnd);
-        }
-
-        var matchingDocIds = latestInstancesQuery.Select(i => i.DocumentId).Distinct();
-        return baseDocQuery.Where(d => matchingDocIds.Contains(d.Id));
     }
 
     private async Task<List<Dictionary<string, object?>>> BuildSigningExportRowsAsync(List<Document> documents)
@@ -356,7 +182,7 @@ public partial class DocumentWorkflowInstancesAppService
         var stepTemplateIds = new HashSet<Guid>();
         foreach (var inst in latestInstances)
         {
-            var ids = TryDeserializeCommittedStepTemplateIds(inst.CommittedStepTemplateIdsJson);
+            var ids = DocumentSigningQueryHelper.TryDeserializeCommittedStepTemplateIds(inst.CommittedStepTemplateIdsJson);
             if (ids == null)
             {
                 continue;
@@ -676,7 +502,7 @@ public partial class DocumentWorkflowInstancesAppService
         IReadOnlyDictionary<Guid, WorkflowStepTemplate> stepTemplateDict,
         IReadOnlyDictionary<Guid, List<WorkflowStepTemplate>> legacyStepsByTemplateId)
     {
-        var orderedIds = TryDeserializeCommittedStepTemplateIds(instance.CommittedStepTemplateIdsJson);
+        var orderedIds = DocumentSigningQueryHelper.TryDeserializeCommittedStepTemplateIds(instance.CommittedStepTemplateIdsJson);
         if (orderedIds is { Count: > 0 })
         {
             var ordered = new List<WorkflowStepTemplate>();
@@ -700,5 +526,27 @@ public partial class DocumentWorkflowInstancesAppService
         }
 
         return new List<WorkflowStepTemplate>();
+    }
+
+    /// <summary>
+    /// Signing export is [AllowAnonymous] (browser navigation); user id comes from the one-time download token.
+    /// </summary>
+    private async Task<Guid> ValidateAndConsumeSigningExportTokenAsync(string inputToken)
+    {
+        if (string.IsNullOrEmpty(inputToken))
+        {
+            throw new AbpAuthorizationException("Invalid download token.");
+        }
+
+        var cacheItem = await _downloadTokenCache.GetAsync(inputToken);
+        if (cacheItem == null
+            || cacheItem.Token != inputToken
+            || !cacheItem.UserId.HasValue)
+        {
+            throw new AbpAuthorizationException("Invalid download token.");
+        }
+
+        await _downloadTokenCache.RemoveAsync(inputToken);
+        return cacheItem.UserId.Value;
     }
 }

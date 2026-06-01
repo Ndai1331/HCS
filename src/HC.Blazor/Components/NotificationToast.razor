@@ -64,7 +64,7 @@
                         <i class="fas @statusIcon"></i>
                         <span class="badge @(isFailed ? "bg-danger" : isCompleted ? "bg-success" : "bg-primary") ms-1">@(p.Progress)%</span>
                     </button>
-                    <button type="button" class="btn btn-light btn-sm rounded-circle shadow-sm doc-op-toast-expand" title="Phóng to" @onclick="ToggleDocumentOpMinimized">
+                    <button type="button" class="btn btn-light btn-sm rounded-circle shadow-sm doc-op-toast-expand" title="@L["Expand"]" @onclick="ToggleDocumentOpMinimized">
                         <i class="fas fa-expand"></i>
                     </button>
                 </div>
@@ -78,7 +78,7 @@
                             <span class="fw-semibold text-truncate" title="@opTitle">@opTitle</span>
                         </div>
                         <div class="d-flex align-items-center gap-1">
-                            <button type="button" class="btn btn-sm btn-link p-0 doc-op-toast-btn" title="Thu nhỏ (góc gọn)" @onclick="ToggleDocumentOpMinimized">
+                            <button type="button" class="btn btn-sm btn-link p-0 doc-op-toast-btn" title="@L["Minimize"]" @onclick="ToggleDocumentOpMinimized">
                                 <i class="fas fa-compress"></i>
                             </button>
                             <button type="button" class="btn btn-sm btn-link p-0 doc-op-toast-btn text-danger" title="Đóng" @onclick="DismissDocumentProgressNow">

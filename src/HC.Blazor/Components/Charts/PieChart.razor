@@ -26,10 +26,11 @@
         {
             if (!_chartRendered)
             {
-                // Wait a bit for the canvas to be rendered in the DOM
-                await Task.Delay(200);
-                await RenderChart();
-                _chartRendered = true;
+                if (await WaitForCanvasAsync())
+                {
+                    await RenderChart();
+                    _chartRendered = true;
+                }
             }
         }
     }
@@ -43,17 +44,36 @@
 
             if (_chartRendered && dataChanged)
             {
-                // Update existing chart
-                await Task.Delay(200); // Small delay to ensure DOM is ready
-                await UpdateChart();
-                _lastDataSignature = currentSignature;
+                if (await WaitForCanvasAsync())
+                {
+                    await UpdateChart();
+                    _lastDataSignature = currentSignature;
+                }
             }
             else if (!_chartRendered)
             {
-                // Trigger render in OnAfterRenderAsync
                 _chartRendered = false;
             }
         }
+    }
+
+    private async Task<bool> WaitForCanvasAsync(int maxAttempts = 8)
+    {
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var exists = await JSRuntime.InvokeAsync<bool>(
+                "eval",
+                $"document.getElementById('{ChartId}') !== null");
+
+            if (exists)
+            {
+                return true;
+            }
+
+            await Task.Delay(50);
+        }
+
+        return false;
     }
 
     private async Task RenderChart()

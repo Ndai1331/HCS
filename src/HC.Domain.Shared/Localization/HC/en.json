@@ -1339,6 +1339,10 @@
     "RemoveAdmin": "Remove Admin",
     "Url": "Url",
     "Reports": "Reports",
-    "NewReport": "New Report"
+    "NewReport": "New Report",
+    "AnErrorOccurredWhileProcessingYourRequest": "An error occurred while processing your request. Please try again later.",
+    "Expand": "Expand",
+    "Minimize": "Minimize",
+    "ShowingRecentMessages": "Showing {0} of {1} recent messages. Scroll up to load older messages."
   }
 }

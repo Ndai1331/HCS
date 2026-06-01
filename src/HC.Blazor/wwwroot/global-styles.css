@@ -1,3 +1,10 @@
+:root {
+    --hc-brand-primary: #f72585;
+    --hc-brand-primary-rgb: 247, 37, 133;
+    --hc-text-muted: #6c757d;
+    --hc-border-radius-sm: 0.375rem;
+}
+
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;

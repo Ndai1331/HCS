@@ -32,8 +32,10 @@
         {
             if (_chartInstance == null && !_chartRendered)
             {
-                await Task.Delay(200);
-                await RenderChart();
+                if (await WaitForCanvasAsync())
+                {
+                    await RenderChart();
+                }
             }
         }
     }
@@ -47,15 +49,36 @@
 
             if (_chartRendered && dataChanged)
             {
-                await Task.Delay(200);
-                await UpdateChart();
-                _lastDataSignature = currentSignature;
+                if (await WaitForCanvasAsync())
+                {
+                    await UpdateChart();
+                    _lastDataSignature = currentSignature;
+                }
             }
             else if (!_chartRendered)
             {
                 _chartRendered = false;
             }
         }
+    }
+
+    private async Task<bool> WaitForCanvasAsync(int maxAttempts = 8)
+    {
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var exists = await JSRuntime.InvokeAsync<bool>(
+                "eval",
+                $"document.getElementById('{ChartId}') !== null");
+
+            if (exists)
+            {
+                return true;
+            }
+
+            await Task.Delay(50);
+        }
+
+        return false;
     }
 
     private async Task RenderChart()

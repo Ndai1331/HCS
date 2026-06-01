@@ -33,26 +33,12 @@ public class WorkflowOverdueBackgroundWorker : AsyncPeriodicBackgroundWorkerBase
 
         var now = clock.Now;
 
-        var markOverdueCandidates = await instanceRepository.GetListAsync(
-            x => x.Status == nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS)
-                 && x.FinishedAt > DateTime.MinValue
-                 && x.FinishedAt <= now);
-
-        foreach (var instance in markOverdueCandidates)
+        var markedOverdueCount = await instanceRepository.MarkInProgressAsOverdueBatchAsync(now);
+        if (markedOverdueCount > 0)
         {
-            try
-            {
-                instance.Status = nameof(DocumentWorkflowInstanceStatus.OVERDUE);
-                instance.OverdueAt = now;
-                await instanceRepository.UpdateAsync(instance);
-                Logger.LogInformation(
-                    "[OVERDUE_WORKER] Marked instance {InstanceId} as OVERDUE at {OverdueAt}",
-                    instance.Id, now);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "[OVERDUE_WORKER] Failed to mark OVERDUE for instance {InstanceId}", instance.Id);
-            }
+            Logger.LogInformation(
+                "[OVERDUE_WORKER] Batch marked {Count} instances as OVERDUE at {OverdueAt}",
+                markedOverdueCount, now);
         }
 
         var overdueInstances = await instanceRepository.GetListAsync(
@@ -84,6 +70,6 @@ public class WorkflowOverdueBackgroundWorker : AsyncPeriodicBackgroundWorkerBase
 
         Logger.LogInformation(
             "[OVERDUE_WORKER] Completed. Marked {Marked} overdue, cancelled {Cancelled} after grace.",
-            markOverdueCandidates.Count, cancelCount);
+            markedOverdueCount, cancelCount);
     }
 }

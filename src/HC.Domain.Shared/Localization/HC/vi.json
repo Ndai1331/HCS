@@ -1403,6 +1403,10 @@
     "Y": "Y",
     "SubmitForApproval": "Gửi lãnh đạo duyệt",
     "RemoveAdmin": "Xóa admin",
-    "User": "Người dùng"
+    "User": "Người dùng",
+    "AnErrorOccurredWhileProcessingYourRequest": "Đã xảy ra lỗi khi xử lý yêu cầu. Vui lòng thử lại sau.",
+    "Expand": "Phóng to",
+    "Minimize": "Thu nhỏ",
+    "ShowingRecentMessages": "Hiển thị {0}/{1} tin nhắn gần nhất. Cuộn lên để tải thêm."
   }
 }

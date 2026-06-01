@@ -1,6 +1,7 @@
 @using HC.Chat.Conversations
 @using HC.Chat.Messages
 @using HC.Chat.Users
+@using System.Linq
 @inherits HCComponentBase
 
 @*
@@ -36,7 +37,13 @@ else
                         <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
                     </div>
                 }
-                @foreach (var message in Messages)
+                @if (HasHiddenOlderMessages)
+                {
+                    <div class="text-center py-1 text-muted small">
+                        @L["ShowingRecentMessages", VisibleMessages.Count, Messages.Count]
+                    </div>
+                }
+                @foreach (var message in VisibleMessages)
                 {
                     <MessageItem @key="message.Id"
                                  Message="@message"
@@ -72,6 +79,16 @@ else
 
     [Parameter]
     public IReadOnlyList<ChatMessageDto> Messages { get; set; } = Array.Empty<ChatMessageDto>();
+
+    private const int MessageRenderWindowSize = 150;
+
+    private IReadOnlyList<ChatMessageDto> VisibleMessages =>
+        Messages.Count <= MessageRenderWindowSize || IsLoadingMoreMessages
+            ? Messages
+            : Messages.TakeLast(MessageRenderWindowSize).ToList();
+
+    private bool HasHiddenOlderMessages =>
+        !IsLoadingMoreMessages && Messages.Count > MessageRenderWindowSize;
 
     [Parameter]
     public ChatContactDto? CurrentChatContact { get; set; }

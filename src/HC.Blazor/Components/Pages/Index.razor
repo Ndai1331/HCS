@@ -632,15 +632,9 @@
 
     private List<double> TaskChartData => TasksByStatus.OrderBy(x => x.Key).Select(x => (double)x.Value).ToList();
 
-    private List<string> TaskChartColors => TasksByStatus.OrderBy(x => x.Key).Select(x => x.Key switch
-    {
-        "TODO" => "#355dff",           // primary
-        "IN_PROGRESS" => "#4fbf67",    // success
-        "WAITING" => "#ff9f38",        // warning
-        "DONE" => "#f72585",           // brand
-        "CANCELLED" => "#c00d49",      // danger
-        _ => "#355dff"                 // primary
-    }).ToList();
+    private List<string> TaskChartColors => TasksByStatus.OrderBy(x => x.Key)
+        .Select(x => EnumStatusColorHelper.GetProjectTaskStatusChartHexColor(x.Key))
+        .ToList();
 
     // Workflow chart data from document signing statistics
     private record WorkflowChartItem(string Label, double Percentage, string Color);

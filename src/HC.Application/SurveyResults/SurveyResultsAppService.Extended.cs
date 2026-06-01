@@ -25,19 +25,12 @@ using Volo.Abp.Data;
 using Volo.Abp.Domain.Entities;
 
 namespace HC.SurveyResults;
-[AllowAnonymous]
+
 public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResultsAppService
 {
-    private sealed class SurveyStatisticsRow
-    {
-        public int Rating { get; set; }
-        public Guid CriteriaId { get; set; }
-        public string CriteriaName { get; set; } = string.Empty;
-        public string CriteriaCode { get; set; } = string.Empty;
-    }
-
     protected ILogger<SurveyResultsAppService> _logger { get; set; } = null!;
     protected ISurveyResultRepository _surveyResultRepository { get; set; } = null!;
+    protected ISurveyStatisticsQueryRepository _surveyStatisticsQueryRepository { get; set; } = null!;
     protected SurveyResultManager _surveyResultManager { get; set; } = null!;
     protected IRepository<HC.SurveyCriterias.SurveyCriteria, Guid> _surveyCriteriaRepository { get; set; } = null!;
     protected IRepository<HC.SurveySessions.SurveySession, Guid> _surveySessionRepository { get; set; } = null!;
@@ -47,6 +40,7 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
         ILogger<SurveyResultsAppService> logger,
         ISurveyResultRepository surveyResultRepository,
         SurveyResultManager surveyResultManager, 
+        ISurveyStatisticsQueryRepository surveyStatisticsQueryRepository,
         IRepository<HC.SurveyCriterias.SurveyCriteria, Guid> surveyCriteriaRepository,
         IRepository<HC.SurveySessions.SurveySession, Guid> surveySessionRepository,
         IDataFilter dataFilter,
@@ -55,6 +49,7 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
         _logger = logger;
         _surveyResultRepository = surveyResultRepository;
         _surveyResultManager = surveyResultManager;
+        _surveyStatisticsQueryRepository = surveyStatisticsQueryRepository;
         _surveyCriteriaRepository = surveyCriteriaRepository;
         _surveySessionRepository = surveySessionRepository;
         _dataFilter = dataFilter;
@@ -92,7 +87,7 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Error creating survey result for session {input.SurveySessionId} and criteria {input.SurveyCriteriaId}");
-            throw new UserFriendlyException(ex.Message);
+            throw new UserFriendlyException(L["AnErrorOccurredWhileProcessingYourRequest"]);
         }
     }
 
@@ -141,7 +136,8 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
         }
         catch (Exception ex)
         {
-            throw new UserFriendlyException(ex.Message);
+            _logger.LogError(ex, "Error creating public survey results batch");
+            throw new UserFriendlyException(L["AnErrorOccurredWhileProcessingYourRequest"]);
         }
     }
 
@@ -228,75 +224,15 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
 
         try
         {
-            _logger.LogInformation($"GetStatisticsByLocationAsync Getting survey result statistics for location {surveyLocationId}");
-            List<SurveyStatisticsRow> data;
-            using (_dataFilter.Disable<ISoftDelete>())
-            {
-                var queryable = await _surveyResultRepository.GetQueryableAsync();
-                var sessionQueryable = await _surveySessionRepository.GetQueryableAsync();
-                var criteriaQueryable = await _surveyCriteriaRepository.GetQueryableAsync();
+            _logger.LogInformation("GetStatisticsByLocationAsync Getting survey result statistics for location {SurveyLocationId}", surveyLocationId);
+            var queryResult = await _surveyStatisticsQueryRepository.GetStatisticsByLocationAsync(surveyLocationId);
 
-                var query = from result in queryable
-                           join session in sessionQueryable on result.SurveySessionId equals session.Id
-                           join criteria in criteriaQueryable on result.SurveyCriteriaId equals criteria.Id
-                           where !surveyLocationId.HasValue || session.SurveyLocationId == surveyLocationId.Value
-                           select new
-                           {
-                               result.Rating,
-                               criteria.Id,
-                               criteria.Name,
-                               criteria.Code
-                           };
-                data = (await AsyncExecuter.ToListAsync(query))
-                    .Select(x => new SurveyStatisticsRow
-                    {
-                        Rating = x.Rating,
-                        CriteriaId = x.Id,
-                        CriteriaName = x.Name,
-                        CriteriaCode = x.Code
-                    })
-                    .ToList();
-            }
+            statistics.TotalReviews = queryResult.TotalReviews;
+            statistics.RatingDistribution = queryResult.RatingDistribution;
+            statistics.CriteriaAverageRatings = queryResult.CriteriaAverageRatings;
 
-            statistics.TotalReviews = data.Count;
-
-            // Calculate rating distribution
-            statistics.RatingDistribution = data
-                .GroupBy(x => x.Rating)
-                .ToDictionary(g => g.Key, g => g.Count());
-
-            // Ensure all ratings 0-5 are present
-            for (int i = 0; i <= 5; i++)
-            {
-                if (!statistics.RatingDistribution.ContainsKey(i))
-                {
-                    statistics.RatingDistribution[i] = 0;
-                }
-            }
-
-            // Calculate criteria average ratings by criteria id to avoid collapsing duplicated names.
-            var criteriaAverages = data
-                .GroupBy(x => new { x.CriteriaId, x.CriteriaName, x.CriteriaCode })
-                .Select(g => new
-                {
-                    CriteriaName = g.Key.CriteriaName,
-                    CriteriaCode = g.Key.CriteriaCode,
-                    AverageRating = g.Average(x => x.Rating)
-                })
-                .OrderBy(x => x.CriteriaName)
-                .ToList();
-
-            statistics.CriteriaAverageRatings = criteriaAverages
-                .GroupBy(x => x.CriteriaName)
-                .SelectMany(group => group.Select(item => new
-                {
-                    Label = group.Count() > 1 && !item.CriteriaCode.IsNullOrWhiteSpace()
-                        ? $"{item.CriteriaName} ({item.CriteriaCode})"
-                        : item.CriteriaName,
-                    item.AverageRating
-                }))
-                .ToDictionary(x => x.Label, x => Math.Round(x.AverageRating, 1));
-            _logger.LogInformation($"GetStatisticsByLocationAsync Criteria Average Ratings: {JsonSerializer.Serialize(statistics.CriteriaAverageRatings)}");
+            _logger.LogInformation("GetStatisticsByLocationAsync Criteria Average Ratings: {CriteriaAverageRatings}",
+                JsonSerializer.Serialize(statistics.CriteriaAverageRatings));
             return statistics;
         }
         catch (Exception ex)

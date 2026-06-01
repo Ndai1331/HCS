@@ -12,8 +12,9 @@ public static class BlobStoragePathHelper
     private const int MaxPathLength = 512;
 
     // Logical path: optional host/tenants prefix + folder/file segments (no spaces, no base64).
+    // Allow uppercase in file/folder names (legacy imports e.g. user-signature-images/Images/.../CHUKY-1.png).
     private static readonly Regex ValidLogicalPathPattern = new(
-        @"^(?:(?:host|tenants/[0-9a-fA-F-]{36})/)?[a-z0-9][a-z0-9._/-]*$",
+        @"^(?:(?:host|tenants/[0-9a-fA-F-]{36})/)?[a-zA-Z0-9][a-zA-Z0-9._/-]*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public static bool IsBlobStoragePath(string? path)

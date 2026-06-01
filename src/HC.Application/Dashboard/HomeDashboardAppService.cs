@@ -12,14 +12,14 @@ using HC.NotificationReceivers;
 using HC.ProjectTasks;
 using HC.Projects;
 using Microsoft.AspNetCore.Authorization;
+using Volo.Abp.Application.Dtos;
 
 namespace HC.Dashboard;
 
 [Authorize]
 public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
 {
-    private readonly IProjectsAppService _projectsAppService;
-    private readonly IProjectTasksAppService _projectTasksAppService;
+    private readonly IHomeDashboardQueryRepository _homeDashboardQueryRepository;
     private readonly ICalendarEventsAppService _calendarEventsAppService;
     private readonly ICalendarEventParticipantsAppService _calendarEventParticipantsAppService;
     private readonly IDocumentAssignmentsAppService _documentAssignmentsAppService;
@@ -28,8 +28,7 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
     private readonly IDocumentWorkflowInstanceLogssAppService _documentWorkflowInstanceLogssAppService;
 
     public HomeDashboardAppService(
-        IProjectsAppService projectsAppService,
-        IProjectTasksAppService projectTasksAppService,
+        IHomeDashboardQueryRepository homeDashboardQueryRepository,
         ICalendarEventsAppService calendarEventsAppService,
         ICalendarEventParticipantsAppService calendarEventParticipantsAppService,
         IDocumentAssignmentsAppService documentAssignmentsAppService,
@@ -37,8 +36,7 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
         INotificationReceiversAppService notificationReceiversAppService,
         IDocumentWorkflowInstanceLogssAppService documentWorkflowInstanceLogssAppService)
     {
-        _projectsAppService = projectsAppService;
-        _projectTasksAppService = projectTasksAppService;
+        _homeDashboardQueryRepository = homeDashboardQueryRepository;
         _calendarEventsAppService = calendarEventsAppService;
         _calendarEventParticipantsAppService = calendarEventParticipantsAppService;
         _documentAssignmentsAppService = documentAssignmentsAppService;
@@ -62,34 +60,17 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
 
         var bundle = new HomeDashboardBundleDto();
 
-        // Do not run multiple app-service / repository calls in parallel inside one UoW: ABP registers one
-        // DbContext per unit of work; concurrent GetDbContextAsync hits "already contains a database API".
-        var allProjects = await _projectsAppService.GetListAsync(new GetProjectsInput
-        {
-            MaxResultCount = 200,
-            SkipCount = 0
-        });
+        var summary = await _homeDashboardQueryRepository.GetProjectAndTaskSummaryAsync(
+            filterStart, filterEndExclusive, maxListItems: 200);
 
-        var filteredProjects = await _projectsAppService.GetListAsync(new GetProjectsInput
-        {
-            MaxResultCount = 200,
-            SkipCount = 0,
-            StartDateMin = filterStart,
-            StartDateMax = filterEndExclusive
-        });
+        bundle.TotalProjectsCount = (int)summary.TotalProjectsCount;
+        bundle.ActiveProjectsCount = (int)summary.FilteredProjectsCount;
+        bundle.ActiveProjects = ObjectMapper.Map<List<ProjectWithNavigationProperties>, List<ProjectWithNavigationPropertiesDto>>(summary.FilteredProjects);
+        bundle.TotalTasksCount = (int)summary.TotalTasksCount;
+        bundle.TasksByStatus = summary.TasksByStatus;
+        bundle.MyTasks = ObjectMapper.Map<List<ProjectTaskWithNavigationProperties>, List<ProjectTaskWithNavigationPropertiesDto>>(summary.FilteredTasks);
 
-        var tasksInput = new GetProjectTasksInput
-        {
-            MaxResultCount = 200,
-            SkipCount = 0,
-            Sorting = "ProjectTask.StartDate DESC",
-            StartDateMin = filterStart,
-            StartDateMax = filterEndExclusive
-        };
-
-        var tasksPage = await _projectTasksAppService.GetListAsync(tasksInput);
-
-        var calendarEvents = await LoadCalendarEventsForCurrentUserAsync(filterStart, filterEnd, filterEndExclusive);
+        bundle.CalendarEvents = await LoadCalendarEventsForCurrentUserAsync(filterStart, filterEnd, filterEndExclusive);
 
         var assignmentResult = await _documentAssignmentsAppService.GetListAsync(new GetDocumentAssignmentsInput
         {
@@ -121,20 +102,8 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
             CreationTimeMax = filterEndExclusive
         });
 
-        var workflowChartStatistics =
+        bundle.WorkflowChartStatistics =
             await _documentWorkflowInstanceLogssAppService.GetWorkflowChartStatisticsAsync(filterStart, filterEnd);
-
-        bundle.TotalProjectsCount = (int)allProjects.TotalCount;
-        bundle.ActiveProjectsCount = (int)filteredProjects.TotalCount;
-        bundle.ActiveProjects = filteredProjects.Items.ToList();
-
-        bundle.TotalTasksCount = (int)tasksPage.TotalCount;
-        bundle.TasksByStatus = tasksPage.Items
-            .GroupBy(t => t.ProjectTask.Status)
-            .ToDictionary(g => g.Key, g => g.Count());
-        bundle.MyTasks = tasksPage.Items.ToList();
-
-        bundle.CalendarEvents = calendarEvents;
 
         var assignedItems = assignmentResult.Items
             .Where(x => x.Document.SourceType == DocumentSourceType.Archive)
@@ -157,8 +126,6 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
             .ToList();
 
         bundle.RecentNotifications = notifications.Items.ToList();
-
-        bundle.WorkflowChartStatistics = workflowChartStatistics;
 
         return bundle;
     }

@@ -61,6 +61,30 @@ public class EnumStatusColorHelper
         };
     }
 
+    /// <summary>Hex colors for Chart.js datasets (matches LeptonX theme tokens).</summary>
+    public static string GetProjectTaskStatusChartHexColor(string? status)
+    {
+        if (!Enum.TryParse<ProjectTaskStatus>(status, true, out var parsed))
+        {
+            return "#355dff";
+        }
+
+        return GetProjectTaskStatusChartHexColor(parsed);
+    }
+
+    public static string GetProjectTaskStatusChartHexColor(ProjectTaskStatus projectTaskStatus)
+    {
+        return projectTaskStatus switch
+        {
+            ProjectTaskStatus.TODO => "#355dff",
+            ProjectTaskStatus.IN_PROGRESS => "#4fbf67",
+            ProjectTaskStatus.WAITING => "#ff9f38",
+            ProjectTaskStatus.DONE => "#f72585",
+            ProjectTaskStatus.CANCELLED => "#c00d49",
+            _ => "#355dff",
+        };
+    }
+
     public static Color GetProjectTaskPriorityBadgeColor(ProjectTaskPriority priority)
     {
         return priority switch
