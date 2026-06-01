@@ -343,11 +343,16 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
         {
             await _parallelSigningMergeService.MergeSignedPdfsForParallelAsync(instance);
         }
+        catch (Volo.Abp.UserFriendlyException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex,
-                "[PARALLEL_COMPLETE] Error merging signed PDFs for instance {InstanceId}. Completing workflow without merge.",
+                "[PARALLEL_COMPLETE] Error merging signed PDFs for instance {InstanceId}",
                 instance.Id);
+            throw new Volo.Abp.UserFriendlyException(L["ParallelSigningMergeFailed"]);
         }
 
         instance.Status = nameof(DocumentWorkflowInstanceStatus.COMPLETED);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using HC.Documents;
@@ -9,6 +10,7 @@ using HC.Workflows;
 using HC.WorkflowStepTemplates;
 using HC.WorkflowTemplates;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using HC.Permissions;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
@@ -45,6 +47,8 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
     /// <inheritdoc />
     public async Task<DocumentSigningPageResultDto> GetDocumentSigningListAsync(GetDocumentSigningListInput input)
     {
+        var stopwatch = Stopwatch.StartNew();
+
         if (!CurrentUser.Id.HasValue)
         {
             throw new Volo.Abp.Authorization.AbpAuthorizationException();
@@ -321,6 +325,15 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
                     && docInstance.CreatorId == currentUserId
             });
         }
+
+        stopwatch.Stop();
+        Logger.LogInformation(
+            "GetDocumentSigningListAsync completed in {ElapsedMs}ms for user {UserId}, mode={FilterMode}, totalCount={TotalCount}, pageSize={PageSize}",
+            stopwatch.ElapsedMilliseconds,
+            currentUserId,
+            input.FilterMode,
+            totalCount,
+            input.MaxResultCount);
 
         return new DocumentSigningPageResultDto
         {

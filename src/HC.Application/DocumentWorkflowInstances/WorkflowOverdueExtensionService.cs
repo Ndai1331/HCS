@@ -60,6 +60,11 @@ public class WorkflowOverdueExtensionService : HCAppService, IWorkflowOverdueExt
 
     public async Task<WorkflowOverdueCheckResultDto> CheckAndHandleOverdueAsync(Guid workflowInstanceId)
     {
+        if (!CurrentUser.Id.HasValue)
+        {
+            throw new Volo.Abp.UserFriendlyException(L["NotAuthorizedForThisAction"]);
+        }
+
         var result = new WorkflowOverdueCheckResultDto
         {
             IsOverdue = false,
@@ -69,7 +74,7 @@ public class WorkflowOverdueExtensionService : HCAppService, IWorkflowOverdueExt
         try
         {
             var instance = await _documentWorkflowInstanceRepository.GetAsync(workflowInstanceId);
-            var currentUserId = CurrentUser.Id!.Value;
+            var currentUserId = CurrentUser.Id.Value;
             var isCreator = instance.CreatorId == currentUserId;
             if (!isCreator)
             {
@@ -134,6 +139,7 @@ public class WorkflowOverdueExtensionService : HCAppService, IWorkflowOverdueExt
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error checking overdue for workflow instance {InstanceId}", workflowInstanceId);
+            throw new Volo.Abp.UserFriendlyException(L["OverdueCheckFailed"]);
         }
 
         return result;

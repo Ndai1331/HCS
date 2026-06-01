@@ -6,6 +6,7 @@ using HC.DocumentAssignments;
 using HC.Documents;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.Permissions;
+using HC.WorkflowStepAssignments;
 using HC.WorkflowStepTemplates;
 using HC.Workflows;
 using Microsoft.AspNetCore.Authorization;
@@ -25,9 +26,10 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
     private readonly IRepository<Document, Guid> _documentRepository;
     private readonly IRepository<Workflow, Guid> _workflowRepository;
     private readonly IRepository<WorkflowStepTemplate, Guid> _workflowStepTemplateRepository;
+    private readonly IRepository<WorkflowStepAssignment, Guid> _workflowStepAssignmentRepository;
     private readonly IRepository<IdentityUser, Guid> _identityUserRepository;
     private readonly IWorkflowCommittedStepsQueryService _workflowCommittedStepsQueryService;
-    private readonly IWorkflowInstanceQueryService _workflowInstanceQueryService;
+    private readonly IWorkflowSubmitInfoQueryService _workflowSubmitInfoQueryService;
     private readonly IWorkflowNotificationService _workflowNotificationService;
 
     public WorkflowSignerManagementService(
@@ -38,9 +40,10 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
         IRepository<Document, Guid> documentRepository,
         IRepository<Workflow, Guid> workflowRepository,
         IRepository<WorkflowStepTemplate, Guid> workflowStepTemplateRepository,
+        IRepository<WorkflowStepAssignment, Guid> workflowStepAssignmentRepository,
         IRepository<IdentityUser, Guid> identityUserRepository,
         IWorkflowCommittedStepsQueryService workflowCommittedStepsQueryService,
-        IWorkflowInstanceQueryService workflowInstanceQueryService,
+        IWorkflowSubmitInfoQueryService workflowSubmitInfoQueryService,
         IWorkflowNotificationService workflowNotificationService)
     {
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
@@ -50,9 +53,10 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
         _documentRepository = documentRepository;
         _workflowRepository = workflowRepository;
         _workflowStepTemplateRepository = workflowStepTemplateRepository;
+        _workflowStepAssignmentRepository = workflowStepAssignmentRepository;
         _identityUserRepository = identityUserRepository;
         _workflowCommittedStepsQueryService = workflowCommittedStepsQueryService;
-        _workflowInstanceQueryService = workflowInstanceQueryService;
+        _workflowSubmitInfoQueryService = workflowSubmitInfoQueryService;
         _workflowNotificationService = workflowNotificationService;
     }
 
@@ -74,17 +78,21 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
             throw new Volo.Abp.UserFriendlyException(L["WorkflowNotInProgress"]);
         }
 
-        var allSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(instance);
-        var docAssignments = await _documentAssignmentRepository.GetListAsync(
-            x => x.DocumentId == instance.DocumentId && x.CreationTime >= instance.StartedAt);
-
-        var stepsStatus = await _workflowInstanceQueryService.GetAllStepsWithStatusAsync(input.WorkflowInstanceId);
-        var editableSteps = stepsStatus.Where(s => s.CanEditSigner).ToDictionary(s => s.StepId);
-
         if (!input.StepSignerSelections.Any())
         {
             return;
         }
+
+        var allSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(instance);
+        var stepIds = allSteps.Select(s => s.Id).ToList();
+        var stepAssignments = await _workflowStepAssignmentRepository.GetListAsync(
+            x => x.StepId.HasValue && stepIds.Contains(x.StepId.Value) && x.IsActive);
+        var docAssignments = await _documentAssignmentRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId && x.CreationTime >= instance.StartedAt);
+
+        var selectionStepIds = input.StepSignerSelections.Select(s => s.StepId).Distinct().ToList();
+        var editableStepMap = await BuildEditableStepSignerMapAsync(
+            instance, allSteps, docAssignments, stepAssignments, selectionStepIds);
 
         var now = Clock.Now;
         var notifyUserIds = new List<Guid>();
@@ -106,17 +114,17 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
 
         foreach (var selection in input.StepSignerSelections)
         {
-            if (!editableSteps.TryGetValue(selection.StepId, out var stepStatus))
+            if (!editableStepMap.TryGetValue(selection.StepId, out var stepEditInfo))
             {
                 throw new Volo.Abp.UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
             }
 
-            if (!stepStatus.CandidateUsers.Any(c => c.UserId == selection.SelectedUserId))
+            if (!stepEditInfo.CandidateUsers.Any(c => c.UserId == selection.SelectedUserId))
             {
                 throw new Volo.Abp.UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
             }
 
-            if (stepStatus.CurrentPendingReceiverUserId == selection.SelectedUserId)
+            if (stepEditInfo.CurrentPendingReceiverUserId == selection.SelectedUserId)
             {
                 continue;
             }
@@ -187,4 +195,50 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
                 $"WorkflowAssignedMessage|{document.StorageNumber}|{document.Title}|{workflow.Name}|{currentStep.Name}");
         }
     }
+
+    private async Task<Dictionary<Guid, EditableStepSignerInfo>> BuildEditableStepSignerMapAsync(
+        DocumentWorkflowInstance instance,
+        IReadOnlyList<WorkflowStepTemplate> allSteps,
+        IReadOnlyList<DocumentAssignment> docAssignments,
+        IReadOnlyList<WorkflowStepAssignment> stepAssignments,
+        IReadOnlyList<Guid> stepIdsToValidate)
+    {
+        var submitterUserId = instance.CreatorId ?? CurrentUser.Id
+            ?? throw new Volo.Abp.UserFriendlyException(L["NotAuthorizedForThisAction"]);
+        var result = new Dictionary<Guid, EditableStepSignerInfo>();
+
+        foreach (var stepId in stepIdsToValidate)
+        {
+            var step = allSteps.FirstOrDefault(s => s.Id == stepId);
+            if (step == null)
+            {
+                continue;
+            }
+
+            var thisStepDocAssignments = docAssignments.Where(a => a.WorkflowStepTemplateId == step.Id).ToList();
+            var isCompleted = thisStepDocAssignments.Any(a => a.Status == nameof(DocumentAssignmentStatus.DONE));
+            var pendingAssignments = thisStepDocAssignments
+                .Where(a => a.Status == nameof(DocumentAssignmentStatus.PENDING) && a.IsCurrent)
+                .ToList();
+
+            if (isCompleted || !pendingAssignments.Any())
+            {
+                continue;
+            }
+
+            var templateAssignments = stepAssignments.Where(sa => sa.StepId == step.Id).ToList();
+            var stepDetail = await _workflowSubmitInfoQueryService.BuildWorkflowStepDetailAsync(
+                step, templateAssignments, submitterUserId);
+
+            result[stepId] = new EditableStepSignerInfo(
+                pendingAssignments.First().ReceiverUserId,
+                stepDetail.CandidateUsers);
+        }
+
+        return result;
+    }
+
+    private sealed record EditableStepSignerInfo(
+        Guid CurrentPendingReceiverUserId,
+        List<WorkflowStepUserDto> CandidateUsers);
 }

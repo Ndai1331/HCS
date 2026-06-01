@@ -96,9 +96,11 @@ public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInsta
     public Task UpdateWorkflowStepSignersAsync(UpdateWorkflowStepSignersInput input)
         => _workflowSignerManagementService.UpdateWorkflowStepSignersAsync(input);
 
+    [Authorize(HCPermissions.DocumentAssignments.Default)]
     public Task<DocumentWorkflowStatusDto?> GetActiveWorkflowStatusAsync(Guid documentId)
         => _workflowInstanceQueryService.GetActiveWorkflowStatusAsync(documentId);
 
+    [Authorize(HCPermissions.DocumentAssignments.Default)]
     public Task<DocumentSigningPageResultDto> GetDocumentSigningListAsync(GetDocumentSigningListInput input)
         => _documentSigningQueryService.GetDocumentSigningListAsync(input);
 
@@ -122,9 +124,11 @@ public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInsta
     public Task ExtendWorkflowAsync(ExtendWorkflowInput input)
         => _workflowOverdueExtensionService.ExtendWorkflowAsync(input);
 
+    [Authorize(HCPermissions.DocumentAssignments.Default)]
     public Task<WorkflowExtensionSummaryDto> GetWorkflowExtensionSummaryAsync(Guid workflowInstanceId)
         => _workflowOverdueExtensionService.GetWorkflowExtensionSummaryAsync(workflowInstanceId);
 
+    [Authorize(HCPermissions.DocumentAssignments.Default)]
     public virtual Task<WorkflowInstanceActionBundleDto> GetActionBundleAsync(GetWorkflowInstanceActionBundleInput input)
         => _workflowInstanceQueryService.GetActionBundleAsync(input);
 }

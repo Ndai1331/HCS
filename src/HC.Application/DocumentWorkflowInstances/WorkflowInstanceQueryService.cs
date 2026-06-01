@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using HC.DocumentAssignments;
@@ -83,8 +84,9 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
         var document = await _documentRepository.GetAsync(instance.DocumentId);
         var workflowInfo = await _workflowSubmitInfoQueryService.GetWorkflowSubmitInfoAsync(instance.WorkflowId);
 
-        var histories = await _documentHistoryRepository.GetListAsync(x => x.DocumentId == instance.DocumentId);
-        var lastHistory = histories.OrderByDescending(h => h.CreationTime).FirstOrDefault();
+        var latestHistories = await _documentHistoryRepository.GetHistoryByDocumentIdAsync(
+            instance.DocumentId, skipCount: 0, maxResultCount: 1);
+        var lastHistory = latestHistories.FirstOrDefault()?.DocumentHistory;
 
         var instanceFiles = await _documentWorkflowInstanceFileRepository.GetListAsync(
             x => x.DocumentWorkflowInstanceId == instance.Id);
@@ -142,9 +144,10 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
 
         var isCreator = CurrentUser.Id.HasValue && instance.CreatorId == CurrentUser.Id;
         var canEditSigners = isCreator && instance.Status == nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS);
-        var submitterUserId = instance.CreatorId ?? CurrentUser.Id!.Value;
+        var submitterUserId = instance.CreatorId ?? (CurrentUser.Id ?? throw new Volo.Abp.UserFriendlyException(L["NotAuthorizedForThisAction"]));
 
         var result = new List<WorkflowStepStatusDto>();
+        var stepsNeedingSignerDetail = new List<(WorkflowStepStatusDto StepDto, WorkflowStepTemplate Step, List<WorkflowStepAssignment> TemplateAssignments)>();
 
         foreach (var step in allSteps)
         {
@@ -197,15 +200,20 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
 
                 if (canEditSigners && !stepDto.IsCompleted)
                 {
-                    var stepDetail = await _workflowSubmitInfoQueryService.BuildWorkflowStepDetailAsync(
-                        step, thisStepTemplateAssignments, submitterUserId);
-                    stepDto.CanEditSigner = true;
-                    stepDto.CandidateUsers = stepDetail.CandidateUsers;
-                    stepDto.RoleName = stepDetail.RoleName;
+                    stepsNeedingSignerDetail.Add((stepDto, step, thisStepTemplateAssignments));
                 }
             }
 
             result.Add(stepDto);
+        }
+
+        foreach (var (stepDto, step, templateAssignments) in stepsNeedingSignerDetail)
+        {
+            var stepDetail = await _workflowSubmitInfoQueryService.BuildWorkflowStepDetailAsync(
+                step, templateAssignments, submitterUserId);
+            stepDto.CanEditSigner = true;
+            stepDto.CandidateUsers = stepDetail.CandidateUsers;
+            stepDto.RoleName = stepDetail.RoleName;
         }
 
         return result;
@@ -317,19 +325,21 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
 
     public async Task<WorkflowInstanceActionBundleDto> GetActionBundleAsync(GetWorkflowInstanceActionBundleInput input)
     {
+        var stopwatch = Stopwatch.StartNew();
+
         if (input == null)
         {
-            throw new Volo.Abp.UserFriendlyException("input is required");
+            throw new Volo.Abp.UserFriendlyException(L["ActionBundleInputRequired"]);
         }
 
         if (input.WorkflowInstanceId == Guid.Empty)
         {
-            throw new Volo.Abp.UserFriendlyException("WorkflowInstanceId is required");
+            throw new Volo.Abp.UserFriendlyException(L["ActionBundleWorkflowInstanceIdRequired"]);
         }
 
         if (input.DocumentId == Guid.Empty)
         {
-            throw new Volo.Abp.UserFriendlyException("DocumentId is required");
+            throw new Volo.Abp.UserFriendlyException(L["ActionBundleDocumentIdRequired"]);
         }
 
         var bundle = new WorkflowInstanceActionBundleDto();
@@ -344,9 +354,14 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
                 bundle.SubmitInfo = await _workflowSubmitInfoQueryService.GetWorkflowSubmitInfoAsync(bundle.Instance.WorkflowId);
                 bundle.CurrentStepDetail = bundle.SubmitInfo?.Steps.FirstOrDefault(s => s.StepId == bundle.Instance.CurrentStepId);
             }
+            catch (Volo.Abp.UserFriendlyException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "GetActionBundleAsync: SubmitInfo fetch failed for workflowId={workflowId}", bundle.Instance.WorkflowId);
+                Logger.LogWarning(ex, "GetActionBundleAsync: SubmitInfo fetch failed for workflowId={WorkflowId}", bundle.Instance.WorkflowId);
+                throw new Volo.Abp.UserFriendlyException(L["ActionBundleSubmitInfoFailed"]);
             }
         }
 
@@ -363,6 +378,13 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
                 .OrderBy(x => x.SortOrder)
                 .Take(mdTake));
         bundle.SigningMethods = ObjectMapper.Map<List<MasterData>, List<MasterDataDto>>(signingMethods);
+
+        stopwatch.Stop();
+        Logger.LogInformation(
+            "GetActionBundleAsync completed in {ElapsedMs}ms for WorkflowInstanceId={WorkflowInstanceId}, DocumentId={DocumentId}",
+            stopwatch.ElapsedMilliseconds,
+            input.WorkflowInstanceId,
+            input.DocumentId);
 
         return bundle;
     }

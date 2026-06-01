@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using HC.Documents;
 using HC.DocumentAssignments;
+using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 
@@ -34,6 +36,8 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
         DateTime? toDate,
         Guid? focusDocumentId)
     {
+        var stopwatch = Stopwatch.StartNew();
+
         var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
         var instanceQueryable = await _documentWorkflowInstanceRepository.GetQueryableAsync();
         var documentQueryable = await _documentRepository.GetQueryableAsync();
@@ -118,6 +122,17 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
                 && a.IsCurrent)
             .Select(a => a.DocumentId)
             .Distinct();
+
+        stopwatch.Stop();
+        if (stopwatch.ElapsedMilliseconds >= 500)
+        {
+            Logger.LogInformation(
+                "BuildSigningFilterStateAsync completed in {ElapsedMs}ms for user {UserId}, mode={FilterMode}, allCount={AllCount}",
+                stopwatch.ElapsedMilliseconds,
+                currentUserId,
+                filterMode,
+                allCount);
+        }
 
         return new SigningFilterState
         {

@@ -528,6 +528,7 @@ public partial class DocumentSigning
             Logger.LogError(ex, "Error loading all steps with status for workflow instance {InstanceId}", workflowInstanceId);
             AllStepsWithStatus = new();
             EditedStepSigners = new();
+            await HandleErrorAsync(ex);
         }
     }
 
@@ -848,17 +849,26 @@ public partial class DocumentSigning
 
     private async Task ApplyOverdueCheckAsync(Guid workflowInstanceId)
     {
-        var overdueResult = await DocumentWorkflowInstancesAppService.CheckAndHandleOverdueAsync(workflowInstanceId);
-        IsOverdue = overdueResult.IsOverdue;
-        CanExtendWorkflow = overdueResult.CanExtend;
-        WorkflowGraceCancelAt = overdueResult.GraceCancelAt;
-        WorkflowExtensionCount = overdueResult.ExtensionCount;
-        WorkflowTotalExtensionBusinessDays = overdueResult.TotalExtensionBusinessDays;
-        AllowReturnAction = overdueResult.AllowReturn;
-        IsSigningBlocked = overdueResult.WorkflowStatus == nameof(DocumentWorkflowInstanceStatus.CANCELLED)
-            || (overdueResult.WorkflowStatus == nameof(DocumentWorkflowInstanceStatus.OVERDUE)
-                && overdueResult.GraceCancelAt.HasValue
-                && Clock.Now >= overdueResult.GraceCancelAt.Value);
+        try
+        {
+            var overdueResult = await DocumentWorkflowInstancesAppService.CheckAndHandleOverdueAsync(workflowInstanceId);
+            IsOverdue = overdueResult.IsOverdue;
+            CanExtendWorkflow = overdueResult.CanExtend;
+            WorkflowGraceCancelAt = overdueResult.GraceCancelAt;
+            WorkflowExtensionCount = overdueResult.ExtensionCount;
+            WorkflowTotalExtensionBusinessDays = overdueResult.TotalExtensionBusinessDays;
+            AllowReturnAction = overdueResult.AllowReturn;
+            IsSigningBlocked = overdueResult.WorkflowStatus == nameof(DocumentWorkflowInstanceStatus.CANCELLED)
+                || (overdueResult.WorkflowStatus == nameof(DocumentWorkflowInstanceStatus.OVERDUE)
+                    && overdueResult.GraceCancelAt.HasValue
+                    && Clock.Now >= overdueResult.GraceCancelAt.Value);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "ApplyOverdueCheckAsync failed for workflow instance {InstanceId}", workflowInstanceId);
+            IsSigningBlocked = true;
+            await HandleErrorAsync(ex);
+        }
     }
 
     private async Task RefreshActionModalDataAsync()
@@ -909,6 +919,7 @@ public partial class DocumentSigning
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "RefreshActionModalDataAsync failed for instance {InstanceId}", workflowInstanceId);
+            await HandleErrorAsync(ex);
         }
     }
 
@@ -976,6 +987,7 @@ public partial class DocumentSigning
                 catch (Exception ex)
                 {
                     Logger.LogWarning(ex, "Signing action-bundle failed; falling back to per-call loads");
+                    await HandleErrorAsync(ex);
                     var tasks = new List<Task>
                     {
                         LoadWorkflowLogsAsync(document.WorkflowInstanceId.Value),
