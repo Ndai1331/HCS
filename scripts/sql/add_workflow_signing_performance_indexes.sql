@@ -15,7 +15,6 @@ CREATE INDEX IF NOT EXISTS "IX_AppDocumentAssignments_ReceiverUserId_Status_Work
 CREATE INDEX IF NOT EXISTS "IX_AppDocumentFiles_DocumentId_UploadedAt"
     ON "AppDocumentFiles" ("DocumentId", "UploadedAt");
 
-
-
 INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
 VALUES ('20260531120000_AddWorkflowSigningPerformanceIndexes', '10.0.0');
+
