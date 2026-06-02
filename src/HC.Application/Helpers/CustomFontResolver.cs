@@ -91,6 +91,10 @@ public class CustomFontResolver : IFontResolver
             "helvetica neue" => "arial",
             "times" => "times new roman",
             "times-roman" => "times new roman",
+            "timesnewroman" => "times new roman",
+            "liberation serif" => "liberation serif",
+            "dejavu serif" => "dejavu serif",
+            "noto serif" => "noto serif",
             "courier" => "courier new",
             _ => familyName.Trim().ToLowerInvariant()
         };
@@ -224,9 +228,24 @@ public class CustomFontResolver : IFontResolver
             }
         }
 
+        // Times New Roman is proprietary; on Linux use metrically similar Liberation Serif.
+        if (normalizedFamily == "times new roman")
+        {
+            var substitute = FindFontPath("liberation serif", isBold, isItalic)
+                ?? FindFontPath("dejavu serif", isBold, isItalic)
+                ?? FindFontPath("noto serif", isBold, isItalic);
+            if (substitute != null)
+            {
+                _pathCache.TryAdd(cacheKey, substitute);
+                return substitute;
+            }
+        }
+
         // Last resort: try any font as ultimate fallback
         if (normalizedFamily != "arial" && normalizedFamily != "dejavu sans" && normalizedFamily != "liberation sans"
-            && normalizedFamily != "noto sans")
+            && normalizedFamily != "noto sans" && normalizedFamily != "times new roman"
+            && normalizedFamily != "liberation serif" && normalizedFamily != "dejavu serif"
+            && normalizedFamily != "noto serif")
         {
             // Try Arial, then DejaVu Sans, then Liberation Sans as fallbacks
             var fallback = FindFontPath("arial", isBold, isItalic)
@@ -265,6 +284,9 @@ public class CustomFontResolver : IFontResolver
             "dejavu sans" => "DejaVuSans",
             "liberation sans" => "LiberationSans",
             "noto sans" => "NotoSans",
+            "liberation serif" => "LiberationSerif",
+            "dejavu serif" => "DejaVuSerif",
+            "noto serif" => "NotoSerif",
             _ => normalizedFamily
         };
 

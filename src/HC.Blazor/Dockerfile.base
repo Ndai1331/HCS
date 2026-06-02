@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 # Keep heavy OS dependencies in a reusable base layer.
-# DejaVu / Noto: Vietnamese glyphs for PDFsharp signing (see PdfFontEnvironment.DefaultPdfFontFamily).
+# DejaVu / Noto / Liberation: Vietnamese glyphs + serif fallback for PDF signing.
 RUN apt-get update && apt-get install -y \
     libreoffice \
     libreoffice-writer \
@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y \
     fonts-dejavu-extra \
     fonts-noto-core \
     fonts-noto \
+    fonts-noto-serif \
+    fonts-liberation \
+    fonts-liberation2 \
     libfreetype6 \
     libfontconfig1 \
  && rm -rf /var/lib/apt/lists/* \

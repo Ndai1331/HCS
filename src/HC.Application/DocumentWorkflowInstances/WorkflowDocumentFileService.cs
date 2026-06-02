@@ -18,15 +18,18 @@ public class WorkflowDocumentFileService : HCAppService, IWorkflowDocumentFileSe
     private readonly IDocumentAssignmentRepository _documentAssignmentRepository;
     private readonly IRepository<DocumentFile, Guid> _documentFileRepository;
     private readonly IBlobContainer _blobContainer;
+    private readonly IWorkflowDocxSigningService _workflowDocxSigningService;
 
     public WorkflowDocumentFileService(
         IDocumentAssignmentRepository documentAssignmentRepository,
         IRepository<DocumentFile, Guid> documentFileRepository,
-        IBlobContainer blobContainer)
+        IBlobContainer blobContainer,
+        IWorkflowDocxSigningService workflowDocxSigningService)
     {
         _documentAssignmentRepository = documentAssignmentRepository;
         _documentFileRepository = documentFileRepository;
         _blobContainer = blobContainer;
+        _workflowDocxSigningService = workflowDocxSigningService;
     }
 
     public async Task<Guid?> CopyDocumentFileForNextStepAsync(Guid? sourceFileId, Guid documentId)
@@ -59,6 +62,15 @@ public class WorkflowDocumentFileService : HCAppService, IWorkflowDocumentFileSe
 
         try
         {
+            if (sourceFile.SourceDocxFileId.HasValue || WorkflowDocxSigningService.IsDocxExtension(sourceFile))
+            {
+                var (_, pdfFile) = await _workflowDocxSigningService.CopyDocxPdfPairAsync(
+                    sourceFile,
+                    WorkflowConstants.BlobPathSigningSteps,
+                    WorkflowConstants.BlobPathSigningSteps);
+                return pdfFile.Id;
+            }
+
             var fileBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
             var extension = Path.GetExtension(sourceFile.Name);
             var newBlobPath = $"{WorkflowConstants.BlobPathSigningSteps}{Guid.NewGuid()}{extension}";
@@ -102,6 +114,25 @@ public class WorkflowDocumentFileService : HCAppService, IWorkflowDocumentFileSe
 
             try
             {
+                if (sourceFile.SourceDocxFileId.HasValue
+                    || (WorkflowDocxSigningService.IsDocxExtension(sourceFile) && sourceFile.DerivedPdfFileId.HasValue))
+                {
+                    var (docxFile, pdfFile) = await _workflowDocxSigningService.CopyDocxPdfPairAsync(
+                        sourceFile,
+                        WorkflowConstants.BlobPathSigningSteps,
+                        WorkflowConstants.BlobPathSigningSteps);
+
+                    docxFile.DocumentId = targetDocumentId;
+                    pdfFile.DocumentId = targetDocumentId;
+                    await _documentFileRepository.UpdateAsync(docxFile, autoSave: true);
+                    await _documentFileRepository.UpdateAsync(pdfFile, autoSave: true);
+
+                    map[sourceFile.Id] = WorkflowDocxSigningService.IsDocxExtension(sourceFile)
+                        ? docxFile.Id
+                        : pdfFile.Id;
+                    continue;
+                }
+
                 var fileBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
                 var extension = Path.GetExtension(sourceFile.Name);
                 var newBlobPath = $"{WorkflowConstants.BlobPathSigningSteps}{Guid.NewGuid()}{extension}";

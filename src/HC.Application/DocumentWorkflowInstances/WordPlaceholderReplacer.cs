@@ -94,6 +94,110 @@ public static class WordPlaceholderReplacer
     }
 
     /// <summary>
+    /// Replaces approval-step placeholders for electronic signing.
+    /// Placeholders: &lt;&lt;Sign{NN}&gt;&gt; (image), &lt;&lt;FullName{NN}&gt;&gt;, &lt;&lt;NoteContent{NN}&gt;&gt;.
+    /// Preserves template RunProperties (e.g. Times New Roman).
+    /// </summary>
+    public static byte[] ReplaceApprovalPlaceholders(
+        byte[] docxBytes,
+        int stepOrder,
+        byte[]? signatureImageBytes,
+        string fullName,
+        string noteContent)
+    {
+        var suffix = stepOrder.ToString("D2");
+        var notePlainText = HtmlToPlainWithLineBreaks(noteContent ?? string.Empty);
+        var replacements = new (string Placeholder, string Value)[]
+        {
+            ($"<<FullName{suffix}>>", fullName),
+            ($"<<NoteContent{suffix}>>", notePlainText),
+        };
+
+        return ReplaceApprovalPlaceholdersInternal(
+            docxBytes,
+            replacements,
+            signatureImageBytes,
+            $"<<Sign{suffix}>>");
+    }
+
+    /// <summary>
+    /// Replaces name and note placeholders only; keeps &lt;&lt;Sign{NN}&gt;&gt; for digital CA/BnnSoft.
+    /// </summary>
+    public static byte[] ReplaceApprovalNameAndNotePlaceholders(
+        byte[] docxBytes,
+        int stepOrder,
+        string fullName,
+        string noteContent)
+    {
+        var suffix = stepOrder.ToString("D2");
+        var notePlainText = HtmlToPlainWithLineBreaks(noteContent ?? string.Empty);
+        var replacements = new (string Placeholder, string Value)[]
+        {
+            ($"<<FullName{suffix}>>", fullName),
+            ($"<<NoteContent{suffix}>>", notePlainText),
+        };
+
+        return ReplaceApprovalPlaceholdersInternal(docxBytes, replacements, signatureImageBytes: null, signImagePlaceholder: null);
+    }
+
+    private static byte[] ReplaceApprovalPlaceholdersInternal(
+        byte[] docxBytes,
+        (string Placeholder, string Value)[] textReplacements,
+        byte[]? signatureImageBytes,
+        string? signImagePlaceholder)
+    {
+        using var stream = new MemoryStream(docxBytes.Length);
+        stream.Write(docxBytes, 0, docxBytes.Length);
+        stream.Position = 0;
+
+        using (var doc = WordprocessingDocument.Open(stream, true))
+        {
+            var mainPart = doc.MainDocumentPart ?? throw new InvalidOperationException("MainDocumentPart is null");
+            var body = mainPart.Document?.Body;
+            if (body == null) return docxBytes;
+
+            ReplaceInPartForApproval(mainPart, textReplacements, signatureImageBytes, signImagePlaceholder);
+
+            foreach (var headerPart in mainPart.HeaderParts)
+            {
+                ReplaceInPartForApproval(headerPart, textReplacements, signatureImageBytes, signImagePlaceholder);
+            }
+
+            foreach (var footerPart in mainPart.FooterParts)
+            {
+                ReplaceInPartForApproval(footerPart, textReplacements, signatureImageBytes, signImagePlaceholder);
+            }
+        }
+
+        return stream.ToArray();
+    }
+
+    private static void ReplaceInPartForApproval(
+        OpenXmlPart part,
+        (string Placeholder, string Value)[] textReplacements,
+        byte[]? signatureImageBytes,
+        string? signImagePlaceholder)
+    {
+        OpenXmlElement? root = part switch
+        {
+            MainDocumentPart mdp => mdp.Document?.Body,
+            HeaderPart hp => hp.Header,
+            FooterPart fp => fp.Footer,
+            _ => part.RootElement
+        };
+        if (root == null) return;
+
+        ReplaceTextPlaceholdersInPart(root, textReplacements);
+
+        if (signatureImageBytes != null && signatureImageBytes.Length > 0
+            && !string.IsNullOrEmpty(signImagePlaceholder)
+            && part is MainDocumentPart mainPart)
+        {
+            ReplaceImagePlaceholder(mainPart, root, signatureImageBytes, signImagePlaceholder);
+        }
+    }
+
+    /// <summary>
     /// Replaces &lt;&lt;ContentToBeApproved&gt;&gt; paragraph with HTML-converted content (tables, bold, italic, lists).
     /// Uses HtmlToOpenXml to preserve formatting.
     /// </summary>
@@ -148,7 +252,7 @@ public static class WordPlaceholderReplacer
         // Replace <<PreparedBySign>> with image
         if (signatureImageBytes != null && signatureImageBytes.Length > 0 && part is MainDocumentPart mainPart)
         {
-            ReplaceImagePlaceholder(mainPart, root, signatureImageBytes);
+            ReplaceImagePlaceholder(mainPart, root, signatureImageBytes, PreparedBySignPlaceholder);
         }
     }
 
@@ -224,6 +328,7 @@ public static class WordPlaceholderReplacer
         for (var i = 0; i < lines.Length; i++)
         {
             var run = new Run(new Text(lines[i]) { Space = SpaceProcessingModeValues.Preserve });
+            EnsureTimesNewRoman(run);
             if (i < lines.Length - 1)
             {
                 run.AppendChild(new Break());
@@ -233,11 +338,41 @@ public static class WordPlaceholderReplacer
     }
 
     /// <summary>
-    /// Replaces &lt;&lt;PreparedBySign&gt;&gt; with an inline image. Word often splits the tag across
-    /// multiple &lt;w:t&gt; nodes; per-run substring removal can leave fragments (e.g. &lt;&lt;PreparedBy
-    /// next to the image). This rebuilds the paragraph from concatenated text so the full tag is removed once.
+    /// Applies Times New Roman when a run has no explicit font (edge case after multiline replace).
     /// </summary>
-    private static void ReplaceImagePlaceholder(MainDocumentPart mainPart, OpenXmlElement root, byte[] imageBytes)
+    private static void EnsureTimesNewRoman(Run run, int fontSizeHalfPoints = 24)
+    {
+        if (run.RunProperties == null)
+        {
+            run.RunProperties = new RunProperties();
+        }
+
+        if (run.RunProperties.RunFonts == null)
+        {
+            run.RunProperties.RunFonts = new RunFonts
+            {
+                Ascii = "Times New Roman",
+                HighAnsi = "Times New Roman",
+                ComplexScript = "Times New Roman",
+                EastAsia = "Times New Roman"
+            };
+        }
+
+        if (run.RunProperties.FontSize == null)
+        {
+            run.RunProperties.FontSize = new FontSize { Val = fontSizeHalfPoints.ToString() };
+        }
+    }
+
+    /// <summary>
+    /// Replaces a signature placeholder with an inline image. Word often splits the tag across
+    /// multiple &lt;w:t&gt; nodes; per-run substring removal can leave fragments.
+    /// </summary>
+    private static void ReplaceImagePlaceholder(
+        MainDocumentPart mainPart,
+        OpenXmlElement root,
+        byte[] imageBytes,
+        string placeholderTag)
     {
         foreach (var paragraph in root.Descendants<Paragraph>())
         {
@@ -255,11 +390,11 @@ public static class WordPlaceholderReplacer
 
             if (fullTextBuilder.Length == 0) continue;
             var fullText = fullTextBuilder.ToString();
-            var idx = fullText.IndexOf(PreparedBySignPlaceholder, StringComparison.Ordinal);
+            var idx = fullText.IndexOf(placeholderTag, StringComparison.Ordinal);
             if (idx < 0) continue;
 
             var prefix = fullText.Substring(0, idx);
-            var suffix = fullText.Substring(idx + PreparedBySignPlaceholder.Length);
+            var suffix = fullText.Substring(idx + placeholderTag.Length);
 
             var contentType = GetImageContentType(imageBytes);
             var imagePart = mainPart.AddImagePart(contentType);
@@ -279,16 +414,28 @@ public static class WordPlaceholderReplacer
 
             if (!string.IsNullOrEmpty(prefix))
             {
-                paragraph.AppendChild(new Run(new Text(prefix) { Space = SpaceProcessingModeValues.Preserve }));
+                var prefixRun = new Run(new Text(prefix) { Space = SpaceProcessingModeValues.Preserve });
+                EnsureTimesNewRoman(prefixRun);
+                paragraph.AppendChild(prefixRun);
             }
             paragraph.AppendChild(imageRun);
             if (!string.IsNullOrEmpty(suffix))
             {
-                paragraph.AppendChild(new Run(new Text(suffix) { Space = SpaceProcessingModeValues.Preserve }));
+                var suffixRun = new Run(new Text(suffix) { Space = SpaceProcessingModeValues.Preserve });
+                EnsureTimesNewRoman(suffixRun);
+                paragraph.AppendChild(suffixRun);
             }
 
             return;
         }
+    }
+
+    /// <summary>
+    /// Legacy wrapper for prepared-by signature placeholder.
+    /// </summary>
+    private static void ReplaceImagePlaceholder(MainDocumentPart mainPart, OpenXmlElement root, byte[] imageBytes)
+    {
+        ReplaceImagePlaceholder(mainPart, root, imageBytes, PreparedBySignPlaceholder);
     }
 
     private static string GetImageContentType(byte[] imageBytes)

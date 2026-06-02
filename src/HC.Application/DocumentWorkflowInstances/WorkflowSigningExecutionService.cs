@@ -45,6 +45,9 @@ public interface IWorkflowSigningExecutionService
 
     Task<byte[]> ResolveSignatureImageBytesAsync(string signatureImage);
 
+    /// <summary>Resolves signature image bytes and applies the default electronic-sign layout ("Đã ký").</summary>
+    Task<byte[]> ResolveElectronicSignatureImageBytesAsync(string signatureImage);
+
     byte[] ReplacePdfPlaceholders(
         byte[] pdfBytes,
         int stepOrder,
@@ -55,8 +58,8 @@ public interface IWorkflowSigningExecutionService
 
 public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionService, ITransientDependency
 {
-    /// <summary>PDFsharp family name; Linux/production uses DejaVu Sans, dev desktop uses Helvetica (see <see cref="PdfFontEnvironment"/>).</summary>
-    private static string PdfPlaceholderTextFontFamily => PdfFontEnvironment.DefaultPdfFontFamily;
+    /// <summary>PDFsharp serif family for PDF-only fallback; see <see cref="PdfFontEnvironment.DefaultPdfSerifFontFamily"/>.</summary>
+    private static string PdfPlaceholderTextFontFamily => PdfFontEnvironment.DefaultPdfSerifFontFamily;
 
     private readonly IDocumentAssignmentRepository _documentAssignmentRepository;
     private readonly IRepository<DocumentFile, Guid> _documentFileRepository;
@@ -76,6 +79,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
     private readonly ILogger<WorkflowSigningExecutionService> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IConfiguration _configuration;
+    private readonly IWorkflowDocxSigningService _workflowDocxSigningService;
 
     public WorkflowSigningExecutionService(
         IDocumentAssignmentRepository documentAssignmentRepository,
@@ -93,7 +97,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         IStringLocalizer<HCResource> localizer,
         ILogger<WorkflowSigningExecutionService> logger,
         ILoggerFactory loggerFactory,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IWorkflowDocxSigningService workflowDocxSigningService)
     {
         _documentAssignmentRepository = documentAssignmentRepository;
         _documentFileRepository = documentFileRepository;
@@ -111,6 +116,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         _logger = logger;
         _loggerFactory = loggerFactory;
         _configuration = configuration;
+        _workflowDocxSigningService = workflowDocxSigningService;
     }
 
     public async Task ApplyDigitalSignatureAsync(
@@ -243,11 +249,26 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         var placeholderTag = $"<<Sign{assignment.StepOrder:D2}>>";
 
-        var pdfForSigning = ReplacePdfNameAndNotePlaceholders(
-            pdfBytes,
-            assignment.StepOrder,
-            fullName,
-            noteContent ?? string.Empty);
+        byte[] pdfForSigning;
+        var workingDocx = await _workflowDocxSigningService.ResolveWorkingDocxFileAsync(sourceFile);
+        if (workingDocx != null && !string.IsNullOrWhiteSpace(workingDocx.Path))
+        {
+            var docxBytes = await _blobContainer.GetAllBytesAsync(workingDocx.Path);
+            var updatedDocxBytes = WordPlaceholderReplacer.ReplaceApprovalNameAndNotePlaceholders(
+                docxBytes,
+                assignment.StepOrder,
+                fullName,
+                noteContent ?? string.Empty);
+            pdfForSigning = await ConvertWordToPdfAsync(updatedDocxBytes, ".docx");
+        }
+        else
+        {
+            pdfForSigning = ReplacePdfNameAndNotePlaceholders(
+                pdfBytes,
+                assignment.StepOrder,
+                fullName,
+                noteContent ?? string.Empty);
+        }
 
         byte[]? signedPdfBytes;
         try
@@ -278,7 +299,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                     chucvu = string.Empty,
                     fontsize = 9,
                     fontcolor = "#002f7a",
-                    fontname = "Times New Roman",
+                    fontname = PdfFontEnvironment.DefaultPdfSerifFontFamily,
                     pagesign = -1,
                     typesignature = 3,
                     hashalg = "SHA-256",
@@ -373,7 +394,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         try
         {
             fileBytes = await _blobContainer.GetAllBytesAsync(sourceFile.Path);
-            signatureImageBytes = await ResolveSignatureImageBytesAsync(signature.SignatureImage);
+            signatureImageBytes = await ResolveElectronicSignatureImageBytesAsync(signature.SignatureImage);
         }
         catch (UserFriendlyException)
         {
@@ -428,6 +449,26 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 departmentText);
 
             pdfBytes = await ConvertWordToPdfAsync(replacedWordBytes, ".docx");
+
+            var docxFileName = Path.ChangeExtension(sourceFile.Name, ".docx") ?? sourceFile.Name;
+            if (!docxFileName.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+            {
+                docxFileName += ".docx";
+            }
+
+            var pdfFileName = Path.ChangeExtension(sourceFile.Name, ".pdf") ?? $"{sourceFile.Name}.pdf";
+
+            var (_, preparedPdfFile) = await _workflowDocxSigningService.SaveDocxPdfPairAsync(
+                replacedWordBytes,
+                pdfBytes,
+                docxFileName,
+                pdfFileName,
+                documentId,
+                isSigned: false,
+                WorkflowConstants.BlobPathSigningSteps,
+                WorkflowConstants.BlobPathSigningSteps);
+
+            return preparedPdfFile.Id;
         }
 
         var extension = ".pdf";
@@ -478,7 +519,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         byte[] signatureImageBytes;
         try
         {
-            signatureImageBytes = await ResolveSignatureImageBytesAsync(signature.SignatureImage);
+            signatureImageBytes = await ResolveElectronicSignatureImageBytesAsync(signature.SignatureImage);
         }
         catch (UserFriendlyException)
         {
@@ -491,14 +532,69 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
 
         byte[] signedPdfBytes;
+        DocumentFile signedPdfFile;
         try
         {
-            signedPdfBytes = ReplacePdfPlaceholders(
-                pdfBytes,
-                assignment.StepOrder,
-                signatureImageBytes,
-                fullName,
-                noteContent ?? "");
+            var workingDocx = await _workflowDocxSigningService.ResolveWorkingDocxFileAsync(sourceFile);
+            if (workingDocx != null && !string.IsNullOrWhiteSpace(workingDocx.Path))
+            {
+                var docxBytes = await _blobContainer.GetAllBytesAsync(workingDocx.Path);
+                var signedDocxBytes = WordPlaceholderReplacer.ReplaceApprovalPlaceholders(
+                    docxBytes,
+                    assignment.StepOrder,
+                    signatureImageBytes,
+                    fullName,
+                    noteContent ?? string.Empty);
+
+                signedPdfBytes = await ConvertWordToPdfAsync(signedDocxBytes, ".docx");
+
+                var docxFileName = workingDocx.Name;
+                var pdfFileName = Path.ChangeExtension(sourceFile.Name, ".pdf")
+                    ?? Path.ChangeExtension(docxFileName, ".pdf")
+                    ?? sourceFile.Name;
+
+                var (_, pdfFile) = await _workflowDocxSigningService.SaveDocxPdfPairAsync(
+                    signedDocxBytes,
+                    signedPdfBytes,
+                    docxFileName,
+                    pdfFileName,
+                    documentId: null,
+                    isSigned: true,
+                    WorkflowConstants.BlobPathElectronicSigned,
+                    WorkflowConstants.BlobPathElectronicSigned);
+
+                signedPdfFile = pdfFile;
+            }
+            else
+            {
+                signedPdfBytes = ReplacePdfPlaceholders(
+                    pdfBytes,
+                    assignment.StepOrder,
+                    signatureImageBytes,
+                    fullName,
+                    noteContent ?? "");
+
+                var extension = Path.GetExtension(sourceFile.Name);
+                if (string.IsNullOrEmpty(extension))
+                {
+                    extension = ".pdf";
+                }
+
+                var newBlobPath = $"{WorkflowConstants.BlobPathElectronicSigned}{Guid.NewGuid()}{extension}";
+                await _blobContainer.SaveAsync(newBlobPath, signedPdfBytes);
+
+                var hash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(signedPdfBytes));
+                signedPdfFile = new DocumentFile(
+                    _guidGenerator.Create(),
+                    null,
+                    sourceFile.Name,
+                    true,
+                    now,
+                    newBlobPath,
+                    hash);
+                signedPdfFile.TenantId = _currentTenant.Id;
+                await _documentFileRepository.InsertAsync(signedPdfFile, autoSave: true);
+            }
         }
         catch (UserFriendlyException)
         {
@@ -506,52 +602,13 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ELECTRONIC_SIGN] Error replacing PDF placeholders. StepOrder={StepOrder}", assignment.StepOrder);
+            _logger.LogError(ex, "[ELECTRONIC_SIGN] Error replacing placeholders. StepOrder={StepOrder}", assignment.StepOrder);
             throw new UserFriendlyException(_localizer["ErrorProcessingPdf", ex.Message]);
         }
 
-        string newBlobPath;
         try
         {
-            var extension = Path.GetExtension(sourceFile.Name);
-            if (string.IsNullOrEmpty(extension))
-            {
-                extension = ".pdf";
-            }
-
-            newBlobPath = $"{WorkflowConstants.BlobPathElectronicSigned}{Guid.NewGuid()}{extension}";
-            await _blobContainer.SaveAsync(newBlobPath, signedPdfBytes);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[ELECTRONIC_SIGN] Error uploading signed PDF to blob storage");
-            throw new UserFriendlyException(_localizer["ElectronicSigningFailed", "Cannot upload signed file"]);
-        }
-
-        DocumentFile signedFile;
-        try
-        {
-            var hash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(signedPdfBytes));
-            signedFile = new DocumentFile(
-                _guidGenerator.Create(),
-                null,
-                sourceFile.Name,
-                true,
-                now,
-                newBlobPath,
-                hash);
-            signedFile.TenantId = _currentTenant.Id;
-            await _documentFileRepository.InsertAsync(signedFile, autoSave: true);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[ELECTRONIC_SIGN] Error creating signed DocumentFile record");
-            throw new UserFriendlyException(_localizer["ElectronicSigningFailed", "Cannot save signed file record"]);
-        }
-
-        try
-        {
-            assignment.DocumentFileResultId = signedFile.Id;
+            assignment.DocumentFileResultId = signedPdfFile.Id;
             await _documentAssignmentRepository.UpdateAsync(assignment, autoSave: true);
         }
         catch (Exception ex)
@@ -599,6 +656,12 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             _logger.LogError(ex, "[SIGNING] Error reading signature image from blob storage. Path={Path}", signatureImage);
             throw new UserFriendlyException(_localizer[GetImageReadErrorLocalizationKey(signatureImage)]);
         }
+    }
+
+    public async Task<byte[]> ResolveElectronicSignatureImageBytesAsync(string signatureImage)
+    {
+        var rawBytes = await ResolveSignatureImageBytesAsync(signatureImage);
+        return ElectronicSignatureLayoutComposer.Compose(rawBytes);
     }
 
     private static string GetImageReadErrorLocalizationKey(string imagePath)
@@ -839,6 +902,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         public double Width { get; set; }
         public double Height { get; set; }
         public double FontSize { get; set; }
+        public string? FontFamilyName { get; set; }
         public string Type { get; set; } = string.Empty;
     }
 
@@ -991,44 +1055,44 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                         break;
 
                     case "PREPARED_FULLNAME":
-                        var preparedNameFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, pos.FontSize);
+                        var preparedNameFont = CreatePlaceholderFont(pos, pos.FontSize);
                         gfx.DrawString(fullName, preparedNameFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "PREPARED_USER_POSITION":
-                        var positionFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, pos.FontSize);
+                        var positionFont = CreatePlaceholderFont(pos, pos.FontSize);
                         gfx.DrawString(positionText, positionFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "PREPARED_USER_ORGANIZATION_UNIT":
-                        var departmentFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, pos.FontSize);
+                        var departmentFont = CreatePlaceholderFont(pos, pos.FontSize);
                         gfx.DrawString(departmentText, departmentFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "HTML_CONTENT":
-                        var preparedContentFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize - 1, 8));
+                        var preparedContentFont = CreatePlaceholderFont(pos, Math.Max(pos.FontSize - 1, 8));
                         var plainText = StripHtmlTags(htmlContent ?? string.Empty);
                         gfx.DrawString(plainText, preparedContentFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "CURRENT_DAY":
-                        var dayFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
+                        var dayFont = CreatePlaceholderFont(pos, Math.Max(pos.FontSize, 8));
                         gfx.DrawString(currentDate.ToString("dd"), dayFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "CURRENT_MONTH":
-                        var monthFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
+                        var monthFont = CreatePlaceholderFont(pos, Math.Max(pos.FontSize, 8));
                         gfx.DrawString(currentDate.ToString("MM"), monthFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
 
                     case "CURRENT_YEAR":
-                        var yearFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
+                        var yearFont = CreatePlaceholderFont(pos, Math.Max(pos.FontSize, 8));
                         gfx.DrawString(currentDate.ToString("yyyy"), yearFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
@@ -1112,7 +1176,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
                 case "FULLNAME":
                 case "PREPARED_FULLNAME":
-                    var nameFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, pos.FontSize);
+                    var nameFont = CreatePlaceholderFont(pos, pos.FontSize);
                     gfx.DrawString(fullName, nameFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
@@ -1120,31 +1184,31 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 case "NOTE":
                     // Match ContentToBeApproved: strip HTML, preserve line breaks (same as trình ký)
                     var notePlainText = HtmlToPlainWithLineBreaks(noteContent ?? string.Empty);
-                    var noteFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize - 1, 8));
+                    var noteFont = CreatePlaceholderFont(pos, Math.Max(pos.FontSize - 1, 8));
                     gfx.DrawString(notePlainText, noteFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.TopLeft);
                     break;
 
                 case "HTML_CONTENT":
-                    var htmlContentFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize - 1, 8));
+                    var htmlContentFont = CreatePlaceholderFont(pos, Math.Max(pos.FontSize - 1, 8));
                     gfx.DrawString(noteContent, htmlContentFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "CURRENT_DAY":
-                    var dayFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
+                    var dayFont = CreatePlaceholderFont(pos, Math.Max(pos.FontSize, 8));
                     gfx.DrawString(currentDate?.ToString("dd") ?? string.Empty, dayFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "CURRENT_MONTH":
-                    var monthFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
+                    var monthFont = CreatePlaceholderFont(pos, Math.Max(pos.FontSize, 8));
                     gfx.DrawString(currentDate?.ToString("MM") ?? string.Empty, monthFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
 
                 case "CURRENT_YEAR":
-                    var yearFont = new PdfSharpDrawing.XFont(PdfPlaceholderTextFontFamily, Math.Max(pos.FontSize, 8));
+                    var yearFont = CreatePlaceholderFont(pos, Math.Max(pos.FontSize, 8));
                     gfx.DrawString(currentDate?.ToString("yyyy") ?? string.Empty, yearFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
@@ -1242,6 +1306,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                         Width = maxX - minX,
                         Height = maxY - minY,
                         FontSize = fontSize > 0 ? fontSize : 10,
+                        FontFamilyName = NormalizePdfFontFamily(firstLetter.FontName),
                         Type = searchItem.Type
                     });
 
@@ -1346,6 +1411,48 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             _logger.LogError(ex, "[SIGN_V2] Sign request cancelled/timed out. AssignmentId={AssignmentId}", assignmentId);
             throw new UserFriendlyException(_localizer["DigitalSigningFailed", _localizer["RemoteSigningConnectionFailed"]]);
         }
+    }
+
+    private static PdfSharpDrawing.XFont CreatePlaceholderFont(PlaceholderPosition pos, double fontSize)
+    {
+        var family = pos.FontFamilyName ?? PdfPlaceholderTextFontFamily;
+        return new PdfSharpDrawing.XFont(family, fontSize);
+    }
+
+    private static string? NormalizePdfFontFamily(string? rawFontName)
+    {
+        if (string.IsNullOrWhiteSpace(rawFontName))
+        {
+            return null;
+        }
+
+        var lower = rawFontName.ToLowerInvariant();
+        if (lower.Contains("times", StringComparison.Ordinal))
+        {
+            return PdfFontEnvironment.DefaultPdfSerifFontFamily;
+        }
+
+        if (lower.Contains("liberation", StringComparison.Ordinal) && lower.Contains("serif", StringComparison.Ordinal))
+        {
+            return "Liberation Serif";
+        }
+
+        if (lower.Contains("dejavu", StringComparison.Ordinal) && lower.Contains("serif", StringComparison.Ordinal))
+        {
+            return "DejaVu Serif";
+        }
+
+        if (lower.Contains("noto", StringComparison.Ordinal) && lower.Contains("serif", StringComparison.Ordinal))
+        {
+            return "Noto Serif";
+        }
+
+        if (lower.Contains("helvetica", StringComparison.Ordinal) || lower.Contains("arial", StringComparison.Ordinal))
+        {
+            return PdfFontEnvironment.DefaultPdfFontFamily;
+        }
+
+        return rawFontName;
     }
 
 }

@@ -186,7 +186,7 @@ public sealed class ParallelSigningMergeService : IParallelSigningMergeService, 
                 byte[] signatureImageBytes;
                 try
                 {
-                    signatureImageBytes = await _workflowSigningExecutionService.ResolveSignatureImageBytesAsync(signature.SignatureImage);
+                    signatureImageBytes = await _workflowSigningExecutionService.ResolveElectronicSignatureImageBytesAsync(signature.SignatureImage);
                 }
                 catch
                 {
