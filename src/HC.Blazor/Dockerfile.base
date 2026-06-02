@@ -2,22 +2,15 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 # Keep heavy OS dependencies in a reusable base layer.
 # DejaVu / Noto / Liberation: Vietnamese glyphs + serif fallback for PDF signing.
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice \
-    libreoffice-writer \
-    libreoffice-core \
     python3 \
     python3-uno \
     unoconv \
     fontconfig \
     fonts-dejavu \
-    fonts-dejavu-core \
-    fonts-dejavu-extra \
     fonts-noto-core \
-    fonts-noto \
-    fonts-noto-serif \
     fonts-liberation \
-    fonts-liberation2 \
     libfreetype6 \
     libfontconfig1 \
  && rm -rf /var/lib/apt/lists/* \
