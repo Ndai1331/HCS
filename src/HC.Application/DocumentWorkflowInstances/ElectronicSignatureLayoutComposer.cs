@@ -20,6 +20,8 @@ public static class ElectronicSignatureLayoutComposer
     // Left portion of the banner reserved for the signature image (layout is 168x69).
     private const double SignatureZoneWidthRatio = 0.58;
     private const int ZonePadding = 4;
+    // Export at 3x native size so Word/LibreOffice renders a readable banner at ~4cm width.
+    private const int ExportLayoutWidthPx = 504;
 
     private static byte[]? _cachedLayoutBytes;
 
@@ -49,6 +51,12 @@ public static class ElectronicSignatureLayoutComposer
             var posY = ZonePadding + Math.Max(0, (zoneHeight - signature.Height) / 2);
 
             layout.Mutate(ctx => ctx.DrawImage(signature, new Point(posX, posY), 1f));
+
+            if (layout.Width < ExportLayoutWidthPx)
+            {
+                var exportHeight = Math.Max(1, (int)Math.Round(layout.Height * ((double)ExportLayoutWidthPx / layout.Width)));
+                layout.Mutate(ctx => ctx.Resize(ExportLayoutWidthPx, exportHeight));
+            }
 
             using var output = new MemoryStream();
             layout.Save(output, new PngEncoder { ColorType = PngColorType.RgbWithAlpha });

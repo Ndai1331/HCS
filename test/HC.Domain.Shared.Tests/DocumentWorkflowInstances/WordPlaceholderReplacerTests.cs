@@ -1,7 +1,5 @@
 using System.IO;
 using DocumentFormat.OpenXml;
-using System.Text;
-using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using HC.DocumentWorkflowInstances;
@@ -11,6 +9,56 @@ namespace HC.Domain.Shared.Tests.DocumentWorkflowInstances;
 
 public class WordPlaceholderReplacerTests
 {
+    [Fact]
+    public void ReplaceApprovalPlaceholders_PreservesTemplateFontForVietnameseFullName()
+    {
+        var docxBytes = CreateDocxWithParagraph("<<FullName01>>", templateFont: "Arial");
+        var result = WordPlaceholderReplacer.ReplaceApprovalPlaceholders(
+            docxBytes,
+            stepOrder: 1,
+            signatureImageBytes: null,
+            fullName: "Hà Ngọc Tiến",
+            noteContent: string.Empty);
+
+        using var stream = new MemoryStream(result);
+        using var doc = WordprocessingDocument.Open(stream, false);
+        var bodyText = doc.MainDocumentPart!.Document!.Body!.InnerText;
+        Assert.Contains("Hà Ngọc Tiến", bodyText);
+
+        var runFonts = doc.MainDocumentPart.Document.Body
+            .Descendants<RunProperties>()
+            .Select(rp => rp.RunFonts)
+            .FirstOrDefault(rf => rf != null);
+        Assert.NotNull(runFonts);
+        Assert.Equal("Arial", runFonts!.Ascii);
+    }
+
+    [Fact]
+    public void ReplacePlaceholders_PreparedFullName_PreservesTemplateFont()
+    {
+        var docxBytes = CreateDocxWithParagraph("<<PreparedFullName>>", templateFont: "Arial");
+        var result = WordPlaceholderReplacer.ReplacePlaceholders(
+            docxBytes,
+            signatureImageBytes: null,
+            fullName: "Hà Ngọc Tiến",
+            htmlContent: string.Empty,
+            currentDate: new DateTime(2026, 6, 2),
+            positionText: "Kế toán",
+            departmentText: "Phòng TCKT");
+
+        using var stream = new MemoryStream(result);
+        using var doc = WordprocessingDocument.Open(stream, false);
+        var bodyText = doc.MainDocumentPart!.Document!.Body!.InnerText;
+        Assert.Contains("Hà Ngọc Tiến", bodyText);
+
+        var runFonts = doc.MainDocumentPart.Document.Body
+            .Descendants<RunProperties>()
+            .Select(rp => rp.RunFonts)
+            .FirstOrDefault(rf => rf != null);
+        Assert.NotNull(runFonts);
+        Assert.Equal("Arial", runFonts!.Ascii);
+    }
+
     [Fact]
     public void ReplaceApprovalPlaceholders_ReplacesFullNameAndKeepsFontRun()
     {
@@ -53,7 +101,7 @@ public class WordPlaceholderReplacerTests
         Assert.Contains("Approved", bodyText);
     }
 
-    private static byte[] CreateDocxWithParagraph(string text)
+    private static byte[] CreateDocxWithParagraph(string text, string templateFont = "Times New Roman")
     {
         using var stream = new MemoryStream();
         using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
@@ -63,8 +111,10 @@ public class WordPlaceholderReplacerTests
             var runProps = new RunProperties(
                 new RunFonts
                 {
-                    Ascii = "Times New Roman",
-                    HighAnsi = "Times New Roman"
+                    Ascii = templateFont,
+                    HighAnsi = templateFont,
+                    ComplexScript = templateFont,
+                    EastAsia = templateFont
                 },
                 new FontSize { Val = "24" });
             var paragraph = new Paragraph(

@@ -1036,26 +1036,12 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                     case "PREPARED_SIGN":
                         if (signatureImageBytes != null && signatureImageBytes.Length > 0)
                         {
-                            // Do not flatten onto white here — preserves signature colors (approval stamping uses FlattenTransparency in PdfStampingService only).
-                            using var imgStream = new MemoryStream(signatureImageBytes);
-                            var img = PdfSharpDrawing.XImage.FromStream(imgStream);
-                            var imgAspect = (double)img.PixelWidth / img.PixelHeight;
-                            var fitWidth = w;
-                            var fitHeight = w / imgAspect;
-                            if (fitHeight > h * 3)
-                            {
-                                fitHeight = h * 3;
-                                fitWidth = fitHeight * imgAspect;
-                            }
-
-                            var imgX = x;
-                            var imgY = y - (fitHeight - h) / 2;
-                            gfx.DrawImage(img, imgX, imgY, fitWidth, fitHeight);
+                            DrawSignatureImageInPlaceholder(gfx, signatureImageBytes, x, y, w, h);
                         }
                         break;
 
                     case "PREPARED_FULLNAME":
-                        var preparedNameFont = CreatePlaceholderFont(pos, pos.FontSize);
+                        var preparedNameFont = CreateVietnameseNameFont(pos.FontSize);
                         gfx.DrawString(fullName, preparedNameFont, PdfSharpDrawing.XBrushes.Black,
                             whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                         break;
@@ -1156,27 +1142,13 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 case "PREPARED_SIGN":
                     if (signatureImageBytes != null && signatureImageBytes.Length > 0)
                     {
-                        // Raw PNG bytes — avoid FlattenTransparency so electronic signing keeps correct signature appearance (see PdfStampingService for approval-only white composite).
-                        using var imgStream = new MemoryStream(signatureImageBytes);
-                        var img = PdfSharpDrawing.XImage.FromStream(imgStream);
-                        var imgAspect = (double)img.PixelWidth / img.PixelHeight;
-                        var fitWidth = w;
-                        var fitHeight = w / imgAspect;
-                        if (fitHeight > h * 3)
-                        {
-                            fitHeight = h * 3;
-                            fitWidth = fitHeight * imgAspect;
-                        }
-
-                        var imgX = x;
-                        var imgY = y - (fitHeight - h) / 2;
-                        gfx.DrawImage(img, imgX, imgY, fitWidth, fitHeight);
+                        DrawSignatureImageInPlaceholder(gfx, signatureImageBytes, x, y, w, h);
                     }
                     break;
 
                 case "FULLNAME":
                 case "PREPARED_FULLNAME":
-                    var nameFont = CreatePlaceholderFont(pos, pos.FontSize);
+                    var nameFont = CreateVietnameseNameFont(pos.FontSize);
                     gfx.DrawString(fullName, nameFont, PdfSharpDrawing.XBrushes.Black,
                         whiteRect, PdfSharpDrawing.XStringFormats.CenterLeft);
                     break;
@@ -1417,6 +1389,40 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
     {
         var family = pos.FontFamilyName ?? PdfPlaceholderTextFontFamily;
         return new PdfSharpDrawing.XFont(family, fontSize);
+    }
+
+    private static PdfSharpDrawing.XFont CreateVietnameseNameFont(double fontSize)
+    {
+        return new PdfSharpDrawing.XFont(PdfFontEnvironment.DefaultPdfSerifFontFamily, fontSize);
+    }
+
+    private static void DrawSignatureImageInPlaceholder(
+        PdfSharpDrawing.XGraphics gfx,
+        byte[] signatureImageBytes,
+        double x,
+        double y,
+        double w,
+        double h)
+    {
+        // Match Word inline size (~4.2 cm) for composed "Đã ký" layout banners.
+        using var imgStream = new MemoryStream(signatureImageBytes);
+        var img = PdfSharpDrawing.XImage.FromStream(imgStream);
+        var imgAspect = (double)img.PixelWidth / img.PixelHeight;
+        const double MaxHeightMultiplier = 6d;
+        const double MinDisplayWidthPoints = 120d;
+
+        var fitWidth = Math.Max(w, MinDisplayWidthPoints);
+        var fitHeight = fitWidth / imgAspect;
+        var maxHeight = Math.Max(h * MaxHeightMultiplier, 60d);
+        if (fitHeight > maxHeight)
+        {
+            fitHeight = maxHeight;
+            fitWidth = fitHeight * imgAspect;
+        }
+
+        var imgX = x;
+        var imgY = y - (fitHeight - h) / 2;
+        gfx.DrawImage(img, imgX, imgY, fitWidth, fitHeight);
     }
 
     private static string? NormalizePdfFontFamily(string? rawFontName)

@@ -70,7 +70,8 @@ public sealed class WorkflowDocxSigningService : IWorkflowDocxSigningService, IT
             return await _documentFileRepository.FindAsync(file.SourceDocxFileId.Value);
         }
 
-        return null;
+        // Fallback when PDF row was created before SourceDocxFileId was populated.
+        return await _documentFileRepository.FirstOrDefaultAsync(x => x.DerivedPdfFileId == file.Id);
     }
 
     public async Task<(DocumentFile DocxFile, DocumentFile PdfFile)> SaveDocxPdfPairAsync(

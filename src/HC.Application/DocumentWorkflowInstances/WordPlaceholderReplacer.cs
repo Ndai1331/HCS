@@ -8,6 +8,7 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using HtmlToOpenXml;
+using SixLabors.ImageSharp;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
@@ -20,8 +21,9 @@ namespace HC.DocumentWorkflowInstances;
 /// </summary>
 public static class WordPlaceholderReplacer
 {
-    private const long ImageEmuWidth = 990000L;  // ~2.6cm
-    private const long ImageEmuHeight = 792000L;  // ~2.1cm
+    // ~4.2 cm — matches typical trình ký / ký điện tử signature block width in Word templates.
+    private const long SignatureImageMaxWidthEmu = 1512000L;
+    private const long SignatureImageFallbackHeightEmu = 621000L;
     private const string PreparedBySignPlaceholder = "<<PreparedBySign>>";
     private static readonly char[] NewLineSeparator = ['\n'];
 
@@ -96,7 +98,7 @@ public static class WordPlaceholderReplacer
     /// <summary>
     /// Replaces approval-step placeholders for electronic signing.
     /// Placeholders: &lt;&lt;Sign{NN}&gt;&gt; (image), &lt;&lt;FullName{NN}&gt;&gt;, &lt;&lt;NoteContent{NN}&gt;&gt;.
-    /// Preserves template RunProperties (e.g. Times New Roman).
+    /// Text replacements preserve template RunProperties (same behaviour as &lt;&lt;PreparedFullName&gt;&gt;).
     /// </summary>
     public static byte[] ReplaceApprovalPlaceholders(
         byte[] docxBytes,
@@ -156,16 +158,16 @@ public static class WordPlaceholderReplacer
             var body = mainPart.Document?.Body;
             if (body == null) return docxBytes;
 
-            ReplaceInPartForApproval(mainPart, textReplacements, signatureImageBytes, signImagePlaceholder);
+            ReplaceInPartForApproval(mainPart, mainPart, textReplacements, signatureImageBytes, signImagePlaceholder);
 
             foreach (var headerPart in mainPart.HeaderParts)
             {
-                ReplaceInPartForApproval(headerPart, textReplacements, signatureImageBytes, signImagePlaceholder);
+                ReplaceInPartForApproval(mainPart, headerPart, textReplacements, signatureImageBytes, signImagePlaceholder);
             }
 
             foreach (var footerPart in mainPart.FooterParts)
             {
-                ReplaceInPartForApproval(footerPart, textReplacements, signatureImageBytes, signImagePlaceholder);
+                ReplaceInPartForApproval(mainPart, footerPart, textReplacements, signatureImageBytes, signImagePlaceholder);
             }
         }
 
@@ -173,6 +175,7 @@ public static class WordPlaceholderReplacer
     }
 
     private static void ReplaceInPartForApproval(
+        MainDocumentPart mainPart,
         OpenXmlPart part,
         (string Placeholder, string Value)[] textReplacements,
         byte[]? signatureImageBytes,
@@ -190,8 +193,7 @@ public static class WordPlaceholderReplacer
         ReplaceTextPlaceholdersInPart(root, textReplacements);
 
         if (signatureImageBytes != null && signatureImageBytes.Length > 0
-            && !string.IsNullOrEmpty(signImagePlaceholder)
-            && part is MainDocumentPart mainPart)
+            && !string.IsNullOrEmpty(signImagePlaceholder))
         {
             ReplaceImagePlaceholder(mainPart, root, signatureImageBytes, signImagePlaceholder);
         }
@@ -258,7 +260,7 @@ public static class WordPlaceholderReplacer
 
     /// <summary>
     /// Replace text placeholders at paragraph level to handle placeholders that span multiple Run/Text elements.
-    /// Preserves line breaks in replacement values (e.g. ContentToBeApproved with multiple lines).
+    /// Keeps existing RunProperties from the template (font, size, bold, etc.).
     /// </summary>
     private static void ReplaceTextPlaceholdersInPart(OpenXmlElement root, (string Placeholder, string Value)[] textReplacements)
     {
@@ -317,6 +319,7 @@ public static class WordPlaceholderReplacer
     private static void ReplaceParagraphContentWithMultiline(Paragraph paragraph, System.Collections.Generic.List<Text> allTexts, string multilineText)
     {
         var lines = multilineText.Split(NewLineSeparator, StringSplitOptions.None);
+        var templateRunProps = CloneRunPropertiesFromText(allTexts[0]);
 
         // Remove content elements (Run, Hyperlink, etc.) but keep ParagraphProperties
         var contentElements = paragraph.ChildElements.Where(c => c is not ParagraphProperties).ToList();
@@ -327,8 +330,7 @@ public static class WordPlaceholderReplacer
 
         for (var i = 0; i < lines.Length; i++)
         {
-            var run = new Run(new Text(lines[i]) { Space = SpaceProcessingModeValues.Preserve });
-            EnsureTimesNewRoman(run);
+            var run = CreateRunWithTemplateProperties(templateRunProps, lines[i]);
             if (i < lines.Length - 1)
             {
                 run.AppendChild(new Break());
@@ -337,31 +339,26 @@ public static class WordPlaceholderReplacer
         }
     }
 
-    /// <summary>
-    /// Applies Times New Roman when a run has no explicit font (edge case after multiline replace).
-    /// </summary>
-    private static void EnsureTimesNewRoman(Run run, int fontSizeHalfPoints = 24)
+    private static RunProperties? CloneRunPropertiesFromText(Text textNode)
     {
-        if (run.RunProperties == null)
+        if (textNode.Parent is not Run run || run.RunProperties == null)
         {
-            run.RunProperties = new RunProperties();
+            return null;
         }
 
-        if (run.RunProperties.RunFonts == null)
+        return (RunProperties)run.RunProperties.CloneNode(true);
+    }
+
+    private static Run CreateRunWithTemplateProperties(RunProperties? templateRunProps, string text)
+    {
+        var run = new Run();
+        if (templateRunProps != null)
         {
-            run.RunProperties.RunFonts = new RunFonts
-            {
-                Ascii = "Times New Roman",
-                HighAnsi = "Times New Roman",
-                ComplexScript = "Times New Roman",
-                EastAsia = "Times New Roman"
-            };
+            run.AppendChild((RunProperties)templateRunProps.CloneNode(true));
         }
 
-        if (run.RunProperties.FontSize == null)
-        {
-            run.RunProperties.FontSize = new FontSize { Val = fontSizeHalfPoints.ToString() };
-        }
+        run.AppendChild(new Text(text) { Space = SpaceProcessingModeValues.Preserve });
+        return run;
     }
 
     /// <summary>
@@ -395,6 +392,9 @@ public static class WordPlaceholderReplacer
 
             var prefix = fullText.Substring(0, idx);
             var suffix = fullText.Substring(idx + placeholderTag.Length);
+            var templateRunProps = allTexts
+                .Select(CloneRunPropertiesFromText)
+                .FirstOrDefault(rp => rp != null);
 
             var contentType = GetImageContentType(imageBytes);
             var imagePart = mainPart.AddImagePart(contentType);
@@ -403,7 +403,8 @@ public static class WordPlaceholderReplacer
                 imagePart.FeedData(imgStream);
             }
             var relationshipId = mainPart.GetIdOfPart(imagePart);
-            var drawing = CreateInlineImageDrawing(relationshipId, contentType);
+            var (emuWidth, emuHeight) = ResolveImageExtentEmu(imageBytes);
+            var drawing = CreateInlineImageDrawing(relationshipId, contentType, emuWidth, emuHeight);
             var imageRun = new Run(drawing);
 
             var toRemove = paragraph.ChildElements.Where(c => c is not ParagraphProperties).ToList();
@@ -414,16 +415,12 @@ public static class WordPlaceholderReplacer
 
             if (!string.IsNullOrEmpty(prefix))
             {
-                var prefixRun = new Run(new Text(prefix) { Space = SpaceProcessingModeValues.Preserve });
-                EnsureTimesNewRoman(prefixRun);
-                paragraph.AppendChild(prefixRun);
+                paragraph.AppendChild(CreateRunWithTemplateProperties(templateRunProps, prefix));
             }
             paragraph.AppendChild(imageRun);
             if (!string.IsNullOrEmpty(suffix))
             {
-                var suffixRun = new Run(new Text(suffix) { Space = SpaceProcessingModeValues.Preserve });
-                EnsureTimesNewRoman(suffixRun);
-                paragraph.AppendChild(suffixRun);
+                paragraph.AppendChild(CreateRunWithTemplateProperties(templateRunProps, suffix));
             }
 
             return;
@@ -455,12 +452,37 @@ public static class WordPlaceholderReplacer
         return "image/jpeg"; 
     }
 
-    private static DocumentFormat.OpenXml.Wordprocessing.Drawing CreateInlineImageDrawing(string relationshipId, string contentType)
+    private static (long Width, long Height) ResolveImageExtentEmu(byte[] imageBytes)
+    {
+        try
+        {
+            var info = Image.Identify(imageBytes);
+            if (info != null && info.Width > 0 && info.Height > 0)
+            {
+                var aspect = (double)info.Width / info.Height;
+                var width = SignatureImageMaxWidthEmu;
+                var height = (long)Math.Round(width / aspect);
+                return (width, Math.Max(height, 1));
+            }
+        }
+        catch
+        {
+            // Fall back to layout banner aspect ratio (~168:69).
+        }
+
+        return (SignatureImageMaxWidthEmu, SignatureImageFallbackHeightEmu);
+    }
+
+    private static DocumentFormat.OpenXml.Wordprocessing.Drawing CreateInlineImageDrawing(
+        string relationshipId,
+        string contentType,
+        long emuWidth,
+        long emuHeight)
     {
         var ext = contentType.Contains("png", StringComparison.OrdinalIgnoreCase) ? ".png" : ".jpg";
         return new DocumentFormat.OpenXml.Wordprocessing.Drawing(
             new DW.Inline(
-                new DW.Extent { Cx = ImageEmuWidth, Cy = ImageEmuHeight },
+                new DW.Extent { Cx = emuWidth, Cy = emuHeight },
                 new DW.EffectExtent { LeftEdge = 0L, TopEdge = 0L, RightEdge = 0L, BottomEdge = 0L },
                 new DW.DocProperties { Id = 1U, Name = "Signature" },
                 new DW.NonVisualGraphicFrameDrawingProperties(
@@ -483,7 +505,7 @@ public static class WordPlaceholderReplacer
                             new PIC.ShapeProperties(
                                 new A.Transform2D(
                                     new A.Offset { X = 0L, Y = 0L },
-                                    new A.Extents { Cx = ImageEmuWidth, Cy = ImageEmuHeight }),
+                                    new A.Extents { Cx = emuWidth, Cy = emuHeight }),
                                 new A.PresetGeometry(new A.AdjustValueList()) { Preset = A.ShapeTypeValues.Rectangle }))
                     )
                     { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
