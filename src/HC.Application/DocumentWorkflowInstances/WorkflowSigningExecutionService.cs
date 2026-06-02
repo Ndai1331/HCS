@@ -19,6 +19,10 @@ using HC.UserSignatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using PdfSharpDrawing = PdfSharp.Drawing;
 using PdfSharpIO = PdfSharp.Pdf.IO;
 using UglyToad.PdfPig;
@@ -218,11 +222,19 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         {
             sealImageBytes = Array.Empty<byte>();
             layoutImageBytes = Array.Empty<byte>();
+
+            if (!string.IsNullOrWhiteSpace(signatureSetting.LayoutImg))
+            {
+                layoutImageBytes = await ResolveSignatureImageBytesAsync(signatureSetting.LayoutImg);
+                signatureImageBytes = ComposeSignatureWithConfiguredLayout(signatureImageBytes, layoutImageBytes);
+            }
+
             _logger.LogInformation(
-                "[DIGITAL_SIGN] REMOTE_CA (TAG-style) signing assets | AssignmentId={AssignmentId} | ProviderCode={ProviderCode} | SignatureBytes={SignatureBytes}",
+                "[DIGITAL_SIGN] REMOTE_CA (TAG-style) signing assets | AssignmentId={AssignmentId} | ProviderCode={ProviderCode} | SignatureBytes={SignatureBytes} | LayoutBytes={LayoutBytes}",
                 assignment.Id,
                 signature.ProviderCode,
-                signatureImageBytes.Length);
+                signatureImageBytes.Length,
+                layoutImageBytes.Length);
         }
         else
         {
@@ -1423,6 +1435,44 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         var imgX = x;
         var imgY = y - (fitHeight - h) / 2;
         gfx.DrawImage(img, imgX, imgY, fitWidth, fitHeight);
+    }
+
+    private static byte[] ComposeSignatureWithConfiguredLayout(byte[] signatureImageBytes, byte[] layoutImageBytes)
+    {
+        if (signatureImageBytes is not { Length: > 0 } || layoutImageBytes is not { Length: > 0 })
+        {
+            return signatureImageBytes;
+        }
+
+        try
+        {
+            using var layout = Image.Load<Rgba32>(layoutImageBytes);
+            using var signature = Image.Load<Rgba32>(signatureImageBytes);
+
+            var zoneWidth = Math.Max(1, (int)(layout.Width * 0.58) - 8);
+            var zoneHeight = Math.Max(1, layout.Height - 8);
+
+            signature.Mutate(ctx => ctx.Resize(new ResizeOptions
+            {
+                Size = new Size(zoneWidth, zoneHeight),
+                Mode = ResizeMode.Max
+            }));
+
+            var posX = 4 + Math.Max(0, (zoneWidth - signature.Width) / 2);
+            var posY = 4 + Math.Max(0, (zoneHeight - signature.Height) / 2);
+
+            using var composite = new Image<Rgba32>(layout.Width, layout.Height);
+            composite.Mutate(ctx => ctx.DrawImage(signature, new Point(posX, posY), 1f));
+            composite.Mutate(ctx => ctx.DrawImage(layout, Point.Empty, 1f));
+
+            using var output = new MemoryStream();
+            composite.Save(output, new PngEncoder { ColorType = PngColorType.RgbWithAlpha });
+            return output.ToArray();
+        }
+        catch
+        {
+            return signatureImageBytes;
+        }
     }
 
     private static string? NormalizePdfFontFamily(string? rawFontName)

@@ -126,10 +126,6 @@ public partial class DocumentSigning
     private Guid? SelectedNextStepSignerUserId { get; set; }
     private DocumentWorkflowInstanceDto? WorkflowInstanceInfo { get; set; }
 
-    private bool RequiresNextStepSignerSelection =>
-        SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE)
-        && NextStepDetailForApprove?.RequiresSignerSelection == true;
-
     // All workflow steps with their signing status (for action modal step overview)
     private List<WorkflowStepStatusDto> AllStepsWithStatus { get; set; } = new();
 
@@ -1131,13 +1127,6 @@ public partial class DocumentSigning
             return;
         }
 
-        if (RequiresNextStepSignerSelection && !SelectedNextStepSignerUserId.HasValue)
-        {
-            await UiMessageService.Error(L["WorkflowSignerSelectionRequired"],
-                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-            return;
-        }
-
         // Confirmation message based on action
         var confirmMessage = SelectedAction switch
         {
@@ -1182,9 +1171,7 @@ public partial class DocumentSigning
                 Note = NormalizeRichTextHtml(actionNote),
                 SigningMethodId = SelectedSigningMethodId,
                 UserSignatureId = SelectedUserSignatureId,
-                NextStepSignerUserId = RequiresNextStepSignerSelection
-                    ? SelectedNextStepSignerUserId
-                    : null
+                NextStepSignerUserId = null
             };
 
             var apiTask = DocumentWorkflowInstancesAppService.ProcessWorkflowActionAsync(input);

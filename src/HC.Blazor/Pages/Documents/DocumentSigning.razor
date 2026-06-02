@@ -620,28 +620,6 @@
                                             </Field>
                                         }
 
-                                        @if (RequiresNextStepSignerSelection && NextStepDetailForApprove != null)
-                                        {
-                                            <Field>
-                                                @if (!string.IsNullOrWhiteSpace(NextStepDetailForApprove.RoleName))
-                                                {
-                                                    <small class="text-muted d-block mb-1">@L["Role"]: @NextStepDetailForApprove.RoleName</small>
-                                                }
-                                                <FieldLabel class="fw-bold">
-                                                    @L["SelectWorkflowSigner"] — @L["Step"] @NextStepDetailForApprove.Order: @NextStepDetailForApprove.Name
-                                                    <span class="text-danger">*</span>
-                                                </FieldLabel>
-                                                <Select TValue="Guid?"
-                                                        SelectedValue="@SelectedNextStepSignerUserId"
-                                                        SelectedValueChanged="@(val => SelectedNextStepSignerUserId = val)">
-                                                    <SelectItem TValue="Guid?" Value="@null">@L["PleaseSelect"]</SelectItem>
-                                                    @foreach (var user in NextStepDetailForApprove.CandidateUsers)
-                                                    {
-                                                        <SelectItem TValue="Guid?" Value="@user.UserId">@GetCandidateDisplayLabel(user)</SelectItem>
-                                                    }
-                                                </Select>
-                                            </Field>
-                                        }
                                     }
 
                                     @* Note - content is used for <<NoteContentXX>> placeholder when signing *@
@@ -982,7 +960,7 @@
             }
             @if (!IsViewOnly)
             {
-                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsActionModalBusy || IsSigningBlocked || string.IsNullOrEmpty(SelectedAction) || (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && (!SelectedSigningMethodId.HasValue || (AvailableUserSignaturesForMethod.Count > 1 && !SelectedUserSignatureId.HasValue) || (RequiresNextStepSignerSelection && !SelectedNextStepSignerUserId.HasValue))))">
+                <Button Color="@GetActionButtonColor()" Clicked="ConfirmWorkflowActionAsync" Disabled="@(IsActionModalBusy || IsSigningBlocked || string.IsNullOrEmpty(SelectedAction) || (SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE) && (!SelectedSigningMethodId.HasValue || (AvailableUserSignaturesForMethod.Count > 1 && !SelectedUserSignatureId.HasValue))))">
                     <Icon Name="IconName.Check" Class="me-1" />@L["Confirm"]
                 </Button>
             }
