@@ -1352,13 +1352,15 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         var width = signatureSetting.SignWidth > 0 ? signatureSetting.SignWidth : 150;
         var height = signatureSetting.SignHeight > 0 ? signatureSetting.SignHeight : 70;
         var base64SignImg = Convert.ToBase64String(signatureImageBytes);
+        var signDateText = _clock.Now.ToString("dd/MM/yyyy HH:mm:ss");
+        var signerInfoText = $"{fullName}\r\nNgày ký:{signDateText}";
 
         var req = new PdfSignRequest
         {
             base64pdf = Convert.ToBase64String(pdfForSigning),
             hashalg = "SHA256",
             typesignature = 3,
-            textout = fullName,
+            textout = signerInfoText,
             base64image = base64SignImg,
             base64SignImage = base64SignImg,
             signaturename = placeholderTag,
@@ -1368,7 +1370,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             TextLocationIdentifier = placeholderTag,
             width = width,
             height = height,
-            AppendDateSign = true,
+            // Provide explicit multi-line text block (name + signed date) to avoid provider auto-layout misalignment.
+            AppendDateSign = false,
             DateFormatString = "dd/MM/yyyy HH:mm:ss",
             FontSize = 9f
         };
