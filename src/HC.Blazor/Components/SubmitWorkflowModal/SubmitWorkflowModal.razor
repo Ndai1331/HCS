@@ -135,13 +135,7 @@
                                             <i class="bi bi-clock"></i> @step.SLADays @L["Days"]
                                         </small>
                                     }
-                                    @if (!IsStepVisibleAtSubmit(step))
-                                    {
-                                        <div class="mt-1">
-                                            <small class="text-muted">@L["WorkflowStepAssignedOnAdvance"]</small>
-                                        </div>
-                                    }
-                                    else if (!step.CandidateUsers.Any())
+                                    @if (!step.CandidateUsers.Any())
                                     {
                                         <div class="mt-1">
                                             <small class="text-danger">@L["NoWorkflowAssigneeCandidatesFound"]</small>

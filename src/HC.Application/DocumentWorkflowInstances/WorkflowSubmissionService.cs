@@ -251,6 +251,7 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
 
         instance.CommittedStepTemplateIdsJson = WorkflowSubmissionHelper.SerializeCommittedStepTemplateIds(
             allStepsOrdered.Select(s => s.StepId).ToList());
+        WorkflowSubmissionHelper.SetStepSignerSelections(instance, input.StepSignerSelections);
         await _documentWorkflowInstanceRepository.UpdateAsync(instance);
 
         Guid? signingFileId = templateDocumentFileId;
@@ -509,6 +510,7 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         returnedInstance.WorkflowTemplateId = submitInfo.WorkflowTemplateId;
         returnedInstance.CommittedStepTemplateIdsJson = WorkflowSubmissionHelper.SerializeCommittedStepTemplateIds(
             allStepsOrdered.Select(s => s.StepId).ToList());
+        WorkflowSubmissionHelper.SetStepSignerSelections(returnedInstance, input.StepSignerSelections);
         returnedInstance.CurrentStepId = firstStep.StepId;
         returnedInstance.StartedAt = nowTime;
         returnedInstance.FinishedAt = finishedAt;

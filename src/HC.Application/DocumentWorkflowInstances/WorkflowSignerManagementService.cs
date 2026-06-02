@@ -68,7 +68,14 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
         }
 
         var instance = await _documentWorkflowInstanceRepository.GetAsync(input.WorkflowInstanceId);
-        if (instance.CreatorId != CurrentUser.Id)
+        var allSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(instance);
+        var stepIds = allSteps.Select(s => s.Id).ToList();
+        var stepAssignments = await _workflowStepAssignmentRepository.GetListAsync(
+            x => x.StepId.HasValue && stepIds.Contains(x.StepId.Value) && x.IsActive);
+        var docAssignments = await _documentAssignmentRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId && x.CreationTime >= instance.StartedAt);
+
+        if (!CanCurrentUserEditSigners(instance, allSteps, docAssignments))
         {
             throw new Volo.Abp.UserFriendlyException(L["NotAuthorizedForThisAction"]);
         }
@@ -82,13 +89,6 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
         {
             return;
         }
-
-        var allSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(instance);
-        var stepIds = allSteps.Select(s => s.Id).ToList();
-        var stepAssignments = await _workflowStepAssignmentRepository.GetListAsync(
-            x => x.StepId.HasValue && stepIds.Contains(x.StepId.Value) && x.IsActive);
-        var docAssignments = await _documentAssignmentRepository.GetListAsync(
-            x => x.DocumentId == instance.DocumentId && x.CreationTime >= instance.StartedAt);
 
         var selectionStepIds = input.StepSignerSelections.Select(s => s.StepId).Distinct().ToList();
         var editableStepMap = await BuildEditableStepSignerMapAsync(
@@ -124,7 +124,7 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
                 throw new Volo.Abp.UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
             }
 
-            if (stepEditInfo.CurrentPendingReceiverUserId == selection.SelectedUserId)
+            if (stepEditInfo.CurrentReceiverUserId == selection.SelectedUserId)
             {
                 continue;
             }
@@ -136,53 +136,80 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
                     && a.IsCurrent)
                 .ToList();
 
-            if (!pendingOnStep.Any())
+            DocumentAssignment? sourceAssignment = null;
+            if (pendingOnStep.Any())
             {
-                throw new Volo.Abp.UserFriendlyException(L["WorkflowStepSignerNotEditable"]);
+                sourceAssignment = pendingOnStep.First();
+                var stepFileId = sourceAssignment.DocumentFileResultId;
+
+                foreach (var pending in pendingOnStep)
+                {
+                    pending.Status = nameof(DocumentAssignmentStatus.REVOKE);
+                    pending.ProcessedAt = now;
+                    pending.IsCurrent = false;
+                }
+
+                await _documentAssignmentRepository.UpdateManyAsync(pendingOnStep);
+
+                await _documentAssignmentManager.CreateAsync(
+                    instance.DocumentId,
+                    step.Id,
+                    selection.SelectedUserId,
+                    step.Order,
+                    step.Type,
+                    nameof(DocumentAssignmentStatus.PENDING),
+                    now,
+                    DateTime.MinValue,
+                    true,
+                    stepFileId);
+
+                notifyUserIds.Add(selection.SelectedUserId);
             }
 
-            var sourceAssignment = pendingOnStep.First();
-            var stepFileId = sourceAssignment.DocumentFileResultId;
+            WorkflowSubmissionHelper.SetSelectedSignerForStep(instance, step.Id, selection.SelectedUserId);
 
-            foreach (var pending in pendingOnStep)
+            if (sourceAssignment != null)
             {
-                pending.Status = nameof(DocumentAssignmentStatus.REVOKE);
-                pending.ProcessedAt = now;
-                pending.IsCurrent = false;
+                signerUserDict.TryGetValue(sourceAssignment.ReceiverUserId, out var fromUser);
+                signerUserDict.TryGetValue(selection.SelectedUserId, out var toUser);
+                var updateSignerNote = L["WorkflowLogUpdateSignerDetail", step.Order, step.Name,
+                    WorkflowInstanceLogHelper.FormatIdentityUserDisplayName(fromUser),
+                    WorkflowInstanceLogHelper.FormatIdentityUserDisplayName(toUser)];
+
+                await _documentWorkflowInstanceLogsManager.CreateAsync(
+                    instance.Id,
+                    sourceAssignment.Id,
+                    CurrentUser.Id,
+                    nameof(WorkflowInstanceLogAction.UPDATE_SIGNER),
+                    step.Type,
+                    nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
+                    nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
+                    updateSignerNote);
+                continue;
             }
 
-            await _documentAssignmentRepository.UpdateManyAsync(pendingOnStep);
-
-            await _documentAssignmentManager.CreateAsync(
-                instance.DocumentId,
-                step.Id,
-                selection.SelectedUserId,
-                step.Order,
-                step.Type,
-                nameof(DocumentAssignmentStatus.PENDING),
-                now,
-                DateTime.MinValue,
-                true,
-                stepFileId);
-
-            notifyUserIds.Add(selection.SelectedUserId);
-
-            signerUserDict.TryGetValue(sourceAssignment.ReceiverUserId, out var fromUser);
-            signerUserDict.TryGetValue(selection.SelectedUserId, out var toUser);
-            var updateSignerNote = L["WorkflowLogUpdateSignerDetail", step.Order, step.Name,
-                WorkflowInstanceLogHelper.FormatIdentityUserDisplayName(fromUser),
-                WorkflowInstanceLogHelper.FormatIdentityUserDisplayName(toUser)];
+            var previousDisplay = stepEditInfo.CurrentReceiverUserId.HasValue
+                ? signerUserDict.TryGetValue(stepEditInfo.CurrentReceiverUserId.Value, out var previousUser)
+                    ? WorkflowInstanceLogHelper.FormatIdentityUserDisplayName(previousUser)
+                    : "---"
+                : "---";
+            signerUserDict.TryGetValue(selection.SelectedUserId, out var preselectedToUser);
+            var preselectedUpdateSignerNote = L["WorkflowLogUpdateSignerDetail", step.Order, step.Name,
+                previousDisplay,
+                WorkflowInstanceLogHelper.FormatIdentityUserDisplayName(preselectedToUser)];
 
             await _documentWorkflowInstanceLogsManager.CreateAsync(
                 instance.Id,
-                sourceAssignment.Id,
+                null,
                 CurrentUser.Id,
                 nameof(WorkflowInstanceLogAction.UPDATE_SIGNER),
                 step.Type,
                 nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
                 nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
-                updateSignerNote);
+                preselectedUpdateSignerNote);
         }
+
+        await _documentWorkflowInstanceRepository.UpdateAsync(instance, autoSave: true);
 
         if (notifyUserIds.Any())
         {
@@ -221,7 +248,7 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
                 .Where(a => a.Status == nameof(DocumentAssignmentStatus.PENDING) && a.IsCurrent)
                 .ToList();
 
-            if (isCompleted || !pendingAssignments.Any())
+            if (isCompleted)
             {
                 continue;
             }
@@ -229,16 +256,51 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
             var templateAssignments = stepAssignments.Where(sa => sa.StepId == step.Id).ToList();
             var stepDetail = await _workflowSubmitInfoQueryService.BuildWorkflowStepDetailAsync(
                 step, templateAssignments, submitterUserId);
+            if (!stepDetail.CandidateUsers.Any())
+            {
+                continue;
+            }
+
+            var selectedBySubmit = WorkflowSubmissionHelper.GetSelectedSignerForStep(instance, step.Id);
+            var currentReceiver = pendingAssignments.FirstOrDefault()?.ReceiverUserId ?? selectedBySubmit;
 
             result[stepId] = new EditableStepSignerInfo(
-                pendingAssignments.First().ReceiverUserId,
+                currentReceiver,
                 stepDetail.CandidateUsers);
         }
 
         return result;
     }
 
+    private bool CanCurrentUserEditSigners(
+        DocumentWorkflowInstance instance,
+        IReadOnlyList<WorkflowStepTemplate> allSteps,
+        IReadOnlyList<DocumentAssignment> docAssignments)
+    {
+        if (!CurrentUser.Id.HasValue)
+        {
+            return false;
+        }
+
+        if (instance.CreatorId == CurrentUser.Id)
+        {
+            return true;
+        }
+
+        var currentStepId = allSteps.FirstOrDefault(s => s.Id == instance.CurrentStepId)?.Id;
+        if (!currentStepId.HasValue)
+        {
+            return false;
+        }
+
+        return docAssignments.Any(a =>
+            a.WorkflowStepTemplateId == currentStepId.Value
+            && a.Status == nameof(DocumentAssignmentStatus.PENDING)
+            && a.IsCurrent
+            && a.ReceiverUserId == CurrentUser.Id.Value);
+    }
+
     private sealed record EditableStepSignerInfo(
-        Guid CurrentPendingReceiverUserId,
+        Guid? CurrentReceiverUserId,
         List<WorkflowStepUserDto> CandidateUsers);
 }

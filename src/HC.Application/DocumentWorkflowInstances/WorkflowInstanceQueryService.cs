@@ -144,8 +144,15 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
         var userDict = users.ToDictionary(u => u.Id);
 
         var isCreator = CurrentUser.Id.HasValue && instance.CreatorId == CurrentUser.Id;
-        var canEditSigners = isCreator && instance.Status == nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS);
+        var isCurrentStepPendingSigner = CurrentUser.Id.HasValue && docAssignments.Any(a =>
+            a.WorkflowStepTemplateId == instance.CurrentStepId
+            && a.Status == nameof(DocumentAssignmentStatus.PENDING)
+            && a.IsCurrent
+            && a.ReceiverUserId == CurrentUser.Id.Value);
+        var canEditSigners = instance.Status == nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS)
+            && (isCreator || isCurrentStepPendingSigner);
         var submitterUserId = instance.CreatorId ?? (CurrentUser.Id ?? throw new Volo.Abp.UserFriendlyException(L["NotAuthorizedForThisAction"]));
+        var selectedSignerMap = WorkflowSubmissionHelper.GetStepSignerSelections(instance);
 
         var result = new List<WorkflowStepStatusDto>();
         var stepsNeedingSignerDetail = new List<(WorkflowStepStatusDto StepDto, WorkflowStepTemplate Step, List<WorkflowStepAssignment> TemplateAssignments)>();
@@ -198,11 +205,15 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
             if (pendingAssignments.Any())
             {
                 stepDto.CurrentPendingReceiverUserId = pendingAssignments.First().ReceiverUserId;
+            }
+            else if (selectedSignerMap.TryGetValue(step.Id, out var selectedSignerUserId))
+            {
+                stepDto.CurrentPendingReceiverUserId = selectedSignerUserId;
+            }
 
-                if (canEditSigners && !stepDto.IsCompleted)
-                {
-                    stepsNeedingSignerDetail.Add((stepDto, step, thisStepTemplateAssignments));
-                }
+            if (canEditSigners && !stepDto.IsCompleted)
+            {
+                stepsNeedingSignerDetail.Add((stepDto, step, thisStepTemplateAssignments));
             }
 
             result.Add(stepDto);
@@ -212,7 +223,7 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
         {
             var stepDetail = await _workflowSubmitInfoQueryService.BuildWorkflowStepDetailAsync(
                 step, templateAssignments, submitterUserId);
-            stepDto.CanEditSigner = true;
+            stepDto.CanEditSigner = stepDetail.CandidateUsers.Count > 1;
             stepDto.CandidateUsers = stepDetail.CandidateUsers;
             stepDto.RoleName = stepDetail.RoleName;
         }

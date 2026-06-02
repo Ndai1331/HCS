@@ -357,13 +357,7 @@ public partial class SubmitWorkflowModal
             return Enumerable.Empty<WorkflowStepDetailDto>();
         }
 
-        var ordered = WorkflowSubmitInfo.Steps.OrderBy(s => s.Order).ToList();
-        if (WorkflowSubmitInfo.SignMode == nameof(HC.WorkflowTemplates.SignMode.PARALLEL))
-        {
-            return ordered;
-        }
-
-        return ordered.Take(1);
+        return WorkflowSubmitInfo.Steps.OrderBy(s => s.Order).ToList();
     }
 
     private bool IsStepVisibleAtSubmit(WorkflowStepDetailDto step)

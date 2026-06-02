@@ -277,14 +277,29 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
                     instance.CreatorId!.Value);
 
                 List<WorkflowStepUserDto> nextReceivers;
+
+                if (nextStepSignerUserId.HasValue)
+                {
+                    var explicitSelection = nextStepDetail.CandidateUsers.FirstOrDefault(
+                        c => c.UserId == nextStepSignerUserId.Value);
+                    if (explicitSelection == null)
+                    {
+                        throw new Volo.Abp.UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
+                    }
+
+                    WorkflowSubmissionHelper.SetSelectedSignerForStep(instance, nextStep.Id, nextStepSignerUserId.Value);
+                    await _documentWorkflowInstanceRepository.UpdateAsync(instance, autoSave: true);
+                }
+
+                var preselectedSignerUserId = WorkflowSubmissionHelper.GetSelectedSignerForStep(instance, nextStep.Id);
                 if (nextStepDetail.CandidateUsers.Count <= 1)
                 {
                     nextReceivers = nextStepDetail.CandidateUsers;
                 }
-                else if (nextStepSignerUserId.HasValue)
+                else if (preselectedSignerUserId.HasValue)
                 {
                     var selected = nextStepDetail.CandidateUsers.FirstOrDefault(
-                        c => c.UserId == nextStepSignerUserId.Value);
+                        c => c.UserId == preselectedSignerUserId.Value);
                     if (selected == null)
                     {
                         throw new Volo.Abp.UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
