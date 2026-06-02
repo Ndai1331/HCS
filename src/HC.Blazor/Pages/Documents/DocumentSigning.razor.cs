@@ -122,7 +122,13 @@ public partial class DocumentSigning
 
     // Current Step Detail (loaded from WorkflowStepTemplates + WorkflowStepAssignments)
     private WorkflowStepDetailDto? CurrentStepDetailInfo { get; set; }
+    private WorkflowStepDetailDto? NextStepDetailForApprove { get; set; }
+    private Guid? SelectedNextStepSignerUserId { get; set; }
     private DocumentWorkflowInstanceDto? WorkflowInstanceInfo { get; set; }
+
+    private bool RequiresNextStepSignerSelection =>
+        SelectedAction == nameof(WorkflowInstanceLogAction.APPROVE)
+        && NextStepDetailForApprove?.RequiresSignerSelection == true;
 
     // All workflow steps with their signing status (for action modal step overview)
     private List<WorkflowStepStatusDto> AllStepsWithStatus { get; set; } = new();
@@ -893,6 +899,8 @@ public partial class DocumentSigning
 
             WorkflowInstanceInfo = bundle.Instance;
             CurrentStepDetailInfo = bundle.CurrentStepDetail;
+            NextStepDetailForApprove = bundle.NextStepDetail;
+            SelectedNextStepSignerUserId = null;
             WorkflowLogs = bundle.Logs ?? new();
             WorkflowFiles = bundle.Files ?? new();
             DocumentHistories = bundle.DocumentHistories ?? new();
@@ -936,6 +944,8 @@ public partial class DocumentSigning
             DocumentHistories = new();
             SigningDocumentAssignments = new();
             CurrentStepDetailInfo = null;
+            NextStepDetailForApprove = null;
+            SelectedNextStepSignerUserId = null;
             WorkflowInstanceInfo = null;
             AllStepsWithStatus = new();
             EditedStepSigners = new();
@@ -975,6 +985,8 @@ public partial class DocumentSigning
 
                     WorkflowInstanceInfo = bundle.Instance;
                     CurrentStepDetailInfo = bundle.CurrentStepDetail;
+                    NextStepDetailForApprove = bundle.NextStepDetail;
+                    SelectedNextStepSignerUserId = null;
                     WorkflowLogs = bundle.Logs ?? new();
                     WorkflowFiles = bundle.Files ?? new();
                     DocumentHistories = bundle.DocumentHistories ?? new();
@@ -1119,6 +1131,13 @@ public partial class DocumentSigning
             return;
         }
 
+        if (RequiresNextStepSignerSelection && !SelectedNextStepSignerUserId.HasValue)
+        {
+            await UiMessageService.Error(L["WorkflowSignerSelectionRequired"],
+                options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+            return;
+        }
+
         // Confirmation message based on action
         var confirmMessage = SelectedAction switch
         {
@@ -1162,7 +1181,10 @@ public partial class DocumentSigning
                 Action = SelectedAction,
                 Note = NormalizeRichTextHtml(actionNote),
                 SigningMethodId = SelectedSigningMethodId,
-                UserSignatureId = SelectedUserSignatureId
+                UserSignatureId = SelectedUserSignatureId,
+                NextStepSignerUserId = RequiresNextStepSignerSelection
+                    ? SelectedNextStepSignerUserId
+                    : null
             };
 
             var apiTask = DocumentWorkflowInstancesAppService.ProcessWorkflowActionAsync(input);

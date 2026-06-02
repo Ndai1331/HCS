@@ -13,6 +13,7 @@ using HC.MasterDatas;
 using HC.Permissions;
 using HC.WorkflowStepAssignments;
 using HC.WorkflowStepTemplates;
+using HC.WorkflowTemplates;
 using HC.Workflows;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
@@ -362,6 +363,24 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
             {
                 Logger.LogWarning(ex, "GetActionBundleAsync: SubmitInfo fetch failed for workflowId={WorkflowId}", bundle.Instance.WorkflowId);
                 throw new Volo.Abp.UserFriendlyException(L["ActionBundleSubmitInfoFailed"]);
+            }
+        }
+
+        if (bundle.Instance != null
+            && bundle.SubmitInfo?.SignMode != nameof(SignMode.PARALLEL)
+            && bundle.Instance.CreatorId.HasValue)
+        {
+            var committedSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(entity);
+            var currentIndex = committedSteps.FindIndex(s => s.Id == bundle.Instance.CurrentStepId);
+            if (currentIndex >= 0 && currentIndex < committedSteps.Count - 1)
+            {
+                var nextStep = committedSteps[currentIndex + 1];
+                var nextStepAssignments = await _workflowStepAssignmentRepository.GetListAsync(
+                    x => x.StepId == nextStep.Id && x.IsActive);
+                bundle.NextStepDetail = await _workflowSubmitInfoQueryService.BuildWorkflowStepDetailAsync(
+                    nextStep,
+                    nextStepAssignments,
+                    bundle.Instance.CreatorId.Value);
             }
         }
 
