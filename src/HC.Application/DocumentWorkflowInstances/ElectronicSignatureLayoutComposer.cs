@@ -10,7 +10,7 @@ using SixLabors.ImageSharp.Processing;
 namespace HC.DocumentWorkflowInstances;
 
 /// <summary>
-/// Composites a user's handwritten signature onto the default electronic-sign layout ("Đã ký").
+/// Composites a handwritten signature under the "Đã ký" layout banner (layout on top).
 /// Layout asset: Assets/Signing/electronic-signature-layout.png (embedded resource).
 /// </summary>
 public static class ElectronicSignatureLayoutComposer
@@ -50,16 +50,19 @@ public static class ElectronicSignatureLayoutComposer
             var posX = ZonePadding + Math.Max(0, (zoneWidth - signature.Width) / 2);
             var posY = ZonePadding + Math.Max(0, (zoneHeight - signature.Height) / 2);
 
-            layout.Mutate(ctx => ctx.DrawImage(signature, new Point(posX, posY), 1f));
+            // Signature first (bottom), layout overlay on top so "Đã ký" is never covered.
+            using var composite = new Image<Rgba32>(layout.Width, layout.Height);
+            composite.Mutate(ctx => ctx.DrawImage(signature, new Point(posX, posY), 1f));
+            composite.Mutate(ctx => ctx.DrawImage(layout, Point.Empty, 1f));
 
-            if (layout.Width < ExportLayoutWidthPx)
+            if (composite.Width < ExportLayoutWidthPx)
             {
-                var exportHeight = Math.Max(1, (int)Math.Round(layout.Height * ((double)ExportLayoutWidthPx / layout.Width)));
-                layout.Mutate(ctx => ctx.Resize(ExportLayoutWidthPx, exportHeight));
+                var exportHeight = Math.Max(1, (int)Math.Round(composite.Height * ((double)ExportLayoutWidthPx / composite.Width)));
+                composite.Mutate(ctx => ctx.Resize(ExportLayoutWidthPx, exportHeight));
             }
 
             using var output = new MemoryStream();
-            layout.Save(output, new PngEncoder { ColorType = PngColorType.RgbWithAlpha });
+            composite.Save(output, new PngEncoder { ColorType = PngColorType.RgbWithAlpha });
             return output.ToArray();
         }
         catch
