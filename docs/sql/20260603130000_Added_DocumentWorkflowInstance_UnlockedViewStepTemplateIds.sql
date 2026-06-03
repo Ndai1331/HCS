@@ -10,3 +10,4 @@ WHERE NOT EXISTS (
     SELECT 1 FROM "__EFMigrationsHistory"
     WHERE "MigrationId" = '20260603130000_Added_DocumentWorkflowInstance_UnlockedViewStepTemplateIds'
 );
+
