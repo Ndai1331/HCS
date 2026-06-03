@@ -139,7 +139,7 @@
                                         </Button>
                                     }
                                     @* View workflow info (read-only modal) *@
-                                    @if (context.WorkflowInstanceId.HasValue)
+                                    @if (context.WorkflowInstanceId.HasValue && (context.CanAct || context.HasViewAccess))
                                     {
                                         <Button @onclick="@(() => ShowActionModalAsync(context, viewOnly: !context.CanAct))"
                                             Color="Color.Info"

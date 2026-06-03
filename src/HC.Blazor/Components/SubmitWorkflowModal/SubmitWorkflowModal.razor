@@ -141,6 +141,16 @@
                                             <small class="text-danger">@L["NoWorkflowAssigneeCandidatesFound"]</small>
                                         </div>
                                     }
+                                    else if (step.IsViewStep)
+                                    {
+                                        <div class="mt-1">
+                                            @if (!string.IsNullOrWhiteSpace(step.RoleName))
+                                            {
+                                                <small class="text-muted d-block">@L["Role"]: @step.RoleName</small>
+                                            }
+                                            <small class="text-muted d-block">@L["ViewStepRoleAssigneeHint"] (@step.CandidateUsers.Count)</small>
+                                        </div>
+                                    }
                                     else if (step.RequiresSignerSelection)
                                     {
                                         <div class="mt-2">

@@ -113,7 +113,8 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
 
         var now = Clock.Now;
 
-        if (input.Action.ToUpper() == nameof(WorkflowInstanceLogAction.APPROVE))
+        if (input.Action.ToUpper() == nameof(WorkflowInstanceLogAction.APPROVE)
+            && !WorkflowStepNavigationHelper.IsViewStep(assignment.ActionType))
         {
             await ApplySigningByMethodAsync(assignment, instance, input.SigningMethodId, input.Note, input.UserSignatureId);
         }
@@ -222,9 +223,10 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
             var allSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(instance);
 
             var currentIndex = allSteps.FindIndex(s => s.Id == currentStep.Id);
-            var isLastStep = currentIndex >= allSteps.Count - 1;
+            var nextBlockingIndex = WorkflowStepNavigationHelper.AdvanceThroughViewSteps(
+                instance, allSteps, currentIndex + 1);
 
-            if (isLastStep)
+            if (nextBlockingIndex >= allSteps.Count)
             {
                 instance.Status = nameof(DocumentWorkflowInstanceStatus.COMPLETED);
                 instance.FinishedAt = now;
@@ -248,7 +250,12 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
             }
             else
             {
-                var nextStep = allSteps[currentIndex + 1];
+                var nextStep = allSteps[nextBlockingIndex];
+                if (!WorkflowStepNavigationHelper.IsBlockingStep(nextStep.Type))
+                {
+                    throw new Volo.Abp.UserFriendlyException(L["InvalidWorkflowAction"]);
+                }
+
                 instance.CurrentStepId = nextStep.Id;
                 instance.FinishedAt = _workflowSlaService.CalculateStepDeadline(now, nextStep.SLADays);
                 instance.OverdueAt = null;

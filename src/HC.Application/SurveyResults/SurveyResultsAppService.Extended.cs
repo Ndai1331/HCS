@@ -218,6 +218,54 @@ public class SurveyResultsAppService : SurveyResultsAppServiceBase, ISurveyResul
         }
     }
 
+    [AllowAnonymous]
+    public override async Task<IRemoteStreamContent> GetListAsExcelFileAsync(SurveyResultExcelDownloadDto input)
+    {
+        await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
+
+        using (_dataFilter.Disable<ISoftDelete>())
+        {
+            var resultQueryable = await _surveyResultRepository.GetQueryableAsync();
+            var sessionQueryable = await _surveySessionRepository.GetQueryableAsync();
+            var criteriaQueryable = await _surveyCriteriaRepository.GetQueryableAsync();
+
+            var query =
+                from result in resultQueryable
+                join session in sessionQueryable on result.SurveySessionId equals session.Id
+                join criteria in criteriaQueryable on result.SurveyCriteriaId equals criteria.Id
+                where !input.SurveyLocationId.HasValue || session.SurveyLocationId == input.SurveyLocationId.Value
+                orderby session.SurveyTime descending, criteria.Name
+                select new
+                {
+                    result.Rating,
+                    SurveyCriteriaName = criteria.Name,
+                    session.FullName,
+                    session.PhoneNumber,
+                    session.PatientCode,
+                    session.Note,
+                    session.SurveyTime
+                };
+
+            var rows = await AsyncExecuter.ToListAsync(query);
+
+            var items = rows.Select(row => new Dictionary<string, object?>
+            {
+                ["Điểm đánh giá"] = row.Rating,
+                ["Tiêu chí đánh giá"] = row.SurveyCriteriaName,
+                ["Khách hàng"] = row.FullName,
+                ["Số điện thoại"] = row.PhoneNumber,
+                ["Mã bệnh nhân"] = row.PatientCode,
+                ["Ghi chú"] = row.Note,
+                ["Thời gian khảo sát"] = row.SurveyTime.ToString("dd/MM/yyyy HH:mm"),
+            }).ToList();
+
+            var memoryStream = new MemoryStream();
+            await memoryStream.SaveAsAsync(items);
+            memoryStream.Seek(0, SeekOrigin.Begin);
+            return new RemoteStreamContent(memoryStream, "SurveyResults.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        }
+    }
+
     public virtual async Task<SurveyResultStatisticsDto> GetStatisticsByLocationAsync(Guid? surveyLocationId)
     {
         var statistics = new SurveyResultStatisticsDto();

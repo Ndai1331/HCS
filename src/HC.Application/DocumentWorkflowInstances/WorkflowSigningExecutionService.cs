@@ -1451,6 +1451,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         {
             using var layout = Image.Load<Rgba32>(layoutImageBytes);
             using var signature = Image.Load<Rgba32>(signatureImageBytes);
+            CropSignatureBorder(signature);
 
             var zoneWidth = Math.Max(1, (int)(layout.Width * 0.58) - 8);
             var zoneHeight = Math.Max(1, layout.Height - 8);
@@ -1476,6 +1477,21 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         {
             return signatureImageBytes;
         }
+    }
+
+    private static void CropSignatureBorder(Image<Rgba32> signature)
+    {
+        const int borderCropPx = 2;
+        if (signature.Width <= borderCropPx * 2 || signature.Height <= borderCropPx * 2)
+        {
+            return;
+        }
+
+        signature.Mutate(ctx => ctx.Crop(new Rectangle(
+            borderCropPx,
+            borderCropPx,
+            signature.Width - borderCropPx * 2,
+            signature.Height - borderCropPx * 2)));
     }
 
     private static string? NormalizePdfFontFamily(string? rawFontName)

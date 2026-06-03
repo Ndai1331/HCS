@@ -40,6 +40,7 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
     private readonly IRepository<MasterData, Guid> _masterDataRepository;
     private readonly IWorkflowSubmitInfoQueryService _workflowSubmitInfoQueryService;
     private readonly IWorkflowCommittedStepsQueryService _workflowCommittedStepsQueryService;
+    private readonly IWorkflowViewAccessService _workflowViewAccessService;
 
     public WorkflowInstanceQueryService(
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
@@ -55,7 +56,8 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
         IRepository<IdentityUser, Guid> identityUserRepository,
         IRepository<MasterData, Guid> masterDataRepository,
         IWorkflowSubmitInfoQueryService workflowSubmitInfoQueryService,
-        IWorkflowCommittedStepsQueryService workflowCommittedStepsQueryService)
+        IWorkflowCommittedStepsQueryService workflowCommittedStepsQueryService,
+        IWorkflowViewAccessService workflowViewAccessService)
     {
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
         _documentRepository = documentRepository;
@@ -71,6 +73,7 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
         _masterDataRepository = masterDataRepository;
         _workflowSubmitInfoQueryService = workflowSubmitInfoQueryService;
         _workflowCommittedStepsQueryService = workflowCommittedStepsQueryService;
+        _workflowViewAccessService = workflowViewAccessService;
     }
 
     [Authorize(HCPermissions.Documents.SubmitForSigning)]
@@ -211,7 +214,9 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
                 stepDto.CurrentPendingReceiverUserId = selectedSignerUserId;
             }
 
-            if (canEditSigners && !stepDto.IsCompleted)
+            if (canEditSigners
+                && !stepDto.IsCompleted
+                && !WorkflowStepNavigationHelper.IsViewStep(step.Type))
             {
                 stepsNeedingSignerDetail.Add((stepDto, step, thisStepTemplateAssignments));
             }
@@ -265,6 +270,19 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
                     StepName = stepForAssignment?.Name ?? "Unknown",
                     IsCurrent = pending.IsCurrent,
                     CanAct = true
+                };
+            }
+            else if (await _workflowViewAccessService.CanUserViewWorkflowDocumentAsync(instance.Id, CurrentUser.Id.Value))
+            {
+                myAssignment = new DocumentAssignmentInfoDto
+                {
+                    AssignmentId = Guid.Empty,
+                    Status = nameof(DocumentAssignmentStatus.PENDING),
+                    ActionType = nameof(WorkflowStepType.VIEW),
+                    StepOrder = currentStep.Order,
+                    StepName = currentStep.Name,
+                    IsCurrent = true,
+                    CanAct = false
                 };
             }
         }
@@ -383,15 +401,21 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
         {
             var committedSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(entity);
             var currentIndex = committedSteps.FindIndex(s => s.Id == bundle.Instance.CurrentStepId);
-            if (currentIndex >= 0 && currentIndex < committedSteps.Count - 1)
+            if (currentIndex >= 0)
             {
-                var nextStep = committedSteps[currentIndex + 1];
-                var nextStepAssignments = await _workflowStepAssignmentRepository.GetListAsync(
-                    x => x.StepId == nextStep.Id && x.IsActive);
-                bundle.NextStepDetail = await _workflowSubmitInfoQueryService.BuildWorkflowStepDetailAsync(
-                    nextStep,
-                    nextStepAssignments,
-                    bundle.Instance.CreatorId.Value);
+                var nextBlockingIndex = WorkflowStepNavigationHelper.AdvanceThroughViewSteps(
+                    entity, committedSteps, currentIndex + 1);
+                if (nextBlockingIndex < committedSteps.Count
+                    && WorkflowStepNavigationHelper.IsBlockingStep(committedSteps[nextBlockingIndex].Type))
+                {
+                    var nextStep = committedSteps[nextBlockingIndex];
+                    var nextStepAssignments = await _workflowStepAssignmentRepository.GetListAsync(
+                        x => x.StepId == nextStep.Id && x.IsActive);
+                    bundle.NextStepDetail = await _workflowSubmitInfoQueryService.BuildWorkflowStepDetailAsync(
+                        nextStep,
+                        nextStepAssignments,
+                        bundle.Instance.CreatorId.Value);
+                }
             }
         }
 

@@ -11,6 +11,7 @@ using HC.DocumentWorkflowInstanceFiles;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.MasterDatas;
 using HC.Permissions;
+using HC.WorkflowStepTemplates;
 using HC.WorkflowTemplates;
 using HC.Workflows;
 using Microsoft.AspNetCore.Authorization;
@@ -213,17 +214,17 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         }
 
         var allStepsOrdered = workflowInfo.Steps.OrderBy(s => s.Order).ToList();
-        var firstStep = allStepsOrdered.First();
         var isParallel = workflowInfo.SignMode == nameof(SignMode.PARALLEL);
+        var firstBlockingStep = WorkflowStepNavigationHelper.GetFirstBlockingStepDetail(allStepsOrdered);
 
-        if (!firstStep.CandidateUsers.Any())
+        if (firstBlockingStep != null && !firstBlockingStep.CandidateUsers.Any())
         {
             throw new Volo.Abp.UserFriendlyException(L["FirstStepMustHaveAssignedUsers"]);
         }
 
         if (isParallel)
         {
-            foreach (var step in allStepsOrdered)
+            foreach (var step in WorkflowStepNavigationHelper.GetBlockingStepDetails(allStepsOrdered))
             {
                 if (!step.CandidateUsers.Any())
                 {
@@ -233,25 +234,45 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         }
 
         var nowTime = Clock.Now;
+        var blockingStepsForSla = WorkflowStepNavigationHelper.GetBlockingStepDetails(allStepsOrdered);
+        var slaAnchorStep = firstBlockingStep ?? allStepsOrdered.First();
 
         var finishedAt = _workflowSlaService.CalculateInitialDeadline(
             nowTime,
             isParallel,
-            allStepsOrdered.Select(s => s.SLADays),
-            firstStep.SLADays);
+            blockingStepsForSla.Select(s => s.SLADays),
+            slaAnchorStep.SLADays);
+
+        var initialStepId = firstBlockingStep?.StepId ?? allStepsOrdered.Last().StepId;
+        var initialStatus = firstBlockingStep == null
+            ? nameof(DocumentWorkflowInstanceStatus.COMPLETED)
+            : nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS);
 
         var instance = await _documentWorkflowInstanceManager.CreateAsync(
             documentId,
             workflowInfo.WorkflowId,
             workflowInfo.WorkflowTemplateId,
-            firstStep.StepId,
-            nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
+            initialStepId,
+            initialStatus,
             nowTime,
-            finishedAt);
+            firstBlockingStep == null ? nowTime : finishedAt);
 
         instance.CommittedStepTemplateIdsJson = WorkflowSubmissionHelper.SerializeCommittedStepTemplateIds(
             allStepsOrdered.Select(s => s.StepId).ToList());
         WorkflowSubmissionHelper.SetStepSignerSelections(instance, input.StepSignerSelections);
+        WorkflowSubmissionHelper.ClearUnlockedViewSteps(instance);
+        WorkflowStepNavigationHelper.AdvanceThroughViewSteps(instance, allStepsOrdered, 0);
+
+        if (firstBlockingStep != null)
+        {
+            instance.CurrentStepId = firstBlockingStep.StepId;
+            instance.FinishedAt = finishedAt;
+        }
+        else
+        {
+            instance.FinishedAt = nowTime;
+        }
+
         await _documentWorkflowInstanceRepository.UpdateAsync(instance);
 
         Guid? signingFileId = templateDocumentFileId;
@@ -290,13 +311,18 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
             documentId,
             input.SigningContent);
 
-        var stepsToAssign = isParallel ? allStepsOrdered : new List<WorkflowStepDetailDto> { firstStep };
+        var stepsToAssign = isParallel
+            ? WorkflowStepNavigationHelper.GetBlockingStepDetails(allStepsOrdered).ToList()
+            : firstBlockingStep != null
+                ? new List<WorkflowStepDetailDto> { firstBlockingStep }
+                : new List<WorkflowStepDetailDto>();
         var allNotifyUserIds = new List<Guid>();
+        var firstAssignStep = stepsToAssign.FirstOrDefault();
 
         foreach (var step in stepsToAssign)
         {
             Guid? stepFileId = signingFileId;
-            if (isParallel && step.Order > firstStep.Order)
+            if (isParallel && firstAssignStep != null && step.Order > firstAssignStep.Order)
             {
                 stepFileId = await _workflowDocumentFileService.CopyDocumentFileForNextStepAsync(signingFileId, documentId);
                 if (!stepFileId.HasValue)
@@ -381,7 +407,12 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
                 doc,
                 distinctNotifyUserIds,
                 "WorkflowAssigned",
-                $"WorkflowAssignedMessage|{doc.StorageNumber}|{doc.Title}|{workflowInfo.WorkflowName}|{firstStep.Name}");
+                $"WorkflowAssignedMessage|{doc.StorageNumber}|{doc.Title}|{workflowInfo.WorkflowName}|{firstBlockingStep?.Name ?? slaAnchorStep.Name}");
+        }
+
+        if (firstBlockingStep == null)
+        {
+            await _workflowNotificationService.UpdateDocumentStatusAsync(documentId, DocumentStatusCode.HT);
         }
 
         return ObjectMapper.Map<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>(instance);
@@ -479,17 +510,17 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
 
         var submitInfo = await _workflowSubmitInfoQueryService.GetWorkflowSubmitInfoAsync(returnedInstance.WorkflowId);
         var allStepsOrdered = submitInfo.Steps.OrderBy(s => s.Order).ToList();
-        var firstStep = allStepsOrdered.First();
         var isParallel = submitInfo.SignMode == nameof(SignMode.PARALLEL);
+        var firstBlockingStep = WorkflowStepNavigationHelper.GetFirstBlockingStepDetail(allStepsOrdered);
 
-        if (!firstStep.CandidateUsers.Any())
+        if (firstBlockingStep != null && !firstBlockingStep.CandidateUsers.Any())
         {
             throw new Volo.Abp.UserFriendlyException(L["FirstStepMustHaveAssignedUsers"]);
         }
 
         if (isParallel)
         {
-            foreach (var step in allStepsOrdered)
+            foreach (var step in WorkflowStepNavigationHelper.GetBlockingStepDetails(allStepsOrdered))
             {
                 if (!step.CandidateUsers.Any())
                 {
@@ -499,21 +530,27 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         }
 
         var nowTime = Clock.Now;
+        var blockingStepsForSla = WorkflowStepNavigationHelper.GetBlockingStepDetails(allStepsOrdered);
+        var slaAnchorStep = firstBlockingStep ?? allStepsOrdered.First();
 
         var finishedAt = _workflowSlaService.CalculateInitialDeadline(
             nowTime,
             isParallel,
-            allStepsOrdered.Select(s => s.SLADays),
-            firstStep.SLADays);
+            blockingStepsForSla.Select(s => s.SLADays),
+            slaAnchorStep.SLADays);
 
-        returnedInstance.Status = nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS);
+        returnedInstance.Status = firstBlockingStep == null
+            ? nameof(DocumentWorkflowInstanceStatus.COMPLETED)
+            : nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS);
         returnedInstance.WorkflowTemplateId = submitInfo.WorkflowTemplateId;
         returnedInstance.CommittedStepTemplateIdsJson = WorkflowSubmissionHelper.SerializeCommittedStepTemplateIds(
             allStepsOrdered.Select(s => s.StepId).ToList());
         WorkflowSubmissionHelper.SetStepSignerSelections(returnedInstance, input.StepSignerSelections);
-        returnedInstance.CurrentStepId = firstStep.StepId;
+        WorkflowSubmissionHelper.ClearUnlockedViewSteps(returnedInstance);
+        WorkflowStepNavigationHelper.AdvanceThroughViewSteps(returnedInstance, allStepsOrdered, 0);
+        returnedInstance.CurrentStepId = firstBlockingStep?.StepId ?? allStepsOrdered.Last().StepId;
         returnedInstance.StartedAt = nowTime;
-        returnedInstance.FinishedAt = finishedAt;
+        returnedInstance.FinishedAt = firstBlockingStep == null ? nowTime : finishedAt;
         returnedInstance.OverdueAt = null;
         returnedInstance.ExtensionCount = 0;
         returnedInstance.TotalExtensionBusinessDays = 0;
@@ -534,13 +571,18 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
             documentId,
             input.SigningContent);
 
-        var stepsToAssign = isParallel ? allStepsOrdered : new List<WorkflowStepDetailDto> { firstStep };
+        var stepsToAssign = isParallel
+            ? WorkflowStepNavigationHelper.GetBlockingStepDetails(allStepsOrdered).ToList()
+            : firstBlockingStep != null
+                ? new List<WorkflowStepDetailDto> { firstBlockingStep }
+                : new List<WorkflowStepDetailDto>();
         var allNotifyUserIds = new List<Guid>();
+        var firstAssignStep = stepsToAssign.FirstOrDefault();
 
         foreach (var step in stepsToAssign)
         {
             Guid? stepFileId = signingFileId;
-            if (isParallel && step.Order > firstStep.Order)
+            if (isParallel && firstAssignStep != null && step.Order > firstAssignStep.Order)
             {
                 stepFileId = await _workflowDocumentFileService.CopyDocumentFileForNextStepAsync(signingFileId, documentId);
                 if (!stepFileId.HasValue)
@@ -643,10 +685,12 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
                 doc,
                 distinctNotifyUserIds,
                 "WorkflowResubmitted",
-                $"WorkflowResubmittedMessage|{doc.StorageNumber}|{doc.Title}|{submitInfo.WorkflowName}|{firstStep.Name}");
+                $"WorkflowResubmittedMessage|{doc.StorageNumber}|{doc.Title}|{submitInfo.WorkflowName}|{firstBlockingStep?.Name ?? slaAnchorStep.Name}");
         }
 
-        await _workflowNotificationService.UpdateDocumentStatusAsync(documentId, DocumentStatusCode.DANG_XU_LY);
+        await _workflowNotificationService.UpdateDocumentStatusAsync(
+            documentId,
+            firstBlockingStep == null ? DocumentStatusCode.HT : DocumentStatusCode.DANG_XU_LY);
 
         return ObjectMapper.Map<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>(returnedInstance);
     }
@@ -655,6 +699,11 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         WorkflowStepDetailDto step,
         IReadOnlyList<WorkflowStepSignerSelectionDto>? selections)
     {
+        if (WorkflowStepNavigationHelper.IsViewStep(step.Type))
+        {
+            return new List<WorkflowStepUserDto>();
+        }
+
         if (!step.CandidateUsers.Any())
         {
             throw new Volo.Abp.UserFriendlyException(L["NoWorkflowAssigneeCandidatesFound"]);

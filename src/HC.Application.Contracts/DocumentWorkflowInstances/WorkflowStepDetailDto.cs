@@ -24,7 +24,9 @@ public class WorkflowStepDetailDto
 
     public List<WorkflowStepUserDto> CandidateUsers { get; set; } = new();
 
-    public bool RequiresSignerSelection => CandidateUsers.Count > 1;
+    public bool IsViewStep => string.Equals(Type, nameof(WorkflowStepType.VIEW), StringComparison.OrdinalIgnoreCase);
+
+    public bool RequiresSignerSelection => !IsViewStep && CandidateUsers.Count > 1;
 
     /// <summary>
     /// Resolved receivers for display; same as CandidateUsers at submit preview, or selected users after submit.
@@ -149,7 +151,9 @@ public class WorkflowStepStatusDto
 
     public List<WorkflowStepUserDto> CandidateUsers { get; set; } = new();
 
-    public bool RequiresSignerSelection => CandidateUsers.Count > 1;
+    public bool IsViewStep => string.Equals(Type, nameof(WorkflowStepType.VIEW), StringComparison.OrdinalIgnoreCase);
+
+    public bool RequiresSignerSelection => !IsViewStep && CandidateUsers.Count > 1;
 }
 
 /// <summary>

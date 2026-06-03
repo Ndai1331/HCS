@@ -27,6 +27,8 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
     private readonly IRepository<Workflow, Guid> _workflowRepository;
     private readonly IRepository<WorkflowTemplate, Guid> _workflowTemplateRepository;
     private readonly IRepository<WorkflowStepTemplate, Guid> _workflowStepTemplateRepository;
+    private readonly IDocumentWorkflowInstanceRepository _documentWorkflowInstanceRepository;
+    private readonly IWorkflowViewAccessService _workflowViewAccessService;
 
     public DocumentSigningQueryService(
         IDocumentSigningFilterQueryBuilder signingFilterQueryBuilder,
@@ -34,7 +36,9 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
         IRepository<MasterData, Guid> masterDataRepository,
         IRepository<Workflow, Guid> workflowRepository,
         IRepository<WorkflowTemplate, Guid> workflowTemplateRepository,
-        IRepository<WorkflowStepTemplate, Guid> workflowStepTemplateRepository)
+        IRepository<WorkflowStepTemplate, Guid> workflowStepTemplateRepository,
+        IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
+        IWorkflowViewAccessService workflowViewAccessService)
     {
         _signingFilterQueryBuilder = signingFilterQueryBuilder;
         _documentAssignmentRepository = documentAssignmentRepository;
@@ -42,6 +46,8 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
         _workflowRepository = workflowRepository;
         _workflowTemplateRepository = workflowTemplateRepository;
         _workflowStepTemplateRepository = workflowStepTemplateRepository;
+        _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
+        _workflowViewAccessService = workflowViewAccessService;
     }
 
     /// <inheritdoc />
@@ -233,6 +239,13 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
                 .Where(a => a.DocumentId == doc.Id && a.Status == nameof(DocumentAssignmentStatus.PENDING) && a.IsCurrent)
                 .FirstOrDefault();
 
+            var hasViewAccess = false;
+            if (docInstance != null && currentUserId != Guid.Empty)
+            {
+                hasViewAccess = await _workflowViewAccessService.CanUserViewWorkflowDocumentAsync(
+                    docInstance.Id, currentUserId);
+            }
+
             string? statusName = doc.StatusId.HasValue && masterDataDict.TryGetValue(doc.StatusId.Value, out var statusMd)
                 ? statusMd.Name
                 : null;
@@ -319,6 +332,7 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
                 TotalExtensionBusinessDays = docInstance?.TotalExtensionBusinessDays ?? 0,
                 MyAssignmentStatus = myDocAssignment?.Status,
                 CanAct = myDocAssignment != null && myDocAssignment.Status == nameof(DocumentAssignmentStatus.PENDING),
+                HasViewAccess = hasViewAccess,
                 MyAssignmentId = myDocAssignment?.Id,
                 CanResubmit = docInstance != null
                     && docInstance.Status == nameof(DocumentWorkflowInstanceStatus.RETURNED)

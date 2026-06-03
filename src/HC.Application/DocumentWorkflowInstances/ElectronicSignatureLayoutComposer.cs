@@ -37,6 +37,7 @@ public static class ElectronicSignatureLayoutComposer
             var layoutBytes = GetLayoutBytes();
             using var layout = Image.Load<Rgba32>(layoutBytes);
             using var signature = Image.Load<Rgba32>(signatureImageBytes);
+            CropSignatureBorder(signature);
 
             var zoneWidth = Math.Max(1, (int)(layout.Width * SignatureZoneWidthRatio) - ZonePadding * 2);
             var zoneHeight = Math.Max(1, layout.Height - ZonePadding * 2);
@@ -70,6 +71,23 @@ public static class ElectronicSignatureLayoutComposer
             // Keep signing flow working if layout asset is missing or image decode fails.
             return signatureImageBytes;
         }
+    }
+
+    private static void CropSignatureBorder(Image<Rgba32> signature)
+    {
+        // Some uploaded signatures contain a thin rectangular frame at image edges.
+        // Crop a tiny outer margin to remove that frame before compositing.
+        const int borderCropPx = 2;
+        if (signature.Width <= borderCropPx * 2 || signature.Height <= borderCropPx * 2)
+        {
+            return;
+        }
+
+        signature.Mutate(ctx => ctx.Crop(new Rectangle(
+            borderCropPx,
+            borderCropPx,
+            signature.Width - borderCropPx * 2,
+            signature.Height - borderCropPx * 2)));
     }
 
     private static byte[] GetLayoutBytes()

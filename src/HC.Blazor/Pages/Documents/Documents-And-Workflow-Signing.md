@@ -137,9 +137,19 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
   - không tự động fallback sang template cũ vì dễ che giấu lỗi cấu hình;
   - giữ tương thích với mô hình hiện tại khi entity `WorkflowTemplate` chưa có cờ “active version” riêng.
 
+### 3.4.1 Bước VIEW (xem theo OU / người chỉ định)
+
+- Bước `VIEW` có thể đặt ở **bất kỳ** thứ tự trong quy trình.
+- Khi quy trình **tới** bước VIEW: ghi `UnlockedViewStepTemplateIds` (ExtraProperties trên instance); **không** tạo `DocumentAssignment` PENDING.
+- Người được xem khi bước đã unlock:
+  - `RoleInSubmitterOrganizationUnit` + role → user active có role và thuộc OU chain người trình ký;
+  - `SpecificUser` → đúng user chỉ định trên assignment.
+- Sau unlock, engine **auto-skip** các bước VIEW liên tiếp; **dừng** tại bước `SIGN` / `PROCESS` (assignment + ký bắt buộc).
+- Danh sách `/document-signing`: UNION assignment workflow + document có quyền xem bước VIEW đã unlock (`HasViewAccess`, `CanAct` chỉ khi có assignment PENDING bước chặn).
+
 ### 3.4 Xử lý bước (Approve / Return / Reject)
 
-- **DocumentAssignment**: `PENDING`, `DONE`, `REJECTED`, `REVOKE`; gắn `WorkflowStepTemplateId` cho bước workflow.
+- **DocumentAssignment**: `PENDING`, `DONE`, `REJECTED`, `REVOKE`; gắn `WorkflowStepTemplateId` cho bước workflow (chỉ bước chặn SIGN/PROCESS).
 - **DocumentWorkflowInstance**: `IN_PROGRESS`, `COMPLETED`, `REJECTED`, `RETURNED`, `CANCELLED`, …
 - Return / Reject: map trạng thái document đúng nghiệp vụ (**TRA_VE**, **TU_CHOI**, không dùng HT cho trả về/từ chối).
 - **SEQUENTIAL vs PARALLEL** (`WorkflowTemplate.SignMode`): tạo assignment và copy/merge file theo logic đã triển khai; ký điện tử **ELECTRONIC** (placeholder `<<SignNN>>`, …).

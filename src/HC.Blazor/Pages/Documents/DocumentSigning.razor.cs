@@ -817,11 +817,7 @@ public partial class DocumentSigning
                 return;
             }
 
-            var canProcess = targetDocument.CanAct
-                && targetDocument.MyAssignmentId.HasValue
-                && string.Equals(targetDocument.MyAssignmentStatus, nameof(DocumentAssignmentStatus.PENDING), StringComparison.OrdinalIgnoreCase);
-
-            await ShowActionModalAsync(targetDocument, viewOnly: !canProcess);
+            await ShowActionModalAsync(targetDocument, viewOnly: !targetDocument.CanAct);
         }
         catch (Exception ex)
         {
