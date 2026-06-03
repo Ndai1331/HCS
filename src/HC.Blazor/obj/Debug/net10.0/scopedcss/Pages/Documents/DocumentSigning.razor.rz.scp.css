@@ -1,0 +1,29 @@
+.workflow-steps-scroll[b-m5oxcbsjmw] {
+    max-height: 220px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+.workflow-step-card[b-m5oxcbsjmw] {
+    font-size: 0.8rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    margin-bottom: 0.25rem;
+    background-color: var(--lpx-content-bg, #fff);
+    transition: opacity 0.2s ease, filter 0.2s ease, border-color 0.2s ease;
+}
+
+.workflow-step-card-processed[b-m5oxcbsjmw] {
+    opacity: 0.48;
+    filter: grayscale(35%);
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.workflow-step-card-current[b-m5oxcbsjmw] {
+    opacity: 1;
+    filter: none;
+    border: 2px solid var(--bs-primary, #0d6efd) !important;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.18);
+    background-color: rgba(13, 110, 253, 0.07);
+}

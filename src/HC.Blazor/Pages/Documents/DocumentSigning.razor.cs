@@ -128,6 +128,7 @@ public partial class DocumentSigning
 
     // All workflow steps with their signing status (for action modal step overview)
     private List<WorkflowStepStatusDto> AllStepsWithStatus { get; set; } = new();
+    private bool _scrollToCurrentWorkflowStepPending;
 
     private Dictionary<Guid, Guid?> EditedStepSigners { get; set; } = new();
     private bool IsSavingWorkflowSigners { get; set; }
@@ -228,6 +229,12 @@ public partial class DocumentSigning
             IsInitialDataLoaded = true;
             await TryAutoOpenActionModalFromNotificationAsync();
             await RequestRenderAsync();
+        }
+
+        if (_scrollToCurrentWorkflowStepPending)
+        {
+            _scrollToCurrentWorkflowStepPending = false;
+            await ScrollToCurrentWorkflowStepAsync();
         }
     }
 
@@ -550,6 +557,67 @@ public partial class DocumentSigning
     /// <summary>
     /// Effective pending signer for a step (unsaved edit takes precedence).
     /// </summary>
+    private static bool IsWorkflowStepProcessed(WorkflowStepStatusDto step, IReadOnlyList<WorkflowStepStatusDto> allSteps)
+    {
+        if (step.IsCompleted)
+        {
+            return true;
+        }
+
+        var current = allSteps.FirstOrDefault(s => s.IsCurrentStep);
+        return current != null && step.Order < current.Order;
+    }
+
+    private string GetWorkflowStepCardClass(WorkflowStepStatusDto step)
+    {
+        if (step.IsCurrentStep)
+        {
+            return "workflow-step-card workflow-step-card-current";
+        }
+
+        if (IsWorkflowStepProcessed(step, AllStepsWithStatus))
+        {
+            return "workflow-step-card workflow-step-card-processed";
+        }
+
+        return "workflow-step-card";
+    }
+
+    private void RequestScrollToCurrentWorkflowStep()
+    {
+        if (AllStepsWithStatus.Any(s => s.IsCurrentStep))
+        {
+            _scrollToCurrentWorkflowStepPending = true;
+        }
+    }
+
+    private async Task ScrollToCurrentWorkflowStepAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync(
+                "eval",
+                """
+                (() => {
+                  const step = document.getElementById('workflow-step-current');
+                  const container = document.getElementById('workflow-steps-scroll-container');
+                  if (!step || !container) return;
+                  const stepTop = step.offsetTop - container.offsetTop;
+                  const stepBottom = stepTop + step.offsetHeight;
+                  const viewTop = container.scrollTop;
+                  const viewBottom = viewTop + container.clientHeight;
+                  if (stepTop < viewTop || stepBottom > viewBottom) {
+                    step.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                  }
+                })()
+                """);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Scroll to current workflow step failed");
+        }
+    }
+
     private Guid? GetEffectivePendingSignerUserId(WorkflowStepStatusDto step)
     {
         if (EditedStepSigners.TryGetValue(step.StepId, out var edited) && edited.HasValue)
@@ -919,6 +987,8 @@ public partial class DocumentSigning
             }
 
             UpdateSigningActionVisibility();
+            RequestScrollToCurrentWorkflowStep();
+            await RequestRenderAsync();
         }
         catch (Exception ex)
         {
@@ -1050,6 +1120,7 @@ public partial class DocumentSigning
                 {
                     await Task.Delay(100);
                     _showActionModalRichTextEditors = true;
+                    RequestScrollToCurrentWorkflowStep();
                     await RequestRenderAsync();
                 }
             }

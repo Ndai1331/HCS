@@ -381,11 +381,11 @@
                                             <label class="form-label fw-bold mb-1">@L["WorkflowSteps"]</label>
                                             @if (AllStepsWithStatus.Any())
                                             {
-                                                <div class="mt-1" style="max-height: 220px; overflow-y: auto;">
+                                                <div id="workflow-steps-scroll-container" class="workflow-steps-scroll mt-1">
                                                     @foreach (var step in AllStepsWithStatus.OrderBy(s => s.Order))
                                                     {
-                                                        <div class="border rounded p-2 mb-1 @(step.IsCurrentStep ? "border-primary" : "")"
-                                                             style="font-size: 0.8rem; @(step.IsCurrentStep ? "background-color: rgba(13,110,253,0.05);" : "")">
+                                                        <div id="@(step.IsCurrentStep ? "workflow-step-current" : null)"
+                                                             class="@GetWorkflowStepCardClass(step)">
                                                             <div class="d-flex align-items-center justify-content-between">
                                                                 <div class="d-flex align-items-center">
                                                                     @if (step.IsCompleted)

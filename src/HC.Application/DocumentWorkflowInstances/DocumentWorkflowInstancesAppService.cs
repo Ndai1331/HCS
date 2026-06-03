@@ -82,7 +82,15 @@ public abstract class DocumentWorkflowInstancesAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetWorkflowLookupAsync(LookupRequestDto input)
     {
-        var query = (await _workflowRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
+        var queryable = await _workflowRepository.GetQueryableAsync();
+        var query = queryable;
+        if (!string.IsNullOrWhiteSpace(input.Filter))
+        {
+            var filterLower = input.Filter.Trim().ToLower();
+            query = query.Where(x =>
+                (x.Name != null && x.Name.ToLower().Contains(filterLower))
+                || (x.Code != null && x.Code.ToLower().Contains(filterLower)));
+        }
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<HC.Workflows.Workflow>();
         var totalCount = await AsyncExecuter.CountAsync(query);
         return new PagedResultDto<LookupDto<Guid>>

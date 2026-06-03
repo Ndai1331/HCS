@@ -3988,8 +3988,8 @@
 /Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/scopedcss/Pages/Documents/DocumentSigning.razor.rz.scp.css
 /Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/scopedcss/Pages/MasterDataPage.razor.rz.scp.css
 /Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/scopedcss/Components/Documents/DocumentSigningFilterBar.razor.rz.scp.css
-/Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/9nfrfk6kql-{0}-45vhhukui8-45vhhukui8.gz
-/Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/2l5ofbszy4-{0}-adh6nruxmy-adh6nruxmy.gz
 /Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/dtksuzt11p-{0}-xai7pm9009-xai7pm9009.gz
 /Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/f3e2cypfsm-{0}-xai7pm9009-xai7pm9009.gz
 /Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/ahdcih0bc0-{0}-ykpmsk4919-ykpmsk4919.gz
+/Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/9nfrfk6kql-{0}-c4qi38i68j-c4qi38i68j.gz
+/Users/user/Documents/HCS/src/HC.Blazor/obj/Debug/net10.0/compressed/2l5ofbszy4-{0}-gvegwcwjq3-gvegwcwjq3.gz
