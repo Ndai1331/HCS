@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using HC.Documents;
 using HC.DocumentAssignments;
+using HC.DocumentFiles;
 using HC.MasterDatas;
 using HC.Workflows;
 using HC.WorkflowStepTemplates;
@@ -29,6 +30,7 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
     private readonly IRepository<WorkflowStepTemplate, Guid> _workflowStepTemplateRepository;
     private readonly IDocumentWorkflowInstanceRepository _documentWorkflowInstanceRepository;
     private readonly IWorkflowViewAccessService _workflowViewAccessService;
+    private readonly IRepository<DocumentFile, Guid> _documentFileRepository;
 
     public DocumentSigningQueryService(
         IDocumentSigningFilterQueryBuilder signingFilterQueryBuilder,
@@ -38,7 +40,8 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
         IRepository<WorkflowTemplate, Guid> workflowTemplateRepository,
         IRepository<WorkflowStepTemplate, Guid> workflowStepTemplateRepository,
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
-        IWorkflowViewAccessService workflowViewAccessService)
+        IWorkflowViewAccessService workflowViewAccessService,
+        IRepository<DocumentFile, Guid> documentFileRepository)
     {
         _signingFilterQueryBuilder = signingFilterQueryBuilder;
         _documentAssignmentRepository = documentAssignmentRepository;
@@ -48,6 +51,7 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
         _workflowStepTemplateRepository = workflowStepTemplateRepository;
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
         _workflowViewAccessService = workflowViewAccessService;
+        _documentFileRepository = documentFileRepository;
     }
 
     /// <inheritdoc />
@@ -230,6 +234,25 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
 
         var committedStepTemplateDictForPage = committedStepTemplatesForPage.ToDictionary(s => s.Id, s => s);
 
+        var stepsByTemplateId = allStepsForTemplates
+            .GroupBy(s => s.WorkflowTemplateId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyDictionary<Guid, WorkflowStepTemplate>)g.ToDictionary(s => s.Id, s => s));
+
+        var documentFileQueryable = await _documentFileRepository.GetQueryableAsync();
+        var signedFilesForPage = pagedDocIds.Count > 0
+            ? await AsyncExecuter.ToListAsync(
+                documentFileQueryable.Where(f =>
+                    f.DocumentId.HasValue
+                    && pagedDocIds.Contains(f.DocumentId.Value)
+                    && f.IsSigned))
+            : new List<DocumentFile>();
+        var signedFilesByDocId = signedFilesForPage
+            .Where(f => f.DocumentId.HasValue)
+            .GroupBy(f => f.DocumentId!.Value)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<DocumentFile>)g.ToList());
+
         var items = new List<DocumentSigningItemDto>();
         foreach (var doc in pagedDocuments)
         {
@@ -303,14 +326,21 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
                 }
             }
 
+            IReadOnlyDictionary<Guid, WorkflowStepTemplate> stepDictForInstance =
+                docInstance != null && stepsByTemplateId.TryGetValue(docInstance.WorkflowTemplateId, out var instSteps)
+                    ? instSteps
+                    : committedStepTemplateDictForPage;
+            signedFilesByDocId.TryGetValue(doc.Id, out var signedFilesForDoc);
+
             var canCancelWorkflow = docInstance != null
                 && docInstance.CreatorId == currentUserId
                 && (docInstance.Status == nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS)
                     || docInstance.Status == nameof(DocumentWorkflowInstanceStatus.OVERDUE))
-                && !WorkflowSigningProgressHelper.HasAnySignStepCompleted(
+                && !WorkflowSigningProgressHelper.HasWorkflowSigningOccurred(
                     docInstance,
                     pageAssignments.Where(a => a.DocumentId == doc.Id).ToList(),
-                    committedStepTemplateDictForPage);
+                    stepDictForInstance,
+                    signedFilesForDoc);
 
             items.Add(new DocumentSigningItemDto
             {

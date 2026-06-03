@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using HC.DocumentAssignments;
+using HC.DocumentFiles;
 using HC.Permissions;
 using HC.WorkflowStepTemplates;
 using Microsoft.AspNetCore.Authorization;
@@ -18,17 +19,20 @@ public class WorkflowInitiatorCancellationService : HCAppService, IWorkflowIniti
     private readonly IDocumentWorkflowInstanceRepository _documentWorkflowInstanceRepository;
     private readonly IDocumentAssignmentRepository _documentAssignmentRepository;
     private readonly IRepository<WorkflowStepTemplate, Guid> _workflowStepTemplateRepository;
+    private readonly IRepository<DocumentFile, Guid> _documentFileRepository;
     private readonly WorkflowInstanceCancellationService _workflowInstanceCancellationService;
 
     public WorkflowInitiatorCancellationService(
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
         IDocumentAssignmentRepository documentAssignmentRepository,
         IRepository<WorkflowStepTemplate, Guid> workflowStepTemplateRepository,
+        IRepository<DocumentFile, Guid> documentFileRepository,
         WorkflowInstanceCancellationService workflowInstanceCancellationService)
     {
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
         _documentAssignmentRepository = documentAssignmentRepository;
         _workflowStepTemplateRepository = workflowStepTemplateRepository;
+        _documentFileRepository = documentFileRepository;
         _workflowInstanceCancellationService = workflowInstanceCancellationService;
     }
 
@@ -63,15 +67,15 @@ public class WorkflowInitiatorCancellationService : HCAppService, IWorkflowIniti
         var assignments = await _documentAssignmentRepository.GetListAsync(
             x => x.DocumentId == instance.DocumentId && x.WorkflowStepTemplateId != null);
 
-        var committedIds = DocumentSigningQueryHelper.TryDeserializeCommittedStepTemplateIds(
-            instance.CommittedStepTemplateIdsJson);
-        var stepIds = committedIds ?? new List<Guid>();
-        var stepTemplates = stepIds.Count > 0
-            ? await _workflowStepTemplateRepository.GetListAsync(x => stepIds.Contains(x.Id))
-            : new List<WorkflowStepTemplate>();
+        var stepTemplates = await _workflowStepTemplateRepository.GetListAsync(
+            x => x.WorkflowTemplateId == instance.WorkflowTemplateId && x.IsActive);
         var stepDict = stepTemplates.ToDictionary(s => s.Id, s => s);
 
-        if (WorkflowSigningProgressHelper.HasAnySignStepCompleted(instance, assignments, stepDict))
+        var documentFiles = await _documentFileRepository.GetListAsync(
+            x => x.DocumentId == instance.DocumentId);
+
+        if (WorkflowSigningProgressHelper.HasWorkflowSigningOccurred(
+                instance, assignments, stepDict, documentFiles))
         {
             throw new Volo.Abp.UserFriendlyException(L["CannotCancelWorkflowAfterSigning"]);
         }

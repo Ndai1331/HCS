@@ -122,7 +122,7 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
 
 - API: `POST api/app/document-workflow-instances/cancel-by-initiator` (`CancelWorkflowByInitiatorInput`).
 - Chỉ **người tạo instance** (`CreatorId`) và instance ở trạng thái **`IN_PROGRESS`** hoặc **`OVERDUE`**.
-- **Không** hủy được nếu đã có assignment **`DONE`** trên bất kỳ bước **`SIGN`** nào trong `CommittedStepTemplateIdsJson` (bước VIEW/PROCESS không tính là “đã ký”).
+- **Không** hủy được sau khi **đã ký file** (file workflow `IsSigned=true` từ lúc trình ký trở đi), hoặc đã hoàn thành bước **SIGN/PROCESS** (`assignment DONE`). Chỉ **trình ký** (submit, file copy `IsSigned=false`) vẫn được hủy. Bước **VIEW** không chặn hủy.
 - Hủy mềm: instance → **`CANCELLED`**, assignment `PENDING` → **`REVOKE`**, tài liệu workflow con + parent (nếu có) → **`DA_HUY`**; log/history `WORKFLOW_CANCELLED`.
 - Sau hủy: nút **Trình ký** trên document gốc hiện lại (không còn child `IN_PROGRESS`/`COMPLETED`); trình lại tạo **bản workflow con mới** như submit lần đầu.
 - UI: nút hủy trên `/document-signing` khi `CanCancelWorkflow` (cột Actions, thường tab **Tôi gửi đi**).
