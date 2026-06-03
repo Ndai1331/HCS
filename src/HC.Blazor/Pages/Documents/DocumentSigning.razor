@@ -162,6 +162,18 @@
                                             <Icon Name="IconName.Redo" />
                                         </Button>
                                     }
+                                    @* Cancel workflow (initiator, no signatures yet) *@
+                                    @if (context.CanCancelWorkflow && context.WorkflowInstanceId.HasValue)
+                                    {
+                                        <Button @onclick="@(() => ConfirmCancelWorkflowAsync(context))"
+                                            Color="Color.Danger"
+                                            Outline
+                                            Size="Size.Small"
+                                            Class="mb-1"
+                                            title="@L["CancelWorkflow"]">
+                                            <Icon Name="IconName.Times" />
+                                        </Button>
+                                    }
                                     @* View PDF *@
                                     <Button @onclick="@(() => OpenDocumentPdfViewerModalAsync(context))"
                                         Color="Color.Primary"

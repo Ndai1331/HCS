@@ -24,6 +24,7 @@ public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInsta
     private readonly IWorkflowSignerManagementService _workflowSignerManagementService;
     private readonly IWorkflowOverdueExtensionService _workflowOverdueExtensionService;
     private readonly IDocumentSigningExportService _documentSigningExportService;
+    private readonly IWorkflowInitiatorCancellationService _workflowInitiatorCancellationService;
 
     public DocumentWorkflowInstancesAppService(
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
@@ -41,7 +42,8 @@ public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInsta
         IWorkflowInstanceQueryService workflowInstanceQueryService,
         IWorkflowSignerManagementService workflowSignerManagementService,
         IWorkflowOverdueExtensionService workflowOverdueExtensionService,
-        IDocumentSigningExportService documentSigningExportService)
+        IDocumentSigningExportService documentSigningExportService,
+        IWorkflowInitiatorCancellationService workflowInitiatorCancellationService)
         : base(
             documentWorkflowInstanceRepository,
             documentWorkflowInstanceManager,
@@ -60,6 +62,7 @@ public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInsta
         _workflowSignerManagementService = workflowSignerManagementService;
         _workflowOverdueExtensionService = workflowOverdueExtensionService;
         _documentSigningExportService = documentSigningExportService;
+        _workflowInitiatorCancellationService = workflowInitiatorCancellationService;
     }
 
     [Authorize(HCPermissions.Documents.SubmitForSigning)]
@@ -131,4 +134,9 @@ public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInsta
     [Authorize(HCPermissions.DocumentAssignments.Default)]
     public virtual Task<WorkflowInstanceActionBundleDto> GetActionBundleAsync(GetWorkflowInstanceActionBundleInput input)
         => _workflowInstanceQueryService.GetActionBundleAsync(input);
+
+    [UnitOfWork]
+    [Authorize(HCPermissions.Documents.SubmitForSigning)]
+    public Task CancelWorkflowByInitiatorAsync(CancelWorkflowByInitiatorInput input)
+        => _workflowInitiatorCancellationService.CancelWorkflowByInitiatorAsync(input);
 }

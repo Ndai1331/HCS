@@ -150,4 +150,11 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     {
         return _documentWorkflowInstancesAppService.GetWorkflowExtensionSummaryAsync(workflowInstanceId);
     }
+
+    [HttpPost]
+    [Route("cancel-by-initiator")]
+    public Task CancelWorkflowByInitiatorAsync(CancelWorkflowByInitiatorInput input)
+    {
+        return _documentWorkflowInstancesAppService.CancelWorkflowByInitiatorAsync(input);
+    }
 }

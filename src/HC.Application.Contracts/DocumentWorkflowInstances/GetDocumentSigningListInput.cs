@@ -134,6 +134,11 @@ public class DocumentSigningItemDto
     /// allowing them to re-submit the workflow with edits.
     /// </summary>
     public bool CanResubmit { get; set; }
+
+    /// <summary>
+    /// True when the initiator may cancel/revoke the workflow (no SIGN step completed yet).
+    /// </summary>
+    public bool CanCancelWorkflow { get; set; }
 }
 
 /// <summary>

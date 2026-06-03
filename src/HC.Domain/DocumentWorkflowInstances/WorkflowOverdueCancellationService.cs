@@ -1,130 +1,32 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
-using HC.DocumentAssignments;
-using HC.DocumentHistories;
-using HC.DocumentWorkflowInstanceLogss;
-using HC.Documents;
-using HC.MasterDatas;
 using Microsoft.Extensions.Logging;
-using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
-using Volo.Abp.Timing;
 
 namespace HC.DocumentWorkflowInstances;
 
 /// <summary>
-/// Shared cancellation logic for overdue workflows (background worker and grace expiry).
+/// Overdue workflow cancellation (background worker and grace expiry).
 /// </summary>
 public class WorkflowOverdueCancellationService : DomainService
 {
-    private readonly IDocumentWorkflowInstanceRepository _instanceRepository;
-    private readonly IDocumentAssignmentRepository _assignmentRepository;
-    private readonly IRepository<Document, Guid> _documentRepository;
-    private readonly IRepository<MasterData, Guid> _masterDataRepository;
-    private readonly DocumentHistoryManager _historyManager;
-    private readonly DocumentWorkflowInstanceLogsManager _logsManager;
+    private readonly WorkflowInstanceCancellationService _cancellationService;
 
-    public WorkflowOverdueCancellationService(
-        IDocumentWorkflowInstanceRepository instanceRepository,
-        IDocumentAssignmentRepository assignmentRepository,
-        IRepository<Document, Guid> documentRepository,
-        IRepository<MasterData, Guid> masterDataRepository,
-        DocumentHistoryManager historyManager,
-        DocumentWorkflowInstanceLogsManager logsManager)
+    public WorkflowOverdueCancellationService(WorkflowInstanceCancellationService cancellationService)
     {
-        _instanceRepository = instanceRepository;
-        _assignmentRepository = assignmentRepository;
-        _documentRepository = documentRepository;
-        _masterDataRepository = masterDataRepository;
-        _historyManager = historyManager;
-        _logsManager = logsManager;
+        _cancellationService = cancellationService;
     }
 
-    public async Task CancelOverdueInstanceAsync(DocumentWorkflowInstance instance, DateTime now, ILogger logger)
+    public Task CancelOverdueInstanceAsync(DocumentWorkflowInstance instance, DateTime now, ILogger logger)
     {
-        instance.Status = nameof(DocumentWorkflowInstanceStatus.CANCELLED);
-        instance.FinishedAt = now;
-        await _instanceRepository.UpdateAsync(instance);
-
-        try
-        {
-            var document = await _documentRepository.GetAsync(instance.DocumentId);
-            var statusCode = DocumentStatusCode.DA_HUY.GetCode();
-            var statusList = await _masterDataRepository.GetListAsync(
-                x => x.Code == statusCode && x.Type == MasterDataType.Status.GetTypeValue());
-            var status = statusList.FirstOrDefault();
-
-            if (status != null)
-            {
-                document.StatusId = status.Id;
-                await _documentRepository.UpdateAsync(document);
-
-                if (document.ParentDocumentId.HasValue)
-                {
-                    var parent = await _documentRepository.GetAsync(document.ParentDocumentId.Value);
-                    parent.StatusId = status.Id;
-                    await _documentRepository.UpdateAsync(parent);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error updating document status on overdue cancel. DocumentId={DocumentId}", instance.DocumentId);
-        }
-
-        try
-        {
-            if (instance.CreatorId.HasValue)
-            {
-                await _historyManager.CreateAsync(
-                    instance.DocumentId,
-                    null,
-                    instance.CreatorId.Value,
-                    nameof(WorkflowInstanceLogAction.WORKFLOW_CANCELLED),
-                    "Hết hạn xử lý tài liệu - Tự động hủy bởi hệ thống");
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error creating document history on overdue cancel. InstanceId={InstanceId}", instance.Id);
-        }
-
-        try
-        {
-            await _logsManager.CreateAsync(
-                instance.Id,
-                null,
-                null,
-                nameof(WorkflowInstanceLogAction.WORKFLOW_CANCELLED),
-                WorkflowConstants.RoleSystem,
-                nameof(DocumentWorkflowInstanceStatus.OVERDUE),
-                nameof(DocumentWorkflowInstanceStatus.CANCELLED),
-                "Hết hạn xử lý - Tự động hủy sau thời gian ân hạn");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error creating workflow log on overdue cancel. InstanceId={InstanceId}", instance.Id);
-        }
-
-        try
-        {
-            var pendingAssignments = await _assignmentRepository.GetListAsync(
-                x => x.DocumentId == instance.DocumentId
-                     && x.IsCurrent
-                     && x.Status == nameof(DocumentAssignmentStatus.PENDING));
-
-            foreach (var assignment in pendingAssignments)
-            {
-                assignment.Status = nameof(DocumentAssignmentStatus.REVOKE);
-                assignment.ProcessedAt = now;
-                assignment.IsCurrent = false;
-                await _assignmentRepository.UpdateAsync(assignment);
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error revoking assignments on overdue cancel. InstanceId={InstanceId}", instance.Id);
-        }
+        return _cancellationService.CancelInstanceAsync(
+            instance,
+            now,
+            instance.CreatorId,
+            "Hết hạn xử lý tài liệu - Tự động hủy bởi hệ thống",
+            "Hết hạn xử lý - Tự động hủy sau thời gian ân hạn",
+            nameof(DocumentWorkflowInstanceStatus.OVERDUE),
+            WorkflowConstants.RoleSystem,
+            logger);
     }
 }

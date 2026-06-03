@@ -118,8 +118,18 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
   - **mọi `DocumentWorkflowInstance` chỉ chạy trên document `SourceType = Workflow`.**
 - Khi re-submit đổi document, cleanup assignment cũ luôn chạy theo **document workflow cũ** để không để lại assignment treo `IsCurrent`.
 
+### 3.2.2 Hủy trình ký do người trình ký (chưa ai ký)
+
+- API: `POST api/app/document-workflow-instances/cancel-by-initiator` (`CancelWorkflowByInitiatorInput`).
+- Chỉ **người tạo instance** (`CreatorId`) và instance ở trạng thái **`IN_PROGRESS`** hoặc **`OVERDUE`**.
+- **Không** hủy được nếu đã có assignment **`DONE`** trên bất kỳ bước **`SIGN`** nào trong `CommittedStepTemplateIdsJson` (bước VIEW/PROCESS không tính là “đã ký”).
+- Hủy mềm: instance → **`CANCELLED`**, assignment `PENDING` → **`REVOKE`**, tài liệu workflow con + parent (nếu có) → **`DA_HUY`**; log/history `WORKFLOW_CANCELLED`.
+- Sau hủy: nút **Trình ký** trên document gốc hiện lại (không còn child `IN_PROGRESS`/`COMPLETED`); trình lại tạo **bản workflow con mới** như submit lần đầu.
+- UI: nút hủy trên `/document-signing` khi `CanCancelWorkflow` (cột Actions, thường tab **Tôi gửi đi**).
+
 ### 3.3 Modal trình ký & file Word/PDF
 
+- Chọn quy trình: **Select2** (lookup `GetWorkflowLookupAsync`, tìm theo tên, `MaxResultCount = 20`).
 - Có thể dùng **file mẫu workflow** (`UseWorkflowTemplateFile`) → tạo document mới `SourceType = Workflow` (không có parent trừ khi sau này mở rộng).
 - Hoặc chọn văn bản từ **0/1/2** → luồng **duplicate** như trên.
 - File **.doc/.docx**: bắt buộc nội dung trình ký (RichText); replace placeholder trong Word rồi convert PDF (`WorkflowSigningExecutionService`, OpenXml, LibreOffice).

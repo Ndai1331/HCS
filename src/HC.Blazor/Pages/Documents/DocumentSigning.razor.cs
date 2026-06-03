@@ -913,7 +913,11 @@ public partial class DocumentSigning
                     : null;
             }
 
-            await ApplyOverdueCheckAsync(workflowInstanceId);
+            if (!IsViewOnly)
+            {
+                await ApplyOverdueCheckAsync(workflowInstanceId);
+            }
+
             UpdateSigningActionVisibility();
         }
         catch (Exception ex)
@@ -1024,7 +1028,7 @@ public partial class DocumentSigning
                 await OnSigningMethodChangedAsync(defaultSigningMethod.Id);
             }
 
-            if (document.WorkflowInstanceId.HasValue)
+            if (document.WorkflowInstanceId.HasValue && !IsViewOnly)
             {
                 await ApplyOverdueCheckAsync(document.WorkflowInstanceId.Value);
             }
@@ -1216,6 +1220,39 @@ public partial class DocumentSigning
             IsWorkflowActionSubmitting = false;
             WorkflowActionCountdownRemaining = WorkflowActionSigningUiTimeoutSeconds;
             await RequestRenderAsync();
+        }
+    }
+
+    #endregion
+
+    #region Cancel Workflow
+
+    private async Task ConfirmCancelWorkflowAsync(DocumentSigningItemDto document)
+    {
+        if (!document.WorkflowInstanceId.HasValue)
+        {
+            return;
+        }
+
+        var confirmed = await UiMessageService.Confirm(L["ConfirmCancelWorkflow"]);
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            await DocumentWorkflowInstancesAppService.CancelWorkflowByInitiatorAsync(
+                new CancelWorkflowByInitiatorInput
+                {
+                    WorkflowInstanceId = document.WorkflowInstanceId.Value
+                });
+            await UiMessageService.Success(L["WorkflowCancelledSuccessfully"]);
+            await LoadDocumentSigningListAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
         }
     }
 

@@ -303,6 +303,15 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
                 }
             }
 
+            var canCancelWorkflow = docInstance != null
+                && docInstance.CreatorId == currentUserId
+                && (docInstance.Status == nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS)
+                    || docInstance.Status == nameof(DocumentWorkflowInstanceStatus.OVERDUE))
+                && !WorkflowSigningProgressHelper.HasAnySignStepCompleted(
+                    docInstance,
+                    pageAssignments.Where(a => a.DocumentId == doc.Id).ToList(),
+                    committedStepTemplateDictForPage);
+
             items.Add(new DocumentSigningItemDto
             {
                 DocumentId = doc.Id,
@@ -336,7 +345,8 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
                 MyAssignmentId = myDocAssignment?.Id,
                 CanResubmit = docInstance != null
                     && docInstance.Status == nameof(DocumentWorkflowInstanceStatus.RETURNED)
-                    && docInstance.CreatorId == currentUserId
+                    && docInstance.CreatorId == currentUserId,
+                CanCancelWorkflow = canCancelWorkflow
             });
         }
 

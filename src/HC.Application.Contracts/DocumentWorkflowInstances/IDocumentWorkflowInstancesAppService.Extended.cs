@@ -109,4 +109,9 @@ public partial interface IDocumentWorkflowInstancesAppService
     Task ExtendWorkflowAsync(ExtendWorkflowInput input);
 
     Task<WorkflowExtensionSummaryDto> GetWorkflowExtensionSummaryAsync(Guid workflowInstanceId);
+
+    /// <summary>
+    /// Initiator cancels an in-progress or overdue workflow when no SIGN step has been completed.
+    /// </summary>
+    Task CancelWorkflowByInitiatorAsync(CancelWorkflowByInitiatorInput input);
 }

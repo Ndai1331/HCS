@@ -32,16 +32,18 @@
             @* Step 1: Select Workflow *@
             <Field>
                 <FieldLabel>@L["SelectWorkflow"] <span class="text-danger">*</span></FieldLabel>
-                <Select TValue="Guid?"
-                    SelectedValue="@SelectedWorkflowId"
-                    SelectedValueChanged="@OnWorkflowSelectedAsync"
-                    Disabled="@IsModalBusy">
-                    <SelectItem TValue="Guid?" Value="@null">-- @L["SelectWorkflow"] --</SelectItem>
-                    @foreach (var wf in AvailableWorkflows)
-                    {
-                        <SelectItem TValue="Guid?" Value="@wf.Id">@wf.DisplayName</SelectItem>
-                    }
-                </Select>
+                <div class="hc-select2-full">
+                    <Select2 IdSelector="c => c.Id.ToString()"
+                             TextSelector="c => c.DisplayName"
+                             FilterFunction="GetWorkflowCollectionLookupAsync"
+                             GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                             Datasource="WorkflowsCollection"
+                             Value="@SelectedWorkflow"
+                             OnValueChanged="@OnWorkflowSelect2ChangedAsync"
+                             Cache="__MemoryCache"
+                             Multiselect="false"
+                             Disabled="@IsModalBusy" />
+                </div>
             </Field>
 
             @* Step 2: Template file option (only when NOT pre-selected and workflow has template) *@

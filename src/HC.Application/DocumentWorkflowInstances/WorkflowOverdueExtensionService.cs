@@ -30,6 +30,7 @@ public class WorkflowOverdueExtensionService : HCAppService, IWorkflowOverdueExt
     private readonly IDocumentWorkflowInstanceExtensionRepository _extensionRepository;
     private readonly IWorkflowSlaService _workflowSlaService;
     private readonly IWorkflowNotificationService _workflowNotificationService;
+    private readonly IWorkflowViewAccessService _workflowViewAccessService;
     private readonly WorkflowSigningOptions _workflowSigningOptions;
 
     public WorkflowOverdueExtensionService(
@@ -43,6 +44,7 @@ public class WorkflowOverdueExtensionService : HCAppService, IWorkflowOverdueExt
         IDocumentWorkflowInstanceExtensionRepository extensionRepository,
         IWorkflowSlaService workflowSlaService,
         IWorkflowNotificationService workflowNotificationService,
+        IWorkflowViewAccessService workflowViewAccessService,
         IOptions<WorkflowSigningOptions> workflowSigningOptions)
     {
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
@@ -55,6 +57,7 @@ public class WorkflowOverdueExtensionService : HCAppService, IWorkflowOverdueExt
         _extensionRepository = extensionRepository;
         _workflowSlaService = workflowSlaService;
         _workflowNotificationService = workflowNotificationService;
+        _workflowViewAccessService = workflowViewAccessService;
         _workflowSigningOptions = workflowSigningOptions.Value;
     }
 
@@ -80,11 +83,13 @@ public class WorkflowOverdueExtensionService : HCAppService, IWorkflowOverdueExt
             {
                 var hasAssignment = await _documentAssignmentRepository.AnyAsync(
                     x => x.DocumentId == instance.DocumentId && x.ReceiverUserId == currentUserId);
-                if (!hasAssignment)
+                var hasViewAccess = await _workflowViewAccessService.CanUserViewWorkflowDocumentAsync(
+                    workflowInstanceId, currentUserId);
+                if (!hasAssignment && !hasViewAccess)
                 {
                     Logger.LogWarning(
                         "[OVERDUE_AUTH] User {UserId} attempted to check overdue for workflow {InstanceId} " +
-                        "but is not creator or assignment receiver.",
+                        "but is not creator, assignment receiver, or VIEW-step eligible viewer.",
                         currentUserId, workflowInstanceId);
                     throw new Volo.Abp.UserFriendlyException(L["NotAuthorizedForThisAction"]);
                 }

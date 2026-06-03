@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Blazorise;
 using Blazorise.RichTextEdit;
@@ -10,6 +11,7 @@ using HC.DocumentFiles;
 using HC.DocumentWorkflowInstances;
 using HC.Shared;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Messages;
@@ -31,6 +33,7 @@ public partial class SubmitWorkflowModal
     [Inject] private IDocumentsAppService DocumentsAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
+    [Inject] private IMemoryCache __MemoryCache { get; set; } = default!;
 
     private bool IsLoadingWorkflowInfo { get; set; }
 
@@ -41,7 +44,8 @@ public partial class SubmitWorkflowModal
 
     private Modal ModalRef { get; set; } = new();
     private Guid? SelectedWorkflowId { get; set; }
-    private IReadOnlyList<LookupDto<Guid>> AvailableWorkflows { get; set; } = new List<LookupDto<Guid>>();
+    private IReadOnlyList<LookupDto<Guid>> WorkflowsCollection { get; set; } = new List<LookupDto<Guid>>();
+    private List<LookupDto<Guid>> SelectedWorkflow { get; set; } = new();
     private WorkflowSubmitInfoDto? WorkflowSubmitInfo { get; set; }
     private bool UseWorkflowTemplateFile { get; set; }
     private bool UseTemplateFile { get; set; } = true;
@@ -82,6 +86,8 @@ public partial class SubmitWorkflowModal
         SelectedDocumentId = preSelectedDocument?.Document?.Id;
         SelectedDocumentDto = preSelectedDocument;
         SelectedWorkflowId = null;
+        SelectedWorkflow.Clear();
+        WorkflowsCollection = new List<LookupDto<Guid>>();
         WorkflowSubmitInfo = null;
         UseTemplateFile = true;
         UseWorkflowTemplateFile = preSelectedDocument != null ? false : UseWorkflowTemplateFile;
@@ -114,23 +120,39 @@ public partial class SubmitWorkflowModal
             await LoadMyDocumentsAsync();
         }
 
-        await LoadWorkflowLookupAsync();
         await InvokeAsync(ModalRef.Show);
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task LoadWorkflowLookupAsync()
+    private async Task GetWorkflowCollectionLookupAsync(string? newValue = null)
     {
         try
         {
             var result = await DocumentWorkflowInstancesAppService.GetWorkflowLookupAsync(
-                new LookupRequestDto { MaxResultCount = 200 });
-            AvailableWorkflows = result.Items;
+                new LookupRequestDto { Filter = newValue, MaxResultCount = 20 });
+            WorkflowsCollection = result.Items ?? new List<LookupDto<Guid>>();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading workflow lookup");
         }
+    }
+
+    private async Task<List<LookupDto<Guid>>> GetWorkflowCollectionLookupAsync(
+        IReadOnlyList<LookupDto<Guid>> dbset,
+        string filter,
+        CancellationToken token)
+    {
+        var result = await DocumentWorkflowInstancesAppService.GetWorkflowLookupAsync(
+            new LookupRequestDto { Filter = filter, MaxResultCount = 20 });
+        WorkflowsCollection = result.Items ?? new List<LookupDto<Guid>>();
+        return WorkflowsCollection.ToList();
+    }
+
+    private async Task OnWorkflowSelect2ChangedAsync()
+    {
+        var workflowId = SelectedWorkflow.FirstOrDefault()?.Id;
+        await OnWorkflowSelectedAsync(workflowId == Guid.Empty ? null : workflowId);
     }
 
     private async Task LoadMyDocumentsAsync()

@@ -716,16 +716,11 @@
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/rjsmrazor.dswa.cache.json
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/rjsmcshtml.dswa.cache.json
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/scopedcss/bundle/HC.AuthServer.styles.css
-/Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/exoriaizmk-{0}-htuu7ok6nj-htuu7ok6nj.gz
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/zeu1l6exwo-{0}-r7ih5s65gp-r7ih5s65gp.gz
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/44ujsgv8iq-{0}-bxgo6vkf8m-bxgo6vkf8m.gz
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/6m0zk77fl3-{0}-72q8wk6izl-72q8wk6izl.gz
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/khplmobmhj-{0}-1h28eo4t7b-1h28eo4t7b.gz
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/wqf1t20dwq-{0}-d8ms31la87-d8ms31la87.gz
-/Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/p0xt503rtb-{0}-xai7pm9009-xai7pm9009.gz
-/Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/be8vt17kbr-{0}-zq08urqgca-zq08urqgca.gz
-/Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/3qo3z2tlr1-{0}-xai7pm9009-xai7pm9009.gz
-/Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/po2syu7yfj-{0}-zq08urqgca-zq08urqgca.gz
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/8y51batqs7-{0}-rw8471bh57-rw8471bh57.gz
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/9oqsnenf1e-{0}-o6zbcrbokb-o6zbcrbokb.gz
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/8e4h83cn5u-{0}-sz4z0nspur-sz4z0nspur.gz
@@ -1292,3 +1287,6 @@
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/refint/HC.AuthServer.dll
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/HC.AuthServer.genruntimeconfig.cache
 /Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/ref/HC.AuthServer.dll
+/Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/exoriaizmk-{0}-z2xl83r85h-z2xl83r85h.gz
+/Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/mymns8yosj-{0}-xai7pm9009-xai7pm9009.gz
+/Users/user/Documents/HCS/src/HC.AuthServer/obj/Debug/net10.0/compressed/t0tsk9gdsi-{0}-xai7pm9009-xai7pm9009.gz
