@@ -64,5 +64,9 @@ namespace HC;
         context.Services.AddTransient<IWorkflowNotificationService, WorkflowNotificationService>();
         context.Services.AddTransient<IWorkflowActionService, WorkflowActionService>();
         context.Services.AddTransient<IWorkflowCommittedStepsQueryService, WorkflowCommittedStepsQueryService>();
+        context.Services.AddTransient<IWorkflowInstanceQueryService, WorkflowInstanceQueryService>();
+        context.Services.AddTransient<IWorkflowSignerManagementService, WorkflowSignerManagementService>();
+        context.Services.AddTransient<IWorkflowOverdueExtensionService, WorkflowOverdueExtensionService>();
+        context.Services.AddTransient<IDocumentSigningExportService, DocumentSigningExportService>();
     }
 }

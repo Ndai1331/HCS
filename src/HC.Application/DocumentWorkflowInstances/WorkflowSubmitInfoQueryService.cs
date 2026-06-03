@@ -196,15 +196,36 @@ public class WorkflowSubmitInfoQueryService : HCAppService, IWorkflowSubmitInfoQ
         }
 
         var orderedSteps = stepTemplates.OrderBy(x => x.Order).ToList();
-        var firstStep = orderedSteps.First();
-        if (!await StepHasResolvableAssigneesAsync(firstStep.Id, allAssignments, submitterUserId))
+        var firstBlockingStep = WorkflowStepNavigationHelper.GetFirstBlockingStepTemplate(orderedSteps);
+        if (firstBlockingStep == null)
+        {
+            foreach (var step in orderedSteps)
+            {
+                if (!await StepHasResolvableAssigneesAsync(step.Id, allAssignments, submitterUserId))
+                {
+                    throw new Volo.Abp.UserFriendlyException(L["ViewStepMustHaveViewers"]);
+                }
+            }
+
+            return;
+        }
+
+        if (!await StepHasResolvableAssigneesAsync(firstBlockingStep.Id, allAssignments, submitterUserId))
         {
             throw new Volo.Abp.UserFriendlyException(L["FirstStepMustHaveAssignedUsers"]);
         }
 
+        foreach (var step in orderedSteps.Where(s => WorkflowStepNavigationHelper.IsViewStep(s.Type)))
+        {
+            if (!await StepHasResolvableAssigneesAsync(step.Id, allAssignments, submitterUserId))
+            {
+                throw new Volo.Abp.UserFriendlyException(L["ViewStepMustHaveViewers"]);
+            }
+        }
+
         if (template.SignMode == nameof(SignMode.PARALLEL))
         {
-            foreach (var step in orderedSteps)
+            foreach (var step in orderedSteps.Where(s => WorkflowStepNavigationHelper.IsBlockingStep(s.Type)))
             {
                 if (!await StepHasResolvableAssigneesAsync(step.Id, allAssignments, submitterUserId))
                 {

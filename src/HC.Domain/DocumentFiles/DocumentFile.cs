@@ -30,6 +30,12 @@ public abstract class DocumentFileBase : FullAuditedAggregateRoot<Guid>, IMultiT
 
     public Guid? DocumentId { get; set; }
 
+    /// <summary>When this file is a PDF view, points to the working DOCX source.</summary>
+    public Guid? SourceDocxFileId { get; set; }
+
+    /// <summary>When this file is a working DOCX, points to the derived PDF view.</summary>
+    public Guid? DerivedPdfFileId { get; set; }
+
     protected DocumentFileBase()
     {
     }

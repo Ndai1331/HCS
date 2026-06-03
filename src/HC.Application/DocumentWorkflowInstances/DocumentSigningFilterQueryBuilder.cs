@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using HC.Documents;
 using HC.DocumentAssignments;
+using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 
@@ -14,15 +16,18 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
     private readonly IDocumentAssignmentRepository _documentAssignmentRepository;
     private readonly IDocumentWorkflowInstanceRepository _documentWorkflowInstanceRepository;
     private readonly IRepository<Document, Guid> _documentRepository;
+    private readonly IWorkflowViewAccessService _workflowViewAccessService;
 
     public DocumentSigningFilterQueryBuilder(
         IDocumentAssignmentRepository documentAssignmentRepository,
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
-        IRepository<Document, Guid> documentRepository)
+        IRepository<Document, Guid> documentRepository,
+        IWorkflowViewAccessService workflowViewAccessService)
     {
         _documentAssignmentRepository = documentAssignmentRepository;
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
         _documentRepository = documentRepository;
+        _workflowViewAccessService = workflowViewAccessService;
     }
 
     public async Task<SigningFilterState> BuildSigningFilterStateAsync(
@@ -34,16 +39,28 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
         DateTime? toDate,
         Guid? focusDocumentId)
     {
+        var stopwatch = Stopwatch.StartNew();
+
         var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
         var instanceQueryable = await _documentWorkflowInstanceRepository.GetQueryableAsync();
         var documentQueryable = await _documentRepository.GetQueryableAsync();
 
         var workflowDocumentQuery = documentQueryable.Where(d => d.SourceType == DocumentSourceType.Workflow);
 
-        var receivedDocIdQuery = assignmentQueryable
-            .Where(a => a.ReceiverUserId == currentUserId && a.WorkflowStepTemplateId != null)
-            .Join(workflowDocumentQuery, a => a.DocumentId, d => d.Id, (a, d) => d.Id)
-            .Distinct();
+        var receivedViaAssignmentDocIds = await AsyncExecuter.ToListAsync(
+            assignmentQueryable
+                .Where(a => a.ReceiverUserId == currentUserId && a.WorkflowStepTemplateId != null)
+                .Join(workflowDocumentQuery, a => a.DocumentId, d => d.Id, (a, d) => d.Id)
+                .Distinct());
+
+        var receivedViaViewAccessDocIds = await _workflowViewAccessService.GetViewEligibleDocumentIdsAsync(currentUserId);
+        var receivedDocIdSet = receivedViaAssignmentDocIds
+            .Concat(receivedViaViewAccessDocIds)
+            .ToHashSet();
+
+        var receivedDocIdQuery = receivedDocIdSet.Count == 0
+            ? documentQueryable.Where(d => false).Select(d => d.Id)
+            : documentQueryable.Where(d => receivedDocIdSet.Contains(d.Id)).Select(d => d.Id);
 
         var initiatedDocIdQuery = instanceQueryable
             .Where(i => i.CreatorId == currentUserId)
@@ -78,7 +95,7 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
 
         var filteredDocIds = baseDocQuery.Select(d => d.Id);
         var sentToMeCount = await AsyncExecuter.CountAsync(
-            filteredDocIds.Where(id => receivedDocIdQuery.Contains(id)));
+            filteredDocIds.Where(id => receivedDocIdSet.Contains(id)));
         var sentByMeCount = sentByMeAllowedSet.Count == 0
             ? 0
             : await AsyncExecuter.CountAsync(
@@ -90,7 +107,9 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
         switch (filterMode)
         {
             case DocumentSigningFilterMode.SentToMe:
-                modeFilteredQuery = baseDocQuery.Where(d => receivedDocIdQuery.Contains(d.Id));
+                modeFilteredQuery = receivedDocIdSet.Count == 0
+                    ? baseDocQuery.Where(d => false)
+                    : baseDocQuery.Where(d => receivedDocIdSet.Contains(d.Id));
                 break;
             case DocumentSigningFilterMode.SentByMe:
                 modeFilteredQuery = sentByMeAllowedSet.Count == 0
@@ -118,6 +137,17 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
                 && a.IsCurrent)
             .Select(a => a.DocumentId)
             .Distinct();
+
+        stopwatch.Stop();
+        if (stopwatch.ElapsedMilliseconds >= 500)
+        {
+            Logger.LogInformation(
+                "BuildSigningFilterStateAsync completed in {ElapsedMs}ms for user {UserId}, mode={FilterMode}, allCount={AllCount}",
+                stopwatch.ElapsedMilliseconds,
+                currentUserId,
+                filterMode,
+                allCount);
+        }
 
         return new SigningFilterState
         {

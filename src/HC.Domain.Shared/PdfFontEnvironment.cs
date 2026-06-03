@@ -29,7 +29,7 @@ public static class PdfFontEnvironment
     }
 
     /// <summary>
-    /// Primary font family for PDFsharp / stamping / placeholders.
+    /// Primary font family for PDFsharp / stamping / placeholders (sans-serif legacy paths).
     /// Linux: DejaVu Sans (full Vietnamese glyphs). Windows/macOS dev: Helvetica.
     /// </summary>
     public static string DefaultPdfFontFamily
@@ -47,6 +47,23 @@ public static class PdfFontEnvironment
             }
 
             return "Helvetica";
+        }
+    }
+
+    /// <summary>
+    /// Serif font for PDF text placeholders when DOCX source is unavailable.
+    /// Linux: Liberation Serif (metrically close to Times New Roman). Desktop: Times New Roman.
+    /// </summary>
+    public static string DefaultPdfSerifFontFamily
+    {
+        get
+        {
+            if (OperatingSystem.IsLinux() || IsProductionFontProfile())
+            {
+                return "Liberation Serif";
+            }
+
+            return "Times New Roman";
         }
     }
 }

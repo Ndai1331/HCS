@@ -36,7 +36,7 @@
     max-width: 100% !important;
     position: relative;
     min-height: 100vh;
-    background-image: url(https://qldh.benhvien199.vn/Images/bg-axis.png);
+    background-image: url('/images/bg-axis.png');
     background-repeat: no-repeat;
     background-position: right bottom;
     background-size: cover;

@@ -837,6 +837,10 @@ namespace HC.TenantMigrations
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("DeletionTime");
 
+                    b.Property<Guid?>("DerivedPdfFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DerivedPdfFileId");
+
                     b.Property<Guid?>("DocumentId")
                         .HasColumnType("uuid");
 
@@ -876,6 +880,10 @@ namespace HC.TenantMigrations
                         .HasColumnType("text")
                         .HasColumnName("Path");
 
+                    b.Property<Guid?>("SourceDocxFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("SourceDocxFileId");
+
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("TenantId");
@@ -886,7 +894,11 @@ namespace HC.TenantMigrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DerivedPdfFileId");
+
                     b.HasIndex("DocumentId");
+
+                    b.HasIndex("SourceDocxFileId");
 
                     b.ToTable("AppDocumentFiles", (string)null);
                 });
@@ -1115,6 +1127,9 @@ namespace HC.TenantMigrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CommittedStepTemplateIdsJson")
+                        .HasColumnType("text");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -1133,10 +1148,6 @@ namespace HC.TenantMigrations
                     b.Property<Guid>("CurrentStepId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("CommittedStepTemplateIdsJson")
-                        .HasMaxLength(8000)
-                        .HasColumnType("character varying(8000)");
-
                     b.Property<Guid?>("DeleterId")
                         .HasColumnType("uuid")
                         .HasColumnName("DeleterId");
@@ -1147,6 +1158,9 @@ namespace HC.TenantMigrations
 
                     b.Property<Guid>("DocumentId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("ExtensionCount")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ExtraProperties")
                         .IsRequired()
@@ -1171,6 +1185,9 @@ namespace HC.TenantMigrations
                         .HasColumnType("uuid")
                         .HasColumnName("LastModifierId");
 
+                    b.Property<DateTime?>("OverdueAt")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<DateTime>("StartedAt")
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("StartedAt");
@@ -1184,6 +1201,9 @@ namespace HC.TenantMigrations
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("TenantId");
+
+                    b.Property<int>("TotalExtensionBusinessDays")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("WorkflowId")
                         .HasColumnType("uuid");
@@ -1279,6 +1299,9 @@ namespace HC.TenantMigrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("No");
+
+                    b.Property<Guid?>("OrganizationUnitId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("ParentDocumentId")
                         .HasColumnType("uuid")
@@ -2962,6 +2985,10 @@ namespace HC.TenantMigrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AssigneeType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -3014,6 +3041,9 @@ namespace HC.TenantMigrations
                     b.Property<Guid?>("LastModifierId")
                         .HasColumnType("uuid")
                         .HasColumnName("LastModifierId");
+
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("StepId")
                         .HasColumnType("uuid");
@@ -4611,9 +4641,19 @@ namespace HC.TenantMigrations
 
             modelBuilder.Entity("HC.DocumentFiles.DocumentFile", b =>
                 {
+                    b.HasOne("HC.DocumentFiles.DocumentFile", null)
+                        .WithMany()
+                        .HasForeignKey("DerivedPdfFileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("HC.Documents.Document", null)
                         .WithMany()
                         .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("HC.DocumentFiles.DocumentFile", null)
+                        .WithMany()
+                        .HasForeignKey("SourceDocxFileId")
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 

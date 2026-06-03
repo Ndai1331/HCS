@@ -470,7 +470,11 @@ public class HCDbContext : HCDbContextBase<HCDbContext>, IHasEventInbox
             b.Property(x => x.Hash).HasColumnName(nameof(DocumentFile.Hash));
             b.Property(x => x.IsSigned).HasColumnName(nameof(DocumentFile.IsSigned));
             b.Property(x => x.UploadedAt).HasColumnName(nameof(DocumentFile.UploadedAt));
+            b.Property(x => x.SourceDocxFileId).HasColumnName(nameof(DocumentFile.SourceDocxFileId));
+            b.Property(x => x.DerivedPdfFileId).HasColumnName(nameof(DocumentFile.DerivedPdfFileId));
             b.HasOne<Document>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<DocumentFile>().WithMany().HasForeignKey(x => x.SourceDocxFileId).OnDelete(DeleteBehavior.SetNull);
+            b.HasOne<DocumentFile>().WithMany().HasForeignKey(x => x.DerivedPdfFileId).OnDelete(DeleteBehavior.SetNull);
             b.HasIndex(x => new { x.DocumentId, x.UploadedAt })
                 .HasDatabaseName("IX_AppDocumentFiles_DocumentId_UploadedAt");
         });

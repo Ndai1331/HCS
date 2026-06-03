@@ -113,7 +113,8 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
 
         var now = Clock.Now;
 
-        if (input.Action.ToUpper() == nameof(WorkflowInstanceLogAction.APPROVE))
+        if (input.Action.ToUpper() == nameof(WorkflowInstanceLogAction.APPROVE)
+            && !WorkflowStepNavigationHelper.IsViewStep(assignment.ActionType))
         {
             await ApplySigningByMethodAsync(assignment, instance, input.SigningMethodId, input.Note, input.UserSignatureId);
         }
@@ -222,9 +223,10 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
             var allSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(instance);
 
             var currentIndex = allSteps.FindIndex(s => s.Id == currentStep.Id);
-            var isLastStep = currentIndex >= allSteps.Count - 1;
+            var nextBlockingIndex = WorkflowStepNavigationHelper.AdvanceThroughViewSteps(
+                instance, allSteps, currentIndex + 1);
 
-            if (isLastStep)
+            if (nextBlockingIndex >= allSteps.Count)
             {
                 instance.Status = nameof(DocumentWorkflowInstanceStatus.COMPLETED);
                 instance.FinishedAt = now;
@@ -248,7 +250,12 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
             }
             else
             {
-                var nextStep = allSteps[currentIndex + 1];
+                var nextStep = allSteps[nextBlockingIndex];
+                if (!WorkflowStepNavigationHelper.IsBlockingStep(nextStep.Type))
+                {
+                    throw new Volo.Abp.UserFriendlyException(L["InvalidWorkflowAction"]);
+                }
+
                 instance.CurrentStepId = nextStep.Id;
                 instance.FinishedAt = _workflowSlaService.CalculateStepDeadline(now, nextStep.SLADays);
                 instance.OverdueAt = null;
@@ -277,14 +284,29 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
                     instance.CreatorId!.Value);
 
                 List<WorkflowStepUserDto> nextReceivers;
+
+                if (nextStepSignerUserId.HasValue)
+                {
+                    var explicitSelection = nextStepDetail.CandidateUsers.FirstOrDefault(
+                        c => c.UserId == nextStepSignerUserId.Value);
+                    if (explicitSelection == null)
+                    {
+                        throw new Volo.Abp.UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
+                    }
+
+                    WorkflowSubmissionHelper.SetSelectedSignerForStep(instance, nextStep.Id, nextStepSignerUserId.Value);
+                    await _documentWorkflowInstanceRepository.UpdateAsync(instance, autoSave: true);
+                }
+
+                var preselectedSignerUserId = WorkflowSubmissionHelper.GetSelectedSignerForStep(instance, nextStep.Id);
                 if (nextStepDetail.CandidateUsers.Count <= 1)
                 {
                     nextReceivers = nextStepDetail.CandidateUsers;
                 }
-                else if (nextStepSignerUserId.HasValue)
+                else if (preselectedSignerUserId.HasValue)
                 {
                     var selected = nextStepDetail.CandidateUsers.FirstOrDefault(
-                        c => c.UserId == nextStepSignerUserId.Value);
+                        c => c.UserId == preselectedSignerUserId.Value);
                     if (selected == null)
                     {
                         throw new Volo.Abp.UserFriendlyException(L["InvalidWorkflowSignerSelection"]);
@@ -343,11 +365,16 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
         {
             await _parallelSigningMergeService.MergeSignedPdfsForParallelAsync(instance);
         }
+        catch (Volo.Abp.UserFriendlyException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex,
-                "[PARALLEL_COMPLETE] Error merging signed PDFs for instance {InstanceId}. Completing workflow without merge.",
+                "[PARALLEL_COMPLETE] Error merging signed PDFs for instance {InstanceId}",
                 instance.Id);
+            throw new Volo.Abp.UserFriendlyException(L["ParallelSigningMergeFailed"]);
         }
 
         instance.Status = nameof(DocumentWorkflowInstanceStatus.COMPLETED);

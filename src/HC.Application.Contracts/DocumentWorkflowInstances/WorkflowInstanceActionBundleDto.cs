@@ -23,6 +23,12 @@ public class WorkflowInstanceActionBundleDto
     /// <summary>Resolved current-step detail, pre-picked server-side so the client doesn't have to scan the list.</summary>
     public WorkflowStepDetailDto? CurrentStepDetail { get; set; }
 
+    /// <summary>
+    /// Next committed step after the current one (sequential workflows only).
+    /// Used to show signer selection when approving and multiple candidates exist.
+    /// </summary>
+    public WorkflowStepDetailDto? NextStepDetail { get; set; }
+
     public List<WorkflowStepStatusDto> AllStepsWithStatus { get; set; } = new();
 
     public List<DocumentWorkflowInstanceLogsWithNavigationPropertiesDto> Logs { get; set; } = new();

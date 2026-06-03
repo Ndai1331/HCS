@@ -8,6 +8,7 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using HtmlToOpenXml;
+using SixLabors.ImageSharp;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
@@ -20,8 +21,9 @@ namespace HC.DocumentWorkflowInstances;
 /// </summary>
 public static class WordPlaceholderReplacer
 {
-    private const long ImageEmuWidth = 990000L;  // ~2.6cm
-    private const long ImageEmuHeight = 792000L;  // ~2.1cm
+    // ~4.2 cm — matches typical trình ký / ký điện tử signature block width in Word templates.
+    private const long SignatureImageMaxWidthEmu = 1512000L;
+    private const long SignatureImageFallbackHeightEmu = 621000L;
     private const string PreparedBySignPlaceholder = "<<PreparedBySign>>";
     private static readonly char[] NewLineSeparator = ['\n'];
 
@@ -94,6 +96,110 @@ public static class WordPlaceholderReplacer
     }
 
     /// <summary>
+    /// Replaces approval-step placeholders for electronic signing.
+    /// Placeholders: &lt;&lt;Sign{NN}&gt;&gt; (image), &lt;&lt;FullName{NN}&gt;&gt;, &lt;&lt;NoteContent{NN}&gt;&gt;.
+    /// Text replacements preserve template RunProperties (same behaviour as &lt;&lt;PreparedFullName&gt;&gt;).
+    /// </summary>
+    public static byte[] ReplaceApprovalPlaceholders(
+        byte[] docxBytes,
+        int stepOrder,
+        byte[]? signatureImageBytes,
+        string fullName,
+        string noteContent)
+    {
+        var suffix = stepOrder.ToString("D2");
+        var notePlainText = HtmlToPlainWithLineBreaks(noteContent ?? string.Empty);
+        var replacements = new (string Placeholder, string Value)[]
+        {
+            ($"<<FullName{suffix}>>", fullName),
+            ($"<<NoteContent{suffix}>>", notePlainText),
+        };
+
+        return ReplaceApprovalPlaceholdersInternal(
+            docxBytes,
+            replacements,
+            signatureImageBytes,
+            $"<<Sign{suffix}>>");
+    }
+
+    /// <summary>
+    /// Replaces name and note placeholders only; keeps &lt;&lt;Sign{NN}&gt;&gt; for digital CA/BnnSoft.
+    /// </summary>
+    public static byte[] ReplaceApprovalNameAndNotePlaceholders(
+        byte[] docxBytes,
+        int stepOrder,
+        string fullName,
+        string noteContent)
+    {
+        var suffix = stepOrder.ToString("D2");
+        var notePlainText = HtmlToPlainWithLineBreaks(noteContent ?? string.Empty);
+        var replacements = new (string Placeholder, string Value)[]
+        {
+            ($"<<FullName{suffix}>>", fullName),
+            ($"<<NoteContent{suffix}>>", notePlainText),
+        };
+
+        return ReplaceApprovalPlaceholdersInternal(docxBytes, replacements, signatureImageBytes: null, signImagePlaceholder: null);
+    }
+
+    private static byte[] ReplaceApprovalPlaceholdersInternal(
+        byte[] docxBytes,
+        (string Placeholder, string Value)[] textReplacements,
+        byte[]? signatureImageBytes,
+        string? signImagePlaceholder)
+    {
+        using var stream = new MemoryStream(docxBytes.Length);
+        stream.Write(docxBytes, 0, docxBytes.Length);
+        stream.Position = 0;
+
+        using (var doc = WordprocessingDocument.Open(stream, true))
+        {
+            var mainPart = doc.MainDocumentPart ?? throw new InvalidOperationException("MainDocumentPart is null");
+            var body = mainPart.Document?.Body;
+            if (body == null) return docxBytes;
+
+            ReplaceInPartForApproval(mainPart, mainPart, textReplacements, signatureImageBytes, signImagePlaceholder);
+
+            foreach (var headerPart in mainPart.HeaderParts)
+            {
+                ReplaceInPartForApproval(mainPart, headerPart, textReplacements, signatureImageBytes, signImagePlaceholder);
+            }
+
+            foreach (var footerPart in mainPart.FooterParts)
+            {
+                ReplaceInPartForApproval(mainPart, footerPart, textReplacements, signatureImageBytes, signImagePlaceholder);
+            }
+        }
+
+        return stream.ToArray();
+    }
+
+    private static void ReplaceInPartForApproval(
+        MainDocumentPart mainPart,
+        OpenXmlPart part,
+        (string Placeholder, string Value)[] textReplacements,
+        byte[]? signatureImageBytes,
+        string? signImagePlaceholder)
+    {
+        OpenXmlElement? root = part switch
+        {
+            MainDocumentPart mdp => mdp.Document?.Body,
+            HeaderPart hp => hp.Header,
+            FooterPart fp => fp.Footer,
+            _ => part.RootElement
+        };
+        if (root == null) return;
+
+        ReplaceTextPlaceholdersInPart(root, textReplacements);
+
+        if (signatureImageBytes != null && signatureImageBytes.Length > 0
+            && !string.IsNullOrEmpty(signImagePlaceholder))
+        {
+            ReplaceImagePlaceholder(mainPart, root, signatureImageBytes, signImagePlaceholder);
+        }
+    }
+
+    /// <summary>
     /// Replaces &lt;&lt;ContentToBeApproved&gt;&gt; paragraph with HTML-converted content (tables, bold, italic, lists).
     /// Uses HtmlToOpenXml to preserve formatting.
     /// </summary>
@@ -148,13 +254,13 @@ public static class WordPlaceholderReplacer
         // Replace <<PreparedBySign>> with image
         if (signatureImageBytes != null && signatureImageBytes.Length > 0 && part is MainDocumentPart mainPart)
         {
-            ReplaceImagePlaceholder(mainPart, root, signatureImageBytes);
+            ReplaceImagePlaceholder(mainPart, root, signatureImageBytes, PreparedBySignPlaceholder);
         }
     }
 
     /// <summary>
     /// Replace text placeholders at paragraph level to handle placeholders that span multiple Run/Text elements.
-    /// Preserves line breaks in replacement values (e.g. ContentToBeApproved with multiple lines).
+    /// Keeps existing RunProperties from the template (font, size, bold, etc.).
     /// </summary>
     private static void ReplaceTextPlaceholdersInPart(OpenXmlElement root, (string Placeholder, string Value)[] textReplacements)
     {
@@ -213,6 +319,7 @@ public static class WordPlaceholderReplacer
     private static void ReplaceParagraphContentWithMultiline(Paragraph paragraph, System.Collections.Generic.List<Text> allTexts, string multilineText)
     {
         var lines = multilineText.Split(NewLineSeparator, StringSplitOptions.None);
+        var templateRunProps = CloneRunPropertiesFromText(allTexts[0]);
 
         // Remove content elements (Run, Hyperlink, etc.) but keep ParagraphProperties
         var contentElements = paragraph.ChildElements.Where(c => c is not ParagraphProperties).ToList();
@@ -223,7 +330,7 @@ public static class WordPlaceholderReplacer
 
         for (var i = 0; i < lines.Length; i++)
         {
-            var run = new Run(new Text(lines[i]) { Space = SpaceProcessingModeValues.Preserve });
+            var run = CreateRunWithTemplateProperties(templateRunProps, lines[i]);
             if (i < lines.Length - 1)
             {
                 run.AppendChild(new Break());
@@ -232,12 +339,37 @@ public static class WordPlaceholderReplacer
         }
     }
 
+    private static RunProperties? CloneRunPropertiesFromText(Text textNode)
+    {
+        if (textNode.Parent is not Run run || run.RunProperties == null)
+        {
+            return null;
+        }
+
+        return (RunProperties)run.RunProperties.CloneNode(true);
+    }
+
+    private static Run CreateRunWithTemplateProperties(RunProperties? templateRunProps, string text)
+    {
+        var run = new Run();
+        if (templateRunProps != null)
+        {
+            run.AppendChild((RunProperties)templateRunProps.CloneNode(true));
+        }
+
+        run.AppendChild(new Text(text) { Space = SpaceProcessingModeValues.Preserve });
+        return run;
+    }
+
     /// <summary>
-    /// Replaces &lt;&lt;PreparedBySign&gt;&gt; with an inline image. Word often splits the tag across
-    /// multiple &lt;w:t&gt; nodes; per-run substring removal can leave fragments (e.g. &lt;&lt;PreparedBy
-    /// next to the image). This rebuilds the paragraph from concatenated text so the full tag is removed once.
+    /// Replaces a signature placeholder with an inline image. Word often splits the tag across
+    /// multiple &lt;w:t&gt; nodes; per-run substring removal can leave fragments.
     /// </summary>
-    private static void ReplaceImagePlaceholder(MainDocumentPart mainPart, OpenXmlElement root, byte[] imageBytes)
+    private static void ReplaceImagePlaceholder(
+        MainDocumentPart mainPart,
+        OpenXmlElement root,
+        byte[] imageBytes,
+        string placeholderTag)
     {
         foreach (var paragraph in root.Descendants<Paragraph>())
         {
@@ -255,11 +387,14 @@ public static class WordPlaceholderReplacer
 
             if (fullTextBuilder.Length == 0) continue;
             var fullText = fullTextBuilder.ToString();
-            var idx = fullText.IndexOf(PreparedBySignPlaceholder, StringComparison.Ordinal);
+            var idx = fullText.IndexOf(placeholderTag, StringComparison.Ordinal);
             if (idx < 0) continue;
 
             var prefix = fullText.Substring(0, idx);
-            var suffix = fullText.Substring(idx + PreparedBySignPlaceholder.Length);
+            var suffix = fullText.Substring(idx + placeholderTag.Length);
+            var templateRunProps = allTexts
+                .Select(CloneRunPropertiesFromText)
+                .FirstOrDefault(rp => rp != null);
 
             var contentType = GetImageContentType(imageBytes);
             var imagePart = mainPart.AddImagePart(contentType);
@@ -268,7 +403,8 @@ public static class WordPlaceholderReplacer
                 imagePart.FeedData(imgStream);
             }
             var relationshipId = mainPart.GetIdOfPart(imagePart);
-            var drawing = CreateInlineImageDrawing(relationshipId, contentType);
+            var (emuWidth, emuHeight) = ResolveImageExtentEmu(imageBytes);
+            var drawing = CreateInlineImageDrawing(relationshipId, contentType, emuWidth, emuHeight);
             var imageRun = new Run(drawing);
 
             var toRemove = paragraph.ChildElements.Where(c => c is not ParagraphProperties).ToList();
@@ -279,16 +415,24 @@ public static class WordPlaceholderReplacer
 
             if (!string.IsNullOrEmpty(prefix))
             {
-                paragraph.AppendChild(new Run(new Text(prefix) { Space = SpaceProcessingModeValues.Preserve }));
+                paragraph.AppendChild(CreateRunWithTemplateProperties(templateRunProps, prefix));
             }
             paragraph.AppendChild(imageRun);
             if (!string.IsNullOrEmpty(suffix))
             {
-                paragraph.AppendChild(new Run(new Text(suffix) { Space = SpaceProcessingModeValues.Preserve }));
+                paragraph.AppendChild(CreateRunWithTemplateProperties(templateRunProps, suffix));
             }
 
             return;
         }
+    }
+
+    /// <summary>
+    /// Legacy wrapper for prepared-by signature placeholder.
+    /// </summary>
+    private static void ReplaceImagePlaceholder(MainDocumentPart mainPart, OpenXmlElement root, byte[] imageBytes)
+    {
+        ReplaceImagePlaceholder(mainPart, root, imageBytes, PreparedBySignPlaceholder);
     }
 
     private static string GetImageContentType(byte[] imageBytes)
@@ -308,12 +452,37 @@ public static class WordPlaceholderReplacer
         return "image/jpeg"; 
     }
 
-    private static DocumentFormat.OpenXml.Wordprocessing.Drawing CreateInlineImageDrawing(string relationshipId, string contentType)
+    private static (long Width, long Height) ResolveImageExtentEmu(byte[] imageBytes)
+    {
+        try
+        {
+            var info = Image.Identify(imageBytes);
+            if (info != null && info.Width > 0 && info.Height > 0)
+            {
+                var aspect = (double)info.Width / info.Height;
+                var width = SignatureImageMaxWidthEmu;
+                var height = (long)Math.Round(width / aspect);
+                return (width, Math.Max(height, 1));
+            }
+        }
+        catch
+        {
+            // Fall back to layout banner aspect ratio (~168:69).
+        }
+
+        return (SignatureImageMaxWidthEmu, SignatureImageFallbackHeightEmu);
+    }
+
+    private static DocumentFormat.OpenXml.Wordprocessing.Drawing CreateInlineImageDrawing(
+        string relationshipId,
+        string contentType,
+        long emuWidth,
+        long emuHeight)
     {
         var ext = contentType.Contains("png", StringComparison.OrdinalIgnoreCase) ? ".png" : ".jpg";
         return new DocumentFormat.OpenXml.Wordprocessing.Drawing(
             new DW.Inline(
-                new DW.Extent { Cx = ImageEmuWidth, Cy = ImageEmuHeight },
+                new DW.Extent { Cx = emuWidth, Cy = emuHeight },
                 new DW.EffectExtent { LeftEdge = 0L, TopEdge = 0L, RightEdge = 0L, BottomEdge = 0L },
                 new DW.DocProperties { Id = 1U, Name = "Signature" },
                 new DW.NonVisualGraphicFrameDrawingProperties(
@@ -336,7 +505,7 @@ public static class WordPlaceholderReplacer
                             new PIC.ShapeProperties(
                                 new A.Transform2D(
                                     new A.Offset { X = 0L, Y = 0L },
-                                    new A.Extents { Cx = ImageEmuWidth, Cy = ImageEmuHeight }),
+                                    new A.Extents { Cx = emuWidth, Cy = emuHeight }),
                                 new A.PresetGeometry(new A.AdjustValueList()) { Preset = A.ShapeTypeValues.Rectangle }))
                     )
                     { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })

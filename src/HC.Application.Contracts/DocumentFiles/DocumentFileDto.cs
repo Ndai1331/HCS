@@ -18,5 +18,9 @@ public abstract class DocumentFileDtoBase : FullAuditedEntityDto<Guid>, IHasConc
 
     public Guid? DocumentId { get; set; }
 
+    public Guid? SourceDocxFileId { get; set; }
+
+    public Guid? DerivedPdfFileId { get; set; }
+
     public string ConcurrencyStamp { get; set; } = null!;
 }

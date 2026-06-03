@@ -135,16 +135,20 @@
                                             <i class="bi bi-clock"></i> @step.SLADays @L["Days"]
                                         </small>
                                     }
-                                    @if (!IsStepVisibleAtSubmit(step))
-                                    {
-                                        <div class="mt-1">
-                                            <small class="text-muted">@L["WorkflowStepAssignedOnAdvance"]</small>
-                                        </div>
-                                    }
-                                    else if (!step.CandidateUsers.Any())
+                                    @if (!step.CandidateUsers.Any())
                                     {
                                         <div class="mt-1">
                                             <small class="text-danger">@L["NoWorkflowAssigneeCandidatesFound"]</small>
+                                        </div>
+                                    }
+                                    else if (step.IsViewStep)
+                                    {
+                                        <div class="mt-1">
+                                            @if (!string.IsNullOrWhiteSpace(step.RoleName))
+                                            {
+                                                <small class="text-muted d-block">@L["Role"]: @step.RoleName</small>
+                                            }
+                                            <small class="text-muted d-block">@L["ViewStepRoleAssigneeHint"] (@step.CandidateUsers.Count)</small>
                                         </div>
                                     }
                                     else if (step.RequiresSignerSelection)

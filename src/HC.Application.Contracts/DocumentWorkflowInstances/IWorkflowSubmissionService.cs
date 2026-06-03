@@ -4,7 +4,7 @@ using HC.DocumentWorkflowInstances;
 namespace HC.DocumentWorkflowInstances;
 
 /// <summary>
-/// Workflow submission and resubmit operations (facade over DocumentWorkflowInstancesAppService).
+/// Workflow submission and resubmit operations.
 /// </summary>
 public interface IWorkflowSubmissionService
 {

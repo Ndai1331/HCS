@@ -800,13 +800,14 @@ namespace HC.Migrations
 
                     b.HasIndex("DocumentFileResultId");
 
-                    b.HasIndex("ReceiverUserId");
-
                     b.HasIndex("WorkflowStepTemplateId");
 
                     b.HasIndex("DocumentId", "IsCurrent")
                         .HasDatabaseName("IX_AppDocumentAssignments_DocumentId_IsCurrent")
                         .HasFilter("\"IsCurrent\" = true");
+
+                    b.HasIndex("ReceiverUserId", "Status", "WorkflowStepTemplateId")
+                        .HasDatabaseName("IX_AppDocumentAssignments_ReceiverUserId_Status_WorkflowStepTemplateId");
 
                     b.ToTable("AppDocumentAssignments", (string)null);
                 });
@@ -838,6 +839,10 @@ namespace HC.Migrations
                     b.Property<DateTime?>("DeletionTime")
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("DeletionTime");
+
+                    b.Property<Guid?>("DerivedPdfFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DerivedPdfFileId");
 
                     b.Property<Guid?>("DocumentId")
                         .HasColumnType("uuid");
@@ -878,6 +883,10 @@ namespace HC.Migrations
                         .HasColumnType("text")
                         .HasColumnName("Path");
 
+                    b.Property<Guid?>("SourceDocxFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("SourceDocxFileId");
+
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("TenantId");
@@ -888,7 +897,12 @@ namespace HC.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DocumentId");
+                    b.HasIndex("DerivedPdfFileId");
+
+                    b.HasIndex("SourceDocxFileId");
+
+                    b.HasIndex("DocumentId", "UploadedAt")
+                        .HasDatabaseName("IX_AppDocumentFiles_DocumentId_UploadedAt");
 
                     b.ToTable("AppDocumentFiles", (string)null);
                 });
@@ -1149,6 +1163,10 @@ namespace HC.Migrations
                     b.Property<Guid>("DocumentId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("ExtensionCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("ExtensionCount");
+
                     b.Property<string>("ExtraProperties")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1172,6 +1190,10 @@ namespace HC.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("LastModifierId");
 
+                    b.Property<DateTime?>("OverdueAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("OverdueAt");
+
                     b.Property<DateTime>("StartedAt")
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("StartedAt");
@@ -1186,6 +1208,10 @@ namespace HC.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("TenantId");
 
+                    b.Property<int>("TotalExtensionBusinessDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("TotalExtensionBusinessDays");
+
                     b.Property<Guid>("WorkflowId")
                         .HasColumnType("uuid");
 
@@ -1196,13 +1222,107 @@ namespace HC.Migrations
 
                     b.HasIndex("CurrentStepId");
 
-                    b.HasIndex("DocumentId");
-
                     b.HasIndex("WorkflowId");
 
                     b.HasIndex("WorkflowTemplateId");
 
+                    b.HasIndex("DocumentId", "StartedAt")
+                        .HasDatabaseName("IX_AppDocumentWorkflowInstances_DocumentId_StartedAt");
+
+                    b.HasIndex("Status", "FinishedAt")
+                        .HasDatabaseName("IX_AppDocumentWorkflowInstances_Status_FinishedAt")
+                        .HasFilter("\"Status\" IN ('IN_PROGRESS', 'OVERDUE')");
+
                     b.ToTable("AppDocumentWorkflowInstances", (string)null);
+                });
+
+            modelBuilder.Entity("HC.DocumentWorkflowInstances.DocumentWorkflowInstanceExtension", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<Guid>("DocumentWorkflowInstanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExtendedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ExtensionBusinessDays")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<DateTime>("NewFinishedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("NewStatus")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("NewStatus");
+
+                    b.Property<DateTime>("PreviousFinishedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("PreviousStatus");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("Reason");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("TenantId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentWorkflowInstanceId");
+
+                    b.ToTable("AppDocumentWorkflowInstanceExtensions", (string)null);
                 });
 
             modelBuilder.Entity("HC.Documents.Document", b =>
@@ -3278,6 +3398,12 @@ namespace HC.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AssigneeType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("AssigneeType");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -3292,12 +3418,6 @@ namespace HC.Migrations
                     b.Property<Guid?>("CreatorId")
                         .HasColumnType("uuid")
                         .HasColumnName("CreatorId");
-
-                    b.Property<string>("AssigneeType")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("AssigneeType");
 
                     b.Property<Guid?>("DefaultUserId")
                         .HasColumnType("uuid");
@@ -6184,9 +6304,19 @@ namespace HC.Migrations
 
             modelBuilder.Entity("HC.DocumentFiles.DocumentFile", b =>
                 {
+                    b.HasOne("HC.DocumentFiles.DocumentFile", null)
+                        .WithMany()
+                        .HasForeignKey("DerivedPdfFileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("HC.Documents.Document", null)
                         .WithMany()
                         .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("HC.DocumentFiles.DocumentFile", null)
+                        .WithMany()
+                        .HasForeignKey("SourceDocxFileId")
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
@@ -6268,6 +6398,15 @@ namespace HC.Migrations
                         .WithMany()
                         .HasForeignKey("WorkflowTemplateId")
                         .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HC.DocumentWorkflowInstances.DocumentWorkflowInstanceExtension", b =>
+                {
+                    b.HasOne("HC.DocumentWorkflowInstances.DocumentWorkflowInstance", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentWorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

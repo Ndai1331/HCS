@@ -121,6 +121,12 @@ public class DocumentSigningItemDto
     /// </summary>
     public string? MyAssignmentStatus { get; set; }
     public bool CanAct { get; set; }
+
+    /// <summary>
+    /// True when the user may open the workflow file read-only (unlocked VIEW step viewer).
+    /// </summary>
+    public bool HasViewAccess { get; set; }
+
     public Guid? MyAssignmentId { get; set; }
 
     /// <summary>
