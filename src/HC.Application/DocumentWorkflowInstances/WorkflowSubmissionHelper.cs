@@ -98,23 +98,25 @@ internal static class WorkflowSubmissionHelper
 
     public static void ClearUnlockedViewSteps(DocumentWorkflowInstance instance)
     {
+        instance.UnlockedViewStepTemplateIdsJson = null;
         instance.ExtraProperties.Remove(UnlockedViewStepTemplateIdsExtraPropertyName);
     }
 
     public static List<Guid> GetUnlockedViewStepTemplateIds(DocumentWorkflowInstance instance)
     {
-        if (!instance.ExtraProperties.TryGetValue(UnlockedViewStepTemplateIdsExtraPropertyName, out var raw) || raw == null)
+        var json = instance.UnlockedViewStepTemplateIdsJson;
+        if (string.IsNullOrWhiteSpace(json)
+            && instance.ExtraProperties.TryGetValue(UnlockedViewStepTemplateIdsExtraPropertyName, out var raw)
+            && raw != null)
         {
-            return new List<Guid>();
+            json = raw switch
+            {
+                string str => str,
+                JsonElement element when element.ValueKind == JsonValueKind.String => element.GetString(),
+                JsonElement element => element.GetRawText(),
+                _ => raw.ToString()
+            };
         }
-
-        string? json = raw switch
-        {
-            string str => str,
-            JsonElement element when element.ValueKind == JsonValueKind.String => element.GetString(),
-            JsonElement element => element.GetRawText(),
-            _ => raw.ToString()
-        };
 
         if (string.IsNullOrWhiteSpace(json))
         {
@@ -131,6 +133,19 @@ internal static class WorkflowSubmissionHelper
         }
     }
 
+    public static void SetUnlockedViewStepTemplateIds(DocumentWorkflowInstance instance, IReadOnlyList<Guid> stepIds)
+    {
+        if (stepIds == null || stepIds.Count == 0)
+        {
+            ClearUnlockedViewSteps(instance);
+            return;
+        }
+
+        var distinct = stepIds.Distinct().ToList();
+        instance.UnlockedViewStepTemplateIdsJson = JsonSerializer.Serialize(distinct);
+        instance.ExtraProperties[UnlockedViewStepTemplateIdsExtraPropertyName] = instance.UnlockedViewStepTemplateIdsJson;
+    }
+
     public static void UnlockViewStep(DocumentWorkflowInstance instance, Guid stepTemplateId)
     {
         if (stepTemplateId == Guid.Empty)
@@ -142,7 +157,7 @@ internal static class WorkflowSubmissionHelper
         if (!unlocked.Contains(stepTemplateId))
         {
             unlocked.Add(stepTemplateId);
-            instance.ExtraProperties[UnlockedViewStepTemplateIdsExtraPropertyName] = JsonSerializer.Serialize(unlocked);
+            SetUnlockedViewStepTemplateIds(instance, unlocked);
         }
     }
 

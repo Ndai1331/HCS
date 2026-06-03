@@ -27,10 +27,20 @@ internal static class WorkflowStepNavigationHelper
         int startIndex)
     {
         var index = startIndex;
+        var unlocked = WorkflowSubmissionHelper.GetUnlockedViewStepTemplateIds(instance);
         while (index < steps.Count && IsViewStep(steps[index].Type))
         {
-            WorkflowSubmissionHelper.UnlockViewStep(instance, steps[index].StepId);
+            if (!unlocked.Contains(steps[index].StepId))
+            {
+                unlocked.Add(steps[index].StepId);
+            }
+
             index++;
+        }
+
+        if (unlocked.Count > 0)
+        {
+            WorkflowSubmissionHelper.SetUnlockedViewStepTemplateIds(instance, unlocked);
         }
 
         return index;
@@ -42,10 +52,20 @@ internal static class WorkflowStepNavigationHelper
         int startIndex)
     {
         var index = startIndex;
+        var unlocked = WorkflowSubmissionHelper.GetUnlockedViewStepTemplateIds(instance);
         while (index < steps.Count && IsViewStep(steps[index].Type))
         {
-            WorkflowSubmissionHelper.UnlockViewStep(instance, steps[index].Id);
+            if (!unlocked.Contains(steps[index].Id))
+            {
+                unlocked.Add(steps[index].Id);
+            }
+
             index++;
+        }
+
+        if (unlocked.Count > 0)
+        {
+            WorkflowSubmissionHelper.SetUnlockedViewStepTemplateIds(instance, unlocked);
         }
 
         return index;

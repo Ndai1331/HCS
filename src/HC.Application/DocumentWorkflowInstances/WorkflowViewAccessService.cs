@@ -25,6 +25,7 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
     private readonly IRepository<WorkflowStepAssignment, Guid> _workflowStepAssignmentRepository;
     private readonly IRepository<WorkflowStepTemplate, Guid> _workflowStepTemplateRepository;
     private readonly IWorkflowAssigneeResolver _workflowAssigneeResolver;
+    private readonly IWorkflowCommittedStepsQueryService _workflowCommittedStepsQueryService;
 
     public WorkflowViewAccessService(
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
@@ -32,7 +33,8 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         IRepository<Document, Guid> documentRepository,
         IRepository<WorkflowStepAssignment, Guid> _workflowStepAssignmentRepositoryParam,
         IRepository<WorkflowStepTemplate, Guid> workflowStepTemplateRepository,
-        IWorkflowAssigneeResolver workflowAssigneeResolver)
+        IWorkflowAssigneeResolver workflowAssigneeResolver,
+        IWorkflowCommittedStepsQueryService workflowCommittedStepsQueryService)
     {
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
         _documentAssignmentRepository = documentAssignmentRepository;
@@ -40,6 +42,7 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         _workflowStepAssignmentRepository = _workflowStepAssignmentRepositoryParam;
         _workflowStepTemplateRepository = workflowStepTemplateRepository;
         _workflowAssigneeResolver = workflowAssigneeResolver;
+        _workflowCommittedStepsQueryService = workflowCommittedStepsQueryService;
     }
 
     public async Task<bool> CanUserViewWorkflowDocumentAsync(Guid workflowInstanceId, Guid userId)
@@ -103,7 +106,7 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
 
     private async Task<bool> UserMatchesAnyUnlockedViewStepAsync(DocumentWorkflowInstance instance, Guid userId)
     {
-        var unlockedStepIds = WorkflowSubmissionHelper.GetUnlockedViewStepTemplateIds(instance);
+        var unlockedStepIds = await GetEffectiveUnlockedViewStepIdsAsync(instance);
         if (unlockedStepIds.Count == 0)
         {
             return false;
@@ -141,6 +144,49 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         return false;
     }
 
+    /// <summary>
+    /// Reads persisted unlock list, or infers VIEW steps already passed from committed steps vs current step (legacy instances).
+    /// </summary>
+    private async Task<List<Guid>> GetEffectiveUnlockedViewStepIdsAsync(DocumentWorkflowInstance instance)
+    {
+        var persisted = WorkflowSubmissionHelper.GetUnlockedViewStepTemplateIds(instance);
+        if (persisted.Count > 0)
+        {
+            return persisted;
+        }
+
+        if (!ActiveInstanceStatuses.Contains(instance.Status))
+        {
+            return persisted;
+        }
+
+        var committedSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(instance);
+        var currentStep = committedSteps.FirstOrDefault(s => s.Id == instance.CurrentStepId);
+        if (currentStep == null)
+        {
+            return persisted;
+        }
+
+        return committedSteps
+            .Where(s => WorkflowStepNavigationHelper.IsViewStep(s.Type) && s.Order < currentStep.Order)
+            .Select(s => s.Id)
+            .ToList();
+    }
+
+    private static bool IsRoleBasedViewAssignment(WorkflowStepAssignment assignment)
+    {
+        if (!assignment.RoleId.HasValue)
+        {
+            return false;
+        }
+
+        return string.Equals(
+                   assignment.AssigneeType,
+                   WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit,
+                   StringComparison.OrdinalIgnoreCase)
+               || !assignment.DefaultUserId.HasValue;
+    }
+
     private async Task<bool> UserMatchesViewStepAssignmentsAsync(
         IReadOnlyList<WorkflowStepAssignment> stepAssignments,
         Guid submitterUserId,
@@ -153,11 +199,10 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
                 continue;
             }
 
-            if (assignment.AssigneeType == WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit
-                && assignment.RoleId.HasValue)
+            if (IsRoleBasedViewAssignment(assignment))
             {
                 var candidates = await _workflowAssigneeResolver.ResolveCandidatesByRoleAsync(
-                    assignment.RoleId.Value, submitterUserId, assignment.IsPrimary);
+                    assignment.RoleId!.Value, submitterUserId, assignment.IsPrimary);
                 if (candidates.Any(c => c.UserId == userId))
                 {
                     return true;
