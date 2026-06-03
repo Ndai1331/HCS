@@ -1,0 +1,49 @@
+/* /Components/Documents/DocumentSigningFilterBar.razor.rz.scp.css */
+.hc-document-signing-filter[b-4gvk21fr0w] {
+    margin-bottom: 0.5rem;
+}
+/* /Components/Pages/Index.razor.rz.scp.css */
+/* Getting-Started */
+.card-bg-image[b-lm1vm8cb5n] {
+    pointer-events: none;
+    position: absolute;
+    width: 630px;
+    height: auto;
+    bottom: 0;
+    right: 0;
+    z-index: 1;
+}
+.starting-content[b-lm1vm8cb5n] {
+    position: relative;
+    z-index: 2;
+}
+/* Getting-Started End */
+
+/* Write here your styles for the Index page */
+
+/* Tùy chỉnh thanh cuộn cho CardBody */
+::v-deep .overflow-auto[b-lm1vm8cb5n]::-webkit-scrollbar {
+    width: 6px;
+}
+
+::v-deep .overflow-auto[b-lm1vm8cb5n]::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}
+/* /Pages/Documents/DocumentSigning.razor.rz.scp.css */
+/* /Pages/DocumentWorkflowInstances.razor.rz.scp.css */
+.datagrid-detail .table-responsive[b-teazv0gask] {
+    min-height: inherit !important;
+}
+
+.datagrid-detail .tab-content[b-teazv0gask] {
+    padding-top: 0px !important;
+}
+/* /Pages/MasterDataPage.razor.rz.scp.css */
+tr.table-row-selectable:hover[b-4ttyedzkyc] {
+    cursor: default;
+}
+
+.hc-master-data-grid[b-4ttyedzkyc]  .table-row-selectable:hover {
+    cursor: default;
+}

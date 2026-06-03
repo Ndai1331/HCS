@@ -1,0 +1,7 @@
+tr.table-row-selectable:hover {
+    cursor: default;
+}
+
+.hc-master-data-grid ::deep .table-row-selectable:hover {
+    cursor: default;
+}
