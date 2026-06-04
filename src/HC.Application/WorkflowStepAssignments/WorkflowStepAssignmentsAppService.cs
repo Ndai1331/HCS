@@ -13,6 +13,7 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using HC.Permissions;
+using HC.DocumentWorkflowInstances;
 using HC.WorkflowStepAssignments;
 using MiniExcelLibs;
 using Volo.Abp.Content;
@@ -140,6 +141,7 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
 
     public virtual async Task<WorkflowStepAssignmentDto> CreateAsync(WorkflowStepAssignmentCreateDto input)
     {
+        await ValidateCatalogAssignmentAsync(input.StepId, input.AssigneeType, input.RoleId, input.OrganizationUnitIds, input.DefaultUserIds, input.DefaultUserId);
         var workflowStepAssignment = await _workflowStepAssignmentManager.CreateAsync(
             input.StepId,
             input.DefaultUserId,
@@ -155,6 +157,7 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
     [Authorize(HCPermissions.WorkflowStepAssignments.Edit)]
     public virtual async Task<WorkflowStepAssignmentDto> UpdateAsync(Guid id, WorkflowStepAssignmentUpdateDto input)
     {
+        await ValidateCatalogAssignmentAsync(input.StepId, input.AssigneeType, input.RoleId, input.OrganizationUnitIds, input.DefaultUserIds, input.DefaultUserId);
         var workflowStepAssignment = await _workflowStepAssignmentManager.UpdateAsync(
             id,
             input.StepId,
@@ -202,5 +205,36 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
         {
             Token = token
         };
+    }
+
+    protected virtual async Task ValidateCatalogAssignmentAsync(
+        Guid? stepId,
+        string? assigneeType,
+        Guid? roleId,
+        IReadOnlyList<Guid>? organizationUnitIds,
+        IReadOnlyList<Guid>? defaultUserIds,
+        Guid? defaultUserId)
+    {
+        if (!stepId.HasValue || stepId == Guid.Empty)
+        {
+            return;
+        }
+
+        var step = await _workflowStepTemplateRepository.GetAsync(stepId.Value);
+        if (!WorkflowStepNavigationHelper.IsViewStep(step.Type))
+        {
+            return;
+        }
+
+        var ouIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(organizationUnitIds);
+        if (ouIds.Count == 0)
+        {
+            throw new UserFriendlyException(L["StepAssignmentViewOuRequired"]);
+        }
+
+        if (!string.Equals(assigneeType, WorkflowStepAssigneeTypeNames.ScopedAssignee, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UserFriendlyException(L["StepAssignmentViewOuRequired"]);
+        }
     }
 }

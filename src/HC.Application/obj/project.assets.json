@@ -9502,7 +9502,7 @@
     ]
   },
   "packageFolders": {
-    "/Users/user/.nuget/packages/": {}
+    "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/633c765c44061c01253935b814f27427/nuget": {}
   },
   "project": {
     "version": "1.0.0",
@@ -9510,7 +9510,7 @@
       "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Application/HC.Application.csproj",
       "projectName": "HC.Application",
       "projectPath": "/Users/user/Documents/HCS/src/HC.Application/HC.Application.csproj",
-      "packagesPath": "/Users/user/.nuget/packages/",
+      "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/633c765c44061c01253935b814f27427/nuget",
       "outputPath": "/Users/user/Documents/HCS/src/HC.Application/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [

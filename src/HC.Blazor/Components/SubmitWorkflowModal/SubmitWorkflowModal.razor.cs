@@ -81,6 +81,8 @@ public partial class SubmitWorkflowModal
     {
         public Guid StepId { get; init; }
         public string StepName { get; init; } = string.Empty;
+        public List<Guid> LockedOrganizationUnitIds { get; set; } = new();
+        public List<Guid> LockedUserIds { get; set; } = new();
         public List<DepartmentTreeView> SelectedDepartments { get; set; } = new();
         public List<LookupDto<Guid>> SelectedUsers { get; set; } = new();
     }
@@ -337,7 +339,10 @@ public partial class SubmitWorkflowModal
 
             if (!ValidateViewScopeSelections())
             {
-                await UiMessageService.Error(L["ViewStepScopeRequired"],
+                var message = ViewStepScopeEditors.Any(e => !ContainsLockedDefaults(e))
+                    ? L["ViewStepScopeCannotRemoveCatalogDefaults"]
+                    : L["ViewStepScopeRequired"];
+                await UiMessageService.Error(message,
                     options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
@@ -538,17 +543,26 @@ public partial class SubmitWorkflowModal
                 StepName = step.Name
             };
 
-            if (step.TemplateOrganizationUnitIds.Any())
+            editor.LockedOrganizationUnitIds = step.TemplateOrganizationUnitIds
+                .Where(x => x != Guid.Empty)
+                .Distinct()
+                .ToList();
+            editor.LockedUserIds = step.TemplateUserIds
+                .Where(x => x != Guid.Empty)
+                .Distinct()
+                .ToList();
+
+            if (editor.LockedOrganizationUnitIds.Any())
             {
                 editor.SelectedDepartments = AllViewStepDepartmentsFlat
-                    .Where(d => step.TemplateOrganizationUnitIds.Contains(d.Id))
+                    .Where(d => editor.LockedOrganizationUnitIds.Contains(d.Id))
                     .ToList();
             }
 
-            if (step.TemplateUserIds.Any())
+            if (editor.LockedUserIds.Any())
             {
                 editor.SelectedUsers = IdentityUsersCollection
-                    .Where(u => step.TemplateUserIds.Contains(u.Id))
+                    .Where(u => editor.LockedUserIds.Contains(u.Id))
                     .ToList();
             }
 
@@ -560,6 +574,12 @@ public partial class SubmitWorkflowModal
     {
         foreach (var editor in ViewStepScopeEditors)
         {
+            EnsureLockedDefaultsInSelection(editor);
+            if (!ContainsLockedDefaults(editor))
+            {
+                return false;
+            }
+
             if (!editor.SelectedDepartments.Any() && !editor.SelectedUsers.Any())
             {
                 return false;
@@ -569,14 +589,66 @@ public partial class SubmitWorkflowModal
         return true;
     }
 
+    private static bool ContainsLockedDefaults(ViewStepScopeEditorState editor)
+    {
+        var selectedOuIds = editor.SelectedDepartments.Select(d => d.Id).ToHashSet();
+        var selectedUserIds = editor.SelectedUsers.Select(u => u.Id).ToHashSet();
+        return editor.LockedOrganizationUnitIds.All(selectedOuIds.Contains)
+               && editor.LockedUserIds.All(selectedUserIds.Contains);
+    }
+
+    private void EnsureLockedDefaultsInSelection(ViewStepScopeEditorState editor)
+    {
+        var lockedDepartments = AllViewStepDepartmentsFlat
+            .Where(d => editor.LockedOrganizationUnitIds.Contains(d.Id))
+            .ToList();
+        foreach (var department in lockedDepartments)
+        {
+            if (editor.SelectedDepartments.All(d => d.Id != department.Id))
+            {
+                editor.SelectedDepartments.Add(department);
+            }
+        }
+
+        foreach (var userId in editor.LockedUserIds)
+        {
+            if (editor.SelectedUsers.All(u => u.Id != userId))
+            {
+                var user = IdentityUsersCollection.FirstOrDefault(u => u.Id == userId);
+                if (user != null)
+                {
+                    editor.SelectedUsers.Add(user);
+                }
+            }
+        }
+    }
+
+    private async Task OnViewStepDepartmentsChangedAsync(ViewStepScopeEditorState editor, List<DepartmentTreeView> selected)
+    {
+        editor.SelectedDepartments = selected ?? new List<DepartmentTreeView>();
+        EnsureLockedDefaultsInSelection(editor);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnViewStepUsersChangedAsync(ViewStepScopeEditorState editor, List<LookupDto<Guid>> selected)
+    {
+        editor.SelectedUsers = selected ?? new List<LookupDto<Guid>>();
+        EnsureLockedDefaultsInSelection(editor);
+        await InvokeAsync(StateHasChanged);
+    }
+
     private List<WorkflowStepViewScopeSelectionDto> BuildViewStepScopeSelections()
     {
         return ViewStepScopeEditors
-            .Select(editor => new WorkflowStepViewScopeSelectionDto
+            .Select(editor =>
             {
-                StepId = editor.StepId,
-                OrganizationUnitIds = editor.SelectedDepartments.Select(d => d.Id).Distinct().ToList(),
-                UserIds = editor.SelectedUsers.Select(u => u.Id).Distinct().ToList()
+                EnsureLockedDefaultsInSelection(editor);
+                return new WorkflowStepViewScopeSelectionDto
+                {
+                    StepId = editor.StepId,
+                    OrganizationUnitIds = editor.SelectedDepartments.Select(d => d.Id).Distinct().ToList(),
+                    UserIds = editor.SelectedUsers.Select(u => u.Id).Distinct().ToList()
+                };
             })
             .ToList();
     }

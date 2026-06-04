@@ -30,8 +30,9 @@ public abstract class WorkflowStepAssignmentManagerBase : DomainService
         IReadOnlyList<Guid>? defaultUserIds = null)
     {
         var scopeFields = WorkflowStepAssignmentScopeHelper.BuildScopeFields(organizationUnitIds, defaultUserIds);
-        var effectiveDefaultUserId = scopeFields.LegacyDefaultUserId ?? defaultUserId;
-        ValidateAssignee(assigneeType, effectiveDefaultUserId, roleId, organizationUnitIds, defaultUserIds);
+        var effectiveDefaultUserId = ResolveEffectiveDefaultUserId(assigneeType, scopeFields.LegacyDefaultUserId, defaultUserId);
+        var effectiveRoleId = ResolveEffectiveRoleId(assigneeType, roleId);
+        ValidateAssignee(assigneeType, effectiveDefaultUserId, effectiveRoleId, organizationUnitIds, defaultUserIds);
         var workflowStepAssignment = new WorkflowStepAssignment(
             GuidGenerator.Create(),
             stepId,
@@ -39,7 +40,7 @@ public abstract class WorkflowStepAssignmentManagerBase : DomainService
             isPrimary,
             isActive,
             assigneeType,
-            roleId);
+            effectiveRoleId);
         workflowStepAssignment.OrganizationUnitIdsJson = scopeFields.OrganizationUnitIdsJson;
         workflowStepAssignment.DefaultUserIdsJson = scopeFields.DefaultUserIdsJson;
         return await _workflowStepAssignmentRepository.InsertAsync(workflowStepAssignment);
@@ -58,15 +59,16 @@ public abstract class WorkflowStepAssignmentManagerBase : DomainService
         [CanBeNull] string? concurrencyStamp = null)
     {
         var scopeFields = WorkflowStepAssignmentScopeHelper.BuildScopeFields(organizationUnitIds, defaultUserIds);
-        var effectiveDefaultUserId = scopeFields.LegacyDefaultUserId ?? defaultUserId;
-        ValidateAssignee(assigneeType, effectiveDefaultUserId, roleId, organizationUnitIds, defaultUserIds);
+        var effectiveDefaultUserId = ResolveEffectiveDefaultUserId(assigneeType, scopeFields.LegacyDefaultUserId, defaultUserId);
+        var effectiveRoleId = ResolveEffectiveRoleId(assigneeType, roleId);
+        ValidateAssignee(assigneeType, effectiveDefaultUserId, effectiveRoleId, organizationUnitIds, defaultUserIds);
         var workflowStepAssignment = await _workflowStepAssignmentRepository.GetAsync(id);
         workflowStepAssignment.StepId = stepId;
         workflowStepAssignment.DefaultUserId = effectiveDefaultUserId;
         workflowStepAssignment.IsPrimary = isPrimary;
         workflowStepAssignment.IsActive = isActive;
         workflowStepAssignment.AssigneeType = assigneeType ?? WorkflowStepAssigneeTypeNames.SpecificUser;
-        workflowStepAssignment.RoleId = roleId;
+        workflowStepAssignment.RoleId = effectiveRoleId;
         workflowStepAssignment.OrganizationUnitIdsJson = scopeFields.OrganizationUnitIdsJson;
         workflowStepAssignment.DefaultUserIdsJson = scopeFields.DefaultUserIdsJson;
         workflowStepAssignment.SetConcurrencyStampIfNotNull(concurrencyStamp);
@@ -117,5 +119,42 @@ public abstract class WorkflowStepAssignmentManagerBase : DomainService
         {
             throw new BusinessException("HC:WorkflowStepAssignment:DefaultUserRequired");
         }
+    }
+
+    private static Guid? ResolveEffectiveDefaultUserId(
+        string? assigneeType,
+        Guid? legacyFromScope,
+        Guid? inputDefaultUserId)
+    {
+        var type = assigneeType ?? WorkflowStepAssigneeTypeNames.SpecificUser;
+        if (type == WorkflowStepAssigneeTypeNames.ScopedAssignee
+            || type == WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit)
+        {
+            return null;
+        }
+
+        return NormalizeOptionalGuid(legacyFromScope ?? inputDefaultUserId);
+    }
+
+    private static Guid? ResolveEffectiveRoleId(string? assigneeType, Guid? roleId)
+    {
+        var type = assigneeType ?? WorkflowStepAssigneeTypeNames.SpecificUser;
+        if (type == WorkflowStepAssigneeTypeNames.ScopedAssignee
+            || type == WorkflowStepAssigneeTypeNames.SpecificUser)
+        {
+            return null;
+        }
+
+        return NormalizeOptionalGuid(roleId);
+    }
+
+    private static Guid? NormalizeOptionalGuid(Guid? value)
+    {
+        if (!value.HasValue || value.Value == Guid.Empty)
+        {
+            return null;
+        }
+
+        return value;
     }
 }

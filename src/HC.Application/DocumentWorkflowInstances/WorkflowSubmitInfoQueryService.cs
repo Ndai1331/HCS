@@ -169,29 +169,9 @@ public class WorkflowSubmitInfoQueryService : HCAppService, IWorkflowSubmitInfoQ
         }
         else
         {
-            foreach (var assignment in activeAssignments.Where(IsConfiguredAssignment))
+            foreach (var assignment in activeAssignments.Where(IsConfiguredBlockingAssignment))
             {
-                if (IsScopedAssignment(assignment))
-                {
-                    var ouIds = WorkflowStepAssignmentScopeHelper.GetOrganizationUnitIds(assignment.OrganizationUnitIdsJson);
-                    if (assignment.RoleId.HasValue && ouIds.Count > 0)
-                    {
-                        var candidates = await _workflowAssigneeResolver.ResolveCandidatesByRoleInOrganizationUnitsAsync(
-                            assignment.RoleId.Value,
-                            ouIds,
-                            assignment.IsPrimary);
-                        MergeCandidates(candidateMap, candidates);
-                    }
-
-                    foreach (var userDto in await MapUsersToWorkflowStepUserDtosAsync(
-                                 WorkflowStepAssignmentScopeHelper.GetDefaultUserIds(
-                                     assignment.DefaultUserIdsJson,
-                                     assignment.DefaultUserId)))
-                    {
-                        candidateMap[userDto.UserId] = userDto;
-                    }
-                }
-                else if (IsRoleBasedAssignment(assignment))
+                if (IsRoleBasedAssignment(assignment))
                 {
                     var candidates = await _workflowAssigneeResolver.ResolveCandidatesByRoleAsync(
                         assignment.RoleId!.Value, submitterUserId, assignment.IsPrimary);
@@ -277,17 +257,10 @@ public class WorkflowSubmitInfoQueryService : HCAppService, IWorkflowSubmitInfoQ
 
     private static bool IsScopedAssignment(WorkflowStepAssignment assignment)
     {
-        return assignment.AssigneeType == WorkflowStepAssigneeTypeNames.ScopedAssignee
-               || WorkflowStepAssignmentScopeHelper.HasResolvableScope(
-                   assignment.AssigneeType,
-                   WorkflowStepAssignmentScopeHelper.GetOrganizationUnitIds(assignment.OrganizationUnitIdsJson),
-                   WorkflowStepAssignmentScopeHelper.GetDefaultUserIds(
-                       assignment.DefaultUserIdsJson,
-                       assignment.DefaultUserId),
-                   assignment.RoleId);
+        return assignment.AssigneeType == WorkflowStepAssigneeTypeNames.ScopedAssignee;
     }
 
-    private static bool IsConfiguredAssignment(WorkflowStepAssignment assignment)
+    private static bool IsConfiguredBlockingAssignment(WorkflowStepAssignment assignment)
     {
         if (!assignment.IsActive)
         {
@@ -296,7 +269,7 @@ public class WorkflowSubmitInfoQueryService : HCAppService, IWorkflowSubmitInfoQ
 
         if (IsScopedAssignment(assignment))
         {
-            return true;
+            return false;
         }
 
         if (IsRoleBasedAssignment(assignment))
@@ -323,15 +296,39 @@ public class WorkflowSubmitInfoQueryService : HCAppService, IWorkflowSubmitInfoQ
         var stepTemplate = await _workflowStepTemplateRepository.FindAsync(stepId);
         if (stepTemplate != null && WorkflowStepNavigationHelper.IsViewStep(stepTemplate.Type))
         {
-            return true;
+            var viewerIds = await _workflowViewScopeResolver.ResolveViewerUserIdsAsync(
+                stepAssignments,
+                null,
+                submitterUserId);
+            return viewerIds.Count > 0;
         }
 
-        var viewerIds = await _workflowViewScopeResolver.ResolveViewerUserIdsAsync(
-            stepAssignments,
-            null,
-            submitterUserId);
+        foreach (var assignment in stepAssignments.Where(IsConfiguredBlockingAssignment))
+        {
+            if (IsRoleBasedAssignment(assignment))
+            {
+                var candidates = await _workflowAssigneeResolver.ResolveCandidatesByRoleAsync(
+                    assignment.RoleId!.Value,
+                    submitterUserId,
+                    assignment.IsPrimary);
+                if (candidates.Any())
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                var userIds = WorkflowStepAssignmentScopeHelper.GetDefaultUserIds(
+                    assignment.DefaultUserIdsJson,
+                    assignment.DefaultUserId);
+                if (userIds.Count > 0)
+                {
+                    return true;
+                }
+            }
+        }
 
-        return viewerIds.Count > 0;
+        return false;
     }
 
     private static void MergeCandidates(

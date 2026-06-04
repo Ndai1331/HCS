@@ -721,9 +721,18 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
                 throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeRequired"]);
             }
 
-            var hasOu = scope.OrganizationUnitIds.Any(x => x != Guid.Empty);
-            var hasUser = scope.UserIds.Any(x => x != Guid.Empty);
-            if (!hasOu && !hasUser)
+            var submittedOuIds = scope.OrganizationUnitIds.Where(x => x != Guid.Empty).ToHashSet();
+            var submittedUserIds = scope.UserIds.Where(x => x != Guid.Empty).ToHashSet();
+            var templateOuIds = step.TemplateOrganizationUnitIds.Where(x => x != Guid.Empty).ToList();
+            var templateUserIds = step.TemplateUserIds.Where(x => x != Guid.Empty).ToList();
+
+            if (templateOuIds.Any(id => !submittedOuIds.Contains(id))
+                || templateUserIds.Any(id => !submittedUserIds.Contains(id)))
+            {
+                throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeCannotRemoveCatalogDefaults"]);
+            }
+
+            if (!submittedOuIds.Any() && !submittedUserIds.Any())
             {
                 throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeRequired"]);
             }

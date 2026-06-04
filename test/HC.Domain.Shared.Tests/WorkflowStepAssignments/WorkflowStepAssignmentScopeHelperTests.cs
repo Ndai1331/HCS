@@ -48,4 +48,27 @@ public class WorkflowStepAssignmentScopeHelperTests
 
         Assert.False(missingScope);
     }
+
+    [Fact]
+    public void HasResolvableScope_ShouldAcceptOuOnlyForViewCatalogScopedAssignee()
+    {
+        var hasOuOnly = WorkflowStepAssignmentScopeHelper.HasResolvableScope(
+            WorkflowStepAssigneeTypeNames.ScopedAssignee,
+            new List<Guid> { Guid.NewGuid() },
+            new List<Guid>(),
+            null);
+
+        Assert.True(hasOuOnly);
+    }
+
+    [Fact]
+    public void NormalizeIds_ShouldExcludeEmptyGuid()
+    {
+        var empty = Guid.Empty;
+        var valid = Guid.NewGuid();
+        var normalized = WorkflowStepAssignmentScopeHelper.NormalizeIds(new List<Guid> { empty, valid, empty });
+
+        Assert.Single(normalized);
+        Assert.Equal(valid, normalized[0]);
+    }
 }

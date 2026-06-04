@@ -153,9 +153,14 @@
                                         {
                                             <div class="mt-2">
                                                 <small class="text-muted d-block mb-1">@L["ViewStepScopeSelectionHint"]</small>
+                                                @if (viewEditor.LockedOrganizationUnitIds.Any() || viewEditor.LockedUserIds.Any())
+                                                {
+                                                    <small class="text-muted d-block mb-2">@L["ViewStepScopeCatalogDefaultsLockedHint"]</small>
+                                                }
                                                 <FieldLabel>@L["OrganizationUnit"]</FieldLabel>
                                                 <DepartmentTreeSelect Items="ViewStepDepartmentTreeViews"
-                                                                        @bind-SelectedItems="viewEditor.SelectedDepartments"
+                                                                        SelectedItems="viewEditor.SelectedDepartments"
+                                                                        SelectedItemsChanged="@(v => OnViewStepDepartmentsChangedAsync(viewEditor, v))"
                                                                         EmptyMessage="@L["NoDepartmentDefinedYet"]" />
                                                 <FieldLabel class="mt-2">@L["IdentityUser"]</FieldLabel>
                                                 <div class="hc-select2-full">
@@ -163,7 +168,7 @@
                                                                  GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
                                                                  Datasource="IdentityUsersCollection"
                                                                  Value="@viewEditor.SelectedUsers"
-                                                                 ValueChanged="@(async (List<LookupDto<Guid>> v) => { viewEditor.SelectedUsers = v ?? new(); await InvokeAsync(StateHasChanged); })"
+                                                                 ValueChanged="@(v => OnViewStepUsersChangedAsync(viewEditor, v))"
                                                                  Cache="__MemoryCache"
                                                                  Multiselect="true" />
                                                 </div>

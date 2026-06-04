@@ -10297,7 +10297,7 @@
     ]
   },
   "packageFolders": {
-    "/Users/user/.nuget/packages/": {}
+    "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/633c765c44061c01253935b814f27427/nuget": {}
   },
   "project": {
     "version": "1.0.0",
@@ -10305,7 +10305,7 @@
       "projectUniqueName": "/Users/user/Documents/HCS/test/HC.Domain.Shared.Tests/HC.Domain.Shared.Tests.csproj",
       "projectName": "HC.Domain.Shared.Tests",
       "projectPath": "/Users/user/Documents/HCS/test/HC.Domain.Shared.Tests/HC.Domain.Shared.Tests.csproj",
-      "packagesPath": "/Users/user/.nuget/packages/",
+      "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/633c765c44061c01253935b814f27427/nuget",
       "outputPath": "/Users/user/Documents/HCS/test/HC.Domain.Shared.Tests/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
