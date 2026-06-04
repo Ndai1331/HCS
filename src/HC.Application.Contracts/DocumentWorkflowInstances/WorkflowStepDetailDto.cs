@@ -28,6 +28,12 @@ public class WorkflowStepDetailDto
 
     public bool RequiresSignerSelection => !IsViewStep && CandidateUsers.Count > 1;
 
+    public bool RequiresViewScopeSelection => IsViewStep;
+
+    public List<Guid> TemplateOrganizationUnitIds { get; set; } = new();
+
+    public List<Guid> TemplateUserIds { get; set; } = new();
+
     /// <summary>
     /// Resolved receivers for display; same as CandidateUsers at submit preview, or selected users after submit.
     /// </summary>

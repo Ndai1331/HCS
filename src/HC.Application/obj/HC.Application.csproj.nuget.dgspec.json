@@ -10,7 +10,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Application.Contracts/HC.Application.Contracts.csproj",
         "projectName": "HC.Application.Contracts",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Application.Contracts/HC.Application.Contracts.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/a54b3e6fac25b4adeef7a04cb5272070/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Application.Contracts/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -407,7 +407,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Application/HC.Application.csproj",
         "projectName": "HC.Application",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Application/HC.Application.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/a54b3e6fac25b4adeef7a04cb5272070/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Application/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -827,7 +827,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Domain.Shared/HC.Domain.Shared.csproj",
         "projectName": "HC.Domain.Shared",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Domain.Shared/HC.Domain.Shared.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/a54b3e6fac25b4adeef7a04cb5272070/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Domain.Shared/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -1244,7 +1244,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Domain/HC.Domain.csproj",
         "projectName": "HC.Domain",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Domain/HC.Domain.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/a54b3e6fac25b4adeef7a04cb5272070/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Domain/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [

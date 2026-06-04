@@ -1534,7 +1534,8 @@ public partial class DocumentSigning
                 AttachedFileIds = ResubmitUploadedFiles.Any()
                     ? ResubmitUploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null,
-                DeleteFileIds = ResubmitDeleteFileIds.Any() ? ResubmitDeleteFileIds : null
+                DeleteFileIds = ResubmitDeleteFileIds.Any() ? ResubmitDeleteFileIds : null,
+                ViewStepScopeSelections = BuildResubmitViewStepScopeSelections()
             };
 
             await DocumentWorkflowInstancesAppService.ResubmitReturnedWorkflowAsync(input);
@@ -1554,6 +1555,25 @@ public partial class DocumentSigning
             IsResubmitModalLoading = false;
             await RequestRenderAsync();
         }
+    }
+
+    private List<WorkflowStepViewScopeSelectionDto> BuildResubmitViewStepScopeSelections()
+    {
+        if (ReturnedWorkflowInfo?.WorkflowInfo?.Steps == null)
+        {
+            return new List<WorkflowStepViewScopeSelectionDto>();
+        }
+
+        return ReturnedWorkflowInfo.WorkflowInfo.Steps
+            .Where(s => s.IsViewStep)
+            .Select(s => new WorkflowStepViewScopeSelectionDto
+            {
+                StepId = s.StepId,
+                OrganizationUnitIds = s.TemplateOrganizationUnitIds.ToList(),
+                UserIds = s.TemplateUserIds.ToList()
+            })
+            .Where(s => s.OrganizationUnitIds.Any() || s.UserIds.Any())
+            .ToList();
     }
 
     #endregion

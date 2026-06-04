@@ -4,19 +4,19 @@
     <RestoreSuccess Condition=" '$(RestoreSuccess)' == '' ">True</RestoreSuccess>
     <RestoreTool Condition=" '$(RestoreTool)' == '' ">NuGet</RestoreTool>
     <ProjectAssetsFile Condition=" '$(ProjectAssetsFile)' == '' ">$(MSBuildThisFileDirectory)project.assets.json</ProjectAssetsFile>
-    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/a54b3e6fac25b4adeef7a04cb5272070/nuget</NuGetPackageRoot>
-    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/a54b3e6fac25b4adeef7a04cb5272070/nuget</NuGetPackageFolders>
+    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">/Users/user/.nuget/packages/</NuGetPackageRoot>
+    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">/Users/user/.nuget/packages/</NuGetPackageFolders>
     <NuGetProjectStyle Condition=" '$(NuGetProjectStyle)' == '' ">PackageReference</NuGetProjectStyle>
     <NuGetToolVersion Condition=" '$(NuGetToolVersion)' == '' ">7.0.0</NuGetToolVersion>
   </PropertyGroup>
   <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <SourceRoot Include="/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/a54b3e6fac25b4adeef7a04cb5272070/nuget/" />
+    <SourceRoot Include="/Users/user/.nuget/packages/" />
   </ItemGroup>
   <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <Import Project="$(NuGetPackageRoot)/microsoft.extensions.configuration.usersecrets/10.0.0/buildTransitive/net8.0/Microsoft.Extensions.Configuration.UserSecrets.props" Condition="Exists('$(NuGetPackageRoot)/microsoft.extensions.configuration.usersecrets/10.0.0/buildTransitive/net8.0/Microsoft.Extensions.Configuration.UserSecrets.props')" />
-    <Import Project="$(NuGetPackageRoot)/scriban/7.2.0/build/Scriban.props" Condition="Exists('$(NuGetPackageRoot)/scriban/7.2.0/build/Scriban.props')" />
+    <Import Project="$(NuGetPackageRoot)microsoft.extensions.configuration.usersecrets/10.0.0/buildTransitive/net8.0/Microsoft.Extensions.Configuration.UserSecrets.props" Condition="Exists('$(NuGetPackageRoot)microsoft.extensions.configuration.usersecrets/10.0.0/buildTransitive/net8.0/Microsoft.Extensions.Configuration.UserSecrets.props')" />
+    <Import Project="$(NuGetPackageRoot)scriban/7.2.0/build/Scriban.props" Condition="Exists('$(NuGetPackageRoot)scriban/7.2.0/build/Scriban.props')" />
   </ImportGroup>
   <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <PkgAWSSDK_Core Condition=" '$(PkgAWSSDK_Core)' == '' ">/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/a54b3e6fac25b4adeef7a04cb5272070/nuget/awssdk.core/3.7.105.20</PkgAWSSDK_Core>
+    <PkgAWSSDK_Core Condition=" '$(PkgAWSSDK_Core)' == '' ">/Users/user/.nuget/packages/awssdk.core/3.7.105.20</PkgAWSSDK_Core>
   </PropertyGroup>
 </Project>

@@ -150,11 +150,15 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
 ### 3.4.1 Bước VIEW (xem theo OU / người chỉ định)
 
 - Bước `VIEW` có thể đặt ở **bất kỳ** thứ tự trong quy trình.
-- Khi quy trình **tới** bước VIEW: ghi `UnlockedViewStepTemplateIds` (ExtraProperties trên instance); **không** tạo `DocumentAssignment` PENDING.
-- Người được xem khi bước đã unlock:
-  - `RoleInSubmitterOrganizationUnit` + role → user active có role và thuộc OU chain người trình ký;
-  - `SpecificUser` → đúng user chỉ định trên assignment.
-- Sau unlock, engine **auto-skip** các bước VIEW liên tiếp; **dừng** tại bước `SIGN` / `PROCESS` (assignment + ký bắt buộc).
+- **Danh mục quy trình** (`WorkflowDetail` → gán người thực hiện): mỗi assignment dùng `ScopedAssignee` — chọn **một hoặc nhiều OU** và/hoặc **một hoặc nhiều user**, vai trò tùy chọn (user có role trong các OU đã chọn được cộng vào phạm vi).
+- **Trình ký** (`SubmitWorkflowModal`): với mỗi bước VIEW, **bắt buộc** chọn ít nhất một OU hoặc một user; lưu `ViewStepScopesJson` trên instance (ghi đè phạm vi mặc định từ template khi có).
+- Khi quy trình **tới** bước VIEW: ghi `UnlockedViewStepTemplateIds`; **không** tạo `DocumentAssignment` PENDING.
+- Người được xem khi bước đã unlock (union):
+  - User chỉ định (template + lựa chọn lúc trình ký);
+  - User thuộc các OU đã chọn;
+  - User có role đã cấu hình trong các OU đã chọn;
+  - Instance cũ không có `ViewStepScopesJson`: vẫn fallback `RoleInSubmitterOrganizationUnit` theo OU người trình ký.
+- Sau unlock, engine **auto-skip** các bước VIEW liên tiếp; **dừng** tại bước `SIGN` / `PROCESS`.
 - Danh sách `/document-signing`: UNION assignment workflow + document có quyền xem bước VIEW đã unlock (`HasViewAccess`, `CanAct` chỉ khi có assignment PENDING bước chặn).
 
 ### 3.4 Xử lý bước (Approve / Return / Reject)

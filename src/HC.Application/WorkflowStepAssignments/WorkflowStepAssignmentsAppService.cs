@@ -47,21 +47,46 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
     {
         var totalCount = await _workflowStepAssignmentRepository.GetCountAsync(input.FilterText, input.IsPrimary, input.IsActive, input.StepId, input.DefaultUserId);
         var items = await _workflowStepAssignmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.IsPrimary, input.IsActive, input.StepId, input.DefaultUserId, input.Sorting, input.MaxResultCount, input.SkipCount);
+        var dtos = new List<WorkflowStepAssignmentWithNavigationPropertiesDto>();
+        foreach (var item in items)
+        {
+            var dto = ObjectMapper.Map<WorkflowStepAssignmentWithNavigationProperties, WorkflowStepAssignmentWithNavigationPropertiesDto>(item);
+            ApplyScopeListsToDto(dto.WorkflowStepAssignment, item.WorkflowStepAssignment);
+            dtos.Add(dto);
+        }
+
         return new PagedResultDto<WorkflowStepAssignmentWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,
-            Items = ObjectMapper.Map<List<WorkflowStepAssignmentWithNavigationProperties>, List<WorkflowStepAssignmentWithNavigationPropertiesDto>>(items)
+            Items = dtos
         };
     }
 
     public virtual async Task<WorkflowStepAssignmentWithNavigationPropertiesDto> GetWithNavigationPropertiesAsync(Guid id)
     {
-        return ObjectMapper.Map<WorkflowStepAssignmentWithNavigationProperties, WorkflowStepAssignmentWithNavigationPropertiesDto>(await _workflowStepAssignmentRepository.GetWithNavigationPropertiesAsync(id));
+        var item = await _workflowStepAssignmentRepository.GetWithNavigationPropertiesAsync(id);
+        var dto = ObjectMapper.Map<WorkflowStepAssignmentWithNavigationProperties, WorkflowStepAssignmentWithNavigationPropertiesDto>(item);
+        ApplyScopeListsToDto(dto.WorkflowStepAssignment, item.WorkflowStepAssignment);
+        return dto;
+    }
+
+    protected virtual void ApplyScopeListsToDto(WorkflowStepAssignmentDto dto, WorkflowStepAssignment entity)
+    {
+        dto.OrganizationUnitIds = WorkflowStepAssignmentScopeHelper.GetOrganizationUnitIds(entity.OrganizationUnitIdsJson);
+        dto.DefaultUserIds = WorkflowStepAssignmentScopeHelper.GetDefaultUserIds(entity.DefaultUserIdsJson, entity.DefaultUserId);
     }
 
     public virtual async Task<WorkflowStepAssignmentDto> GetAsync(Guid id)
     {
-        return ObjectMapper.Map<WorkflowStepAssignment, WorkflowStepAssignmentDto>(await _workflowStepAssignmentRepository.GetAsync(id));
+        return MapWorkflowStepAssignmentToDto(await _workflowStepAssignmentRepository.GetAsync(id));
+    }
+
+    protected virtual WorkflowStepAssignmentDto MapWorkflowStepAssignmentToDto(WorkflowStepAssignment entity)
+    {
+        var dto = ObjectMapper.Map<WorkflowStepAssignment, WorkflowStepAssignmentDto>(entity);
+        dto.OrganizationUnitIds = WorkflowStepAssignmentScopeHelper.GetOrganizationUnitIds(entity.OrganizationUnitIdsJson);
+        dto.DefaultUserIds = WorkflowStepAssignmentScopeHelper.GetDefaultUserIds(entity.DefaultUserIdsJson, entity.DefaultUserId);
+        return dto;
     }
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetWorkflowStepTemplateLookupAsync(LookupRequestDto input)
@@ -121,8 +146,10 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
             input.IsPrimary,
             input.IsActive,
             input.AssigneeType,
-            input.RoleId);
-        return ObjectMapper.Map<WorkflowStepAssignment, WorkflowStepAssignmentDto>(workflowStepAssignment);
+            input.RoleId,
+            input.OrganizationUnitIds,
+            input.DefaultUserIds);
+        return MapWorkflowStepAssignmentToDto(workflowStepAssignment);
     }
 
     [Authorize(HCPermissions.WorkflowStepAssignments.Edit)]
@@ -136,8 +163,10 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
             input.IsActive,
             input.AssigneeType,
             input.RoleId,
+            input.OrganizationUnitIds,
+            input.DefaultUserIds,
             input.ConcurrencyStamp);
-        return ObjectMapper.Map<WorkflowStepAssignment, WorkflowStepAssignmentDto>(workflowStepAssignment);
+        return MapWorkflowStepAssignmentToDto(workflowStepAssignment);
     }
 
     [AllowAnonymous]

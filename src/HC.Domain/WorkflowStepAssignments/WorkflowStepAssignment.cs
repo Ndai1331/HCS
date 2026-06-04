@@ -30,6 +30,12 @@ public abstract class WorkflowStepAssignmentBase : FullAuditedAggregateRoot<Guid
 
     public virtual Guid? RoleId { get; set; }
 
+    [CanBeNull]
+    public virtual string? OrganizationUnitIdsJson { get; set; }
+
+    [CanBeNull]
+    public virtual string? DefaultUserIdsJson { get; set; }
+
     protected WorkflowStepAssignmentBase()
     {
     }

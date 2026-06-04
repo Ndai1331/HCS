@@ -1,5 +1,8 @@
 @using HC.Documents
 @using HC.DocumentWorkflowInstances
+@using HC.Blazor.Pages
+@using Excubo.Blazor.TreeViews
+@using HC.Blazor.Components.Select2
 @using HC.Shared
 @using Blazorise
 @using Blazorise.Components
@@ -145,13 +148,32 @@
                                     }
                                     else if (step.IsViewStep)
                                     {
-                                        <div class="mt-1">
-                                            @if (!string.IsNullOrWhiteSpace(step.RoleName))
-                                            {
-                                                <small class="text-muted d-block">@L["Role"]: @step.RoleName</small>
-                                            }
-                                            <small class="text-muted d-block">@L["ViewStepRoleAssigneeHint"] (@step.CandidateUsers.Count)</small>
-                                        </div>
+                                        var viewEditor = ViewStepScopeEditors.FirstOrDefault(e => e.StepId == step.StepId);
+                                        if (viewEditor != null)
+                                        {
+                                            <div class="mt-2">
+                                                <small class="text-muted d-block mb-1">@L["ViewStepScopeSelectionHint"]</small>
+                                                <FieldLabel>@L["OrganizationUnit"]</FieldLabel>
+                                                @if (ViewStepDepartmentTreeViews.Any())
+                                                {
+                                                    <TreeView Items="ViewStepDepartmentTreeViews"
+                                                              GetChildren="@(item => item.Children)"
+                                                              HasChildren="@(item => item.HasChildren)"
+                                                              AllowSelection="true"
+                                                              @bind-SelectedItems="viewEditor.SelectedDepartments" />
+                                                }
+                                                <FieldLabel class="mt-2">@L["IdentityUser"]</FieldLabel>
+                                                <div class="hc-select2-full">
+                                                    <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
+                                                                 GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                                                 Datasource="IdentityUsersCollection"
+                                                                 Value="@viewEditor.SelectedUsers"
+                                                                 ValueChanged="@(async (List<LookupDto<Guid>> v) => { viewEditor.SelectedUsers = v ?? new(); await InvokeAsync(StateHasChanged); })"
+                                                                 Cache="__MemoryCache"
+                                                                 Multiselect="true" />
+                                                </div>
+                                            </div>
+                                        }
                                     }
                                     else if (step.RequiresSignerSelection)
                                     {

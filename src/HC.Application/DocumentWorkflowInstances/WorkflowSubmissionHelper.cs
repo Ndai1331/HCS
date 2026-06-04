@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using HC.WorkflowStepAssignments;
 
 namespace HC.DocumentWorkflowInstances;
 
@@ -10,6 +11,7 @@ internal static class WorkflowSubmissionHelper
 {
     internal const string StepSignerSelectionsExtraPropertyName = "WorkflowStepSignerSelectionsJson";
     internal const string UnlockedViewStepTemplateIdsExtraPropertyName = "UnlockedViewStepTemplateIdsJson";
+    internal const string ViewStepScopesExtraPropertyName = WorkflowViewScopeHelper.ViewStepScopesExtraPropertyName;
 
     public static string? SerializeCommittedStepTemplateIds(IReadOnlyList<Guid> orderedStepIds)
     {
@@ -164,5 +166,45 @@ internal static class WorkflowSubmissionHelper
     public static bool IsViewStepUnlocked(DocumentWorkflowInstance instance, Guid stepTemplateId)
     {
         return GetUnlockedViewStepTemplateIds(instance).Contains(stepTemplateId);
+    }
+
+    public static Dictionary<Guid, WorkflowViewScopeData> GetViewStepScopes(DocumentWorkflowInstance instance)
+    {
+        return WorkflowViewScopeHelper.GetViewStepScopes(
+            instance.ViewStepScopesJson,
+            instance.ExtraProperties);
+    }
+
+    public static void SetViewStepScopes(
+        DocumentWorkflowInstance instance,
+        IReadOnlyList<WorkflowStepViewScopeSelectionDto>? selections)
+    {
+        if (selections == null || selections.Count == 0)
+        {
+            instance.ViewStepScopesJson = null;
+            instance.ExtraProperties.Remove(ViewStepScopesExtraPropertyName);
+            return;
+        }
+
+        var map = new Dictionary<Guid, WorkflowViewScopeData>();
+        foreach (var selection in selections.Where(x => x.StepId != Guid.Empty))
+        {
+            map[selection.StepId] = new WorkflowViewScopeData
+            {
+                OrganizationUnitIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(selection.OrganizationUnitIds),
+                UserIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(selection.UserIds)
+            };
+        }
+
+        var json = WorkflowViewScopeHelper.SerializeViewStepScopes(map);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            instance.ViewStepScopesJson = null;
+            instance.ExtraProperties.Remove(ViewStepScopesExtraPropertyName);
+            return;
+        }
+
+        instance.ViewStepScopesJson = json;
+        instance.ExtraProperties[ViewStepScopesExtraPropertyName] = json;
     }
 }

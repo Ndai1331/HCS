@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using HC.CalendarEventParticipants;
 using HC.CalendarEvents;
 using HC.DocumentAssignments;
 using HC.DocumentWorkflowInstanceLogss;
@@ -21,7 +20,6 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
 {
     private readonly IHomeDashboardQueryRepository _homeDashboardQueryRepository;
     private readonly ICalendarEventsAppService _calendarEventsAppService;
-    private readonly ICalendarEventParticipantsAppService _calendarEventParticipantsAppService;
     private readonly IDocumentAssignmentsAppService _documentAssignmentsAppService;
     private readonly IDocumentsAppService _documentsAppService;
     private readonly INotificationReceiversAppService _notificationReceiversAppService;
@@ -30,7 +28,6 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
     public HomeDashboardAppService(
         IHomeDashboardQueryRepository homeDashboardQueryRepository,
         ICalendarEventsAppService calendarEventsAppService,
-        ICalendarEventParticipantsAppService calendarEventParticipantsAppService,
         IDocumentAssignmentsAppService documentAssignmentsAppService,
         IDocumentsAppService documentsAppService,
         INotificationReceiversAppService notificationReceiversAppService,
@@ -38,7 +35,6 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
     {
         _homeDashboardQueryRepository = homeDashboardQueryRepository;
         _calendarEventsAppService = calendarEventsAppService;
-        _calendarEventParticipantsAppService = calendarEventParticipantsAppService;
         _documentAssignmentsAppService = documentAssignmentsAppService;
         _documentsAppService = documentsAppService;
         _notificationReceiversAppService = notificationReceiversAppService;
@@ -152,22 +148,6 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
         
 
         var result = await _calendarEventsAppService.GetListAsync(input);
-
-        var participantsResult = await _calendarEventParticipantsAppService.GetListAsync(new GetCalendarEventParticipantsInput
-        {
-            IdentityUserId = CurrentUser.Id,
-            MaxResultCount = 200,
-            SkipCount = 0,
-            Sorting = "CalendarEventParticipant.CreationTime DESC"
-        });
-
-        var participantEventIds = participantsResult.Items
-            .Where(x => x.CalendarEvent != null)
-            .Select(x => x.CalendarEvent!.Id)
-            .ToHashSet();
-
-        return result.Items
-            .Where(x => participantEventIds.Contains(x.Id))
-            .ToList();
+        return result.Items.ToList();
     }
 }

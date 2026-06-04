@@ -48,6 +48,31 @@ public class WorkflowSubmissionHelperTests
         Assert.Equal(newUser, selected);
     }
 
+    [Fact]
+    public void SetAndGetViewStepScopes_ShouldRoundtripSelections()
+    {
+        var instance = CreateInstance();
+        var stepId = Guid.NewGuid();
+        var ouId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        WorkflowSubmissionHelper.SetViewStepScopes(instance, new List<WorkflowStepViewScopeSelectionDto>
+        {
+            new()
+            {
+                StepId = stepId,
+                OrganizationUnitIds = new List<Guid> { ouId },
+                UserIds = new List<Guid> { userId }
+            }
+        });
+
+        var map = WorkflowSubmissionHelper.GetViewStepScopes(instance);
+
+        Assert.True(map.ContainsKey(stepId));
+        Assert.Contains(ouId, map[stepId].OrganizationUnitIds);
+        Assert.Contains(userId, map[stepId].UserIds);
+    }
+
     private static DocumentWorkflowInstance CreateInstance()
     {
         return new DocumentWorkflowInstance(

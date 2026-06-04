@@ -24,7 +24,7 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
     private readonly IRepository<Document, Guid> _documentRepository;
     private readonly IRepository<WorkflowStepAssignment, Guid> _workflowStepAssignmentRepository;
     private readonly IRepository<WorkflowStepTemplate, Guid> _workflowStepTemplateRepository;
-    private readonly IWorkflowAssigneeResolver _workflowAssigneeResolver;
+    private readonly IWorkflowViewScopeResolver _workflowViewScopeResolver;
     private readonly IWorkflowCommittedStepsQueryService _workflowCommittedStepsQueryService;
 
     public WorkflowViewAccessService(
@@ -33,7 +33,7 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         IRepository<Document, Guid> documentRepository,
         IRepository<WorkflowStepAssignment, Guid> _workflowStepAssignmentRepositoryParam,
         IRepository<WorkflowStepTemplate, Guid> workflowStepTemplateRepository,
-        IWorkflowAssigneeResolver workflowAssigneeResolver,
+        IWorkflowViewScopeResolver workflowViewScopeResolver,
         IWorkflowCommittedStepsQueryService workflowCommittedStepsQueryService)
     {
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
@@ -41,7 +41,7 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         _documentRepository = documentRepository;
         _workflowStepAssignmentRepository = _workflowStepAssignmentRepositoryParam;
         _workflowStepTemplateRepository = workflowStepTemplateRepository;
-        _workflowAssigneeResolver = workflowAssigneeResolver;
+        _workflowViewScopeResolver = workflowViewScopeResolver;
         _workflowCommittedStepsQueryService = workflowCommittedStepsQueryService;
     }
 
@@ -113,10 +113,7 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         }
 
         var submitterUserId = instance.CreatorId;
-        if (!submitterUserId.HasValue)
-        {
-            return false;
-        }
+        var instanceViewScopes = WorkflowSubmissionHelper.GetViewStepScopes(instance);
 
         var stepTemplates = await _workflowStepTemplateRepository.GetListAsync(x => unlockedStepIds.Contains(x.Id));
         var viewSteps = stepTemplates
@@ -135,7 +132,13 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         foreach (var step in viewSteps)
         {
             var stepAssignments = templateAssignments.Where(a => a.StepId == step.Id).ToList();
-            if (await UserMatchesViewStepAssignmentsAsync(stepAssignments, submitterUserId.Value, userId))
+            instanceViewScopes.TryGetValue(step.Id, out var instanceScope);
+            var viewerIds = await _workflowViewScopeResolver.ResolveViewerUserIdsAsync(
+                stepAssignments,
+                instanceScope,
+                submitterUserId);
+
+            if (viewerIds.Contains(userId))
             {
                 return true;
             }
@@ -173,47 +176,4 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
             .ToList();
     }
 
-    private static bool IsRoleBasedViewAssignment(WorkflowStepAssignment assignment)
-    {
-        if (!assignment.RoleId.HasValue)
-        {
-            return false;
-        }
-
-        return string.Equals(
-                   assignment.AssigneeType,
-                   WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit,
-                   StringComparison.OrdinalIgnoreCase)
-               || !assignment.DefaultUserId.HasValue;
-    }
-
-    private async Task<bool> UserMatchesViewStepAssignmentsAsync(
-        IReadOnlyList<WorkflowStepAssignment> stepAssignments,
-        Guid submitterUserId,
-        Guid userId)
-    {
-        foreach (var assignment in stepAssignments)
-        {
-            if (!assignment.IsActive)
-            {
-                continue;
-            }
-
-            if (IsRoleBasedViewAssignment(assignment))
-            {
-                var candidates = await _workflowAssigneeResolver.ResolveCandidatesByRoleAsync(
-                    assignment.RoleId!.Value, submitterUserId, assignment.IsPrimary);
-                if (candidates.Any(c => c.UserId == userId))
-                {
-                    return true;
-                }
-            }
-            else if (assignment.DefaultUserId == userId)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

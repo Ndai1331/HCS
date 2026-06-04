@@ -48,4 +48,9 @@ public class SubmitToWorkflowInput
     /// Per-step signer selection when role-based assignment resolves multiple candidates.
     /// </summary>
     public List<WorkflowStepSignerSelectionDto> StepSignerSelections { get; set; } = new();
+
+    /// <summary>
+    /// Per VIEW step: selected organization units and/or users (union) at submit time.
+    /// </summary>
+    public List<WorkflowStepViewScopeSelectionDto> ViewStepScopeSelections { get; set; } = new();
 }

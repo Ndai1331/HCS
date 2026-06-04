@@ -25,17 +25,23 @@ public abstract class WorkflowStepAssignmentManagerBase : DomainService
         bool isPrimary,
         bool isActive,
         string? assigneeType = null,
-        Guid? roleId = null)
+        Guid? roleId = null,
+        IReadOnlyList<Guid>? organizationUnitIds = null,
+        IReadOnlyList<Guid>? defaultUserIds = null)
     {
-        ValidateAssignee(assigneeType, defaultUserId, roleId);
+        var scopeFields = WorkflowStepAssignmentScopeHelper.BuildScopeFields(organizationUnitIds, defaultUserIds);
+        var effectiveDefaultUserId = scopeFields.LegacyDefaultUserId ?? defaultUserId;
+        ValidateAssignee(assigneeType, effectiveDefaultUserId, roleId, organizationUnitIds, defaultUserIds);
         var workflowStepAssignment = new WorkflowStepAssignment(
             GuidGenerator.Create(),
             stepId,
-            defaultUserId,
+            effectiveDefaultUserId,
             isPrimary,
             isActive,
             assigneeType,
             roleId);
+        workflowStepAssignment.OrganizationUnitIdsJson = scopeFields.OrganizationUnitIdsJson;
+        workflowStepAssignment.DefaultUserIdsJson = scopeFields.DefaultUserIdsJson;
         return await _workflowStepAssignmentRepository.InsertAsync(workflowStepAssignment);
     }
 
@@ -47,23 +53,45 @@ public abstract class WorkflowStepAssignmentManagerBase : DomainService
         bool isActive,
         string? assigneeType = null,
         Guid? roleId = null,
+        IReadOnlyList<Guid>? organizationUnitIds = null,
+        IReadOnlyList<Guid>? defaultUserIds = null,
         [CanBeNull] string? concurrencyStamp = null)
     {
-        ValidateAssignee(assigneeType, defaultUserId, roleId);
+        var scopeFields = WorkflowStepAssignmentScopeHelper.BuildScopeFields(organizationUnitIds, defaultUserIds);
+        var effectiveDefaultUserId = scopeFields.LegacyDefaultUserId ?? defaultUserId;
+        ValidateAssignee(assigneeType, effectiveDefaultUserId, roleId, organizationUnitIds, defaultUserIds);
         var workflowStepAssignment = await _workflowStepAssignmentRepository.GetAsync(id);
         workflowStepAssignment.StepId = stepId;
-        workflowStepAssignment.DefaultUserId = defaultUserId;
+        workflowStepAssignment.DefaultUserId = effectiveDefaultUserId;
         workflowStepAssignment.IsPrimary = isPrimary;
         workflowStepAssignment.IsActive = isActive;
         workflowStepAssignment.AssigneeType = assigneeType ?? WorkflowStepAssigneeTypeNames.SpecificUser;
         workflowStepAssignment.RoleId = roleId;
+        workflowStepAssignment.OrganizationUnitIdsJson = scopeFields.OrganizationUnitIdsJson;
+        workflowStepAssignment.DefaultUserIdsJson = scopeFields.DefaultUserIdsJson;
         workflowStepAssignment.SetConcurrencyStampIfNotNull(concurrencyStamp);
         return await _workflowStepAssignmentRepository.UpdateAsync(workflowStepAssignment);
     }
 
-    protected virtual void ValidateAssignee(string? assigneeType, Guid? defaultUserId, Guid? roleId)
+    protected virtual void ValidateAssignee(
+        string? assigneeType,
+        Guid? defaultUserId,
+        Guid? roleId,
+        IReadOnlyList<Guid>? organizationUnitIds = null,
+        IReadOnlyList<Guid>? defaultUserIds = null)
     {
         var type = assigneeType ?? WorkflowStepAssigneeTypeNames.SpecificUser;
+
+        if (type == WorkflowStepAssigneeTypeNames.ScopedAssignee)
+        {
+            if (!WorkflowStepAssignmentScopeHelper.HasResolvableScope(type, organizationUnitIds, defaultUserIds, roleId))
+            {
+                throw new BusinessException("HC:WorkflowStepAssignment:ScopeRequired");
+            }
+
+            return;
+        }
+
         if (type == WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit)
         {
             if (!roleId.HasValue || roleId == Guid.Empty)
@@ -76,6 +104,12 @@ public abstract class WorkflowStepAssignmentManagerBase : DomainService
                 throw new BusinessException("HC:WorkflowStepAssignment:DefaultUserMustBeEmptyForRoleAssignee");
             }
 
+            return;
+        }
+
+        var userIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(defaultUserIds);
+        if (userIds.Count > 0)
+        {
             return;
         }
 

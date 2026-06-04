@@ -48,6 +48,8 @@ public class ResubmitReturnedWorkflowInput
     /// Per-step signer selection when role-based assignment resolves multiple candidates.
     /// </summary>
     public List<WorkflowStepSignerSelectionDto> StepSignerSelections { get; set; } = new();
+
+    public List<WorkflowStepViewScopeSelectionDto> ViewStepScopeSelections { get; set; } = new();
 }
 
 /// <summary>
