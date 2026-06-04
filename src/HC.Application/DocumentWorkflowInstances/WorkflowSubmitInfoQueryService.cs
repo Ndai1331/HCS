@@ -171,7 +171,7 @@ public class WorkflowSubmitInfoQueryService : HCAppService, IWorkflowSubmitInfoQ
         {
             foreach (var assignment in activeAssignments.Where(IsConfiguredBlockingAssignment))
             {
-                if (IsRoleBasedAssignment(assignment))
+                if (ResolvesByRoleInSubmitterOu(assignment))
                 {
                     var candidates = await _workflowAssigneeResolver.ResolveCandidatesByRoleAsync(
                         assignment.RoleId!.Value, submitterUserId, assignment.IsPrimary);
@@ -260,6 +260,18 @@ public class WorkflowSubmitInfoQueryService : HCAppService, IWorkflowSubmitInfoQ
         return assignment.AssigneeType == WorkflowStepAssigneeTypeNames.ScopedAssignee;
     }
 
+    private static bool IsLegacyScopedRoleAssignment(WorkflowStepAssignment assignment)
+    {
+        return IsScopedAssignment(assignment)
+               && assignment.RoleId.HasValue
+               && assignment.RoleId.Value != Guid.Empty;
+    }
+
+    private static bool ResolvesByRoleInSubmitterOu(WorkflowStepAssignment assignment)
+    {
+        return IsRoleBasedAssignment(assignment) || IsLegacyScopedRoleAssignment(assignment);
+    }
+
     private static bool IsConfiguredBlockingAssignment(WorkflowStepAssignment assignment)
     {
         if (!assignment.IsActive)
@@ -267,14 +279,22 @@ public class WorkflowSubmitInfoQueryService : HCAppService, IWorkflowSubmitInfoQ
             return false;
         }
 
-        if (IsScopedAssignment(assignment))
+        if (ResolvesByRoleInSubmitterOu(assignment))
         {
-            return false;
+            return true;
         }
 
-        if (IsRoleBasedAssignment(assignment))
+        if (IsScopedAssignment(assignment))
         {
-            return assignment.RoleId.HasValue;
+            var ouIds = WorkflowStepAssignmentScopeHelper.GetOrganizationUnitIds(assignment.OrganizationUnitIdsJson);
+            if (ouIds.Count > 0)
+            {
+                return false;
+            }
+
+            return WorkflowStepAssignmentScopeHelper.GetDefaultUserIds(
+                assignment.DefaultUserIdsJson,
+                assignment.DefaultUserId).Count > 0;
         }
 
         return WorkflowStepAssignmentScopeHelper.GetDefaultUserIds(
@@ -305,7 +325,7 @@ public class WorkflowSubmitInfoQueryService : HCAppService, IWorkflowSubmitInfoQ
 
         foreach (var assignment in stepAssignments.Where(IsConfiguredBlockingAssignment))
         {
-            if (IsRoleBasedAssignment(assignment))
+            if (ResolvesByRoleInSubmitterOu(assignment))
             {
                 var candidates = await _workflowAssigneeResolver.ResolveCandidatesByRoleAsync(
                     assignment.RoleId!.Value,

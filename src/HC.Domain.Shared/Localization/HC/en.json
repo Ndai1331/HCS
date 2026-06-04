@@ -1124,6 +1124,7 @@
     "ViewStepScopeCannotRemoveCatalogDefaults": "Cannot remove organization units or users configured in the workflow catalog",
     "ViewStepScopeCatalogDefaultsLockedHint": "Catalog organization units and users stay selected; you may add more.",
     "StepAssignmentViewOuRequired": "View steps require at least one organization unit",
+    "StepAssignmentBlockingOuNotAllowed": "Sign/process steps cannot be configured with organization units only; choose a specific user or a role in the submitter's department",
     "StepAssignmentScopeRequired": "Select at least one organization unit or user for this assignment",
     "StepAssignmentScopedRoleHint": "Optional: users with this role in the selected organization units are also included",
     "Optional": "Optional",

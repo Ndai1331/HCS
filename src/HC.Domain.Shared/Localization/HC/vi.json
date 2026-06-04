@@ -1176,6 +1176,7 @@
     "ViewStepScopeCannotRemoveCatalogDefaults": "Không được bỏ khoa phòng hoặc người dùng mặc định từ danh mục quy trình",
     "ViewStepScopeCatalogDefaultsLockedHint": "Khoa phòng và người dùng từ danh mục được giữ mặc định; có thể thêm thêm.",
     "StepAssignmentViewOuRequired": "Bước xem phải chọn ít nhất một khoa phòng",
+    "StepAssignmentBlockingOuNotAllowed": "Bước ký/xử lý không được chỉ cấu hình khoa phòng; chọn người dùng cụ thể hoặc vai trò trong khoa phòng người trình ký",
     "StepAssignmentScopeRequired": "Chọn ít nhất một khoa phòng hoặc người dùng cho phân công này",
     "StepAssignmentScopedRoleHint": "Tùy chọn: thêm người có vai trò này trong các khoa phòng đã chọn",
     "Optional": "Tùy chọn",

@@ -141,7 +141,7 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
 
     public virtual async Task<WorkflowStepAssignmentDto> CreateAsync(WorkflowStepAssignmentCreateDto input)
     {
-        await ValidateCatalogAssignmentAsync(input.StepId, input.AssigneeType, input.RoleId, input.OrganizationUnitIds, input.DefaultUserIds, input.DefaultUserId);
+        await PrepareCatalogAssignmentAsync(input);
         var workflowStepAssignment = await _workflowStepAssignmentManager.CreateAsync(
             input.StepId,
             input.DefaultUserId,
@@ -157,7 +157,7 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
     [Authorize(HCPermissions.WorkflowStepAssignments.Edit)]
     public virtual async Task<WorkflowStepAssignmentDto> UpdateAsync(Guid id, WorkflowStepAssignmentUpdateDto input)
     {
-        await ValidateCatalogAssignmentAsync(input.StepId, input.AssigneeType, input.RoleId, input.OrganizationUnitIds, input.DefaultUserIds, input.DefaultUserId);
+        await PrepareCatalogAssignmentAsync(input);
         var workflowStepAssignment = await _workflowStepAssignmentManager.UpdateAsync(
             id,
             input.StepId,
@@ -207,34 +207,125 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
         };
     }
 
-    protected virtual async Task ValidateCatalogAssignmentAsync(
-        Guid? stepId,
-        string? assigneeType,
-        Guid? roleId,
-        IReadOnlyList<Guid>? organizationUnitIds,
-        IReadOnlyList<Guid>? defaultUserIds,
-        Guid? defaultUserId)
+    protected virtual async Task PrepareCatalogAssignmentAsync(WorkflowStepAssignmentCreateDto input)
     {
-        if (!stepId.HasValue || stepId == Guid.Empty)
+        if (!input.StepId.HasValue || input.StepId == Guid.Empty)
         {
             return;
         }
 
-        var step = await _workflowStepTemplateRepository.GetAsync(stepId.Value);
-        if (!WorkflowStepNavigationHelper.IsViewStep(step.Type))
+        var step = await _workflowStepTemplateRepository.GetAsync(input.StepId.Value);
+        if (WorkflowStepNavigationHelper.IsViewStep(step.Type))
+        {
+            input.AssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
+            input.RoleId = null;
+            input.DefaultUserId = null;
+            input.DefaultUserIds = new List<Guid>();
+
+            var ouIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(input.OrganizationUnitIds);
+            if (ouIds.Count == 0)
+            {
+                throw new UserFriendlyException(L["StepAssignmentViewOuRequired"]);
+            }
+
+            return;
+        }
+
+        NormalizeBlockingCatalogAssignment(input);
+    }
+
+    protected virtual async Task PrepareCatalogAssignmentAsync(WorkflowStepAssignmentUpdateDto input)
+    {
+        if (!input.StepId.HasValue || input.StepId == Guid.Empty)
         {
             return;
         }
 
-        var ouIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(organizationUnitIds);
-        if (ouIds.Count == 0)
+        var step = await _workflowStepTemplateRepository.GetAsync(input.StepId.Value);
+        if (WorkflowStepNavigationHelper.IsViewStep(step.Type))
         {
-            throw new UserFriendlyException(L["StepAssignmentViewOuRequired"]);
+            input.AssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
+            input.RoleId = null;
+            input.DefaultUserId = null;
+            input.DefaultUserIds = new List<Guid>();
+
+            var ouIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(input.OrganizationUnitIds);
+            if (ouIds.Count == 0)
+            {
+                throw new UserFriendlyException(L["StepAssignmentViewOuRequired"]);
+            }
+
+            return;
         }
 
-        if (!string.Equals(assigneeType, WorkflowStepAssigneeTypeNames.ScopedAssignee, StringComparison.OrdinalIgnoreCase))
+        NormalizeBlockingCatalogAssignment(input);
+    }
+
+    private void NormalizeBlockingCatalogAssignment(WorkflowStepAssignmentCreateDto input)
+    {
+        var ouIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(input.OrganizationUnitIds);
+        var userIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(input.DefaultUserIds);
+        if (!input.DefaultUserId.HasValue || input.DefaultUserId == Guid.Empty)
         {
-            throw new UserFriendlyException(L["StepAssignmentViewOuRequired"]);
+            input.DefaultUserId = null;
         }
+        else if (!userIds.Contains(input.DefaultUserId.Value))
+        {
+            userIds.Add(input.DefaultUserId.Value);
+        }
+
+        if (string.Equals(input.AssigneeType, WorkflowStepAssigneeTypeNames.ScopedAssignee, StringComparison.OrdinalIgnoreCase))
+        {
+            if (input.RoleId.HasValue && input.RoleId != Guid.Empty)
+            {
+                input.AssigneeType = WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit;
+                input.OrganizationUnitIds = new List<Guid>();
+                input.DefaultUserIds = new List<Guid>();
+                input.DefaultUserId = null;
+            }
+            else if (userIds.Count > 0)
+            {
+                input.AssigneeType = WorkflowStepAssigneeTypeNames.SpecificUser;
+                input.OrganizationUnitIds = new List<Guid>();
+                input.RoleId = null;
+                input.DefaultUserId = userIds[0];
+                input.DefaultUserIds = new List<Guid>();
+            }
+            else if (ouIds.Count > 0)
+            {
+                throw new UserFriendlyException(L["StepAssignmentBlockingOuNotAllowed"]);
+            }
+        }
+        else
+        {
+            input.OrganizationUnitIds = new List<Guid>();
+            input.DefaultUserIds = new List<Guid>();
+
+            if (string.Equals(input.AssigneeType, WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit, StringComparison.OrdinalIgnoreCase))
+            {
+                input.DefaultUserId = null;
+            }
+        }
+    }
+
+    private void NormalizeBlockingCatalogAssignment(WorkflowStepAssignmentUpdateDto input)
+    {
+        var createShape = new WorkflowStepAssignmentCreateDto
+        {
+            StepId = input.StepId,
+            AssigneeType = input.AssigneeType,
+            RoleId = input.RoleId,
+            DefaultUserId = input.DefaultUserId,
+            OrganizationUnitIds = input.OrganizationUnitIds,
+            DefaultUserIds = input.DefaultUserIds,
+            IsPrimary = input.IsPrimary,
+            IsActive = input.IsActive
+        };
+        NormalizeBlockingCatalogAssignment(createShape);
+        input.AssigneeType = createShape.AssigneeType;
+        input.RoleId = createShape.RoleId;
+        input.DefaultUserId = createShape.DefaultUserId;
+        input.OrganizationUnitIds = createShape.OrganizationUnitIds;
+        input.DefaultUserIds = createShape.DefaultUserIds;
     }
 }

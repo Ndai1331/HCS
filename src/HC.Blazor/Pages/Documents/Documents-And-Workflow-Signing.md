@@ -165,6 +165,25 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
 - Sau unlock, engine **auto-skip** các bước VIEW liên tiếp; **dừng** tại bước `SIGN` / `PROCESS`.
 - Danh sách `/document-signing`: UNION assignment workflow + document có quyền xem bước VIEW đã unlock (`HasViewAccess`, `CanAct` chỉ khi có assignment PENDING bước chặn).
 
+**Dữ liệu cũ (assignment `ScopedAssignee` trên bước Ký/Xử lý):**
+
+- Runtime vẫn resolve candidate nếu có `RoleId` (coi như `RoleInSubmitterOrganizationUnit`) hoặc user cụ thể.
+- Khi lưu qua API/UI, server tự chuẩn hóa `AssigneeType` và xóa `OrganizationUnitIdsJson` trên bước chặn.
+- SQL tùy chọn (PostgreSQL) — chỉ bước SIGN/PROCESS có role, đang `ScopedAssignee`:
+
+```sql
+UPDATE "AppWorkflowStepAssignments" a
+SET "AssigneeType" = 'RoleInSubmitterOrganizationUnit',
+    "OrganizationUnitIdsJson" = NULL,
+    "DefaultUserIdsJson" = NULL,
+    "DefaultUserId" = NULL
+FROM "AppWorkflowStepTemplates" s
+WHERE s."Id" = a."StepId"
+  AND upper(s."Type") IN ('SIGN', 'PROCESS')
+  AND a."AssigneeType" = 'ScopedAssignee'
+  AND a."RoleId" IS NOT NULL;
+```
+
 ### 3.4 Xử lý bước (Approve / Return / Reject)
 
 - **DocumentAssignment**: `PENDING`, `DONE`, `REJECTED`, `REVOKE`; gắn `WorkflowStepTemplateId` cho bước workflow (chỉ bước chặn SIGN/PROCESS).

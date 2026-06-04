@@ -135,9 +135,14 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
     private bool IsNewRoleAssignee => NewStepAssigneeType == WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit;
     private bool IsEditRoleAssignee => EditingStepAssigneeType == WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit;
 
-    private bool IsNewAssignmentForViewStep => IsViewStepTemplate(SelectedNewStepTemplate.FirstOrDefault()?.Id);
+    private string? _newAssignmentStepType;
+    private string? _editAssignmentStepType;
 
-    private bool IsEditAssignmentForViewStep => IsViewStepTemplate(SelectedEditStepTemplate.FirstOrDefault()?.Id);
+    private bool IsNewAssignmentForViewStep =>
+        IsViewStepForAssignment(SelectedNewStepTemplate.FirstOrDefault()?.Id, _newAssignmentStepType);
+
+    private bool IsEditAssignmentForViewStep =>
+        IsViewStepForAssignment(SelectedEditStepTemplate.FirstOrDefault()?.Id, _editAssignmentStepType);
 
     // File upload state for WordTemplatePath
     private FilePicker WordTemplateFilePicker { get; set; } = new();
@@ -954,6 +959,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             AssigneeType = WorkflowStepAssigneeTypeNames.SpecificUser
         };
         NewStepAssigneeType = WorkflowStepAssigneeTypeNames.SpecificUser;
+        _newAssignmentStepType = null;
         SelectedNewStepTemplate = new List<LookupDto<Guid>>();
         SelectedNewIdentityUser = new List<LookupDto<Guid>>();
         SelectedNewIdentityRole = new List<LookupDto<Guid>>();
@@ -1040,17 +1046,15 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         EditingStepAssignment = ObjectMapper.Map<WorkflowStepAssignmentDto, WorkflowStepAssignmentUpdateDto>(input.WorkflowStepAssignment);
         await LoadAssignmentOrganizationUnitTreeAsync();
 
-        var isViewStep = IsViewStepTemplate(input.WorkflowStepAssignment.StepId);
+        _editAssignmentStepType = input.Step?.Type;
+        var isViewStep = IsViewStepForAssignment(input.WorkflowStepAssignment.StepId, _editAssignmentStepType);
         if (isViewStep)
         {
             EditingStepAssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
         }
         else
         {
-            EditingStepAssigneeType = string.IsNullOrWhiteSpace(input.WorkflowStepAssignment.AssigneeType)
-                || input.WorkflowStepAssignment.AssigneeType == WorkflowStepAssigneeTypeNames.ScopedAssignee
-                ? WorkflowStepAssigneeTypeNames.SpecificUser
-                : input.WorkflowStepAssignment.AssigneeType;
+            EditingStepAssigneeType = MapLegacyBlockingAssigneeType(input.WorkflowStepAssignment);
         }
 
         await LoadWorkflowStepTemplateLookupAsync();
@@ -1066,9 +1070,11 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
             }
         }
         
-        SelectedEditAssignmentDepartments = AllAssignmentDepartmentsFlat
-            .Where(d => (input.WorkflowStepAssignment.OrganizationUnitIds ?? new List<Guid>()).Contains(d.Id))
-            .ToList();
+        SelectedEditAssignmentDepartments = isViewStep
+            ? AllAssignmentDepartmentsFlat
+                .Where(d => (input.WorkflowStepAssignment.OrganizationUnitIds ?? new List<Guid>()).Contains(d.Id))
+                .ToList()
+            : new List<DepartmentTreeView>();
 
         SelectedEditIdentityUser = new List<LookupDto<Guid>>();
         SelectedEditIdentityRole = new List<LookupDto<Guid>>();
@@ -1284,6 +1290,11 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         return result.Items.ToList();
     }
 
+    private static bool IsViewStepType(string? stepType)
+    {
+        return string.Equals(stepType, nameof(WorkflowStepType.VIEW), StringComparison.OrdinalIgnoreCase);
+    }
+
     private bool IsViewStepTemplate(Guid? stepId)
     {
         if (!stepId.HasValue || stepId == Guid.Empty)
@@ -1292,13 +1303,44 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         }
 
         var step = WorkflowStepTemplatesList.FirstOrDefault(s => s.Id == stepId.Value);
-        return step != null
-               && string.Equals(step.Type, nameof(WorkflowStepType.VIEW), StringComparison.OrdinalIgnoreCase);
+        return step != null && IsViewStepType(step.Type);
+    }
+
+    private bool IsViewStepForAssignment(Guid? stepId, string? stepTypeFromNav)
+    {
+        if (IsViewStepType(stepTypeFromNav))
+        {
+            return true;
+        }
+
+        return IsViewStepTemplate(stepId);
+    }
+
+    private static string MapLegacyBlockingAssigneeType(WorkflowStepAssignmentDto assignment)
+    {
+        if (assignment.RoleId.HasValue && assignment.RoleId != Guid.Empty)
+        {
+            return WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit;
+        }
+
+        if (string.Equals(assignment.AssigneeType, WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit, StringComparison.OrdinalIgnoreCase))
+        {
+            return WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit;
+        }
+
+        return WorkflowStepAssigneeTypeNames.SpecificUser;
     }
 
     private async Task OnNewStepTemplateChanged()
     {
-        NewStepAssignment.StepId = SelectedNewStepTemplate?.FirstOrDefault()?.Id;
+        var stepId = SelectedNewStepTemplate?.FirstOrDefault()?.Id;
+        NewStepAssignment.StepId = stepId;
+        _newAssignmentStepType = WorkflowStepTemplatesList.FirstOrDefault(s => s.Id == stepId)?.Type;
+        if (!IsNewAssignmentForViewStep)
+        {
+            SelectedNewAssignmentDepartments = new List<DepartmentTreeView>();
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 
@@ -1336,12 +1378,18 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
 
     private async Task OnEditStepTemplateChanged()
     {
-        EditingStepAssignment.StepId = SelectedEditStepTemplate?.FirstOrDefault()?.Id;
+        var stepId = SelectedEditStepTemplate?.FirstOrDefault()?.Id;
+        EditingStepAssignment.StepId = stepId;
+        _editAssignmentStepType = WorkflowStepTemplatesList.FirstOrDefault(s => s.Id == stepId)?.Type;
         if (IsEditAssignmentForViewStep)
         {
             EditingStepAssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
             SelectedEditIdentityUser = new List<LookupDto<Guid>>();
             SelectedEditIdentityRole = new List<LookupDto<Guid>>();
+        }
+        else
+        {
+            SelectedEditAssignmentDepartments = new List<DepartmentTreeView>();
         }
 
         await InvokeAsync(StateHasChanged);
