@@ -151,8 +151,8 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
 
 - Bước `VIEW` có thể đặt ở **bất kỳ** thứ tự trong quy trình.
 - **Danh mục quy trình** (`WorkflowDetail` → gán người thực hiện):
-  - Bước **VIEW**: chỉ chọn **một hoặc nhiều OU** (`ScopedAssignee` + `OrganizationUnitIds`).
-  - Bước **SIGN / PROCESS**: logic cũ — `SpecificUser` hoặc `RoleInSubmitterOrganizationUnit` (người thuộc khoa phòng người trình ký), không chọn OU trên modal danh mục.
+  - Bước **VIEW**: `ScopedAssignee` — **Khoa phòng** và/hoặc **Người dùng** (bắt buộc ít nhất một trong hai); **Vai trò** tùy chọn (thêm user có role trong các OU đã chọn). Lưu `OrganizationUnitIds`, `DefaultUserIds`, `RoleId`.
+  - Bước **SIGN / PROCESS**: `SpecificUser` hoặc `RoleInSubmitterOrganizationUnit` (người thuộc khoa phòng người trình ký), **không** chọn OU trên modal danh mục.
 - **Trình ký** (`SubmitWorkflowModal`):
   - Bước **SIGN / PROCESS**: chọn người ký/xử lý từ danh sách candidate theo OU người trình ký (như trước).
   - Bước **VIEW**: pre-fill OU/user từ danh mục; **có thể thêm** OU/user; **không được bỏ** mặc định danh mục; lưu `ViewStepScopesJson` trên instance.
@@ -189,7 +189,8 @@ WHERE s."Id" = a."StepId"
 - **DocumentAssignment**: `PENDING`, `DONE`, `REJECTED`, `REVOKE`; gắn `WorkflowStepTemplateId` cho bước workflow (chỉ bước chặn SIGN/PROCESS).
 - **DocumentWorkflowInstance**: `IN_PROGRESS`, `COMPLETED`, `REJECTED`, `RETURNED`, `CANCELLED`, …
 - Return / Reject: map trạng thái document đúng nghiệp vụ (**TRA_VE**, **TU_CHOI**, không dùng HT cho trả về/từ chối).
-- **SEQUENTIAL vs PARALLEL** (`WorkflowTemplate.SignMode`): tạo assignment và copy/merge file theo logic đã triển khai; ký điện tử **ELECTRONIC** (placeholder `<<SignNN>>`, …).
+- **SEQUENTIAL vs PARALLEL** (`WorkflowTemplate.SignMode`): tạo assignment và copy/merge file theo logic đã triển khai; ký điện tử **ELECTRONIC** / **DIGITAL** dùng placeholder `<<SignNN>>`.
+- **`<<SignNN>>`**: `NN` = **thứ tự bước Ký/Xử lý** (1, 2, 3…), **bỏ qua** bước Xem — **không** dùng `WorkflowStepTemplate.Order`. Ví dụ: Xem (order=1) → Ký (order=2) → Ký (order=3) → ký bước thứ hai dùng `<<Sign01>>`, bước thứ ba `<<Sign02>>`. `DocumentAssignment.StepOrder` lưu chỉ số placeholder này; lúc ký runtime vẫn resolve lại từ committed steps (sửa instance cũ ghi nhầm `StepOrder` = template order).
 
 ### 3.5 SLA & quá hạn
 

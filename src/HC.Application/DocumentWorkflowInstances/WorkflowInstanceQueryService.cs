@@ -195,7 +195,11 @@ public class WorkflowInstanceQueryService : HCAppService, IWorkflowInstanceQuery
                     IsPrimary = templateAssignment?.IsPrimary ?? false,
                     Status = docAssignment.Status,
                     ProcessedAt = docAssignment.ProcessedAt > DateTime.MinValue ? docAssignment.ProcessedAt : null,
-                    SigningIndex = docAssignment.Status == nameof(DocumentAssignmentStatus.DONE) ? step.Order : null
+                    SigningIndex = docAssignment.Status == nameof(DocumentAssignmentStatus.DONE)
+                        && WorkflowStepNavigationHelper.IsBlockingStep(step.Type)
+                        && WorkflowStepNavigationHelper.TryGetSigningPlaceholderIndex(allSteps, step.Id, out var signingIndex)
+                        ? signingIndex
+                        : null
                 });
             }
 

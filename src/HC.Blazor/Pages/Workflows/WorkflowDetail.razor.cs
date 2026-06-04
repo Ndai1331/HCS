@@ -989,9 +989,9 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         {
             StepAssignmentCreateValidation.ValidateCustom(
                 "Scope",
-                SelectedNewAssignmentDepartments.Any(),
+                HasViewAssignmentScope(SelectedNewAssignmentDepartments, SelectedNewIdentityUser),
                 "ScopeRequired",
-                () => L["StepAssignmentViewOuRequired"]);
+                () => L["StepAssignmentScopeRequired"]);
         }
         else if (IsNewRoleAssignee)
         {
@@ -1078,7 +1078,38 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
 
         SelectedEditIdentityUser = new List<LookupDto<Guid>>();
         SelectedEditIdentityRole = new List<LookupDto<Guid>>();
-        if (!isViewStep)
+        if (isViewStep)
+        {
+            foreach (var userId in input.WorkflowStepAssignment.DefaultUserIds ?? new List<Guid>())
+            {
+                var user = IdentityUsersCollection.FirstOrDefault(x => x.Id == userId);
+                if (user != null)
+                {
+                    SelectedEditIdentityUser.Add(user);
+                }
+            }
+
+            if (!SelectedEditIdentityUser.Any() && input.WorkflowStepAssignment.DefaultUserId.HasValue)
+            {
+                var user = IdentityUsersCollection.FirstOrDefault(x => x.Id == input.WorkflowStepAssignment.DefaultUserId.Value);
+                if (user != null)
+                {
+                    SelectedEditIdentityUser = new List<LookupDto<Guid>> { user };
+                }
+            }
+
+            if (input.WorkflowStepAssignment.RoleId.HasValue)
+            {
+                var roleName = input.Role?.Name
+                    ?? IdentityRolesCollection.FirstOrDefault(x => x.Id == input.WorkflowStepAssignment.RoleId.Value)?.DisplayName
+                    ?? input.WorkflowStepAssignment.RoleId.Value.ToString();
+                SelectedEditIdentityRole = new List<LookupDto<Guid>>
+                {
+                    new LookupDto<Guid> { Id = input.WorkflowStepAssignment.RoleId.Value, DisplayName = roleName }
+                };
+            }
+        }
+        else
         {
             if (input.WorkflowStepAssignment.DefaultUserId.HasValue)
             {
@@ -1121,9 +1152,9 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         {
             StepAssignmentEditValidation.ValidateCustom(
                 "Scope",
-                SelectedEditAssignmentDepartments.Any(),
+                HasViewAssignmentScope(SelectedEditAssignmentDepartments, SelectedEditIdentityUser),
                 "ScopeRequired",
-                () => L["StepAssignmentViewOuRequired"]);
+                () => L["StepAssignmentScopeRequired"]);
         }
         else if (IsEditRoleAssignee)
         {
@@ -1384,8 +1415,6 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         if (IsEditAssignmentForViewStep)
         {
             EditingStepAssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
-            SelectedEditIdentityUser = new List<LookupDto<Guid>>();
-            SelectedEditIdentityRole = new List<LookupDto<Guid>>();
         }
         else
         {
@@ -1458,22 +1487,29 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         return result;
     }
 
+    private static bool HasViewAssignmentScope(
+        IReadOnlyList<DepartmentTreeView> departments,
+        IReadOnlyList<LookupDto<Guid>> users)
+    {
+        return departments.Any() || users.Any();
+    }
+
     private void ApplyViewAssignmentToCreateDto()
     {
         NewStepAssignment.AssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
         NewStepAssignment.OrganizationUnitIds = SelectedNewAssignmentDepartments.Select(d => d.Id).Distinct().ToList();
-        NewStepAssignment.DefaultUserIds = new List<Guid>();
-        NewStepAssignment.DefaultUserId = null;
-        NewStepAssignment.RoleId = null;
+        NewStepAssignment.DefaultUserIds = SelectedNewIdentityUser.Select(u => u.Id).Distinct().ToList();
+        NewStepAssignment.DefaultUserId = NewStepAssignment.DefaultUserIds.FirstOrDefault();
+        NewStepAssignment.RoleId = SelectedNewIdentityRole.FirstOrDefault()?.Id;
     }
 
     private void ApplyViewAssignmentToUpdateDto()
     {
         EditingStepAssignment.AssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
         EditingStepAssignment.OrganizationUnitIds = SelectedEditAssignmentDepartments.Select(d => d.Id).Distinct().ToList();
-        EditingStepAssignment.DefaultUserIds = new List<Guid>();
-        EditingStepAssignment.DefaultUserId = null;
-        EditingStepAssignment.RoleId = null;
+        EditingStepAssignment.DefaultUserIds = SelectedEditIdentityUser.Select(u => u.Id).Distinct().ToList();
+        EditingStepAssignment.DefaultUserId = EditingStepAssignment.DefaultUserIds.FirstOrDefault();
+        EditingStepAssignment.RoleId = SelectedEditIdentityRole.FirstOrDefault()?.Id;
     }
 
     private void ApplyBlockingAssignmentToCreateDto()

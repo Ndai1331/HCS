@@ -319,13 +319,16 @@ public class WorkflowActionService : HCAppService, IWorkflowActionService, ITran
                     throw new Volo.Abp.UserFriendlyException(L["WorkflowSignerSelectionRequired"]);
                 }
 
+                var nextSigningPlaceholderIndex = WorkflowStepNavigationHelper.GetSigningPlaceholderIndex(
+                    allSteps,
+                    nextStep.Id);
                 foreach (var receiver in nextReceivers)
                 {
                     await _documentAssignmentManager.CreateAsync(
                         instance.DocumentId,
                         nextStep.Id,
                         receiver.UserId,
-                        nextStep.Order,
+                        nextSigningPlaceholderIndex,
                         nextStep.Type,
                         nameof(DocumentAssignmentStatus.PENDING),
                         now,

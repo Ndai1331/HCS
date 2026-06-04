@@ -337,13 +337,16 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
             }
 
             var receivers = ResolveReceiversForSubmit(step, input.StepSignerSelections);
+            var signingPlaceholderIndex = WorkflowStepNavigationHelper.GetSigningPlaceholderIndex(
+                allStepsOrdered,
+                step.StepId);
             foreach (var user in receivers)
             {
                 await _documentAssignmentManager.CreateAsync(
                     documentId,
                     step.StepId,
                     user.UserId,
-                    step.Order,
+                    signingPlaceholderIndex,
                     step.Type,
                     nameof(DocumentAssignmentStatus.PENDING),
                     nowTime,
@@ -599,13 +602,16 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
             }
 
             var receivers = ResolveReceiversForSubmit(step, input.StepSignerSelections);
+            var signingPlaceholderIndex = WorkflowStepNavigationHelper.GetSigningPlaceholderIndex(
+                allStepsOrdered,
+                step.StepId);
             foreach (var user in receivers)
             {
                 await _documentAssignmentManager.CreateAsync(
                     documentId,
                     step.StepId,
                     user.UserId,
-                    step.Order,
+                    signingPlaceholderIndex,
                     step.Type,
                     nameof(DocumentAssignmentStatus.PENDING),
                     nowTime,

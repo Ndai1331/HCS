@@ -218,16 +218,7 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
         if (WorkflowStepNavigationHelper.IsViewStep(step.Type))
         {
             input.AssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
-            input.RoleId = null;
-            input.DefaultUserId = null;
-            input.DefaultUserIds = new List<Guid>();
-
-            var ouIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(input.OrganizationUnitIds);
-            if (ouIds.Count == 0)
-            {
-                throw new UserFriendlyException(L["StepAssignmentViewOuRequired"]);
-            }
-
+            ValidateViewCatalogScope(input.OrganizationUnitIds, input.DefaultUserIds, input.DefaultUserId, input.RoleId);
             return;
         }
 
@@ -245,20 +236,33 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
         if (WorkflowStepNavigationHelper.IsViewStep(step.Type))
         {
             input.AssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
-            input.RoleId = null;
-            input.DefaultUserId = null;
-            input.DefaultUserIds = new List<Guid>();
-
-            var ouIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(input.OrganizationUnitIds);
-            if (ouIds.Count == 0)
-            {
-                throw new UserFriendlyException(L["StepAssignmentViewOuRequired"]);
-            }
-
+            ValidateViewCatalogScope(input.OrganizationUnitIds, input.DefaultUserIds, input.DefaultUserId, input.RoleId);
             return;
         }
 
         NormalizeBlockingCatalogAssignment(input);
+    }
+
+    private void ValidateViewCatalogScope(
+        IReadOnlyList<Guid>? organizationUnitIds,
+        IReadOnlyList<Guid>? defaultUserIds,
+        Guid? defaultUserId,
+        Guid? roleId)
+    {
+        var userIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(defaultUserIds);
+        if (userIds.Count == 0 && defaultUserId.HasValue && defaultUserId != Guid.Empty)
+        {
+            userIds = new List<Guid> { defaultUserId.Value };
+        }
+
+        if (!WorkflowStepAssignmentScopeHelper.HasResolvableScope(
+                WorkflowStepAssigneeTypeNames.ScopedAssignee,
+                organizationUnitIds,
+                userIds,
+                roleId))
+        {
+            throw new UserFriendlyException(L["StepAssignmentScopeRequired"]);
+        }
     }
 
     private void NormalizeBlockingCatalogAssignment(WorkflowStepAssignmentCreateDto input)
