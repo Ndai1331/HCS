@@ -6,9 +6,9 @@
 @using HC.WorkflowStepTemplates
 @using HC.WorkflowStepAssignments
 @using HC.Blazor.Pages
-@using Excubo.Blazor.TreeViews
 @using HC.Documents
 @using HC.Blazor.Components.Select2
+@using HC.Blazor.Components.DepartmentTreeSelect
 @using HC.Localization
 @using HC.Shared
 @using HC.Blazor.Shared
@@ -867,18 +867,9 @@
                 </Field>
                 <Field>
                     <FieldLabel>@L["OrganizationUnit"]</FieldLabel>
-                    @if (AssignmentDepartmentTreeViews == null || !AssignmentDepartmentTreeViews.Any())
-                    {
-                        <small class="text-muted">@L["NoDepartmentDefinedYet"]</small>
-                    }
-                    else
-                    {
-                        <TreeView Items="AssignmentDepartmentTreeViews"
-                                  GetChildren="@(item => item.Children)"
-                                  HasChildren="@(item => item.HasChildren)"
-                                  AllowSelection="true"
-                                  @bind-SelectedItems="SelectedNewAssignmentDepartments" />
-                    }
+                    <DepartmentTreeSelect Items="AssignmentDepartmentTreeViews"
+                                            @bind-SelectedItems="SelectedNewAssignmentDepartments"
+                                            EmptyMessage="@L["NoDepartmentDefinedYet"]" />
                 </Field>
                 <Field>
                     <FieldLabel>@L["IdentityUser"]</FieldLabel>
@@ -976,18 +967,9 @@
                 </Field>
                 <Field>
                     <FieldLabel>@L["OrganizationUnit"]</FieldLabel>
-                    @if (AssignmentDepartmentTreeViews == null || !AssignmentDepartmentTreeViews.Any())
-                    {
-                        <small class="text-muted">@L["NoDepartmentDefinedYet"]</small>
-                    }
-                    else
-                    {
-                        <TreeView Items="AssignmentDepartmentTreeViews"
-                                  GetChildren="@(item => item.Children)"
-                                  HasChildren="@(item => item.HasChildren)"
-                                  AllowSelection="true"
-                                  @bind-SelectedItems="SelectedEditAssignmentDepartments" />
-                    }
+                    <DepartmentTreeSelect Items="AssignmentDepartmentTreeViews"
+                                            @bind-SelectedItems="SelectedEditAssignmentDepartments"
+                                            EmptyMessage="@L["NoDepartmentDefinedYet"]" />
                 </Field>
                 <Field>
                     <FieldLabel>@L["IdentityUser"]</FieldLabel>

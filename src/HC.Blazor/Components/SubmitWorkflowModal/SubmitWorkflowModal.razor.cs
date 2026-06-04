@@ -12,6 +12,7 @@ using HC.DocumentWorkflowInstances;
 using HC.WorkflowStepAssignments;
 using HC.Shared;
 using HC.Blazor.Pages;
+using HC.Blazor.Components.DepartmentTreeSelect;
 using HC.Blazor.Components.Select2;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Caching.Memory;
@@ -496,6 +497,7 @@ public partial class SubmitWorkflowModal
         ViewStepDepartmentTreeViews = departmentsDictionary.TryGetValue(string.Empty, out var roots)
             ? roots
             : new List<DepartmentTreeView>();
+        DepartmentTreeSelectHelper.ExpandAllNodes(ViewStepDepartmentTreeViews);
         AllViewStepDepartmentsFlat = FlattenViewStepDepartments(ViewStepDepartmentTreeViews);
     }
 
@@ -577,12 +579,6 @@ public partial class SubmitWorkflowModal
                 UserIds = editor.SelectedUsers.Select(u => u.Id).Distinct().ToList()
             })
             .ToList();
-    }
-
-    private Task OnViewStepDepartmentsChanged(ViewStepScopeEditorState editor, List<DepartmentTreeView> items)
-    {
-        editor.SelectedDepartments = items ?? new List<DepartmentTreeView>();
-        return InvokeAsync(StateHasChanged);
     }
 
     private async Task<List<LookupDto<Guid>>> GetIdentityUserCollectionLookupAsync(

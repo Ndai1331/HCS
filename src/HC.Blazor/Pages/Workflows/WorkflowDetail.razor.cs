@@ -33,6 +33,7 @@ using Blazorise.PdfViewer;
 using System.IO;
 using HC.Blazor.Services.DocxToPdfConverter;
 using HC.Blazor.Pages;
+using HC.Blazor.Components.DepartmentTreeSelect;
 using HC.Documents;
 namespace HC.Blazor.Pages.Workflows;
 
@@ -1268,18 +1269,6 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         await InvokeAsync(StateHasChanged);
     }
 
-    private Task OnNewAssignmentDepartmentsChanged(List<DepartmentTreeView> items)
-    {
-        SelectedNewAssignmentDepartments = items ?? new List<DepartmentTreeView>();
-        return InvokeAsync(StateHasChanged);
-    }
-
-    private Task OnEditAssignmentDepartmentsChanged(List<DepartmentTreeView> items)
-    {
-        SelectedEditAssignmentDepartments = items ?? new List<DepartmentTreeView>();
-        return InvokeAsync(StateHasChanged);
-    }
-
     private async Task LoadAssignmentOrganizationUnitTreeAsync()
     {
         var organizationUnits = await DocumentsAppService.GetOrganizationUnitTreeAsync();
@@ -1316,6 +1305,7 @@ public partial class WorkflowDetail : ValidationPageBase, IDisposable
         AssignmentDepartmentTreeViews = departmentsDictionary.TryGetValue(string.Empty, out var roots)
             ? roots
             : new List<DepartmentTreeView>();
+        DepartmentTreeSelectHelper.ExpandAllNodes(AssignmentDepartmentTreeViews);
         AllAssignmentDepartmentsFlat = FlattenAssignmentDepartments(AssignmentDepartmentTreeViews);
     }
 

@@ -38,6 +38,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9DaGFydHMvUGllQ2hhcnQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
+[/Users/user/Documents/HCS/src/HC.Blazor/Components/DepartmentTreeSelect/DepartmentTreeSelect.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9EZXBhcnRtZW50VHJlZVNlbGVjdC9EZXBhcnRtZW50VHJlZVNlbGVjdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [/Users/user/Documents/HCS/src/HC.Blazor/Components/Layout/EmptyLayout.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYXlvdXQvRW1wdHlMYXlvdXQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 

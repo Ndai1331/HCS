@@ -1,7 +1,7 @@
 @using HC.Documents
 @using HC.DocumentWorkflowInstances
 @using HC.Blazor.Pages
-@using Excubo.Blazor.TreeViews
+@using HC.Blazor.Components.DepartmentTreeSelect
 @using HC.Blazor.Components.Select2
 @using HC.Shared
 @using Blazorise
@@ -154,14 +154,9 @@
                                             <div class="mt-2">
                                                 <small class="text-muted d-block mb-1">@L["ViewStepScopeSelectionHint"]</small>
                                                 <FieldLabel>@L["OrganizationUnit"]</FieldLabel>
-                                                @if (ViewStepDepartmentTreeViews.Any())
-                                                {
-                                                    <TreeView Items="ViewStepDepartmentTreeViews"
-                                                              GetChildren="@(item => item.Children)"
-                                                              HasChildren="@(item => item.HasChildren)"
-                                                              AllowSelection="true"
-                                                              @bind-SelectedItems="viewEditor.SelectedDepartments" />
-                                                }
+                                                <DepartmentTreeSelect Items="ViewStepDepartmentTreeViews"
+                                                                        @bind-SelectedItems="viewEditor.SelectedDepartments"
+                                                                        EmptyMessage="@L["NoDepartmentDefinedYet"]" />
                                                 <FieldLabel class="mt-2">@L["IdentityUser"]</FieldLabel>
                                                 <div class="hc-select2-full">
                                                     <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"

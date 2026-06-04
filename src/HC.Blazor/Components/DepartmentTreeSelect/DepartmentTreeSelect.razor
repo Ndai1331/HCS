@@ -1,0 +1,38 @@
+@using HC.Blazor.Pages
+@using Excubo.Blazor.TreeViews
+
+@if (Items == null || !Items.Any())
+{
+    <small class="text-muted">@EmptyMessage</small>
+}
+else
+{
+    <div class="hc-department-tree-select border rounded p-2" style="max-height: 280px; overflow-y: auto;">
+        <TreeView Items="Items"
+                  GetChildren="@(item => item.Children)"
+                  HasChildren="@(item => item.HasChildren)"
+                  AllowSelection="true"
+                  @bind-SelectedItems="SelectedItems">
+            <ItemTemplate>
+                <Excubo.Blazor.TreeViews.Collapse @bind-Value="@context.Item.Collapsed" />
+                <span class="ms-1">
+                    <i class="fas fa-person-shelter me-1"></i>@context.Item.Name
+                </span>
+            </ItemTemplate>
+        </TreeView>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<DepartmentTreeView> Items { get; set; } = new();
+
+    [Parameter]
+    public List<DepartmentTreeView> SelectedItems { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<List<DepartmentTreeView>> SelectedItemsChanged { get; set; }
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = string.Empty;
+}
