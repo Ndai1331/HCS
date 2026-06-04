@@ -21,11 +21,14 @@
 @using HC.ProjectTaskAssignments
 @using HC.ProjectTaskDocuments
 @using HC.DocumentFiles
+@using HC.DocumentWorkflowInstances
 @inherits HCComponentBase
 @inject IProjectTasksAppService ProjectTasksAppService
 @inject IProjectTaskAssignmentsAppService ProjectTaskAssignmentsAppService
 @inject IProjectTaskDocumentsAppService ProjectTaskDocumentsAppService
 @inject IDocumentFilesAppService DocumentFilesAppService
+@inject IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService
+@inject HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService
 @inject IUiMessageService UiMessageService
 @inject AbpBlazorMessageLocalizerHelper<HCResource> LH
 @inject IRemoteServiceConfigurationProvider RemoteServiceConfigurationProvider

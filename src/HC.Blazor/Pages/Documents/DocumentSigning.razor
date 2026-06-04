@@ -862,7 +862,7 @@
                                                             && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(assignment.DocumentFileResult.Name))
                                                         {
                                                             <Button Color="Color.Info" Size="Size.Small"
-                                                                Clicked="@(() => ViewSigningDocumentPdfAsync(assignment.DocumentFileResult.Path, assignment.DocumentFileResult.Name))"
+                                                                Clicked="@(() => ViewSigningDocumentPdfAsync(SelectedDocumentForAction!.DocumentId, assignment.DocumentFileResult.Path, assignment.DocumentFileResult.Name))"
                                                                 title="@L["ViewPdf"]">
                                                                 <Icon Name="IconName.Eye" />
                                                             </Button>

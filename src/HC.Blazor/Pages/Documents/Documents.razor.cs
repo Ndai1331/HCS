@@ -15,6 +15,8 @@ using Volo.Abp.AspNetCore.Components.Web.Theming.PageToolbars;
 using HC.Documents;
 using HC.DocumentFiles;
 using HC.Permissions;
+using HC.Blazor.Shared;
+using HC.DocumentWorkflowInstances;
 using HC.Shared;
 using Volo.Abp.BlobStoring;
 using Microsoft.AspNetCore.Components;
@@ -1255,7 +1257,10 @@ public partial class Documents : IDisposable
             PickedPdfX = 0;
             PickedPdfY = 0;
 
-            var pdfFileUrl = await LoadPdfDataUrlAsync(context.Document.Id);
+            var pdfFileUrl = await LoadPdfDataUrlAsync(
+                context.Document.Id,
+                context.Document.SourceType,
+                context.Document.WorkflowId);
             if (string.IsNullOrWhiteSpace(pdfFileUrl))
             {
                 await UiMessageService.Warn(L["NoPdfAvailable"], options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
@@ -1527,7 +1532,10 @@ public partial class Documents : IDisposable
             }
 
             CurrentDocumentPdfDocumentId = context.Document.Id;
-            var pdfFileUrl = await LoadPdfDataUrlAsync(context.Document.Id);
+            var pdfFileUrl = await LoadPdfDataUrlAsync(
+                context.Document.Id,
+                context.Document.SourceType,
+                context.Document.WorkflowId);
             if (string.IsNullOrEmpty(pdfFileUrl))
             {
                 await UiMessageService.Warn(L["NoPdfAvailable"],
@@ -1582,34 +1590,15 @@ public partial class Documents : IDisposable
         return GetDocumentsAsync();
     }
 
-    private async Task<string?> LoadPdfDataUrlAsync(Guid documentId)
+    private Task<string?> LoadPdfDataUrlAsync(Guid documentId, DocumentSourceType sourceType, Guid? workflowId)
     {
-        var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-        {
-            DocumentId = documentId,
-            MaxResultCount = 100,
-            SkipCount = 0
-        });
-
-        var pdfFile = documentFilesResult.Items
-            .FirstOrDefault(f => f.DocumentFile != null
-                && !string.IsNullOrEmpty(f.DocumentFile.Path)
-                && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(f.DocumentFile.Name));
-
-        var pdfFilePath = pdfFile?.DocumentFile?.Path;
-        if (string.IsNullOrEmpty(pdfFilePath))
-        {
-            return null;
-        }
-
-        var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
-        {
-            BlobPath = pdfFilePath,
-            WatermarkAction = "view"
-        });
-
-        var base64 = Convert.ToBase64String(fileBytes);
-        return $"data:application/pdf;base64,{base64}";
+        return WorkflowPdfDisplayHelper.LoadPdfDataUrlWithWorkflowPreferenceAsync(
+            documentId,
+            sourceType,
+            workflowId,
+            DocumentWorkflowInstancesAppService,
+            DocumentFilesAppService,
+            DocumentPdfViewerAppService);
     }
 
     private async Task LoadPreviewDocumentHistoriesAsync(Guid documentId)

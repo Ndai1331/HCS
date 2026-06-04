@@ -24,6 +24,7 @@ using HC.DocumentWorkflowInstanceFiles;
 using HC.DocumentHistories;
 using HC.MasterDatas;
 using HC.Permissions;
+using HC.Blazor.Shared;
 using HC.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -1881,10 +1882,7 @@ public partial class DocumentSigning
     #region PDF Viewer Modal
 
     /// <summary>
-    /// Open PDF viewer modal for a document signing item.
-    /// Logic: Get DocumentFiles by DocumentId (same approach as DocumentDetail),
-    /// find the first PDF file and display it. If no original file found,
-    /// fallback to checking DocumentAssignment's DocumentFileResultId.
+    /// Open PDF viewer for a workflow document using the latest signed PDF (not the submit copy).
     /// </summary>
     private async Task OpenDocumentPdfViewerModalAsync(DocumentSigningItemDto item)
     {
@@ -1893,63 +1891,19 @@ public partial class DocumentSigning
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             CurrentDocumentPdfDocumentId = item.DocumentId;
 
-            string? pdfFilePath = null;
+            var pdfFileUrl = await WorkflowPdfDisplayHelper.LoadPdfDataUrlAsync(
+                item.DocumentId,
+                DocumentWorkflowInstancesAppService,
+                DocumentPdfViewerAppService);
 
-            var assignmentsResult = await DocumentAssignmentsAppService.GetListAsync(new GetDocumentAssignmentsInput
-            {
-                DocumentId = item.DocumentId,
-                MaxResultCount = 1,
-                SkipCount = 0,
-                Sorting = "DocumentAssignment.CreationTime desc"
-            });
-
-          
-            if (assignmentsResult != null && assignmentsResult.Items.Any())
-            {
-                 var assignmentWithFile = assignmentsResult.Items
-                    .FirstOrDefault(a => a.DocumentAssignment.DocumentFileResultId.HasValue
-                        && a.DocumentFileResult != null
-                        && !string.IsNullOrEmpty(a.DocumentFileResult.Path)
-                        && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(a.DocumentFileResult.Name));
-
-                if (assignmentWithFile != null)
-                {
-                    pdfFilePath = assignmentWithFile.DocumentFileResult!.Path;
-                }
-            }
-            else
-            {
-                var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-                {
-                    DocumentId = item.DocumentId,
-                    MaxResultCount = 100,
-                    SkipCount = 0
-                });
-
-                var pdfFile = documentFilesResult.Items
-                    .FirstOrDefault(f => f.DocumentFile != null
-                        && !string.IsNullOrEmpty(f.DocumentFile.Path)
-                        && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(f.DocumentFile.Name));
-
-                pdfFilePath = pdfFile?.DocumentFile?.Path ?? string.Empty;
-
-            }
-
-            if (string.IsNullOrEmpty(pdfFilePath))
+            if (string.IsNullOrEmpty(pdfFileUrl))
             {
                 await UiMessageService.Warn(L["NoPdfAvailable"],
                     options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
-            // Get watermarked PDF from API (user + timestamp stamped)
-            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
-            {
-                BlobPath = pdfFilePath,
-                WatermarkAction = "view"
-            });
-            var base64 = Convert.ToBase64String(fileBytes);
-            DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
+            DocumentPdfFileUrl = pdfFileUrl;
             IsDocumentPdfFile = true;
 
             await DocumentPdfViewerModal.Show();
@@ -1967,14 +1921,14 @@ public partial class DocumentSigning
     }
 
     /// <summary>
-    /// View signing document PDF from the Signing Documents tab
+    /// View signing document PDF from the Signing Documents tab (enables Assign Task for the workflow document).
     /// </summary>
-    private async Task ViewSigningDocumentPdfAsync(string filePath, string fileName)
+    private async Task ViewSigningDocumentPdfAsync(Guid documentId, string filePath, string fileName)
     {
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            CurrentDocumentPdfDocumentId = null;
+            CurrentDocumentPdfDocumentId = documentId;
             var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = filePath,

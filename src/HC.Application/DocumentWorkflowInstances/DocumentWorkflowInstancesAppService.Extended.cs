@@ -25,6 +25,7 @@ public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInsta
     private readonly IWorkflowOverdueExtensionService _workflowOverdueExtensionService;
     private readonly IDocumentSigningExportService _documentSigningExportService;
     private readonly IWorkflowInitiatorCancellationService _workflowInitiatorCancellationService;
+    private readonly IWorkflowDisplayPdfResolver _workflowDisplayPdfResolver;
 
     public DocumentWorkflowInstancesAppService(
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
@@ -43,7 +44,8 @@ public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInsta
         IWorkflowSignerManagementService workflowSignerManagementService,
         IWorkflowOverdueExtensionService workflowOverdueExtensionService,
         IDocumentSigningExportService documentSigningExportService,
-        IWorkflowInitiatorCancellationService workflowInitiatorCancellationService)
+        IWorkflowInitiatorCancellationService workflowInitiatorCancellationService,
+        IWorkflowDisplayPdfResolver workflowDisplayPdfResolver)
         : base(
             documentWorkflowInstanceRepository,
             documentWorkflowInstanceManager,
@@ -63,6 +65,7 @@ public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInsta
         _workflowOverdueExtensionService = workflowOverdueExtensionService;
         _documentSigningExportService = documentSigningExportService;
         _workflowInitiatorCancellationService = workflowInitiatorCancellationService;
+        _workflowDisplayPdfResolver = workflowDisplayPdfResolver;
     }
 
     [Authorize(HCPermissions.Documents.SubmitForSigning)]
@@ -139,4 +142,8 @@ public partial class DocumentWorkflowInstancesAppService : DocumentWorkflowInsta
     [Authorize(HCPermissions.Documents.SubmitForSigning)]
     public Task CancelWorkflowByInitiatorAsync(CancelWorkflowByInitiatorInput input)
         => _workflowInitiatorCancellationService.CancelWorkflowByInitiatorAsync(input);
+
+    [Authorize(HCPermissions.DocumentAssignments.Default)]
+    public Task<WorkflowDisplayPdfFileDto?> GetWorkflowDisplayPdfFileAsync(Guid documentId)
+        => _workflowDisplayPdfResolver.ResolveAsync(documentId);
 }

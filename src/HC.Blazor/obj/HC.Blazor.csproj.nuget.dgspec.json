@@ -10,7 +10,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Application.Contracts/HC.Application.Contracts.csproj",
         "projectName": "HC.Application.Contracts",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Application.Contracts/HC.Application.Contracts.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/633c765c44061c01253935b814f27427/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Application.Contracts/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -407,7 +407,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Blazor/HC.Blazor.csproj",
         "projectName": "HC.Blazor",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Blazor/HC.Blazor.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/633c765c44061c01253935b814f27427/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Blazor/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -1093,7 +1093,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Domain.Shared/HC.Domain.Shared.csproj",
         "projectName": "HC.Domain.Shared",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Domain.Shared/HC.Domain.Shared.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/633c765c44061c01253935b814f27427/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Domain.Shared/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -1510,7 +1510,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.HttpApi.Client/HC.HttpApi.Client.csproj",
         "projectName": "HC.HttpApi.Client",
         "projectPath": "/Users/user/Documents/HCS/src/HC.HttpApi.Client/HC.HttpApi.Client.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/633c765c44061c01253935b814f27427/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.HttpApi.Client/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [

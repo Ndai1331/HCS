@@ -10,7 +10,7 @@
         "projectUniqueName": "/Users/user/Documents/HCS/src/HC.Domain.Shared/HC.Domain.Shared.csproj",
         "projectName": "HC.Domain.Shared",
         "projectPath": "/Users/user/Documents/HCS/src/HC.Domain.Shared/HC.Domain.Shared.csproj",
-        "packagesPath": "/var/folders/tp/v8g8_3g93_xgy4zrvs4lhv0c0000gq/T/cursor-sandbox-cache/633c765c44061c01253935b814f27427/nuget",
+        "packagesPath": "/Users/user/.nuget/packages/",
         "outputPath": "/Users/user/Documents/HCS/src/HC.Domain.Shared/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [

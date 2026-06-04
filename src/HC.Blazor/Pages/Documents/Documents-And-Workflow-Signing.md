@@ -81,6 +81,15 @@ Các field phục vụ luồng “Gửi” / hiển thị inbox:
 - **Tất cả**: union hai nhánh trên.
 - **Đang theo dõi**: chưa có logic (count = 0).
 
+### 3.1.1 Xem PDF & Giao việc từ trình ký
+
+- API: `GetWorkflowDisplayPdfFileAsync(documentId)` (`WorkflowDisplayPdfResolver`) — thứ tự ưu tiên:
+  1. PDF trên document có **`IsSigned = true`**, `UploadedAt` mới nhất (file đã ký đủ / merge song song).
+  2. `DocumentAssignment` **DONE** bước **SIGN/PROCESS**, `DocumentFileResultId` trỏ PDF, `ProcessedAt` mới nhất.
+  3. PDF bất kỳ trên document, `UploadedAt` mới nhất (đang xử lý, chưa có bản signed).
+- **Không** dùng file bản sao lúc trình ký (`IsSigned = false`) khi đã tồn tại file signed mới hơn.
+- Blazor: `WorkflowPdfDisplayHelper` — grid **Xem PDF**, modal **Giao việc**, tab **Tài liệu ký**, và PDF trên công việc gắn document workflow đều gọi resolver này.
+
 ### 3.2 Trình ký từ menu quản lý (0 / 1 / 2) — **bản sao + liên kết gốc**
 
 Khi submit **không** dùng “chỉ template workflow” trên một document đang là **Archive / Personal / SentToMe**:
@@ -224,6 +233,7 @@ WHERE s."Id" = a."StepId"
 | `SubmitToWorkflowAsync` | Trình ký (duplicate 0/1/2 → 3 + parent sync) |
 | `ProcessWorkflowActionAsync` | Duyệt / trả / từ chối + ký điện tử nếu có |
 | `GetDocumentSigningListAsync` | Danh sách trình ký (filter DB, Workflow + step assignment) |
+| `GetWorkflowDisplayPdfFileAsync` | PDF hiển thị / Giao việc (file signed cuối, không file trình ký) |
 | `IsDocumentSourceFileWordFormatAsync` | Kiểm tra .doc/.docx cho modal |
 
 Controller: `DocumentWorkflowInstanceController.Extended.cs`.
