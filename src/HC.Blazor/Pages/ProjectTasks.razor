@@ -1532,8 +1532,8 @@ else
     </ModalContent>
 </Modal>
 @* ************************* PDF VIEWER MODAL ************************* *@
-<Modal @ref="PdfViewerModal" Class="pdf-viewer-modal" Size="ModalSize.ExtraLarge" Centered="true">
-    <ModalContent>
+<Modal @ref="PdfViewerModal" Class="pdf-viewer-modal">
+    <ModalContent Size="ModalSize.ExtraLarge" Centered="true">
         <ModalHeader>
             <ModalTitle>@L["DocumentPreview"]</ModalTitle>
             <CloseButton Clicked="ClosePdfViewerModalAsync" />
@@ -1554,25 +1554,15 @@ else
 </Modal>
 
 <style>
-    /* PDF Viewer Modal - Ensure it stays within modal */
+    /* PDF Viewer Modal */
     .pdf-viewer-modal .modal-content {
         position: relative;
-        z-index: 1050;
-    }
-
-    .pdf-viewer-modal .modal-header {
-        border-bottom: 1px solid #dee2e6;
+        max-height: 90vh;
+        overflow: hidden;
     }
 
     .pdf-viewer-modal .modal-body {
-        max-height: 90vh;
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
-    
-    .pdf-viewer-modal-body {
-        max-height: 50rem;
-        overflow: hidden;
-        position: relative;
+        max-height: calc(90vh - 120px);
+        overflow: auto;
     }
 </style>

@@ -76,6 +76,30 @@ public class WorkflowDisplayPdfSelectionHelperTests
     }
 
     [Fact]
+    public void SelectBestPdf_PrefersSignedResultFileWithoutDocumentId_OverSubmitCopy()
+    {
+        var stepId = Guid.NewGuid();
+        var submitFile = CreatePdf(Guid.NewGuid(), "submit.pdf", isSigned: false, uploadedAt: new DateTime(2026, 1, 1));
+        var signedResultFile = CreatePdf(
+            Guid.NewGuid(),
+            "step2-signed.pdf",
+            isSigned: true,
+            uploadedAt: new DateTime(2026, 3, 1),
+            documentId: null);
+
+        var assignment = CreateDoneAssignment(stepId, signedResultFile.Id, processedAt: new DateTime(2026, 3, 2));
+        var stepTypes = new Dictionary<Guid, string> { [stepId] = nameof(WorkflowStepType.SIGN) };
+
+        // Resolver merges assignment result files even when DocumentId is null.
+        var result = WorkflowDisplayPdfSelectionHelper.SelectBestPdf(
+            new List<DocumentFile> { submitFile, signedResultFile },
+            new List<DocumentAssignment> { assignment },
+            stepTypes);
+
+        Assert.Equal(signedResultFile.Id, result!.Id);
+    }
+
+    [Fact]
     public void SelectBestPdf_SignedFileWinsOverNewerDoneAssignmentUnsignedResult()
     {
         var stepId = Guid.NewGuid();
@@ -92,9 +116,14 @@ public class WorkflowDisplayPdfSelectionHelperTests
         Assert.Equal(signedFile.Id, result!.Id);
     }
 
-    private static DocumentFile CreatePdf(Guid id, string name, bool isSigned, DateTime uploadedAt)
+    private static DocumentFile CreatePdf(
+        Guid id,
+        string name,
+        bool isSigned,
+        DateTime uploadedAt,
+        Guid? documentId = null)
     {
-        return new DocumentFile(id, DocumentId, name, isSigned, uploadedAt, path: $"/blob/{name}");
+        return new DocumentFile(id, documentId ?? DocumentId, name, isSigned, uploadedAt, path: $"/blob/{name}");
     }
 
     private static DocumentAssignment CreateDoneAssignment(Guid stepId, Guid fileResultId, DateTime processedAt)
