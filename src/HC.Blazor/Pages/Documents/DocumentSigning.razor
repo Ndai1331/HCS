@@ -222,7 +222,8 @@
                         <DataGridColumn TItem="DocumentSigningItemDto"
                             Field="SubmitterFullName"
                             Caption="@L["SubmitterName"]"
-                            Width="180px">
+                            CellStyle="@((item) => "min-width: 200px; max-width: 250px")"
+                            Width="200px">
                             <DisplayTemplate>
                                 @(context.SubmitterFullName ?? "—")
                             </DisplayTemplate>
@@ -231,6 +232,7 @@
                         <DataGridColumn TItem="DocumentSigningItemDto"
                             Field="SubmitterOrganizationUnitName"
                             Caption="@L["SubmitterOrganizationUnit"]"
+                            CellStyle="@((item) => "min-width: 200px; max-width: 250px")"
                             Width="200px">
                             <DisplayTemplate>
                                 @(context.SubmitterOrganizationUnitName ?? "—")

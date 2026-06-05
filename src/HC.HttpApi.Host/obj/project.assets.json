@@ -15149,20 +15149,20 @@
     ]
   },
   "packageFolders": {
-    "/Users/user/.nuget/packages/": {}
+    "/Users/nguyenlong/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/user/Documents/HCS/src/HC.HttpApi.Host/HC.HttpApi.Host.csproj",
+      "projectUniqueName": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.HttpApi.Host/HC.HttpApi.Host.csproj",
       "projectName": "HC.HttpApi.Host",
-      "projectPath": "/Users/user/Documents/HCS/src/HC.HttpApi.Host/HC.HttpApi.Host.csproj",
-      "packagesPath": "/Users/user/.nuget/packages/",
-      "outputPath": "/Users/user/Documents/HCS/src/HC.HttpApi.Host/obj/",
+      "projectPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.HttpApi.Host/HC.HttpApi.Host.csproj",
+      "packagesPath": "/Users/nguyenlong/.nuget/packages/",
+      "outputPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.HttpApi.Host/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/user/Documents/HCS/NuGet.Config",
-        "/Users/user/.nuget/NuGet/NuGet.Config"
+        "/Users/nguyenlong/Documents/Projects/HCS/NuGet.Config",
+        "/Users/nguyenlong/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
@@ -15175,14 +15175,14 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "/Users/user/Documents/HCS/src/HC.Application/HC.Application.csproj": {
-              "projectPath": "/Users/user/Documents/HCS/src/HC.Application/HC.Application.csproj"
+            "/Users/nguyenlong/Documents/Projects/HCS/src/HC.Application/HC.Application.csproj": {
+              "projectPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.Application/HC.Application.csproj"
             },
-            "/Users/user/Documents/HCS/src/HC.EntityFrameworkCore/HC.EntityFrameworkCore.csproj": {
-              "projectPath": "/Users/user/Documents/HCS/src/HC.EntityFrameworkCore/HC.EntityFrameworkCore.csproj"
+            "/Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/HC.EntityFrameworkCore.csproj": {
+              "projectPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.EntityFrameworkCore/HC.EntityFrameworkCore.csproj"
             },
-            "/Users/user/Documents/HCS/src/HC.HttpApi/HC.HttpApi.csproj": {
-              "projectPath": "/Users/user/Documents/HCS/src/HC.HttpApi/HC.HttpApi.csproj"
+            "/Users/nguyenlong/Documents/Projects/HCS/src/HC.HttpApi/HC.HttpApi.csproj": {
+              "projectPath": "/Users/nguyenlong/Documents/Projects/HCS/src/HC.HttpApi/HC.HttpApi.csproj"
             }
           }
         }
@@ -15197,7 +15197,7 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.200"
+      "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
       "net10.0": {
@@ -15311,7 +15311,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.203/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

@@ -203,11 +203,9 @@ public class DocumentsAppService : DocumentsAppServiceBase, IDocumentsAppService
 
         if (!string.IsNullOrWhiteSpace(filter))
         {
+            var filterLower = filter.ToLower();
             query = query.Where(x =>
-                (x.UserName != null && x.UserName.Contains(filter)) ||
-                (x.Name != null && x.Name.Contains(filter)) ||
-                (x.Surname != null && x.Surname.Contains(filter)) ||
-                (x.Email != null && x.Email.Contains(filter)));
+                ((x.Surname ?? "") + " " + (x.Name ?? "")).ToLower().Contains(filterLower));
         }
 
         var totalCount = await AsyncExecuter.CountAsync(query);

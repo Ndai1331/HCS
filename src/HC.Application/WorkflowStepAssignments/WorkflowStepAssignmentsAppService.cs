@@ -104,7 +104,16 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetIdentityUserLookupAsync(LookupRequestDto input)
     {
-        var query = (await _identityUserRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => (x.UserName != null && x.UserName.Contains(input.Filter)) || (x.Name != null && x.Name.Contains(input.Filter)));
+        var filter = input.Filter?.Trim();
+        var query = await _identityUserRepository.GetQueryableAsync();
+
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            var filterLower = filter.ToLower();
+            query = query.Where(x =>
+                ((x.Surname ?? "") + " " + (x.Name ?? "")).ToLower().Contains(filterLower));
+        }
+
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<Volo.Abp.Identity.IdentityUser>();
         var totalCount = await AsyncExecuter.CountAsync(query);
         return new PagedResultDto<LookupDto<Guid>>

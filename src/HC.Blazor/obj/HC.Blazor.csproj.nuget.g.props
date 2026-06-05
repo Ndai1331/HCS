@@ -4,13 +4,13 @@
     <RestoreSuccess Condition=" '$(RestoreSuccess)' == '' ">True</RestoreSuccess>
     <RestoreTool Condition=" '$(RestoreTool)' == '' ">NuGet</RestoreTool>
     <ProjectAssetsFile Condition=" '$(ProjectAssetsFile)' == '' ">$(MSBuildThisFileDirectory)project.assets.json</ProjectAssetsFile>
-    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">/Users/user/.nuget/packages/</NuGetPackageRoot>
-    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">/Users/user/.nuget/packages/</NuGetPackageFolders>
+    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">/Users/nguyenlong/.nuget/packages/</NuGetPackageRoot>
+    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">/Users/nguyenlong/.nuget/packages/</NuGetPackageFolders>
     <NuGetProjectStyle Condition=" '$(NuGetProjectStyle)' == '' ">PackageReference</NuGetProjectStyle>
     <NuGetToolVersion Condition=" '$(NuGetToolVersion)' == '' ">7.0.0</NuGetToolVersion>
   </PropertyGroup>
   <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <SourceRoot Include="/Users/user/.nuget/packages/" />
+    <SourceRoot Include="/Users/nguyenlong/.nuget/packages/" />
   </ItemGroup>
   <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
     <Content Include="$(NuGetPackageRoot)volo.abp.featuremanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.FeatureManagement.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.featuremanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.FeatureManagement.Blazor.Server.abppkg.analyze.json')">
@@ -238,7 +238,7 @@
     <Import Project="$(NuGetPackageRoot)volo.abp.account.pro.public.blazor.shared/10.0.1/buildTransitive/Volo.Abp.Account.Pro.Public.Blazor.Shared.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.account.pro.public.blazor.shared/10.0.1/buildTransitive/Volo.Abp.Account.Pro.Public.Blazor.Shared.props')" />
     <Import Project="$(NuGetPackageRoot)volo.abp.account.pro.admin.blazor/10.0.1/buildTransitive/Volo.Abp.Account.Pro.Admin.Blazor.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.account.pro.admin.blazor/10.0.1/buildTransitive/Volo.Abp.Account.Pro.Admin.Blazor.props')" />
     <Import Project="$(NuGetPackageRoot)microsoft.entityframeworkcore/10.0.0/buildTransitive/net10.0/Microsoft.EntityFrameworkCore.props" Condition="Exists('$(NuGetPackageRoot)microsoft.entityframeworkcore/10.0.0/buildTransitive/net10.0/Microsoft.EntityFrameworkCore.props')" />
-    <Import Project="$(NuGetPackageRoot)microsoft.aspnetcore.app.internal.assets/10.0.7/build/Microsoft.AspNetCore.App.Internal.Assets.props" Condition="Exists('$(NuGetPackageRoot)microsoft.aspnetcore.app.internal.assets/10.0.7/build/Microsoft.AspNetCore.App.Internal.Assets.props')" />
+    <Import Project="$(NuGetPackageRoot)microsoft.aspnetcore.app.internal.assets/10.0.1/build/Microsoft.AspNetCore.App.Internal.Assets.props" Condition="Exists('$(NuGetPackageRoot)microsoft.aspnetcore.app.internal.assets/10.0.1/build/Microsoft.AspNetCore.App.Internal.Assets.props')" />
     <Import Project="$(NuGetPackageRoot)keudellcoding.blazor.advancedblazorselect2/1.3.0/buildTransitive/KeudellCoding.Blazor.AdvancedBlazorSelect2.props" Condition="Exists('$(NuGetPackageRoot)keudellcoding.blazor.advancedblazorselect2/1.3.0/buildTransitive/KeudellCoding.Blazor.AdvancedBlazorSelect2.props')" />
     <Import Project="$(NuGetPackageRoot)blazorise.scheduler/1.8.8/buildTransitive/Blazorise.Scheduler.props" Condition="Exists('$(NuGetPackageRoot)blazorise.scheduler/1.8.8/buildTransitive/Blazorise.Scheduler.props')" />
     <Import Project="$(NuGetPackageRoot)blazorise.richtextedit/1.8.6/buildTransitive/Blazorise.RichTextEdit.props" Condition="Exists('$(NuGetPackageRoot)blazorise.richtextedit/1.8.6/buildTransitive/Blazorise.RichTextEdit.props')" />
@@ -247,9 +247,9 @@
     <Import Project="$(NuGetPackageRoot)blazorise.bootstrap5/1.8.6/buildTransitive/Blazorise.Bootstrap5.props" Condition="Exists('$(NuGetPackageRoot)blazorise.bootstrap5/1.8.6/buildTransitive/Blazorise.Bootstrap5.props')" />
   </ImportGroup>
   <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <PkgMicrosoft_Extensions_ApiDescription_Server Condition=" '$(PkgMicrosoft_Extensions_ApiDescription_Server)' == '' ">/Users/user/.nuget/packages/microsoft.extensions.apidescription.server/9.0.0</PkgMicrosoft_Extensions_ApiDescription_Server>
-    <PkgMicrosoft_CodeAnalysis_Analyzers Condition=" '$(PkgMicrosoft_CodeAnalysis_Analyzers)' == '' ">/Users/user/.nuget/packages/microsoft.codeanalysis.analyzers/3.3.3</PkgMicrosoft_CodeAnalysis_Analyzers>
-    <PkgMicrosoft_AspNetCore_Components_WebAssembly_Server Condition=" '$(PkgMicrosoft_AspNetCore_Components_WebAssembly_Server)' == '' ">/Users/user/.nuget/packages/microsoft.aspnetcore.components.webassembly.server/10.0.0</PkgMicrosoft_AspNetCore_Components_WebAssembly_Server>
-    <PkgAWSSDK_Core Condition=" '$(PkgAWSSDK_Core)' == '' ">/Users/user/.nuget/packages/awssdk.core/3.7.105.20</PkgAWSSDK_Core>
+    <PkgMicrosoft_Extensions_ApiDescription_Server Condition=" '$(PkgMicrosoft_Extensions_ApiDescription_Server)' == '' ">/Users/nguyenlong/.nuget/packages/microsoft.extensions.apidescription.server/9.0.0</PkgMicrosoft_Extensions_ApiDescription_Server>
+    <PkgMicrosoft_CodeAnalysis_Analyzers Condition=" '$(PkgMicrosoft_CodeAnalysis_Analyzers)' == '' ">/Users/nguyenlong/.nuget/packages/microsoft.codeanalysis.analyzers/3.3.3</PkgMicrosoft_CodeAnalysis_Analyzers>
+    <PkgMicrosoft_AspNetCore_Components_WebAssembly_Server Condition=" '$(PkgMicrosoft_AspNetCore_Components_WebAssembly_Server)' == '' ">/Users/nguyenlong/.nuget/packages/microsoft.aspnetcore.components.webassembly.server/10.0.0</PkgMicrosoft_AspNetCore_Components_WebAssembly_Server>
+    <PkgAWSSDK_Core Condition=" '$(PkgAWSSDK_Core)' == '' ">/Users/nguyenlong/.nuget/packages/awssdk.core/3.7.105.20</PkgAWSSDK_Core>
   </PropertyGroup>
 </Project>

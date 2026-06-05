@@ -11,321 +11,321 @@ build_property.EnforceExtendedAnalyzerRules =
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = HC.Blazor
 build_property.RootNamespace = HC.Blazor
-build_property.ProjectDir = /Users/user/Documents/HCS/src/HC.Blazor/
+build_property.ProjectDir = /Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = /Users/user/Documents/HCS/src/HC.Blazor
+build_property.MSBuildProjectDirectory = /Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 10.0
 build_property.EnableCodeStyleSeverity = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/App.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/App.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9BcHAucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Charts/BarChart.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Charts/BarChart.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9DaGFydHMvQmFyQ2hhcnQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Charts/LineChart.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Charts/LineChart.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9DaGFydHMvTGluZUNoYXJ0LnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Charts/PieChart.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Charts/PieChart.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9DaGFydHMvUGllQ2hhcnQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/DepartmentTreeSelect/DepartmentTreeSelect.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/DepartmentTreeSelect/DepartmentTreeSelect.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9EZXBhcnRtZW50VHJlZVNlbGVjdC9EZXBhcnRtZW50VHJlZVNlbGVjdC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Layout/EmptyLayout.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Layout/EmptyLayout.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYXlvdXQvRW1wdHlMYXlvdXQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Layout/LeptonXFooter.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Layout/LeptonXFooter.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYXlvdXQvTGVwdG9uWEZvb3Rlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/NotificationToast.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/NotificationToast.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Ob3RpZmljYXRpb25Ub2FzdC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Pages/Books.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Pages/Books.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Cb29rcy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Pages/CookiePolicy.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Pages/CookiePolicy.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Db29raWVQb2xpY3kucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Pages/HostDashboard.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Pages/HostDashboard.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ib3N0RGFzaGJvYXJkLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Pages/Notification.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Pages/Notification.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ob3RpZmljYXRpb24ucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Pages/PrivacyPolicy.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Pages/PrivacyPolicy.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Qcml2YWN5UG9saWN5LnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Pages/TenantDashboard.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Pages/TenantDashboard.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9UZW5hbnREYXNoYm9hcmQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/PdfViewerTaskActionsFooter.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/PdfViewerTaskActionsFooter.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QZGZWaWV3ZXJUYXNrQWN0aW9uc0Zvb3Rlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/ProjectTaskCreateModal/ProjectTaskCreateModal.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/ProjectTaskCreateModal/ProjectTaskCreateModal.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Qcm9qZWN0VGFza0NyZWF0ZU1vZGFsL1Byb2plY3RUYXNrQ3JlYXRlTW9kYWwucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/ProjectTaskViewModal/ProjectTaskViewModal.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/ProjectTaskViewModal/ProjectTaskViewModal.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Qcm9qZWN0VGFza1ZpZXdNb2RhbC9Qcm9qZWN0VGFza1ZpZXdNb2RhbC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Routes.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Routes.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Sb3V0ZXMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Select2/UserSelect2.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Select2/UserSelect2.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TZWxlY3QyL1VzZXJTZWxlY3QyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/SubmitWorkflowModal/SubmitWorkflowModal.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/SubmitWorkflowModal/SubmitWorkflowModal.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TdWJtaXRXb3JrZmxvd01vZGFsL1N1Ym1pdFdvcmtmbG93TW9kYWwucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/TaskTree/TaskTree.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/TaskTree/TaskTree.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9UYXNrVHJlZS9UYXNrVHJlZS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/CalendarEventDetail.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/CalendarEventDetail.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2FsZW5kYXJFdmVudERldGFpbC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/CalendarEvents.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/CalendarEvents.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2FsZW5kYXJFdmVudHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Chat1/Chat1.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Chat1/Chat1.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2hhdDEvQ2hhdDEucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Chat1/Components/ChatContactListPanel.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Chat1/Components/ChatContactListPanel.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2hhdDEvQ29tcG9uZW50cy9DaGF0Q29udGFjdExpc3RQYW5lbC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Chat1/Components/ChatInitialAvatar.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Chat1/Components/ChatInitialAvatar.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2hhdDEvQ29tcG9uZW50cy9DaGF0SW5pdGlhbEF2YXRhci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Chat1/Components/ChatLoadingSpinnerOverlay.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Chat1/Components/ChatLoadingSpinnerOverlay.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2hhdDEvQ29tcG9uZW50cy9DaGF0TG9hZGluZ1NwaW5uZXJPdmVybGF5LnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Chat1/Components/ChatThreadPanelContent.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Chat1/Components/ChatThreadPanelContent.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2hhdDEvQ29tcG9uZW50cy9DaGF0VGhyZWFkUGFuZWxDb250ZW50LnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Chat1/InfomationConversations/InfoBox.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Chat1/InfomationConversations/InfoBox.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2hhdDEvSW5mb21hdGlvbkNvbnZlcnNhdGlvbnMvSW5mb0JveC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Chat1/MessageItem.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Chat1/MessageItem.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2hhdDEvTWVzc2FnZUl0ZW0ucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/ConfidentialityLevels.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/ConfidentialityLevels.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ29uZmlkZW50aWFsaXR5TGV2ZWxzLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Departments/Departments.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Departments/Departments.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRGVwYXJ0bWVudHMvRGVwYXJ0bWVudHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/DocumentFiles.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/DocumentFiles.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRG9jdW1lbnRGaWxlcy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/DocumentHistories.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/DocumentHistories.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRG9jdW1lbnRIaXN0b3JpZXMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Documents/DocumentAssignments.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Documents/DocumentAssignments.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRG9jdW1lbnRzL0RvY3VtZW50QXNzaWdubWVudHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Documents/DocumentDetail.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Documents/DocumentDetail.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRG9jdW1lbnRzL0RvY3VtZW50RGV0YWlsLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Documents/Documents.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Documents/Documents.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRG9jdW1lbnRzL0RvY3VtZW50cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/DocumentStatus.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/DocumentStatus.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRG9jdW1lbnRTdGF0dXMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/DocumentTypes.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/DocumentTypes.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRG9jdW1lbnRUeXBlcy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/EventTypes.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/EventTypes.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRXZlbnRUeXBlcy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/MasterDatas.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/MasterDatas.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvTWFzdGVyRGF0YXMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/MyDocuments.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/MyDocuments.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvTXlEb2N1bWVudHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/MyProfile.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/MyProfile.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvTXlQcm9maWxlLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/NotificationReceivers.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/NotificationReceivers.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvTm90aWZpY2F0aW9uUmVjZWl2ZXJzLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Positions.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Positions.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUG9zaXRpb25zLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/ProcessingMethods.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/ProcessingMethods.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUHJvY2Vzc2luZ01ldGhvZHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/ProjectDetail.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/ProjectDetail.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUHJvamVjdERldGFpbC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Projects.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Projects.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUHJvamVjdHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/ProjectTasks.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/ProjectTasks.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUHJvamVjdFRhc2tzLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/ProjectTasksDetail.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/ProjectTasksDetail.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUHJvamVjdFRhc2tzRGV0YWlsLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Reports.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Reports.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUmVwb3J0cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/ReportWebFrame/Index.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/ReportWebFrame/Index.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUmVwb3J0V2ViRnJhbWUvSW5kZXgucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Sectors.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Sectors.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvU2VjdG9ycy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/SignatureSettings.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/SignatureSettings.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvU2lnbmF0dXJlU2V0dGluZ3MucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/SigningMethods.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/SigningMethods.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvU2lnbmluZ01ldGhvZHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/SurveyCollections.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/SurveyCollections.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvU3VydmV5Q29sbGVjdGlvbnMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/SurveyCriterias.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/SurveyCriterias.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvU3VydmV5Q3JpdGVyaWFzLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/SurveyLocations.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/SurveyLocations.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvU3VydmV5TG9jYXRpb25zLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/SurveyResults.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/SurveyResults.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvU3VydmV5UmVzdWx0cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/SurveySessions.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/SurveySessions.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvU3VydmV5U2Vzc2lvbnMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Units.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Units.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvVW5pdHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/UrgencyLevels.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/UrgencyLevels.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvVXJnZW5jeUxldmVscy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/UserDepartments.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/UserDepartments.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvVXNlckRlcGFydG1lbnRzLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/UserSignatures.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/UserSignatures.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvVXNlclNpZ25hdHVyZXMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/ViewDocumentDetail.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/ViewDocumentDetail.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvVmlld0RvY3VtZW50RGV0YWlsLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Workflows/WorkflowDefinitions.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Workflows/WorkflowDefinitions.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvV29ya2Zsb3dzL1dvcmtmbG93RGVmaW5pdGlvbnMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Workflows/WorkflowDetail.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Workflows/WorkflowDetail.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvV29ya2Zsb3dzL1dvcmtmbG93RGV0YWlsLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Workflows/Workflows.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Workflows/Workflows.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvV29ya2Zsb3dzL1dvcmtmbG93cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/_Imports.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/_Imports.razor]
 build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Documents/DocumentSigningFilterBar.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Documents/DocumentSigningFilterBar.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Eb2N1bWVudHMvRG9jdW1lbnRTaWduaW5nRmlsdGVyQmFyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = b-4gvk21fr0w
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Pages/Index.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Pages/Index.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9JbmRleC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-lm1vm8cb5n
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/Documents/DocumentSigning.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/Documents/DocumentSigning.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRG9jdW1lbnRzL0RvY3VtZW50U2lnbmluZy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-m5oxcbsjmw
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/DocumentWorkflowInstances.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/DocumentWorkflowInstances.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRG9jdW1lbnRXb3JrZmxvd0luc3RhbmNlcy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-teazv0gask
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Pages/MasterDataPage.razor]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Pages/MasterDataPage.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvTWFzdGVyRGF0YVBhZ2UucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = b-4ttyedzkyc
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Components/Pages/_ViewImports.cshtml]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Components/Pages/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9fVmlld0ltcG9ydHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Themes/LeptonX/Layouts/Application/_Footer.cshtml]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Themes/LeptonX/Layouts/Application/_Footer.cshtml]
 build_metadata.AdditionalFiles.TargetPath = VGhlbWVzL0xlcHRvblgvTGF5b3V0cy9BcHBsaWNhdGlvbi9fRm9vdGVyLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.Blazor/Themes/_ViewImports.cshtml]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.Blazor/Themes/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = VGhlbWVzL19WaWV3SW1wb3J0cy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 

@@ -19,21 +19,21 @@ build_property.TargetFrameworkIdentifier = .NETCoreApp
 build_property.TargetFrameworkVersion = v10.0
 build_property.RootNamespace = HC
 build_property.RootNamespace = HC
-build_property.ProjectDir = /Users/user/Documents/HCS/src/HC.AuthServer/
+build_property.ProjectDir = /Users/nguyenlong/Documents/Projects/HCS/src/HC.AuthServer/
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = /Users/user/Documents/HCS/src/HC.AuthServer
+build_property.MSBuildProjectDirectory = /Users/nguyenlong/Documents/Projects/HCS/src/HC.AuthServer
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 10.0
 build_property.EnableCodeStyleSeverity = 
 
-[/Users/user/Documents/HCS/src/HC.AuthServer/Pages/Index.cshtml]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.AuthServer/Pages/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[/Users/user/Documents/HCS/src/HC.AuthServer/Pages/_ViewImports.cshtml]
+[/Users/nguyenlong/Documents/Projects/HCS/src/HC.AuthServer/Pages/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
