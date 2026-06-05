@@ -1,3 +1,5 @@
+using HC.Authorization.Permissions;
+using Volo.Abp.Authorization.Permissions;
 using Volo.Abp.PermissionManagement;
 using Volo.Abp.SettingManagement;
 using Volo.Abp.Account;
@@ -48,6 +50,11 @@ namespace HC;
 {
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
+        Configure<AbpPermissionOptions>(options =>
+        {
+            options.ValueProviders.Add<WorkspaceImpliedPermissionValueProvider>();
+        });
+
         context.Services.AddMapperlyObjectMapper<HCApplicationModule>();
         Configure<WorkflowSigningOptions>(context.Services.GetConfiguration().GetSection(WorkflowSigningOptions.SectionName));
 

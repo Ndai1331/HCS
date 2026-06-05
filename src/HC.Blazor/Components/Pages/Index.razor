@@ -1,5 +1,5 @@
 @page "/"
-@attribute [Authorize]
+@attribute [Authorize(HCPermissions.Workspace.Default)]
 @using HC.Workflows
 @using HC.Projects
 @using HC.ProjectTasks

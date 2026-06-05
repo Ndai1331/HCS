@@ -11,6 +11,7 @@ using HC.Documents;
 using HC.NotificationReceivers;
 using HC.ProjectTasks;
 using HC.Projects;
+using HC.Permissions;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Application.Dtos;
 
@@ -45,6 +46,7 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
         _documentWorkflowInstanceLogssAppService = documentWorkflowInstanceLogssAppService;
     }
 
+    [Authorize(HCPermissions.Workspace.Default)]
     public virtual async Task<HomeDashboardBundleDto> GetDashboardBundleAsync(GetHomeDashboardBundleInput input)
     {
         input ??= new GetHomeDashboardBundleInput();

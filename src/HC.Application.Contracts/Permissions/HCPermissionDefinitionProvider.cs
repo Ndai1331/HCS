@@ -12,6 +12,7 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         var myGroup = context.AddGroup(HCPermissions.GroupName);
         myGroup.AddPermission(HCPermissions.Dashboard.Host, L("Permission:Dashboard"), MultiTenancySides.Host);
         myGroup.AddPermission(HCPermissions.Dashboard.Tenant, L("Permission:Dashboard"), MultiTenancySides.Tenant);
+        myGroup.AddPermission(HCPermissions.Workspace.Default, L("Permission:Workspace"));
         // var booksPermission = myGroup.AddPermission(HCPermissions.Books.Default, L("Permission:Books"));
         // booksPermission.AddChild(HCPermissions.Books.Create, L("Permission:Books.Create"));
         // booksPermission.AddChild(HCPermissions.Books.Edit, L("Permission:Books.Edit"));

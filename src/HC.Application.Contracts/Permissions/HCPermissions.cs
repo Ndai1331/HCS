@@ -11,6 +11,11 @@ public static class HCPermissions
         public const string Tenant = DashboardGroup + ".Tenant";
     }
 
+    public static class Workspace
+    {
+        public const string Default = GroupName + ".Workspace";
+    }
+
     public static class Books
     {
         public const string Default = GroupName + ".Books";

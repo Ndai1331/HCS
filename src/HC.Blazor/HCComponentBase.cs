@@ -97,13 +97,19 @@ public abstract class HCComponentBase : AbpComponentBase
 
         if (exception is AbpRemoteCallException remoteException)
         {
+            if (remoteException.HttpStatusCode == 403)
+            {
+                return true;
+            }
+
             if (string.Equals(remoteException.Error?.Code, ForbiddenErrorCode, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
 
             if (!string.IsNullOrWhiteSpace(remoteException.Message)
-                && remoteException.Message.Contains(ForbiddenErrorCode, StringComparison.OrdinalIgnoreCase))
+                && (remoteException.Message.Contains(ForbiddenErrorCode, StringComparison.OrdinalIgnoreCase)
+                    || remoteException.Message.Contains("Forbidden", StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
             }
