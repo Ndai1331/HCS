@@ -1,6 +1,16 @@
+@using System.Threading
 @using HC.DocumentWorkflowInstances
+@using HC.Documents
+@using HC.WorkflowStepAssignments
+@using HC.Shared
+@using HC.Blazor.Components.Select2
 @using Blazorise
+@using Volo.Abp.Application.Dtos
+@using Microsoft.Extensions.Caching.Memory
 @inherits HCComponentBase
+@inject IWorkflowStepAssignmentsAppService WorkflowStepAssignmentsAppService
+@inject IDocumentsAppService DocumentsAppService
+@inject IMemoryCache SigningFilterMemoryCache
 
 <Card Class="hc-document-signing-filter">
     <CardBody>
@@ -35,6 +45,38 @@
             </Column>
         </Row>
         <Row Class="align-items-end g-3 mt-0">
+            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                <Field Margin="Margin.Is0">
+                    <FieldLabel>@L["FilterBySubmitter"]</FieldLabel>
+                    <div class="hc-select2-full">
+                        <UserSelect2 FilterFunction="GetSubmitterUserLookupAsync"
+                                     GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                     Datasource="SubmitterUsersCollection"
+                                     Value="@SelectedSubmitterUser"
+                                     ValueChanged="@OnSubmitterUserChanged"
+                                     Cache="SigningFilterMemoryCache"
+                                     Multiselect="false" />
+                    </div>
+                </Field>
+            </Column>
+            <Column ColumnSize="ColumnSize.Is12.OnMobile.Is6.OnDesktop">
+                <Field Margin="Margin.Is0">
+                    <FieldLabel>@L["FilterBySubmitterOrganizationUnit"]</FieldLabel>
+                    <div class="hc-select2-full">
+                        <Select2 IdSelector="c => c.Id.ToString()"
+                                 TextSelector="c => c.DisplayName"
+                                 FilterFunction="GetOrganizationUnitLookupAsync"
+                                 GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
+                                 Datasource="OrganizationUnitsCollection"
+                                 Value="@SelectedSubmitterOrganizationUnit"
+                                 OnValueChanged="@OnSubmitterOrganizationUnitChanged"
+                                 Cache="SigningFilterMemoryCache"
+                                 Multiselect="false" />
+                    </div>
+                </Field>
+            </Column>
+        </Row>
+        <Row Class="align-items-end g-3 mt-0">
             <Column ColumnSize="ColumnSize.Is12.OnMobile.Is12.OnTablet.Is7.OnDesktop">
                 <Row Class="align-items-center g-2">
                     <Column ColumnSize="ColumnSize.Is12.OnMobile.Is4.OnDesktop">
@@ -65,11 +107,78 @@
     [Parameter] public EventCallback<DocumentSigningDateFilterField> ExportDateFilterFieldChanged { get; set; }
     [Parameter] public string? FilterText { get; set; }
     [Parameter] public EventCallback<string?> FilterTextChanged { get; set; }
+    [Parameter] public List<LookupDto<Guid>> SelectedSubmitterUser { get; set; } = new();
+    [Parameter] public EventCallback<List<LookupDto<Guid>>> SelectedSubmitterUserChanged { get; set; }
+    [Parameter] public List<LookupDto<Guid>> SelectedSubmitterOrganizationUnit { get; set; } = new();
+    [Parameter] public EventCallback<List<LookupDto<Guid>>> SelectedSubmitterOrganizationUnitChanged { get; set; }
     [Parameter] public EventCallback SearchClicked { get; set; }
+
+    private IReadOnlyList<LookupDto<Guid>> SubmitterUsersCollection { get; set; } = new List<LookupDto<Guid>>();
+    private IReadOnlyList<LookupDto<Guid>> OrganizationUnitsCollection { get; set; } = new List<LookupDto<Guid>>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrganizationUnitsForFilterAsync();
+        await base.OnInitializedAsync();
+    }
 
     private async Task OnSelectedDateRangeChanged(IReadOnlyList<DateTime?> dates)
     {
         await SelectedDateRangeChanged.InvokeAsync(dates);
+    }
+
+    private async Task OnSubmitterUserChanged(List<LookupDto<Guid>> value)
+    {
+        SelectedSubmitterUser = value ?? new List<LookupDto<Guid>>();
+        await SelectedSubmitterUserChanged.InvokeAsync(SelectedSubmitterUser);
+    }
+
+    private async Task OnSubmitterOrganizationUnitChanged()
+    {
+        await SelectedSubmitterOrganizationUnitChanged.InvokeAsync(SelectedSubmitterOrganizationUnit);
+    }
+
+    private async Task<List<LookupDto<Guid>>> GetSubmitterUserLookupAsync(
+        IReadOnlyList<LookupDto<Guid>> items,
+        string filter,
+        CancellationToken token)
+    {
+        var result = await WorkflowStepAssignmentsAppService.GetIdentityUserLookupAsync(new LookupRequestDto
+        {
+            Filter = filter,
+            MaxResultCount = 20
+        });
+        SubmitterUsersCollection = result.Items ?? new List<LookupDto<Guid>>();
+        return SubmitterUsersCollection.ToList();
+    }
+
+    private Task<List<LookupDto<Guid>>> GetOrganizationUnitLookupAsync(
+        IReadOnlyList<LookupDto<Guid>> items,
+        string filter,
+        CancellationToken token)
+    {
+        var query = OrganizationUnitsCollection.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            var trimmed = filter.Trim();
+            query = query.Where(x =>
+                x.DisplayName != null && x.DisplayName.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return Task.FromResult(query.Take(20).ToList());
+    }
+
+    private async Task LoadOrganizationUnitsForFilterAsync()
+    {
+        var organizationUnits = await DocumentsAppService.GetOrganizationUnitTreeAsync();
+        OrganizationUnitsCollection = organizationUnits
+            .Select(ou => new LookupDto<Guid>
+            {
+                Id = ou.Id,
+                DisplayName = ou.DisplayName ?? ou.Code ?? ou.Id.ToString()
+            })
+            .OrderBy(x => x.DisplayName)
+            .ToList();
     }
 
     private string DatePickerLocalizer(string name, params object[] arguments)

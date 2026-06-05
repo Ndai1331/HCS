@@ -8,6 +8,7 @@ using HC.DocumentAssignments;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Identity;
 
 namespace HC.DocumentWorkflowInstances;
 
@@ -17,17 +18,20 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
     private readonly IDocumentWorkflowInstanceRepository _documentWorkflowInstanceRepository;
     private readonly IRepository<Document, Guid> _documentRepository;
     private readonly IWorkflowViewAccessService _workflowViewAccessService;
+    private readonly IRepository<IdentityUser, Guid> _identityUserRepository;
 
     public DocumentSigningFilterQueryBuilder(
         IDocumentAssignmentRepository documentAssignmentRepository,
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
         IRepository<Document, Guid> documentRepository,
-        IWorkflowViewAccessService workflowViewAccessService)
+        IWorkflowViewAccessService workflowViewAccessService,
+        IRepository<IdentityUser, Guid> identityUserRepository)
     {
         _documentAssignmentRepository = documentAssignmentRepository;
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
         _documentRepository = documentRepository;
         _workflowViewAccessService = workflowViewAccessService;
+        _identityUserRepository = identityUserRepository;
     }
 
     public async Task<SigningFilterState> BuildSigningFilterStateAsync(
@@ -37,7 +41,9 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
         DocumentSigningDateFilterField dateFilterField,
         DateTime? fromDate,
         DateTime? toDate,
-        Guid? focusDocumentId)
+        Guid? focusDocumentId,
+        Guid? submitterUserId = null,
+        Guid? submitterOrganizationUnitId = null)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -91,6 +97,28 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
                 (d.Title != null && d.Title.Contains(trimmed)) ||
                 (d.No != null && d.No.Contains(trimmed)) ||
                 (d.StorageNumber != null && d.StorageNumber.Contains(trimmed)));
+        }
+
+        if (submitterUserId.HasValue && submitterUserId.Value != Guid.Empty)
+        {
+            var submitterDocIdsQuery = instanceQueryable
+                .Where(i => i.CreatorId == submitterUserId.Value)
+                .Select(i => i.DocumentId)
+                .Distinct();
+            baseDocQuery = baseDocQuery.Where(d => submitterDocIdsQuery.Contains(d.Id));
+        }
+
+        if (submitterOrganizationUnitId.HasValue && submitterOrganizationUnitId.Value != Guid.Empty)
+        {
+            var userQueryable = await _identityUserRepository.GetQueryableAsync();
+            var creatorIdsInOuQuery = userQueryable
+                .Where(u => u.OrganizationUnits.Any(ou => ou.OrganizationUnitId == submitterOrganizationUnitId.Value))
+                .Select(u => u.Id);
+            var submitterOuDocIdsQuery = instanceQueryable
+                .Where(i => i.CreatorId.HasValue && creatorIdsInOuQuery.Contains(i.CreatorId.Value))
+                .Select(i => i.DocumentId)
+                .Distinct();
+            baseDocQuery = baseDocQuery.Where(d => submitterOuDocIdsQuery.Contains(d.Id));
         }
 
         var filteredDocIds = baseDocQuery.Select(d => d.Id);

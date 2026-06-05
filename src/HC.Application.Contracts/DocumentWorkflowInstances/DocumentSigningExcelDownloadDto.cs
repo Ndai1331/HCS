@@ -18,4 +18,8 @@ public class DocumentSigningExcelDownloadDto
     public DateTime? ToDate { get; set; }
 
     public DocumentSigningDateFilterField DateFilterField { get; set; } = DocumentSigningDateFilterField.IncomingDate;
+
+    public Guid? SubmitterUserId { get; set; }
+
+    public Guid? SubmitterOrganizationUnitId { get; set; }
 }

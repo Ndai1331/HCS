@@ -72,20 +72,8 @@ public partial class SubmitWorkflowModal
     private FilePicker? WorkflowFilePicker { get; set; }
     private List<UploadedFileInfo> UploadedFiles { get; set; } = new();
     private Dictionary<Guid, Guid?> StepSignerSelections { get; set; } = new();
-    private List<ViewStepScopeEditorState> ViewStepScopeEditors { get; set; } = new();
-    private List<DepartmentTreeView> ViewStepDepartmentTreeViews { get; set; } = new();
     private List<DepartmentTreeView> AllViewStepDepartmentsFlat { get; set; } = new();
-    private IReadOnlyList<LookupDto<Guid>> IdentityUsersCollection { get; set; } = new List<LookupDto<Guid>>();
-
-    private sealed class ViewStepScopeEditorState
-    {
-        public Guid StepId { get; init; }
-        public string StepName { get; init; } = string.Empty;
-        public List<Guid> LockedOrganizationUnitIds { get; set; } = new();
-        public List<Guid> LockedUserIds { get; set; } = new();
-        public List<DepartmentTreeView> SelectedDepartments { get; set; } = new();
-        public List<LookupDto<Guid>> SelectedUsers { get; set; } = new();
-    }
+    private Dictionary<Guid, string> ViewStepUserDisplayNamesById { get; set; } = new();
 
     private class UploadedFileInfo
     {
@@ -113,7 +101,8 @@ public partial class SubmitWorkflowModal
         SigningContent = null;
         UploadedFiles.Clear();
         StepSignerSelections.Clear();
-        ViewStepScopeEditors.Clear();
+        ViewStepUserDisplayNamesById.Clear();
+        AllViewStepDepartmentsFlat.Clear();
         ModalResetKey++;
         IsSelectedDocumentWordFormat = false;
 
@@ -242,8 +231,7 @@ public partial class SubmitWorkflowModal
                 WorkflowSubmitInfo = await DocumentWorkflowInstancesAppService.GetWorkflowSubmitInfoAsync(workflowId.Value);
                 StepSignerSelections.Clear();
                 await LoadViewStepOrganizationUnitTreeAsync();
-                await LoadIdentityUserLookupAsync();
-                InitializeViewStepScopeEditors();
+                await LoadViewStepUserDisplayNamesAsync();
             }
             catch (Exception ex)
             {
@@ -337,12 +325,9 @@ public partial class SubmitWorkflowModal
                 return;
             }
 
-            if (!ValidateViewScopeSelections())
+            if (!ValidateViewStepCatalogScopes())
             {
-                var message = ViewStepScopeEditors.Any(e => !ContainsLockedDefaults(e))
-                    ? L["ViewStepScopeCannotRemoveCatalogDefaults"]
-                    : L["ViewStepScopeRequired"];
-                await UiMessageService.Error(message,
+                await UiMessageService.Error(L["ViewStepScopeRequired"],
                     options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
@@ -499,11 +484,10 @@ public partial class SubmitWorkflowModal
                 : new List<DepartmentTreeView>();
         }
 
-        ViewStepDepartmentTreeViews = departmentsDictionary.TryGetValue(string.Empty, out var roots)
-            ? roots
+        var roots = departmentsDictionary.TryGetValue(string.Empty, out var rootNodes)
+            ? rootNodes
             : new List<DepartmentTreeView>();
-        DepartmentTreeSelectHelper.ExpandAllNodes(ViewStepDepartmentTreeViews);
-        AllViewStepDepartmentsFlat = FlattenViewStepDepartments(ViewStepDepartmentTreeViews);
+        AllViewStepDepartmentsFlat = FlattenViewStepDepartments(roots);
     }
 
     private static List<DepartmentTreeView> FlattenViewStepDepartments(IEnumerable<DepartmentTreeView> nodes)
@@ -518,152 +502,94 @@ public partial class SubmitWorkflowModal
         return result;
     }
 
-    private async Task LoadIdentityUserLookupAsync()
+    private async Task LoadViewStepUserDisplayNamesAsync()
     {
-        var result = await WorkflowStepAssignmentsAppService.GetIdentityUserLookupAsync(new LookupRequestDto
-        {
-            MaxResultCount = 50
-        });
-        IdentityUsersCollection = result.Items;
-    }
-
-    private void InitializeViewStepScopeEditors()
-    {
-        ViewStepScopeEditors = new List<ViewStepScopeEditorState>();
+        ViewStepUserDisplayNamesById = new Dictionary<Guid, string>();
         if (WorkflowSubmitInfo == null)
         {
             return;
         }
 
-        foreach (var step in WorkflowSubmitInfo.Steps.Where(s => s.IsViewStep).OrderBy(s => s.Order))
-        {
-            var editor = new ViewStepScopeEditorState
-            {
-                StepId = step.StepId,
-                StepName = step.Name
-            };
-
-            editor.LockedOrganizationUnitIds = step.TemplateOrganizationUnitIds
-                .Where(x => x != Guid.Empty)
-                .Distinct()
-                .ToList();
-            editor.LockedUserIds = step.TemplateUserIds
-                .Where(x => x != Guid.Empty)
-                .Distinct()
-                .ToList();
-
-            if (editor.LockedOrganizationUnitIds.Any())
-            {
-                editor.SelectedDepartments = AllViewStepDepartmentsFlat
-                    .Where(d => editor.LockedOrganizationUnitIds.Contains(d.Id))
-                    .ToList();
-            }
-
-            if (editor.LockedUserIds.Any())
-            {
-                editor.SelectedUsers = IdentityUsersCollection
-                    .Where(u => editor.LockedUserIds.Contains(u.Id))
-                    .ToList();
-            }
-
-            ViewStepScopeEditors.Add(editor);
-        }
-    }
-
-    private bool ValidateViewScopeSelections()
-    {
-        foreach (var editor in ViewStepScopeEditors)
-        {
-            EnsureLockedDefaultsInSelection(editor);
-            if (!ContainsLockedDefaults(editor))
-            {
-                return false;
-            }
-
-            if (!editor.SelectedDepartments.Any() && !editor.SelectedUsers.Any())
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool ContainsLockedDefaults(ViewStepScopeEditorState editor)
-    {
-        var selectedOuIds = editor.SelectedDepartments.Select(d => d.Id).ToHashSet();
-        var selectedUserIds = editor.SelectedUsers.Select(u => u.Id).ToHashSet();
-        return editor.LockedOrganizationUnitIds.All(selectedOuIds.Contains)
-               && editor.LockedUserIds.All(selectedUserIds.Contains);
-    }
-
-    private void EnsureLockedDefaultsInSelection(ViewStepScopeEditorState editor)
-    {
-        var lockedDepartments = AllViewStepDepartmentsFlat
-            .Where(d => editor.LockedOrganizationUnitIds.Contains(d.Id))
+        var userIds = WorkflowSubmitInfo.Steps
+            .Where(s => s.IsViewStep)
+            .SelectMany(s => s.TemplateUserIds)
+            .Where(x => x != Guid.Empty)
+            .Distinct()
             .ToList();
-        foreach (var department in lockedDepartments)
+
+        if (userIds.Count == 0)
         {
-            if (editor.SelectedDepartments.All(d => d.Id != department.Id))
-            {
-                editor.SelectedDepartments.Add(department);
-            }
+            return;
         }
 
-        foreach (var userId in editor.LockedUserIds)
+        var lookup = await WorkflowStepAssignmentsAppService.GetIdentityUserLookupAsync(new LookupRequestDto
         {
-            if (editor.SelectedUsers.All(u => u.Id != userId))
-            {
-                var user = IdentityUsersCollection.FirstOrDefault(u => u.Id == userId);
-                if (user != null)
-                {
-                    editor.SelectedUsers.Add(user);
-                }
-            }
+            MaxResultCount = Math.Max(userIds.Count, 100)
+        });
+
+        foreach (var userId in userIds)
+        {
+            var match = lookup.Items?.FirstOrDefault(u => u.Id == userId);
+            ViewStepUserDisplayNamesById[userId] = match?.DisplayName ?? userId.ToString();
         }
     }
 
-    private async Task OnViewStepDepartmentsChangedAsync(ViewStepScopeEditorState editor, List<DepartmentTreeView> selected)
+    private static bool HasViewStepCatalogScope(WorkflowStepDetailDto step)
     {
-        editor.SelectedDepartments = selected ?? new List<DepartmentTreeView>();
-        EnsureLockedDefaultsInSelection(editor);
-        await InvokeAsync(StateHasChanged);
+        return step.TemplateOrganizationUnitIds.Any(x => x != Guid.Empty)
+               || step.TemplateUserIds.Any(x => x != Guid.Empty);
     }
 
-    private async Task OnViewStepUsersChangedAsync(ViewStepScopeEditorState editor, List<LookupDto<Guid>> selected)
+    private bool ValidateViewStepCatalogScopes()
     {
-        editor.SelectedUsers = selected ?? new List<LookupDto<Guid>>();
-        EnsureLockedDefaultsInSelection(editor);
-        await InvokeAsync(StateHasChanged);
+        if (WorkflowSubmitInfo == null)
+        {
+            return true;
+        }
+
+        return WorkflowSubmitInfo.Steps.Where(s => s.IsViewStep).All(HasViewStepCatalogScope);
+    }
+
+    private IReadOnlyList<string> GetViewStepOrganizationUnitNames(WorkflowStepDetailDto step)
+    {
+        return step.TemplateOrganizationUnitIds
+            .Where(id => id != Guid.Empty)
+            .Select(id => AllViewStepDepartmentsFlat.FirstOrDefault(d => d.Id == id)?.Name ?? id.ToString())
+            .Distinct()
+            .ToList();
+    }
+
+    private IReadOnlyList<string> GetViewStepUserDisplayNames(WorkflowStepDetailDto step)
+    {
+        return step.TemplateUserIds
+            .Where(id => id != Guid.Empty)
+            .Select(id => ViewStepUserDisplayNamesById.TryGetValue(id, out var name) ? name : id.ToString())
+            .Distinct()
+            .ToList();
     }
 
     private List<WorkflowStepViewScopeSelectionDto> BuildViewStepScopeSelections()
     {
-        return ViewStepScopeEditors
-            .Select(editor =>
+        if (WorkflowSubmitInfo == null)
+        {
+            return new List<WorkflowStepViewScopeSelectionDto>();
+        }
+
+        return WorkflowSubmitInfo.Steps
+            .Where(s => s.IsViewStep)
+            .Select(step => new WorkflowStepViewScopeSelectionDto
             {
-                EnsureLockedDefaultsInSelection(editor);
-                return new WorkflowStepViewScopeSelectionDto
-                {
-                    StepId = editor.StepId,
-                    OrganizationUnitIds = editor.SelectedDepartments.Select(d => d.Id).Distinct().ToList(),
-                    UserIds = editor.SelectedUsers.Select(u => u.Id).Distinct().ToList()
-                };
+                StepId = step.StepId,
+                OrganizationUnitIds = step.TemplateOrganizationUnitIds
+                    .Where(x => x != Guid.Empty)
+                    .Distinct()
+                    .ToList(),
+                UserIds = step.TemplateUserIds
+                    .Where(x => x != Guid.Empty)
+                    .Distinct()
+                    .ToList()
             })
             .ToList();
-    }
-
-    private async Task<List<LookupDto<Guid>>> GetIdentityUserCollectionLookupAsync(
-        IReadOnlyList<LookupDto<Guid>> items,
-        string filter,
-        CancellationToken token)
-    {
-        var result = await WorkflowStepAssignmentsAppService.GetIdentityUserLookupAsync(new LookupRequestDto
-        {
-            Filter = filter,
-            MaxResultCount = 20
-        });
-        return result.Items.ToList();
     }
 
     private static string? GetWorkflowTemplateFilePath(WorkflowSubmitInfoDto? workflowInfo)

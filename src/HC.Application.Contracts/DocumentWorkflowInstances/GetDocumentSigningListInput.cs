@@ -19,6 +19,10 @@ public class GetDocumentSigningListInput : PagedAndSortedResultRequestDto
 
     public DateTime? ToDate { get; set; }
 
+    public Guid? SubmitterUserId { get; set; }
+
+    public Guid? SubmitterOrganizationUnitId { get; set; }
+
     /// <summary>
     /// When set, restricts the query to this document (e.g. deep link / notification). Uses Skip/Take on that subset.
     /// </summary>
@@ -81,6 +85,10 @@ public class DocumentSigningItemDto
     public string? StatusName { get; set; }
     public string? TypeName { get; set; }
     public string? WorkflowName { get; set; }
+
+    public string? SubmitterFullName { get; set; }
+
+    public string? SubmitterOrganizationUnitName { get; set; }
 
     /// <summary>
     /// Workflow instance info

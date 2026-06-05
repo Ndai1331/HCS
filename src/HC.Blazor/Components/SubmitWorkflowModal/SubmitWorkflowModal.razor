@@ -140,40 +140,42 @@
                                             <i class="bi bi-clock"></i> @step.SLADays @L["Days"]
                                         </small>
                                     }
-                                    @if (!step.CandidateUsers.Any())
+                                    @if (step.IsViewStep)
+                                    {
+                                        <div class="mt-2">
+                                            <small class="text-muted d-block mb-2">@L["ViewStepScopeReadOnlyHint"]</small>
+                                            @if (GetViewStepOrganizationUnitNames(step).Any())
+                                            {
+                                                <div class="mb-1">
+                                                    <span class="fw-semibold">@L["OrganizationUnit"]:</span>
+                                                    @string.Join(", ", GetViewStepOrganizationUnitNames(step))
+                                                </div>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(step.RoleName))
+                                            {
+                                                <div class="mb-1">
+                                                    <span class="fw-semibold">@L["Role"]:</span>
+                                                    @step.RoleName
+                                                </div>
+                                            }
+                                            @if (GetViewStepUserDisplayNames(step).Any())
+                                            {
+                                                <div class="mb-1">
+                                                    <span class="fw-semibold">@L["IdentityUser"]:</span>
+                                                    @string.Join(", ", GetViewStepUserDisplayNames(step))
+                                                </div>
+                                            }
+                                            @if (!HasViewStepCatalogScope(step))
+                                            {
+                                                <small class="text-danger d-block">@L["ViewStepScopeRequired"]</small>
+                                            }
+                                        </div>
+                                    }
+                                    else if (!step.CandidateUsers.Any())
                                     {
                                         <div class="mt-1">
                                             <small class="text-danger">@L["NoWorkflowAssigneeCandidatesFound"]</small>
                                         </div>
-                                    }
-                                    else if (step.IsViewStep)
-                                    {
-                                        var viewEditor = ViewStepScopeEditors.FirstOrDefault(e => e.StepId == step.StepId);
-                                        if (viewEditor != null)
-                                        {
-                                            <div class="mt-2">
-                                                <small class="text-muted d-block mb-1">@L["ViewStepScopeSelectionHint"]</small>
-                                                @if (viewEditor.LockedOrganizationUnitIds.Any() || viewEditor.LockedUserIds.Any())
-                                                {
-                                                    <small class="text-muted d-block mb-2">@L["ViewStepScopeCatalogDefaultsLockedHint"]</small>
-                                                }
-                                                <FieldLabel>@L["OrganizationUnit"]</FieldLabel>
-                                                <DepartmentTreeSelect Items="ViewStepDepartmentTreeViews"
-                                                                        SelectedItems="viewEditor.SelectedDepartments"
-                                                                        SelectedItemsChanged="@(v => OnViewStepDepartmentsChangedAsync(viewEditor, v))"
-                                                                        EmptyMessage="@L["NoDepartmentDefinedYet"]" />
-                                                <FieldLabel class="mt-2">@L["IdentityUser"]</FieldLabel>
-                                                <div class="hc-select2-full">
-                                                    <UserSelect2 FilterFunction="GetIdentityUserCollectionLookupAsync"
-                                                                 GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()!"
-                                                                 Datasource="IdentityUsersCollection"
-                                                                 Value="@viewEditor.SelectedUsers"
-                                                                 ValueChanged="@(v => OnViewStepUsersChangedAsync(viewEditor, v))"
-                                                                 Cache="__MemoryCache"
-                                                                 Multiselect="true" />
-                                                </div>
-                                            </div>
-                                        }
                                     }
                                     else if (step.RequiresSignerSelection)
                                     {

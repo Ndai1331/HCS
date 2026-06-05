@@ -60,6 +60,10 @@
                           ExportDateFilterFieldChanged="@OnExportDateFilterFieldChanged"
                           FilterText="@FilterText"
                           FilterTextChanged="@OnFilterTextChanged"
+                          SelectedSubmitterUser="@SelectedFilterSubmitterUser"
+                          SelectedSubmitterUserChanged="@OnFilterSubmitterUserChanged"
+                          SelectedSubmitterOrganizationUnit="@SelectedFilterSubmitterOrganizationUnit"
+                          SelectedSubmitterOrganizationUnitChanged="@OnFilterSubmitterOrganizationUnitChanged"
                           SearchClicked="@OnFilterSearchAsync" />
 
 @* ************************* BODY: 4-8 LAYOUT ************************* *@
@@ -212,6 +216,24 @@
                                         <span>@L["DocumentNumber"]: #@context.DocumentNo</span> | @L["StorageNumber"]:@context.StorageNumber
                                     </small>
                                 </div>
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="SubmitterFullName"
+                            Caption="@L["SubmitterName"]"
+                            Width="180px">
+                            <DisplayTemplate>
+                                @(context.SubmitterFullName ?? "—")
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="SubmitterOrganizationUnitName"
+                            Caption="@L["SubmitterOrganizationUnit"]"
+                            Width="200px">
+                            <DisplayTemplate>
+                                @(context.SubmitterOrganizationUnitName ?? "—")
                             </DisplayTemplate>
                         </DataGridColumn>
 

@@ -164,7 +164,7 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
   - Bước **SIGN / PROCESS**: `SpecificUser` hoặc `RoleInSubmitterOrganizationUnit` (người thuộc khoa phòng người trình ký), **không** chọn OU trên modal danh mục.
 - **Trình ký** (`SubmitWorkflowModal`):
   - Bước **SIGN / PROCESS**: chọn người ký/xử lý từ danh sách candidate theo OU người trình ký (như trước).
-  - Bước **VIEW**: pre-fill OU/user từ danh mục; **có thể thêm** OU/user; **không được bỏ** mặc định danh mục; lưu `ViewStepScopesJson` trên instance.
+  - Bước **VIEW**: **chỉ hiển thị** OU / vai trò / người dùng đã cấu hình trên danh mục (read-only); **không** cho thêm OU/user lúc trình ký; server lưu `ViewStepScopesJson` đúng theo danh mục.
 - Khi quy trình **tới** bước VIEW: ghi `UnlockedViewStepTemplateIds`; **không** tạo `DocumentAssignment` PENDING.
 - Người được xem khi bước đã unlock (union):
   - User chỉ định (template + lựa chọn lúc trình ký);

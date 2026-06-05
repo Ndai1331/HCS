@@ -214,7 +214,8 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         }
 
         var allStepsOrdered = workflowInfo.Steps.OrderBy(s => s.Order).ToList();
-        ValidateViewStepScopeSelections(allStepsOrdered, input.ViewStepScopeSelections);
+        var viewStepScopeSelections = BuildViewStepScopesFromCatalog(allStepsOrdered);
+        ValidateViewStepScopeSelections(allStepsOrdered, viewStepScopeSelections);
         var isParallel = workflowInfo.SignMode == nameof(SignMode.PARALLEL);
         var firstBlockingStep = WorkflowStepNavigationHelper.GetFirstBlockingStepDetail(allStepsOrdered);
 
@@ -261,7 +262,7 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         instance.CommittedStepTemplateIdsJson = WorkflowSubmissionHelper.SerializeCommittedStepTemplateIds(
             allStepsOrdered.Select(s => s.StepId).ToList());
         WorkflowSubmissionHelper.SetStepSignerSelections(instance, input.StepSignerSelections);
-        WorkflowSubmissionHelper.SetViewStepScopes(instance, input.ViewStepScopeSelections);
+        WorkflowSubmissionHelper.SetViewStepScopes(instance, viewStepScopeSelections);
         WorkflowSubmissionHelper.ClearUnlockedViewSteps(instance);
         WorkflowStepNavigationHelper.AdvanceThroughViewSteps(instance, allStepsOrdered, 0);
 
@@ -515,7 +516,8 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
 
         var submitInfo = await _workflowSubmitInfoQueryService.GetWorkflowSubmitInfoAsync(returnedInstance.WorkflowId);
         var allStepsOrdered = submitInfo.Steps.OrderBy(s => s.Order).ToList();
-        ValidateViewStepScopeSelections(allStepsOrdered, input.ViewStepScopeSelections);
+        var viewStepScopeSelections = BuildViewStepScopesFromCatalog(allStepsOrdered);
+        ValidateViewStepScopeSelections(allStepsOrdered, viewStepScopeSelections);
         var isParallel = submitInfo.SignMode == nameof(SignMode.PARALLEL);
         var firstBlockingStep = WorkflowStepNavigationHelper.GetFirstBlockingStepDetail(allStepsOrdered);
 
@@ -552,7 +554,7 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         returnedInstance.CommittedStepTemplateIdsJson = WorkflowSubmissionHelper.SerializeCommittedStepTemplateIds(
             allStepsOrdered.Select(s => s.StepId).ToList());
         WorkflowSubmissionHelper.SetStepSignerSelections(returnedInstance, input.StepSignerSelections);
-        WorkflowSubmissionHelper.SetViewStepScopes(returnedInstance, input.ViewStepScopeSelections);
+        WorkflowSubmissionHelper.SetViewStepScopes(returnedInstance, viewStepScopeSelections);
         WorkflowSubmissionHelper.ClearUnlockedViewSteps(returnedInstance);
         WorkflowStepNavigationHelper.AdvanceThroughViewSteps(returnedInstance, allStepsOrdered, 0);
         returnedInstance.CurrentStepId = firstBlockingStep?.StepId ?? allStepsOrdered.Last().StepId;
@@ -705,6 +707,26 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         return ObjectMapper.Map<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>(returnedInstance);
     }
 
+    private static List<WorkflowStepViewScopeSelectionDto> BuildViewStepScopesFromCatalog(
+        IReadOnlyList<WorkflowStepDetailDto> allSteps)
+    {
+        return allSteps
+            .Where(s => s.IsViewStep)
+            .Select(step => new WorkflowStepViewScopeSelectionDto
+            {
+                StepId = step.StepId,
+                OrganizationUnitIds = step.TemplateOrganizationUnitIds
+                    .Where(x => x != Guid.Empty)
+                    .Distinct()
+                    .ToList(),
+                UserIds = step.TemplateUserIds
+                    .Where(x => x != Guid.Empty)
+                    .Distinct()
+                    .ToList()
+            })
+            .ToList();
+    }
+
     private void ValidateViewStepScopeSelections(
         IReadOnlyList<WorkflowStepDetailDto> allSteps,
         IReadOnlyList<WorkflowStepViewScopeSelectionDto>? selections)
@@ -722,6 +744,14 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
 
         foreach (var step in viewSteps)
         {
+            var templateOuIds = step.TemplateOrganizationUnitIds.Where(x => x != Guid.Empty).ToHashSet();
+            var templateUserIds = step.TemplateUserIds.Where(x => x != Guid.Empty).ToHashSet();
+
+            if (!templateOuIds.Any() && !templateUserIds.Any())
+            {
+                throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeRequired"]);
+            }
+
             if (!selectionByStep.TryGetValue(step.StepId, out var scope))
             {
                 throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeRequired"]);
@@ -729,18 +759,10 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
 
             var submittedOuIds = scope.OrganizationUnitIds.Where(x => x != Guid.Empty).ToHashSet();
             var submittedUserIds = scope.UserIds.Where(x => x != Guid.Empty).ToHashSet();
-            var templateOuIds = step.TemplateOrganizationUnitIds.Where(x => x != Guid.Empty).ToList();
-            var templateUserIds = step.TemplateUserIds.Where(x => x != Guid.Empty).ToList();
 
-            if (templateOuIds.Any(id => !submittedOuIds.Contains(id))
-                || templateUserIds.Any(id => !submittedUserIds.Contains(id)))
+            if (!templateOuIds.SetEquals(submittedOuIds) || !templateUserIds.SetEquals(submittedUserIds))
             {
-                throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeCannotRemoveCatalogDefaults"]);
-            }
-
-            if (!submittedOuIds.Any() && !submittedUserIds.Any())
-            {
-                throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeRequired"]);
+                throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeCatalogOnly"]);
             }
         }
     }

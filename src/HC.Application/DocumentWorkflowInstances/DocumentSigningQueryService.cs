@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using HC.Permissions;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Identity;
 using Volo.Abp.Users;
 
 namespace HC.DocumentWorkflowInstances;
@@ -31,6 +32,8 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
     private readonly IDocumentWorkflowInstanceRepository _documentWorkflowInstanceRepository;
     private readonly IWorkflowViewAccessService _workflowViewAccessService;
     private readonly IRepository<DocumentFile, Guid> _documentFileRepository;
+    private readonly IRepository<IdentityUser, Guid> _identityUserRepository;
+    private readonly IRepository<OrganizationUnit, Guid> _organizationUnitRepository;
 
     public DocumentSigningQueryService(
         IDocumentSigningFilterQueryBuilder signingFilterQueryBuilder,
@@ -41,7 +44,9 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
         IRepository<WorkflowStepTemplate, Guid> workflowStepTemplateRepository,
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
         IWorkflowViewAccessService workflowViewAccessService,
-        IRepository<DocumentFile, Guid> documentFileRepository)
+        IRepository<DocumentFile, Guid> documentFileRepository,
+        IRepository<IdentityUser, Guid> identityUserRepository,
+        IRepository<OrganizationUnit, Guid> organizationUnitRepository)
     {
         _signingFilterQueryBuilder = signingFilterQueryBuilder;
         _documentAssignmentRepository = documentAssignmentRepository;
@@ -52,6 +57,8 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
         _workflowViewAccessService = workflowViewAccessService;
         _documentFileRepository = documentFileRepository;
+        _identityUserRepository = identityUserRepository;
+        _organizationUnitRepository = organizationUnitRepository;
     }
 
     /// <inheritdoc />
@@ -74,7 +81,9 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
             DocumentSigningDateFilterField.IncomingDate,
             input.FromDate,
             input.ToDate,
-            input.FocusDocumentId);
+            input.FocusDocumentId,
+            input.SubmitterUserId,
+            input.SubmitterOrganizationUnitId);
 
         if (input.FilterMode == DocumentSigningFilterMode.Following)
         {
@@ -253,6 +262,14 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
             .GroupBy(f => f.DocumentId!.Value)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<DocumentFile>)g.ToList());
 
+        var submitterUserIds = latestInstances
+            .Where(i => i.CreatorId.HasValue)
+            .Select(i => i.CreatorId!.Value)
+            .Distinct()
+            .ToList();
+        var submitterNameByUserId = await GetSubmitterDisplayNamesAsync(submitterUserIds);
+        var submitterOuNameByUserId = await GetSubmitterOrganizationUnitNamesAsync(submitterUserIds);
+
         var items = new List<DocumentSigningItemDto>();
         foreach (var doc in pagedDocuments)
         {
@@ -342,6 +359,14 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
                     stepDictForInstance,
                     signedFilesForDoc);
 
+            string? submitterFullName = null;
+            string? submitterOrganizationUnitName = null;
+            if (docInstance?.CreatorId is Guid creatorId)
+            {
+                submitterNameByUserId.TryGetValue(creatorId, out submitterFullName);
+                submitterOuNameByUserId.TryGetValue(creatorId, out submitterOrganizationUnitName);
+            }
+
             items.Add(new DocumentSigningItemDto
             {
                 DocumentId = doc.Id,
@@ -352,6 +377,8 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
                 StatusName = statusName,
                 TypeName = typeName,
                 WorkflowName = workflowName,
+                SubmitterFullName = submitterFullName,
+                SubmitterOrganizationUnitName = submitterOrganizationUnitName,
                 WorkflowInstanceId = docInstance?.Id,
                 WorkflowStatus = docInstance?.Status,
                 CurrentStepName = currentStepName,
@@ -411,5 +438,68 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
             SentByMeCount = filterState.SentByMeCount,
             FollowingCount = filterState.FollowingCount
         };
+    }
+
+    private async Task<Dictionary<Guid, string>> GetSubmitterDisplayNamesAsync(IReadOnlyList<Guid> userIds)
+    {
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        var userQuery = await _identityUserRepository.GetQueryableAsync();
+        var rows = await AsyncExecuter.ToListAsync(
+            userQuery
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.Surname, u.Name, u.UserName, u.Email }));
+
+        return rows.ToDictionary(
+            u => u.Id,
+            u =>
+            {
+                var full = $"{u.Surname} {u.Name}".Trim();
+                return string.IsNullOrWhiteSpace(full) ? u.UserName ?? u.Email ?? u.Id.ToString() : full;
+            });
+    }
+
+    private async Task<Dictionary<Guid, string>> GetSubmitterOrganizationUnitNamesAsync(IReadOnlyList<Guid> userIds)
+    {
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        var userQuery = await _identityUserRepository.GetQueryableAsync();
+        var userOuRows = await AsyncExecuter.ToListAsync(
+            userQuery
+                .Where(u => userIds.Contains(u.Id))
+                .SelectMany(u => u.OrganizationUnits)
+                .OrderBy(ou => ou.CreationTime)
+                .Select(ou => new { ou.UserId, ou.OrganizationUnitId }));
+
+        var primaryOuByUser = userOuRows
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.First().OrganizationUnitId);
+
+        var ouIds = primaryOuByUser.Values.Distinct().ToList();
+        if (ouIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        var ouQuery = await _organizationUnitRepository.GetQueryableAsync();
+        var organizationUnits = await AsyncExecuter.ToListAsync(ouQuery.Where(x => ouIds.Contains(x.Id)));
+        var ouNameById = organizationUnits.ToDictionary(x => x.Id, x => x.DisplayName ?? x.Id.ToString());
+
+        var result = new Dictionary<Guid, string>();
+        foreach (var kv in primaryOuByUser)
+        {
+            if (ouNameById.TryGetValue(kv.Value, out var name))
+            {
+                result[kv.Key] = name;
+            }
+        }
+
+        return result;
     }
 }

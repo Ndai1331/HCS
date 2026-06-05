@@ -19,6 +19,7 @@ using HC.Documents;
 using HC.DocumentFiles;
 using HC.DocumentAssignments;
 using HC.DocumentWorkflowInstances;
+using HC.Shared;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.DocumentHistories;
@@ -54,6 +55,8 @@ public partial class DocumentSigning
     private DateTime? FromDate { get; set; }
     private DateTime? ToDate { get; set; }
     private string? FilterText { get; set; }
+    private List<LookupDto<Guid>> SelectedFilterSubmitterUser { get; set; } = new();
+    private List<LookupDto<Guid>> SelectedFilterSubmitterOrganizationUnit { get; set; } = new();
     private DocumentSigningFilterMode CurrentFilterMode { get; set; } = DocumentSigningFilterMode.All;
     private DocumentSigningDateFilterField ExportDateFilterField { get; set; } = DocumentSigningDateFilterField.IncomingDate;
     private bool IsExporting { get; set; }
@@ -303,7 +306,9 @@ public partial class DocumentSigning
                       $"&FilterMode={(int)CurrentFilterMode}" +
                       $"&DateFilterField={(int)ExportDateFilterField}" +
                       $"&FromDate={FromDate?.ToString("O")}" +
-                      $"&ToDate={ToDate?.ToString("O")}";
+                      $"&ToDate={ToDate?.ToString("O")}" +
+                      $"&SubmitterUserId={SelectedFilterSubmitterUser.FirstOrDefault()?.Id}" +
+                      $"&SubmitterOrganizationUnitId={SelectedFilterSubmitterOrganizationUnit.FirstOrDefault()?.Id}";
 
             NavigationManager.NavigateTo(url, forceLoad: true);
         }
@@ -330,6 +335,8 @@ public partial class DocumentSigning
                 FilterMode = CurrentFilterMode,
                 FromDate = FromDate,
                 ToDate = ToDate,
+                SubmitterUserId = SelectedFilterSubmitterUser.FirstOrDefault()?.Id,
+                SubmitterOrganizationUnitId = SelectedFilterSubmitterOrganizationUnit.FirstOrDefault()?.Id,
                 MaxResultCount = PageSize,
                 SkipCount = (CurrentPage - 1) * PageSize,
                 Sorting = CurrentSorting
@@ -779,6 +786,18 @@ public partial class DocumentSigning
     {
         FilterText = text;
         await DebouncedSearchAsync();
+    }
+
+    private Task OnFilterSubmitterUserChanged(List<LookupDto<Guid>> value)
+    {
+        SelectedFilterSubmitterUser = value ?? new List<LookupDto<Guid>>();
+        return Task.CompletedTask;
+    }
+
+    private Task OnFilterSubmitterOrganizationUnitChanged(List<LookupDto<Guid>> value)
+    {
+        SelectedFilterSubmitterOrganizationUnit = value ?? new List<LookupDto<Guid>>();
+        return Task.CompletedTask;
     }
 
     private async Task OnFilterModeChanged(DocumentSigningFilterMode mode)
