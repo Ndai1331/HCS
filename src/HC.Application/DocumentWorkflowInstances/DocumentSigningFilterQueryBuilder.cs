@@ -110,15 +110,28 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
 
         if (submitterOrganizationUnitId.HasValue && submitterOrganizationUnitId.Value != Guid.Empty)
         {
+            // Materialize identity users first — Identity and HC use separate DbContext instances.
             var userQueryable = await _identityUserRepository.GetQueryableAsync();
-            var creatorIdsInOuQuery = userQueryable
-                .Where(u => u.OrganizationUnits.Any(ou => ou.OrganizationUnitId == submitterOrganizationUnitId.Value))
-                .Select(u => u.Id);
-            var submitterOuDocIdsQuery = instanceQueryable
-                .Where(i => i.CreatorId.HasValue && creatorIdsInOuQuery.Contains(i.CreatorId.Value))
-                .Select(i => i.DocumentId)
-                .Distinct();
-            baseDocQuery = baseDocQuery.Where(d => submitterOuDocIdsQuery.Contains(d.Id));
+            var creatorIdsInOu = await AsyncExecuter.ToListAsync(
+                userQueryable
+                    .Where(u => u.OrganizationUnits.Any(ou => ou.OrganizationUnitId == submitterOrganizationUnitId.Value))
+                    .Select(u => u.Id));
+
+            if (creatorIdsInOu.Count == 0)
+            {
+                baseDocQuery = baseDocQuery.Where(d => false);
+            }
+            else
+            {
+                var submitterOuDocIds = await AsyncExecuter.ToListAsync(
+                    instanceQueryable
+                        .Where(i => i.CreatorId.HasValue && creatorIdsInOu.Contains(i.CreatorId.Value))
+                        .Select(i => i.DocumentId)
+                        .Distinct());
+                baseDocQuery = submitterOuDocIds.Count == 0
+                    ? baseDocQuery.Where(d => false)
+                    : baseDocQuery.Where(d => submitterOuDocIds.Contains(d.Id));
+            }
         }
 
         var filteredDocIds = baseDocQuery.Select(d => d.Id);

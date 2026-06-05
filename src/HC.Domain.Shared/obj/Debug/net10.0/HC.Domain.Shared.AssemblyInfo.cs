@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HC.Domain.Shared")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4f58b49f6bad00c50e8f460f8d3319ef19292a5b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3be95e344b3805e923a2f821fbfbd0992987cdd6")]
 [assembly: System.Reflection.AssemblyProductAttribute("HC.Domain.Shared")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HC.Domain.Shared")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
