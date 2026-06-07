@@ -84,6 +84,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
     private readonly ILoggerFactory _loggerFactory;
     private readonly IConfiguration _configuration;
     private readonly IWorkflowDocxSigningService _workflowDocxSigningService;
+    private readonly IWorkflowCommittedStepsQueryService _workflowCommittedStepsQueryService;
 
     public WorkflowSigningExecutionService(
         IDocumentAssignmentRepository documentAssignmentRepository,
@@ -102,7 +103,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         ILogger<WorkflowSigningExecutionService> logger,
         ILoggerFactory loggerFactory,
         IConfiguration configuration,
-        IWorkflowDocxSigningService workflowDocxSigningService)
+        IWorkflowDocxSigningService workflowDocxSigningService,
+        IWorkflowCommittedStepsQueryService workflowCommittedStepsQueryService)
     {
         _documentAssignmentRepository = documentAssignmentRepository;
         _documentFileRepository = documentFileRepository;
@@ -121,6 +123,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         _loggerFactory = loggerFactory;
         _configuration = configuration;
         _workflowDocxSigningService = workflowDocxSigningService;
+        _workflowCommittedStepsQueryService = workflowCommittedStepsQueryService;
     }
 
     public async Task ApplyDigitalSignatureAsync(
@@ -259,7 +262,8 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             fullName = user.UserName ?? "Unknown";
         }
 
-        var placeholderTag = $"<<Sign{assignment.StepOrder:D2}>>";
+        var signingIndex = await ResolveSigningPlaceholderIndexAsync(instance, assignment);
+        var placeholderTag = $"<<Sign{signingIndex:D2}>>";
 
         byte[] pdfForSigning;
         var workingDocx = await _workflowDocxSigningService.ResolveWorkingDocxFileAsync(sourceFile);
@@ -268,7 +272,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             var docxBytes = await _blobContainer.GetAllBytesAsync(workingDocx.Path);
             var updatedDocxBytes = WordPlaceholderReplacer.ReplaceApprovalNameAndNotePlaceholders(
                 docxBytes,
-                assignment.StepOrder,
+                signingIndex,
                 fullName,
                 noteContent ?? string.Empty);
             pdfForSigning = await ConvertWordToPdfAsync(updatedDocxBytes, ".docx");
@@ -277,7 +281,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         {
             pdfForSigning = ReplacePdfNameAndNotePlaceholders(
                 pdfBytes,
-                assignment.StepOrder,
+                signingIndex,
                 fullName,
                 noteContent ?? string.Empty);
         }
@@ -351,11 +355,11 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
 
         try
         {
-            signedPdfBytes = ReplacePdfSignPlaceholderWhiteout(signedPdfBytes, assignment.StepOrder);
+            signedPdfBytes = ReplacePdfSignPlaceholderWhiteout(signedPdfBytes, signingIndex);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[DIGITAL_SIGN] Could not white-out Sign placeholder. StepOrder={StepOrder}", assignment.StepOrder);
+            _logger.LogWarning(ex, "[DIGITAL_SIGN] Could not white-out Sign placeholder. SigningIndex={SigningIndex}", signingIndex);
         }
 
         var extension = Path.GetExtension(sourceFile.Name);
@@ -515,6 +519,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         var currentUserId = _currentUser.Id ?? throw new UserFriendlyException(_localizer["NotAuthorizedForThisAction"]);
         var now = _clock.Now;
         var (signature, _, fullName) = await GetValidatedElectronicSignatureAsync(currentUserId, selectedUserSignatureId);
+        var signingIndex = await ResolveSigningPlaceholderIndexAsync(instance, assignment);
 
         if (!assignment.DocumentFileResultId.HasValue)
         {
@@ -553,7 +558,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
                 var docxBytes = await _blobContainer.GetAllBytesAsync(workingDocx.Path);
                 var signedDocxBytes = WordPlaceholderReplacer.ReplaceApprovalPlaceholders(
                     docxBytes,
-                    assignment.StepOrder,
+                    signingIndex,
                     signatureImageBytes,
                     fullName,
                     noteContent ?? string.Empty);
@@ -581,7 +586,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
             {
                 signedPdfBytes = ReplacePdfPlaceholders(
                     pdfBytes,
-                    assignment.StepOrder,
+                    signingIndex,
                     signatureImageBytes,
                     fullName,
                     noteContent ?? "");
@@ -614,7 +619,7 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ELECTRONIC_SIGN] Error replacing placeholders. StepOrder={StepOrder}", assignment.StepOrder);
+            _logger.LogError(ex, "[ELECTRONIC_SIGN] Error replacing placeholders. SigningIndex={SigningIndex}", signingIndex);
             throw new UserFriendlyException(_localizer["ErrorProcessingPdf", ex.Message]);
         }
 
@@ -1528,6 +1533,32 @@ public sealed class WorkflowSigningExecutionService : IWorkflowSigningExecutionS
         }
 
         return rawFontName;
+    }
+
+    private async Task<int> ResolveSigningPlaceholderIndexAsync(
+        DocumentWorkflowInstance instance,
+        DocumentAssignment assignment)
+    {
+        if (!assignment.WorkflowStepTemplateId.HasValue)
+        {
+            return assignment.StepOrder;
+        }
+
+        var committedSteps = await _workflowCommittedStepsQueryService
+            .LoadCommittedWorkflowStepsOrderedAsync(instance);
+        if (WorkflowStepNavigationHelper.TryGetSigningPlaceholderIndex(
+                committedSteps,
+                assignment.WorkflowStepTemplateId.Value,
+                out var signingIndex))
+        {
+            return signingIndex;
+        }
+
+        _logger.LogWarning(
+            "[SIGNING] Could not resolve signing placeholder index for step {StepTemplateId}; using assignment StepOrder {StepOrder}",
+            assignment.WorkflowStepTemplateId.Value,
+            assignment.StepOrder);
+        return assignment.StepOrder;
     }
 
 }

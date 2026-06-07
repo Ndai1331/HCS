@@ -19,5 +19,9 @@ public abstract class WorkflowStepAssignmentDtoBase : FullAuditedEntityDto<Guid>
 
     public Guid? RoleId { get; set; }
 
+    public List<Guid> OrganizationUnitIds { get; set; } = new();
+
+    public List<Guid> DefaultUserIds { get; set; } = new();
+
     public string ConcurrencyStamp { get; set; } = null!;
 }

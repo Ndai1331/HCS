@@ -60,6 +60,10 @@
                           ExportDateFilterFieldChanged="@OnExportDateFilterFieldChanged"
                           FilterText="@FilterText"
                           FilterTextChanged="@OnFilterTextChanged"
+                          SelectedSubmitterUser="@SelectedFilterSubmitterUser"
+                          SelectedSubmitterUserChanged="@OnFilterSubmitterUserChanged"
+                          SelectedSubmitterOrganizationUnit="@SelectedFilterSubmitterOrganizationUnit"
+                          SelectedSubmitterOrganizationUnitChanged="@OnFilterSubmitterOrganizationUnitChanged"
                           SearchClicked="@OnFilterSearchAsync" />
 
 @* ************************* BODY: 4-8 LAYOUT ************************* *@
@@ -162,6 +166,18 @@
                                             <Icon Name="IconName.Redo" />
                                         </Button>
                                     }
+                                    @* Cancel workflow (initiator, no signatures yet) *@
+                                    @if (context.CanCancelWorkflow && context.WorkflowInstanceId.HasValue)
+                                    {
+                                        <Button @onclick="@(() => ConfirmCancelWorkflowAsync(context))"
+                                            Color="Color.Danger"
+                                            Outline
+                                            Size="Size.Small"
+                                            Class="mb-1"
+                                            title="@L["CancelWorkflow"]">
+                                            <Icon Name="IconName.Times" />
+                                        </Button>
+                                    }
                                     @* View PDF *@
                                     <Button @onclick="@(() => OpenDocumentPdfViewerModalAsync(context))"
                                         Color="Color.Primary"
@@ -200,6 +216,26 @@
                                         <span>@L["DocumentNumber"]: #@context.DocumentNo</span> | @L["StorageNumber"]:@context.StorageNumber
                                     </small>
                                 </div>
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="SubmitterFullName"
+                            Caption="@L["SubmitterName"]"
+                            CellStyle="@((item) => "min-width: 200px; max-width: 250px")"
+                            Width="200px">
+                            <DisplayTemplate>
+                                @(context.SubmitterFullName ?? "—")
+                            </DisplayTemplate>
+                        </DataGridColumn>
+
+                        <DataGridColumn TItem="DocumentSigningItemDto"
+                            Field="SubmitterOrganizationUnitName"
+                            Caption="@L["SubmitterOrganizationUnit"]"
+                            CellStyle="@((item) => "min-width: 200px; max-width: 250px")"
+                            Width="200px">
+                            <DisplayTemplate>
+                                @(context.SubmitterOrganizationUnitName ?? "—")
                             </DisplayTemplate>
                         </DataGridColumn>
 
@@ -369,11 +405,11 @@
                                             <label class="form-label fw-bold mb-1">@L["WorkflowSteps"]</label>
                                             @if (AllStepsWithStatus.Any())
                                             {
-                                                <div class="mt-1" style="max-height: 220px; overflow-y: auto;">
+                                                <div id="workflow-steps-scroll-container" class="workflow-steps-scroll mt-1">
                                                     @foreach (var step in AllStepsWithStatus.OrderBy(s => s.Order))
                                                     {
-                                                        <div class="border rounded p-2 mb-1 @(step.IsCurrentStep ? "border-primary" : "")"
-                                                             style="font-size: 0.8rem; @(step.IsCurrentStep ? "background-color: rgba(13,110,253,0.05);" : "")">
+                                                        <div id="@(step.IsCurrentStep ? "workflow-step-current" : null)"
+                                                             class="@GetWorkflowStepCardClass(step)">
                                                             <div class="d-flex align-items-center justify-content-between">
                                                                 <div class="d-flex align-items-center">
                                                                     @if (step.IsCompleted)
@@ -850,7 +886,7 @@
                                                             && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(assignment.DocumentFileResult.Name))
                                                         {
                                                             <Button Color="Color.Info" Size="Size.Small"
-                                                                Clicked="@(() => ViewSigningDocumentPdfAsync(assignment.DocumentFileResult.Path, assignment.DocumentFileResult.Name))"
+                                                                Clicked="@(() => ViewSigningDocumentPdfAsync(SelectedDocumentForAction!.DocumentId, assignment.DocumentFileResult.Path, assignment.DocumentFileResult.Name))"
                                                                 title="@L["ViewPdf"]">
                                                                 <Icon Name="IconName.Eye" />
                                                             </Button>

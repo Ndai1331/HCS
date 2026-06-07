@@ -151,11 +151,17 @@ public class WorkflowSignerManagementService : HCAppService, IWorkflowSignerMana
 
                 await _documentAssignmentRepository.UpdateManyAsync(pendingOnStep);
 
+                var allCommittedSteps = await _workflowCommittedStepsQueryService
+                    .LoadCommittedWorkflowStepsOrderedAsync(instance);
+                var signingPlaceholderIndex = WorkflowStepNavigationHelper.GetSigningPlaceholderIndex(
+                    allCommittedSteps,
+                    step.Id);
+
                 await _documentAssignmentManager.CreateAsync(
                     instance.DocumentId,
                     step.Id,
                     selection.SelectedUserId,
-                    step.Order,
+                    signingPlaceholderIndex,
                     step.Type,
                     nameof(DocumentAssignmentStatus.PENDING),
                     now,

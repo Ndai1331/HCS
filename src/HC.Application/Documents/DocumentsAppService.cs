@@ -148,9 +148,14 @@ public abstract class DocumentsAppServiceBase : HCAppService
 
     private async Task<DocumentsLookupCacheItem> LoadWorkflowLookupPageAsync(LookupRequestDto input)
     {
-        var baseQuery = (await _workflowRepository.GetQueryableAsync())
-            
-            .WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => x.Name != null && x.Name.Contains(input.Filter));
+        var baseQuery = await _workflowRepository.GetQueryableAsync();
+        if (!string.IsNullOrWhiteSpace(input.Filter))
+        {
+            var filterLower = input.Filter.Trim().ToLower();
+            baseQuery = baseQuery.Where(x =>
+                (x.Name != null && x.Name.ToLower().Contains(filterLower))
+                || (x.Code != null && x.Code.ToLower().Contains(filterLower)));
+        }
 
         var lookupQuery = baseQuery
             .OrderBy(x => x.Name)

@@ -13,6 +13,7 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using HC.Permissions;
+using HC.DocumentWorkflowInstances;
 using HC.WorkflowStepAssignments;
 using MiniExcelLibs;
 using Volo.Abp.Content;
@@ -47,21 +48,46 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
     {
         var totalCount = await _workflowStepAssignmentRepository.GetCountAsync(input.FilterText, input.IsPrimary, input.IsActive, input.StepId, input.DefaultUserId);
         var items = await _workflowStepAssignmentRepository.GetListWithNavigationPropertiesAsync(input.FilterText, input.IsPrimary, input.IsActive, input.StepId, input.DefaultUserId, input.Sorting, input.MaxResultCount, input.SkipCount);
+        var dtos = new List<WorkflowStepAssignmentWithNavigationPropertiesDto>();
+        foreach (var item in items)
+        {
+            var dto = ObjectMapper.Map<WorkflowStepAssignmentWithNavigationProperties, WorkflowStepAssignmentWithNavigationPropertiesDto>(item);
+            ApplyScopeListsToDto(dto.WorkflowStepAssignment, item.WorkflowStepAssignment);
+            dtos.Add(dto);
+        }
+
         return new PagedResultDto<WorkflowStepAssignmentWithNavigationPropertiesDto>
         {
             TotalCount = totalCount,
-            Items = ObjectMapper.Map<List<WorkflowStepAssignmentWithNavigationProperties>, List<WorkflowStepAssignmentWithNavigationPropertiesDto>>(items)
+            Items = dtos
         };
     }
 
     public virtual async Task<WorkflowStepAssignmentWithNavigationPropertiesDto> GetWithNavigationPropertiesAsync(Guid id)
     {
-        return ObjectMapper.Map<WorkflowStepAssignmentWithNavigationProperties, WorkflowStepAssignmentWithNavigationPropertiesDto>(await _workflowStepAssignmentRepository.GetWithNavigationPropertiesAsync(id));
+        var item = await _workflowStepAssignmentRepository.GetWithNavigationPropertiesAsync(id);
+        var dto = ObjectMapper.Map<WorkflowStepAssignmentWithNavigationProperties, WorkflowStepAssignmentWithNavigationPropertiesDto>(item);
+        ApplyScopeListsToDto(dto.WorkflowStepAssignment, item.WorkflowStepAssignment);
+        return dto;
+    }
+
+    protected virtual void ApplyScopeListsToDto(WorkflowStepAssignmentDto dto, WorkflowStepAssignment entity)
+    {
+        dto.OrganizationUnitIds = WorkflowStepAssignmentScopeHelper.GetOrganizationUnitIds(entity.OrganizationUnitIdsJson);
+        dto.DefaultUserIds = WorkflowStepAssignmentScopeHelper.GetDefaultUserIds(entity.DefaultUserIdsJson, entity.DefaultUserId);
     }
 
     public virtual async Task<WorkflowStepAssignmentDto> GetAsync(Guid id)
     {
-        return ObjectMapper.Map<WorkflowStepAssignment, WorkflowStepAssignmentDto>(await _workflowStepAssignmentRepository.GetAsync(id));
+        return MapWorkflowStepAssignmentToDto(await _workflowStepAssignmentRepository.GetAsync(id));
+    }
+
+    protected virtual WorkflowStepAssignmentDto MapWorkflowStepAssignmentToDto(WorkflowStepAssignment entity)
+    {
+        var dto = ObjectMapper.Map<WorkflowStepAssignment, WorkflowStepAssignmentDto>(entity);
+        dto.OrganizationUnitIds = WorkflowStepAssignmentScopeHelper.GetOrganizationUnitIds(entity.OrganizationUnitIdsJson);
+        dto.DefaultUserIds = WorkflowStepAssignmentScopeHelper.GetDefaultUserIds(entity.DefaultUserIdsJson, entity.DefaultUserId);
+        return dto;
     }
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetWorkflowStepTemplateLookupAsync(LookupRequestDto input)
@@ -78,7 +104,16 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<LookupDto<Guid>>> GetIdentityUserLookupAsync(LookupRequestDto input)
     {
-        var query = (await _identityUserRepository.GetQueryableAsync()).WhereIf(!string.IsNullOrWhiteSpace(input.Filter), x => (x.UserName != null && x.UserName.Contains(input.Filter)) || (x.Name != null && x.Name.Contains(input.Filter)));
+        var filter = input.Filter?.Trim();
+        var query = await _identityUserRepository.GetQueryableAsync();
+
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            var filterLower = filter.ToLower();
+            query = query.Where(x =>
+                ((x.Surname ?? "") + " " + (x.Name ?? "")).ToLower().Contains(filterLower));
+        }
+
         var lookupData = await query.PageBy(input.SkipCount, input.MaxResultCount).ToDynamicListAsync<Volo.Abp.Identity.IdentityUser>();
         var totalCount = await AsyncExecuter.CountAsync(query);
         return new PagedResultDto<LookupDto<Guid>>
@@ -115,19 +150,23 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
 
     public virtual async Task<WorkflowStepAssignmentDto> CreateAsync(WorkflowStepAssignmentCreateDto input)
     {
+        await PrepareCatalogAssignmentAsync(input);
         var workflowStepAssignment = await _workflowStepAssignmentManager.CreateAsync(
             input.StepId,
             input.DefaultUserId,
             input.IsPrimary,
             input.IsActive,
             input.AssigneeType,
-            input.RoleId);
-        return ObjectMapper.Map<WorkflowStepAssignment, WorkflowStepAssignmentDto>(workflowStepAssignment);
+            input.RoleId,
+            input.OrganizationUnitIds,
+            input.DefaultUserIds);
+        return MapWorkflowStepAssignmentToDto(workflowStepAssignment);
     }
 
     [Authorize(HCPermissions.WorkflowStepAssignments.Edit)]
     public virtual async Task<WorkflowStepAssignmentDto> UpdateAsync(Guid id, WorkflowStepAssignmentUpdateDto input)
     {
+        await PrepareCatalogAssignmentAsync(input);
         var workflowStepAssignment = await _workflowStepAssignmentManager.UpdateAsync(
             id,
             input.StepId,
@@ -136,8 +175,10 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
             input.IsActive,
             input.AssigneeType,
             input.RoleId,
+            input.OrganizationUnitIds,
+            input.DefaultUserIds,
             input.ConcurrencyStamp);
-        return ObjectMapper.Map<WorkflowStepAssignment, WorkflowStepAssignmentDto>(workflowStepAssignment);
+        return MapWorkflowStepAssignmentToDto(workflowStepAssignment);
     }
 
     [AllowAnonymous]
@@ -173,5 +214,131 @@ public abstract class WorkflowStepAssignmentsAppServiceBase : HCAppService
         {
             Token = token
         };
+    }
+
+    protected virtual async Task PrepareCatalogAssignmentAsync(WorkflowStepAssignmentCreateDto input)
+    {
+        if (!input.StepId.HasValue || input.StepId == Guid.Empty)
+        {
+            return;
+        }
+
+        var step = await _workflowStepTemplateRepository.GetAsync(input.StepId.Value);
+        if (WorkflowStepNavigationHelper.IsViewStep(step.Type))
+        {
+            input.AssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
+            ValidateViewCatalogScope(input.OrganizationUnitIds, input.DefaultUserIds, input.DefaultUserId, input.RoleId);
+            return;
+        }
+
+        NormalizeBlockingCatalogAssignment(input);
+    }
+
+    protected virtual async Task PrepareCatalogAssignmentAsync(WorkflowStepAssignmentUpdateDto input)
+    {
+        if (!input.StepId.HasValue || input.StepId == Guid.Empty)
+        {
+            return;
+        }
+
+        var step = await _workflowStepTemplateRepository.GetAsync(input.StepId.Value);
+        if (WorkflowStepNavigationHelper.IsViewStep(step.Type))
+        {
+            input.AssigneeType = WorkflowStepAssigneeTypeNames.ScopedAssignee;
+            ValidateViewCatalogScope(input.OrganizationUnitIds, input.DefaultUserIds, input.DefaultUserId, input.RoleId);
+            return;
+        }
+
+        NormalizeBlockingCatalogAssignment(input);
+    }
+
+    private void ValidateViewCatalogScope(
+        IReadOnlyList<Guid>? organizationUnitIds,
+        IReadOnlyList<Guid>? defaultUserIds,
+        Guid? defaultUserId,
+        Guid? roleId)
+    {
+        var userIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(defaultUserIds);
+        if (userIds.Count == 0 && defaultUserId.HasValue && defaultUserId != Guid.Empty)
+        {
+            userIds = new List<Guid> { defaultUserId.Value };
+        }
+
+        if (!WorkflowStepAssignmentScopeHelper.HasResolvableScope(
+                WorkflowStepAssigneeTypeNames.ScopedAssignee,
+                organizationUnitIds,
+                userIds,
+                roleId))
+        {
+            throw new UserFriendlyException(L["StepAssignmentScopeRequired"]);
+        }
+    }
+
+    private void NormalizeBlockingCatalogAssignment(WorkflowStepAssignmentCreateDto input)
+    {
+        var ouIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(input.OrganizationUnitIds);
+        var userIds = WorkflowStepAssignmentScopeHelper.NormalizeIds(input.DefaultUserIds);
+        if (!input.DefaultUserId.HasValue || input.DefaultUserId == Guid.Empty)
+        {
+            input.DefaultUserId = null;
+        }
+        else if (!userIds.Contains(input.DefaultUserId.Value))
+        {
+            userIds.Add(input.DefaultUserId.Value);
+        }
+
+        if (string.Equals(input.AssigneeType, WorkflowStepAssigneeTypeNames.ScopedAssignee, StringComparison.OrdinalIgnoreCase))
+        {
+            if (input.RoleId.HasValue && input.RoleId != Guid.Empty)
+            {
+                input.AssigneeType = WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit;
+                input.OrganizationUnitIds = new List<Guid>();
+                input.DefaultUserIds = new List<Guid>();
+                input.DefaultUserId = null;
+            }
+            else if (userIds.Count > 0)
+            {
+                input.AssigneeType = WorkflowStepAssigneeTypeNames.SpecificUser;
+                input.OrganizationUnitIds = new List<Guid>();
+                input.RoleId = null;
+                input.DefaultUserId = userIds[0];
+                input.DefaultUserIds = new List<Guid>();
+            }
+            else if (ouIds.Count > 0)
+            {
+                throw new UserFriendlyException(L["StepAssignmentBlockingOuNotAllowed"]);
+            }
+        }
+        else
+        {
+            input.OrganizationUnitIds = new List<Guid>();
+            input.DefaultUserIds = new List<Guid>();
+
+            if (string.Equals(input.AssigneeType, WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit, StringComparison.OrdinalIgnoreCase))
+            {
+                input.DefaultUserId = null;
+            }
+        }
+    }
+
+    private void NormalizeBlockingCatalogAssignment(WorkflowStepAssignmentUpdateDto input)
+    {
+        var createShape = new WorkflowStepAssignmentCreateDto
+        {
+            StepId = input.StepId,
+            AssigneeType = input.AssigneeType,
+            RoleId = input.RoleId,
+            DefaultUserId = input.DefaultUserId,
+            OrganizationUnitIds = input.OrganizationUnitIds,
+            DefaultUserIds = input.DefaultUserIds,
+            IsPrimary = input.IsPrimary,
+            IsActive = input.IsActive
+        };
+        NormalizeBlockingCatalogAssignment(createShape);
+        input.AssigneeType = createShape.AssigneeType;
+        input.RoleId = createShape.RoleId;
+        input.DefaultUserId = createShape.DefaultUserId;
+        input.OrganizationUnitIds = createShape.OrganizationUnitIds;
+        input.DefaultUserIds = createShape.DefaultUserIds;
     }
 }

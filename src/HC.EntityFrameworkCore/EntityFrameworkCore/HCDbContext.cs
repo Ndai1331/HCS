@@ -375,6 +375,8 @@ public class HCDbContext : HCDbContextBase<HCDbContext>, IHasEventInbox
             b.HasOne<WorkflowStepTemplate>().WithMany().HasForeignKey(x => x.StepId).OnDelete(DeleteBehavior.SetNull);
             b.Property(x => x.AssigneeType).HasColumnName(nameof(WorkflowStepAssignment.AssigneeType)).IsRequired().HasMaxLength(64);
             b.Property(x => x.RoleId).HasColumnName(nameof(WorkflowStepAssignment.RoleId));
+            b.Property(x => x.OrganizationUnitIdsJson).HasColumnName(nameof(WorkflowStepAssignment.OrganizationUnitIdsJson)).HasMaxLength(8000);
+            b.Property(x => x.DefaultUserIdsJson).HasColumnName(nameof(WorkflowStepAssignment.DefaultUserIdsJson)).HasMaxLength(8000);
             b.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.DefaultUserId).OnDelete(DeleteBehavior.SetNull);
             b.HasOne<IdentityRole>().WithMany().HasForeignKey(x => x.RoleId).OnDelete(DeleteBehavior.SetNull);
         });

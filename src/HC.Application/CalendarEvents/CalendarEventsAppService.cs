@@ -17,6 +17,7 @@ using Volo.Abp.Authorization;
 using Volo.Abp.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using HC.Shared;
+using HC.Chat.Helpers;
 
 namespace HC.CalendarEvents;
 
@@ -37,8 +38,13 @@ public abstract class CalendarEventsAppServiceBase : HCAppService
 
     public virtual async Task<PagedResultDto<CalendarEventDto>> GetListAsync(GetCalendarEventsInput input)
     {
-        var totalCount = await _calendarEventRepository.GetCountAsync(input.FilterText, input.Title, input.Description, input.StartTimeMin, input.StartTimeMax, input.EndTimeMin, input.EndTimeMax, input.AllDay, input.EventType, input.Location, input.RelatedType, input.RelatedId, input.Visibility);
-        var items = await _calendarEventRepository.GetListAsync(input.FilterText, input.Title, input.Description, input.StartTimeMin, input.StartTimeMax, input.EndTimeMin, input.EndTimeMax, input.AllDay, input.EventType, input.Location, input.RelatedType, input.RelatedId, input.Visibility, input.Sorting, input.MaxResultCount, input.SkipCount);
+        if (!CurrentUser.IsAdminRole())
+        {
+            input.UserId = CurrentUser.Id;
+        }
+
+        var totalCount = await _calendarEventRepository.GetCountAsync(input.FilterText, input.Title, input.Description, input.StartTimeMin, input.StartTimeMax, input.EndTimeMin, input.EndTimeMax, input.AllDay, input.EventType, input.Location, input.RelatedType, input.RelatedId, input.Visibility, input.UserId);
+        var items = await _calendarEventRepository.GetListAsync(input.FilterText, input.Title, input.Description, input.StartTimeMin, input.StartTimeMax, input.EndTimeMin, input.EndTimeMax, input.AllDay, input.EventType, input.Location, input.RelatedType, input.RelatedId, input.Visibility, input.UserId, input.Sorting, input.MaxResultCount, input.SkipCount);
         return new PagedResultDto<CalendarEventDto>
         {
             TotalCount = totalCount,
@@ -76,7 +82,13 @@ public abstract class CalendarEventsAppServiceBase : HCAppService
     {
         await HC.ExcelDownloadAnonymousTokenHelper.ValidateAndConsumeOneTimeExportTokenAsync(_downloadTokenCache, input.DownloadToken, x => x.Token);
 
-        var items = await _calendarEventRepository.GetListAsync(input.FilterText, input.Title, input.Description, input.StartTimeMin, input.StartTimeMax, input.EndTimeMin, input.EndTimeMax, input.AllDay, input.EventType, input.Location, input.RelatedType, input.RelatedId, input.Visibility);
+        Guid? userId = null;
+        if (!CurrentUser.IsAdminRole())
+        {
+            userId = CurrentUser.Id;
+        }
+
+        var items = await _calendarEventRepository.GetListAsync(input.FilterText, input.Title, input.Description, input.StartTimeMin, input.StartTimeMax, input.EndTimeMin, input.EndTimeMax, input.AllDay, input.EventType, input.Location, input.RelatedType, input.RelatedId, input.Visibility, userId);
         var memoryStream = new MemoryStream();
         await memoryStream.SaveAsAsync(ObjectMapper.Map<List<CalendarEvent>, List<CalendarEventExcelDto>>(items));
         memoryStream.Seek(0, SeekOrigin.Begin);
@@ -92,7 +104,12 @@ public abstract class CalendarEventsAppServiceBase : HCAppService
     [Authorize(HCPermissions.CalendarEvents.Delete)]
     public virtual async Task DeleteAllAsync(GetCalendarEventsInput input)
     {
-        await _calendarEventRepository.DeleteAllAsync(input.FilterText, input.Title, input.Description, input.StartTimeMin, input.StartTimeMax, input.EndTimeMin, input.EndTimeMax, input.AllDay, input.EventType, input.Location, input.RelatedType, input.RelatedId, input.Visibility);
+        if (!CurrentUser.IsAdminRole())
+        {
+            input.UserId = CurrentUser.Id;
+        }
+
+        await _calendarEventRepository.DeleteAllAsync(input.FilterText, input.Title, input.Description, input.StartTimeMin, input.StartTimeMax, input.EndTimeMin, input.EndTimeMax, input.AllDay, input.EventType, input.Location, input.RelatedType, input.RelatedId, input.Visibility, input.UserId);
     }
 
     public virtual async Task<HC.Shared.DownloadTokenResultDto> GetDownloadTokenAsync()

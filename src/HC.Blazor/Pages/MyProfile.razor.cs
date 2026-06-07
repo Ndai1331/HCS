@@ -11,7 +11,6 @@ using Volo.Abp.Identity;
 using Volo.Saas.Host;
 using Volo.Saas.Host.Blazor.Pages.Shared.Components.SaasEditionPercentageWidget;
 using Volo.Saas.Host.Blazor.Pages.Shared.Components.SaasLatestTenantsWidget;
-using HC.UserDepartments;
 using HC.UserSignatures;
 using HC.Shared;
 using Blazorise;
@@ -51,9 +50,6 @@ public partial class MyProfile
     public NavigationManager NavigationManager { get; set; } = default!;
 
     [Inject]
-    public IUserDepartmentsAppService UserDepartmentsAppService { get; set; } = default!;
-
-    [Inject]
     public IUserSignaturesAppService UserSignaturesAppService { get; set; } = default!;
 
     [Inject]
@@ -86,8 +82,6 @@ public partial class MyProfile
     protected bool ShowNewPassword { get; set; } = false;
     protected bool ShowConfirmNewPassword { get; set; } = false;
 
-    protected List<UserDepartmentWithNavigationPropertiesDto> UserDepartments { get; set; } = new();
-
     protected List<UserSignatureWithNavigationPropertiesDto> UserSignatures { get; set; } = new();
     protected UserSignatureCreateDto NewUserSignature { get; set; } = new();
     protected UserSignatureUpdateDto EditingUserSignature { get; set; } = new();
@@ -117,21 +111,6 @@ public partial class MyProfile
     protected bool IsUploadingSignatureImage { get; set; }
     protected int SignatureImageFilePickerProgress { get; set; }
 
-    // Department properties
-    protected UserDepartmentCreateDto NewUserDepartment { get; set; } = new();
-    protected UserDepartmentUpdateDto EditingUserDepartment { get; set; } = new();
-    protected Guid EditingUserDepartmentId { get; set; }
-    protected Modal CreateUserDepartmentModal { get; set; } = new();
-    protected Modal EditUserDepartmentModal { get; set; } = new();
-    protected IReadOnlyList<LookupDto<Guid>> DepartmentsCollection { get; set; } = new List<LookupDto<Guid>>();
-    protected List<LookupDto<Guid>> SelectedDepartmentForCreate { get; set; } = new();
-    protected List<LookupDto<Guid>> SelectedDepartmentForEdit { get; set; } = new();
-
-    /// <summary>
-    /// Bump when opening the create-department modal so Select2 remounts with a cleared selection.
-    /// </summary>
-    protected int CreateDepartmentSelect2RenderKey { get; set; }
-
     // Avatar upload
     protected string AvatarUrl { get; set; } = string.Empty;
 
@@ -158,7 +137,6 @@ public partial class MyProfile
     protected string SelectedTabMyProfile { get; set; } = "Profile";
 
     protected bool IsLoadingProfileTab { get; set; } = true;
-    protected bool IsLoadingDepartmentTab { get; set; } = true;
     protected bool IsLoadingUserSignaturesTab { get; set; } = true;
 
     protected async override Task OnInitializedAsync()
@@ -170,7 +148,6 @@ public partial class MyProfile
 
         await Task.WhenAll(
             LoadUserProfileAsync(),
-            LoadUserDepartmentsAsync(),
             LoadUserSignaturesAsync());
     }
 
@@ -206,31 +183,6 @@ public partial class MyProfile
             return CurrentUser.Name ?? CurrentUser.UserName ?? string.Empty;
         }
         return string.Join(' ', new[] { surname, name }.Where(static s => s.Length > 0));
-    }
-
-    protected virtual async Task LoadUserDepartmentsAsync()
-    {
-        IsLoadingDepartmentTab = true;
-        await InvokeAsync(StateHasChanged);
-        try
-        {
-            if (CurrentUser.Id.HasValue)
-            {
-                var result = await UserDepartmentsAppService.GetListAsync(new GetUserDepartmentsInput
-                {
-                    UserId = CurrentUser.Id.Value,
-                    MaxResultCount = 100,
-                    SkipCount = 0,
-                    Sorting = string.Empty
-                });
-                UserDepartments = result.Items.ToList();
-            }
-        }
-        finally
-        {
-            IsLoadingDepartmentTab = false;
-            await InvokeAsync(StateHasChanged);
-        }
     }
 
     protected virtual async Task SaveProfileAsync()
@@ -731,133 +683,6 @@ public partial class MyProfile
         if (!IsDigitalSignType(dto.SignType))
         {
             dto.SealImg = string.Empty;
-        }
-    }
-
-    // Department Methods
-    protected virtual async Task LoadDepartmentLookupAsync(string? filterText = null)
-    {
-        DepartmentsCollection = (await UserDepartmentsAppService.GetDepartmentLookupAsync(new LookupRequestDto { Filter = filterText })).Items;
-    }
-
-    protected virtual async Task<List<LookupDto<Guid>>> GetDepartmentCollectionLookupAsync(IReadOnlyList<LookupDto<Guid>> dbset, string filter, CancellationToken token)
-    {
-        DepartmentsCollection = (await UserDepartmentsAppService.GetDepartmentLookupAsync(new LookupRequestDto { Filter = filter })).Items;
-        return DepartmentsCollection.ToList();
-    }
-
-    protected virtual void OnDepartmentChangedForCreate()
-    {
-        if (SelectedDepartmentForCreate != null && SelectedDepartmentForCreate.Any())
-        {
-            NewUserDepartment.DepartmentId = SelectedDepartmentForCreate.First().Id;
-        }
-    }
-
-    protected virtual void OnDepartmentChangedForEdit()
-    {
-        if (SelectedDepartmentForEdit != null && SelectedDepartmentForEdit.Any())
-        {
-            EditingUserDepartment.DepartmentId = SelectedDepartmentForEdit.First().Id;
-        }
-    }
-
-    protected virtual async Task OpenCreateUserDepartmentModalAsync()
-    {
-        NewUserDepartment = new UserDepartmentCreateDto
-        {
-            UserId = CurrentUser.Id ?? Guid.Empty,
-            DepartmentId = default,
-            IsPrimary = false,
-            IsActive = true
-        };
-        SelectedDepartmentForCreate = new List<LookupDto<Guid>>();
-        CreateDepartmentSelect2RenderKey++;
-        await LoadDepartmentLookupAsync();
-        await CreateUserDepartmentModal.Show();
-        await InvokeAsync(StateHasChanged);
-    }
-
-    protected virtual async Task CloseCreateUserDepartmentModalAsync()
-    {
-        await CreateUserDepartmentModal.Hide();
-    }
-
-    protected virtual async Task CreateUserDepartmentAsync()
-    {
-        try
-        {
-            if (CurrentUser.Id.HasValue)
-            {
-                NewUserDepartment.UserId = CurrentUser.Id.Value;
-            }
-
-            await UserDepartmentsAppService.CreateAsync(NewUserDepartment);
-            await LoadUserDepartmentsAsync();
-            await CloseCreateUserDepartmentModalAsync();
-            await Message.Success(L["SuccessfullySaved"]);
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-
-    protected virtual async Task OpenEditUserDepartmentModalAsync(UserDepartmentWithNavigationPropertiesDto input)
-    {
-        var userDepartment = await UserDepartmentsAppService.GetWithNavigationPropertiesAsync(input.UserDepartment.Id);
-        EditingUserDepartmentId = userDepartment.UserDepartment.Id;
-        EditingUserDepartment = ObjectMapper.Map<UserDepartmentDto, UserDepartmentUpdateDto>(userDepartment.UserDepartment);
-        await LoadDepartmentLookupAsync(userDepartment.Department.Name);
-        
-        // Set selected department for Select2
-        SelectedDepartmentForEdit = new List<LookupDto<Guid>>
-        {
-            new LookupDto<Guid>
-            {
-                Id = userDepartment.Department.Id,
-                DisplayName = userDepartment.Department.Name
-            }
-        };
-        
-        await EditUserDepartmentModal.Show();
-    }
-
-    protected virtual async Task CloseEditUserDepartmentModalAsync()
-    {
-        await EditUserDepartmentModal.Hide();
-    }
-
-    protected virtual async Task UpdateUserDepartmentAsync()
-    {
-        try
-        {
-            await UserDepartmentsAppService.UpdateAsync(EditingUserDepartmentId, EditingUserDepartment);
-            await LoadUserDepartmentsAsync();
-            await EditUserDepartmentModal.Hide();
-            await Message.Success(L["SuccessfullySaved"],
-            options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
-        }
-        catch (Exception ex)
-        {
-            await HandleErrorAsync(ex);
-        }
-    }
-
-    protected virtual async Task DeleteUserDepartmentAsync(UserDepartmentWithNavigationPropertiesDto input)
-    {
-        if (await UiMessageService.Confirm(L["DeleteConfirmationMessage"].Value))
-        {
-            try
-            {
-                await UserDepartmentsAppService.DeleteAsync(input.UserDepartment.Id);
-                await LoadUserDepartmentsAsync();
-                await Message.Success(L["SuccessfullyDeleted"]);
-            }
-            catch (Exception ex)
-            {
-                await HandleErrorAsync(ex);
-            }
         }
     }
 

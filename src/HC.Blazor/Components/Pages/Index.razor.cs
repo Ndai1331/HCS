@@ -17,6 +17,7 @@ using HC.Documents;
 using HC.NotificationReceivers;
 using HC.Notifications;
 using HC.DocumentFiles;
+using HC.DocumentWorkflowInstances;
 using Humanizer;
 using Blazorise;
 using Volo.Abp.AspNetCore.Components.BlockUi;
@@ -46,6 +47,7 @@ public partial class Index
     [Inject] private INotificationReceiversAppService NotificationReceiversAppService { get; set; } = default!;
     [Inject] private IHomeDashboardAppService HomeDashboardAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
+    [Inject] private IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService { get; set; } = default!;
     [Inject] private HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService { get; set; } = default!;
     [Inject] private IBlockUiService BlockUiService { get; set; } = default!;
     [Inject] private IMemoryCache __MemoryCache { get; set; } = default!;
@@ -607,34 +609,23 @@ public partial class Index
 
             CurrentDocumentPdfDocumentId = docItem.Document.Id;
 
-            // Get document files for this document
-            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-            {
-                DocumentId = docItem.Document.Id,
-                MaxResultCount = 1,
-                SkipCount = 0
-            });
-            
-            
-            var documentFile = documentFilesResult.Items.First();
-            string path = documentFile.DocumentFile?.Path ?? string.Empty;
+            var pdfFileUrl = await WorkflowPdfDisplayHelper.LoadPdfDataUrlWithWorkflowPreferenceAsync(
+                docItem.Document.Id,
+                docItem.Document.SourceType,
+                docItem.Document.WorkflowId,
+                DocumentWorkflowInstancesAppService,
+                DocumentFilesAppService,
+                DocumentPdfViewerAppService);
 
-            if (!HC.Blazor.Shared.FileHelper.IsPdfFileExtension(documentFile.DocumentFile?.Name ?? string.Empty) 
-            || string.IsNullOrEmpty(path)
-            || !HC.Blazor.Shared.FileHelper.IsPdfFileExtension(path))
+            if (string.IsNullOrEmpty(pdfFileUrl))
             {
-                await UiMessageService.Warn(L["NoPdfAvailable"], 
+                await UiMessageService.Warn(L["NoPdfAvailable"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 await BlockUiService.UnBlock();
                 return;
             }
-            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
-            {
-                BlobPath = path,
-                WatermarkAction = "view"
-            });
-            var base64 = Convert.ToBase64String(fileBytes);
-            DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
+
+            DocumentPdfFileUrl = pdfFileUrl;
             IsDocumentPdfFile = true;
             await DocumentPdfViewerModal.Show();
             await BlockUiService.UnBlock();
@@ -713,29 +704,9 @@ public partial class Index
         await LoadDashboardDataAsync();
     }
 
-    private async Task<bool> CheckIfDocumentHasPdfAsync(Guid documentId)
+    private Task<bool> CheckIfDocumentHasPdfAsync(Guid documentId)
     {
-        try
-        {
-            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-            {
-                DocumentId = documentId,
-                MaxResultCount = 1,
-                SkipCount = 0
-            });
-
-            if (!documentFilesResult.Items.Any())
-            {
-                return false;
-            }
-
-            var documentFile = documentFilesResult.Items.First();
-            return HC.Blazor.Shared.FileHelper.IsPdfFileExtension(documentFile.DocumentFile.Name) && !string.IsNullOrEmpty(documentFile.DocumentFile.Path);
-        }
-        catch
-        {
-            return false;
-        }
+        return WorkflowPdfDisplayHelper.HasDisplayPdfAsync(documentId, DocumentWorkflowInstancesAppService);
     }
 
     // -------------------------------

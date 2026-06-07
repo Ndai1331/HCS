@@ -19,11 +19,13 @@ using HC.Documents;
 using HC.DocumentFiles;
 using HC.DocumentAssignments;
 using HC.DocumentWorkflowInstances;
+using HC.Shared;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.DocumentHistories;
 using HC.MasterDatas;
 using HC.Permissions;
+using HC.Blazor.Shared;
 using HC.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -53,6 +55,8 @@ public partial class DocumentSigning
     private DateTime? FromDate { get; set; }
     private DateTime? ToDate { get; set; }
     private string? FilterText { get; set; }
+    private List<LookupDto<Guid>> SelectedFilterSubmitterUser { get; set; } = new();
+    private List<LookupDto<Guid>> SelectedFilterSubmitterOrganizationUnit { get; set; } = new();
     private DocumentSigningFilterMode CurrentFilterMode { get; set; } = DocumentSigningFilterMode.All;
     private DocumentSigningDateFilterField ExportDateFilterField { get; set; } = DocumentSigningDateFilterField.IncomingDate;
     private bool IsExporting { get; set; }
@@ -128,6 +132,7 @@ public partial class DocumentSigning
 
     // All workflow steps with their signing status (for action modal step overview)
     private List<WorkflowStepStatusDto> AllStepsWithStatus { get; set; } = new();
+    private bool _scrollToCurrentWorkflowStepPending;
 
     private Dictionary<Guid, Guid?> EditedStepSigners { get; set; } = new();
     private bool IsSavingWorkflowSigners { get; set; }
@@ -229,6 +234,12 @@ public partial class DocumentSigning
             await TryAutoOpenActionModalFromNotificationAsync();
             await RequestRenderAsync();
         }
+
+        if (_scrollToCurrentWorkflowStepPending)
+        {
+            _scrollToCurrentWorkflowStepPending = false;
+            await ScrollToCurrentWorkflowStepAsync();
+        }
     }
 
     protected override async Task OnParametersSetAsync()
@@ -295,7 +306,9 @@ public partial class DocumentSigning
                       $"&FilterMode={(int)CurrentFilterMode}" +
                       $"&DateFilterField={(int)ExportDateFilterField}" +
                       $"&FromDate={FromDate?.ToString("O")}" +
-                      $"&ToDate={ToDate?.ToString("O")}";
+                      $"&ToDate={ToDate?.ToString("O")}" +
+                      $"&SubmitterUserId={SelectedFilterSubmitterUser.FirstOrDefault()?.Id}" +
+                      $"&SubmitterOrganizationUnitId={SelectedFilterSubmitterOrganizationUnit.FirstOrDefault()?.Id}";
 
             NavigationManager.NavigateTo(url, forceLoad: true);
         }
@@ -322,6 +335,8 @@ public partial class DocumentSigning
                 FilterMode = CurrentFilterMode,
                 FromDate = FromDate,
                 ToDate = ToDate,
+                SubmitterUserId = SelectedFilterSubmitterUser.FirstOrDefault()?.Id,
+                SubmitterOrganizationUnitId = SelectedFilterSubmitterOrganizationUnit.FirstOrDefault()?.Id,
                 MaxResultCount = PageSize,
                 SkipCount = (CurrentPage - 1) * PageSize,
                 Sorting = CurrentSorting
@@ -550,6 +565,67 @@ public partial class DocumentSigning
     /// <summary>
     /// Effective pending signer for a step (unsaved edit takes precedence).
     /// </summary>
+    private static bool IsWorkflowStepProcessed(WorkflowStepStatusDto step, IReadOnlyList<WorkflowStepStatusDto> allSteps)
+    {
+        if (step.IsCompleted)
+        {
+            return true;
+        }
+
+        var current = allSteps.FirstOrDefault(s => s.IsCurrentStep);
+        return current != null && step.Order < current.Order;
+    }
+
+    private string GetWorkflowStepCardClass(WorkflowStepStatusDto step)
+    {
+        if (step.IsCurrentStep)
+        {
+            return "workflow-step-card workflow-step-card-current";
+        }
+
+        if (IsWorkflowStepProcessed(step, AllStepsWithStatus))
+        {
+            return "workflow-step-card workflow-step-card-processed";
+        }
+
+        return "workflow-step-card";
+    }
+
+    private void RequestScrollToCurrentWorkflowStep()
+    {
+        if (AllStepsWithStatus.Any(s => s.IsCurrentStep))
+        {
+            _scrollToCurrentWorkflowStepPending = true;
+        }
+    }
+
+    private async Task ScrollToCurrentWorkflowStepAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync(
+                "eval",
+                """
+                (() => {
+                  const step = document.getElementById('workflow-step-current');
+                  const container = document.getElementById('workflow-steps-scroll-container');
+                  if (!step || !container) return;
+                  const stepTop = step.offsetTop - container.offsetTop;
+                  const stepBottom = stepTop + step.offsetHeight;
+                  const viewTop = container.scrollTop;
+                  const viewBottom = viewTop + container.clientHeight;
+                  if (stepTop < viewTop || stepBottom > viewBottom) {
+                    step.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                  }
+                })()
+                """);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Scroll to current workflow step failed");
+        }
+    }
+
     private Guid? GetEffectivePendingSignerUserId(WorkflowStepStatusDto step)
     {
         if (EditedStepSigners.TryGetValue(step.StepId, out var edited) && edited.HasValue)
@@ -710,6 +786,18 @@ public partial class DocumentSigning
     {
         FilterText = text;
         await DebouncedSearchAsync();
+    }
+
+    private Task OnFilterSubmitterUserChanged(List<LookupDto<Guid>> value)
+    {
+        SelectedFilterSubmitterUser = value ?? new List<LookupDto<Guid>>();
+        return Task.CompletedTask;
+    }
+
+    private Task OnFilterSubmitterOrganizationUnitChanged(List<LookupDto<Guid>> value)
+    {
+        SelectedFilterSubmitterOrganizationUnit = value ?? new List<LookupDto<Guid>>();
+        return Task.CompletedTask;
     }
 
     private async Task OnFilterModeChanged(DocumentSigningFilterMode mode)
@@ -913,8 +1001,14 @@ public partial class DocumentSigning
                     : null;
             }
 
-            await ApplyOverdueCheckAsync(workflowInstanceId);
+            if (!IsViewOnly)
+            {
+                await ApplyOverdueCheckAsync(workflowInstanceId);
+            }
+
             UpdateSigningActionVisibility();
+            RequestScrollToCurrentWorkflowStep();
+            await RequestRenderAsync();
         }
         catch (Exception ex)
         {
@@ -1024,7 +1118,7 @@ public partial class DocumentSigning
                 await OnSigningMethodChangedAsync(defaultSigningMethod.Id);
             }
 
-            if (document.WorkflowInstanceId.HasValue)
+            if (document.WorkflowInstanceId.HasValue && !IsViewOnly)
             {
                 await ApplyOverdueCheckAsync(document.WorkflowInstanceId.Value);
             }
@@ -1046,6 +1140,7 @@ public partial class DocumentSigning
                 {
                     await Task.Delay(100);
                     _showActionModalRichTextEditors = true;
+                    RequestScrollToCurrentWorkflowStep();
                     await RequestRenderAsync();
                 }
             }
@@ -1216,6 +1311,39 @@ public partial class DocumentSigning
             IsWorkflowActionSubmitting = false;
             WorkflowActionCountdownRemaining = WorkflowActionSigningUiTimeoutSeconds;
             await RequestRenderAsync();
+        }
+    }
+
+    #endregion
+
+    #region Cancel Workflow
+
+    private async Task ConfirmCancelWorkflowAsync(DocumentSigningItemDto document)
+    {
+        if (!document.WorkflowInstanceId.HasValue)
+        {
+            return;
+        }
+
+        var confirmed = await UiMessageService.Confirm(L["ConfirmCancelWorkflow"]);
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            await DocumentWorkflowInstancesAppService.CancelWorkflowByInitiatorAsync(
+                new CancelWorkflowByInitiatorInput
+                {
+                    WorkflowInstanceId = document.WorkflowInstanceId.Value
+                });
+            await UiMessageService.Success(L["WorkflowCancelledSuccessfully"]);
+            await LoadDocumentSigningListAsync();
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
         }
     }
 
@@ -1426,7 +1554,8 @@ public partial class DocumentSigning
                 AttachedFileIds = ResubmitUploadedFiles.Any()
                     ? ResubmitUploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null,
-                DeleteFileIds = ResubmitDeleteFileIds.Any() ? ResubmitDeleteFileIds : null
+                DeleteFileIds = ResubmitDeleteFileIds.Any() ? ResubmitDeleteFileIds : null,
+                ViewStepScopeSelections = BuildResubmitViewStepScopeSelections()
             };
 
             await DocumentWorkflowInstancesAppService.ResubmitReturnedWorkflowAsync(input);
@@ -1446,6 +1575,25 @@ public partial class DocumentSigning
             IsResubmitModalLoading = false;
             await RequestRenderAsync();
         }
+    }
+
+    private List<WorkflowStepViewScopeSelectionDto> BuildResubmitViewStepScopeSelections()
+    {
+        if (ReturnedWorkflowInfo?.WorkflowInfo?.Steps == null)
+        {
+            return new List<WorkflowStepViewScopeSelectionDto>();
+        }
+
+        return ReturnedWorkflowInfo.WorkflowInfo.Steps
+            .Where(s => s.IsViewStep)
+            .Select(s => new WorkflowStepViewScopeSelectionDto
+            {
+                StepId = s.StepId,
+                OrganizationUnitIds = s.TemplateOrganizationUnitIds.ToList(),
+                UserIds = s.TemplateUserIds.ToList()
+            })
+            .Where(s => s.OrganizationUnitIds.Any() || s.UserIds.Any())
+            .ToList();
     }
 
     #endregion
@@ -1753,10 +1901,7 @@ public partial class DocumentSigning
     #region PDF Viewer Modal
 
     /// <summary>
-    /// Open PDF viewer modal for a document signing item.
-    /// Logic: Get DocumentFiles by DocumentId (same approach as DocumentDetail),
-    /// find the first PDF file and display it. If no original file found,
-    /// fallback to checking DocumentAssignment's DocumentFileResultId.
+    /// Open PDF viewer for a workflow document using the latest signed PDF (not the submit copy).
     /// </summary>
     private async Task OpenDocumentPdfViewerModalAsync(DocumentSigningItemDto item)
     {
@@ -1765,63 +1910,19 @@ public partial class DocumentSigning
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
             CurrentDocumentPdfDocumentId = item.DocumentId;
 
-            string? pdfFilePath = null;
+            var pdfFileUrl = await WorkflowPdfDisplayHelper.LoadPdfDataUrlAsync(
+                item.DocumentId,
+                DocumentWorkflowInstancesAppService,
+                DocumentPdfViewerAppService);
 
-            var assignmentsResult = await DocumentAssignmentsAppService.GetListAsync(new GetDocumentAssignmentsInput
-            {
-                DocumentId = item.DocumentId,
-                MaxResultCount = 1,
-                SkipCount = 0,
-                Sorting = "DocumentAssignment.CreationTime desc"
-            });
-
-          
-            if (assignmentsResult != null && assignmentsResult.Items.Any())
-            {
-                 var assignmentWithFile = assignmentsResult.Items
-                    .FirstOrDefault(a => a.DocumentAssignment.DocumentFileResultId.HasValue
-                        && a.DocumentFileResult != null
-                        && !string.IsNullOrEmpty(a.DocumentFileResult.Path)
-                        && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(a.DocumentFileResult.Name));
-
-                if (assignmentWithFile != null)
-                {
-                    pdfFilePath = assignmentWithFile.DocumentFileResult!.Path;
-                }
-            }
-            else
-            {
-                var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-                {
-                    DocumentId = item.DocumentId,
-                    MaxResultCount = 100,
-                    SkipCount = 0
-                });
-
-                var pdfFile = documentFilesResult.Items
-                    .FirstOrDefault(f => f.DocumentFile != null
-                        && !string.IsNullOrEmpty(f.DocumentFile.Path)
-                        && HC.Blazor.Shared.FileHelper.IsPdfFileExtension(f.DocumentFile.Name));
-
-                pdfFilePath = pdfFile?.DocumentFile?.Path ?? string.Empty;
-
-            }
-
-            if (string.IsNullOrEmpty(pdfFilePath))
+            if (string.IsNullOrEmpty(pdfFileUrl))
             {
                 await UiMessageService.Warn(L["NoPdfAvailable"],
                     options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
-            // Get watermarked PDF from API (user + timestamp stamped)
-            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
-            {
-                BlobPath = pdfFilePath,
-                WatermarkAction = "view"
-            });
-            var base64 = Convert.ToBase64String(fileBytes);
-            DocumentPdfFileUrl = $"data:application/pdf;base64,{base64}";
+            DocumentPdfFileUrl = pdfFileUrl;
             IsDocumentPdfFile = true;
 
             await DocumentPdfViewerModal.Show();
@@ -1839,14 +1940,14 @@ public partial class DocumentSigning
     }
 
     /// <summary>
-    /// View signing document PDF from the Signing Documents tab
+    /// View signing document PDF from the Signing Documents tab (enables Assign Task for the workflow document).
     /// </summary>
-    private async Task ViewSigningDocumentPdfAsync(string filePath, string fileName)
+    private async Task ViewSigningDocumentPdfAsync(Guid documentId, string filePath, string fileName)
     {
         try
         {
             await BlockUiService.Block(selectors: "#lpx-wrapper", busy: true);
-            CurrentDocumentPdfDocumentId = null;
+            CurrentDocumentPdfDocumentId = documentId;
             var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
             {
                 BlobPath = filePath,

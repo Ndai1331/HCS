@@ -115,29 +115,7 @@ public partial class ProjectMembersAppService : ProjectMembersAppServiceBase, IP
             }
         );
 
-        // Add user to CalendarAssignments (CalendarEventParticipant)
-        // Find the CalendarEvent for this project
-        var queryable = await _calendarEventRepository.GetQueryableAsync();
-        var calendarEventQuery = queryable
-            .Where(e => e.EventType == HC.CalendarEvents.EventType.TASK_ASSIGNED.ToString())
-            .Where(e => e.RelatedType == HC.CalendarEvents.RelatedType.PROJECT.ToString())
-            .Where(e => e.RelatedId == project.Id.ToString());
-
-        var calendarEvents = await AsyncExecuter.ToListAsync(calendarEventQuery);
-
-        if (calendarEvents.Any())
-        {
-            var calendarEvent = calendarEvents.First();
-            var participant = new CalendarEventParticipant(
-                GuidGenerator.Create(),
-                calendarEvent.Id,
-                input.UserId,
-                ParticipantResponse.INVITED.ToString(),
-                false
-            );
-            participant.TenantId = CurrentTenant.Id;
-            await _calendarEventParticipantRepository.InsertAsync(participant);
-        }
+        await AddCalendarParticipantForProjectAsync(project.Id, input.UserId);
 
         return result;
     }
@@ -151,32 +129,7 @@ public partial class ProjectMembersAppService : ProjectMembersAppServiceBase, IP
         var user = memberWithNav.User;
         string userFullName = CurrentUser.SurName + " " + CurrentUser.Name; 
 
-        // Remove user from CalendarAssignments before deleting member
-        // Find the CalendarEvent for this project
-        var queryable = await _calendarEventRepository.GetQueryableAsync();
-        var calendarEventQuery = queryable
-            .Where(e => e.EventType == HC.CalendarEvents.EventType.TASK_ASSIGNED.ToString())
-            .Where(e => e.RelatedType == HC.CalendarEvents.RelatedType.PROJECT.ToString())
-            .Where(e => e.RelatedId == project.Id.ToString());
-
-        var calendarEvents = await AsyncExecuter.ToListAsync(calendarEventQuery);
-
-        if (calendarEvents.Any())
-        {
-            var calendarEvent = calendarEvents.First();
-            // Find and delete the participant
-            var participantQueryable = await _calendarEventParticipantRepository.GetQueryableAsync();
-            var participantQuery = participantQueryable
-                .Where(p => p.CalendarEventId == calendarEvent.Id)
-                .Where(p => p.IdentityUserId == user.Id);
-
-            var participants = await AsyncExecuter.ToListAsync(participantQuery);
-
-            foreach (var participant in participants)
-            {
-                await _calendarEventParticipantRepository.DeleteAsync(participant.Id);
-            }
-        }
+        await RemoveCalendarParticipantForProjectAsync(project.Id, user.Id);
 
         // Call base method to delete member
         await base.DeleteAsync(id);
@@ -270,5 +223,87 @@ public partial class ProjectMembersAppService : ProjectMembersAppServiceBase, IP
         );
         
         return result;
+    }
+
+    public override async Task DeleteByIdsAsync(List<Guid> projectmemberIds)
+    {
+        foreach (var memberId in projectmemberIds)
+        {
+            var memberWithNav = await _projectMemberRepository.GetWithNavigationPropertiesAsync(memberId);
+            await RemoveCalendarParticipantForProjectAsync(memberWithNav.Project.Id, memberWithNav.User.Id);
+        }
+
+        await base.DeleteByIdsAsync(projectmemberIds);
+    }
+
+    public override async Task DeleteAllAsync(GetProjectMembersInput input)
+    {
+        var members = await _projectMemberRepository.GetListWithNavigationPropertiesAsync(
+            input.FilterText, input.MemberRole, input.JoinedAtMin, input.JoinedAtMax, input.ProjectId, input.UserId);
+
+        foreach (var member in members)
+        {
+            await RemoveCalendarParticipantForProjectAsync(member.Project.Id, member.User.Id);
+        }
+
+        await base.DeleteAllAsync(input);
+    }
+
+    private async Task AddCalendarParticipantForProjectAsync(Guid projectId, Guid userId)
+    {
+        var calendarEvent = await FindProjectCalendarEventAsync(projectId);
+        if (calendarEvent == null)
+        {
+            return;
+        }
+
+        var alreadyParticipant = await _calendarEventParticipantRepository.AnyAsync(
+            p => p.CalendarEventId == calendarEvent.Id && p.IdentityUserId == userId);
+
+        if (alreadyParticipant)
+        {
+            return;
+        }
+
+        var participant = new CalendarEventParticipant(
+            GuidGenerator.Create(),
+            calendarEvent.Id,
+            userId,
+            ParticipantResponse.INVITED.ToString(),
+            false);
+        participant.TenantId = CurrentTenant.Id;
+        await _calendarEventParticipantRepository.InsertAsync(participant);
+    }
+
+    private async Task RemoveCalendarParticipantForProjectAsync(Guid projectId, Guid userId)
+    {
+        var calendarEvent = await FindProjectCalendarEventAsync(projectId);
+        if (calendarEvent == null)
+        {
+            return;
+        }
+
+        var participantQueryable = await _calendarEventParticipantRepository.GetQueryableAsync();
+        var participants = await AsyncExecuter.ToListAsync(
+            participantQueryable
+                .Where(p => p.CalendarEventId == calendarEvent.Id)
+                .Where(p => p.IdentityUserId == userId));
+
+        foreach (var participant in participants)
+        {
+            await _calendarEventParticipantRepository.DeleteAsync(participant.Id);
+        }
+    }
+
+    private async Task<CalendarEvent?> FindProjectCalendarEventAsync(Guid projectId)
+    {
+        var queryable = await _calendarEventRepository.GetQueryableAsync();
+        var calendarEvents = await AsyncExecuter.ToListAsync(
+            queryable
+                .Where(e => e.EventType == HC.CalendarEvents.EventType.TASK_ASSIGNED.ToString())
+                .Where(e => e.RelatedType == HC.CalendarEvents.RelatedType.PROJECT.ToString())
+                .Where(e => e.RelatedId == projectId.ToString()));
+
+        return calendarEvents.FirstOrDefault();
     }
 }

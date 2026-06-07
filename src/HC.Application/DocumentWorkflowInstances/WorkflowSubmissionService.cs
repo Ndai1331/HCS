@@ -214,6 +214,8 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         }
 
         var allStepsOrdered = workflowInfo.Steps.OrderBy(s => s.Order).ToList();
+        var viewStepScopeSelections = BuildViewStepScopesFromCatalog(allStepsOrdered);
+        ValidateViewStepScopeSelections(allStepsOrdered, viewStepScopeSelections);
         var isParallel = workflowInfo.SignMode == nameof(SignMode.PARALLEL);
         var firstBlockingStep = WorkflowStepNavigationHelper.GetFirstBlockingStepDetail(allStepsOrdered);
 
@@ -260,6 +262,7 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         instance.CommittedStepTemplateIdsJson = WorkflowSubmissionHelper.SerializeCommittedStepTemplateIds(
             allStepsOrdered.Select(s => s.StepId).ToList());
         WorkflowSubmissionHelper.SetStepSignerSelections(instance, input.StepSignerSelections);
+        WorkflowSubmissionHelper.SetViewStepScopes(instance, viewStepScopeSelections);
         WorkflowSubmissionHelper.ClearUnlockedViewSteps(instance);
         WorkflowStepNavigationHelper.AdvanceThroughViewSteps(instance, allStepsOrdered, 0);
 
@@ -335,13 +338,16 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
             }
 
             var receivers = ResolveReceiversForSubmit(step, input.StepSignerSelections);
+            var signingPlaceholderIndex = WorkflowStepNavigationHelper.GetSigningPlaceholderIndex(
+                allStepsOrdered,
+                step.StepId);
             foreach (var user in receivers)
             {
                 await _documentAssignmentManager.CreateAsync(
                     documentId,
                     step.StepId,
                     user.UserId,
-                    step.Order,
+                    signingPlaceholderIndex,
                     step.Type,
                     nameof(DocumentAssignmentStatus.PENDING),
                     nowTime,
@@ -510,6 +516,8 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
 
         var submitInfo = await _workflowSubmitInfoQueryService.GetWorkflowSubmitInfoAsync(returnedInstance.WorkflowId);
         var allStepsOrdered = submitInfo.Steps.OrderBy(s => s.Order).ToList();
+        var viewStepScopeSelections = BuildViewStepScopesFromCatalog(allStepsOrdered);
+        ValidateViewStepScopeSelections(allStepsOrdered, viewStepScopeSelections);
         var isParallel = submitInfo.SignMode == nameof(SignMode.PARALLEL);
         var firstBlockingStep = WorkflowStepNavigationHelper.GetFirstBlockingStepDetail(allStepsOrdered);
 
@@ -546,6 +554,7 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
         returnedInstance.CommittedStepTemplateIdsJson = WorkflowSubmissionHelper.SerializeCommittedStepTemplateIds(
             allStepsOrdered.Select(s => s.StepId).ToList());
         WorkflowSubmissionHelper.SetStepSignerSelections(returnedInstance, input.StepSignerSelections);
+        WorkflowSubmissionHelper.SetViewStepScopes(returnedInstance, viewStepScopeSelections);
         WorkflowSubmissionHelper.ClearUnlockedViewSteps(returnedInstance);
         WorkflowStepNavigationHelper.AdvanceThroughViewSteps(returnedInstance, allStepsOrdered, 0);
         returnedInstance.CurrentStepId = firstBlockingStep?.StepId ?? allStepsOrdered.Last().StepId;
@@ -595,13 +604,16 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
             }
 
             var receivers = ResolveReceiversForSubmit(step, input.StepSignerSelections);
+            var signingPlaceholderIndex = WorkflowStepNavigationHelper.GetSigningPlaceholderIndex(
+                allStepsOrdered,
+                step.StepId);
             foreach (var user in receivers)
             {
                 await _documentAssignmentManager.CreateAsync(
                     documentId,
                     step.StepId,
                     user.UserId,
-                    step.Order,
+                    signingPlaceholderIndex,
                     step.Type,
                     nameof(DocumentAssignmentStatus.PENDING),
                     nowTime,
@@ -693,6 +705,66 @@ public class WorkflowSubmissionService : HCAppService, IWorkflowSubmissionServic
             firstBlockingStep == null ? DocumentStatusCode.HT : DocumentStatusCode.DANG_XU_LY);
 
         return ObjectMapper.Map<DocumentWorkflowInstance, DocumentWorkflowInstanceDto>(returnedInstance);
+    }
+
+    private static List<WorkflowStepViewScopeSelectionDto> BuildViewStepScopesFromCatalog(
+        IReadOnlyList<WorkflowStepDetailDto> allSteps)
+    {
+        return allSteps
+            .Where(s => s.IsViewStep)
+            .Select(step => new WorkflowStepViewScopeSelectionDto
+            {
+                StepId = step.StepId,
+                OrganizationUnitIds = step.TemplateOrganizationUnitIds
+                    .Where(x => x != Guid.Empty)
+                    .Distinct()
+                    .ToList(),
+                UserIds = step.TemplateUserIds
+                    .Where(x => x != Guid.Empty)
+                    .Distinct()
+                    .ToList()
+            })
+            .ToList();
+    }
+
+    private void ValidateViewStepScopeSelections(
+        IReadOnlyList<WorkflowStepDetailDto> allSteps,
+        IReadOnlyList<WorkflowStepViewScopeSelectionDto>? selections)
+    {
+        var viewSteps = allSteps.Where(s => s.IsViewStep).ToList();
+        if (viewSteps.Count == 0)
+        {
+            return;
+        }
+
+        var selectionByStep = (selections ?? new List<WorkflowStepViewScopeSelectionDto>())
+            .Where(x => x.StepId != Guid.Empty)
+            .GroupBy(x => x.StepId)
+            .ToDictionary(g => g.Key, g => g.Last());
+
+        foreach (var step in viewSteps)
+        {
+            var templateOuIds = step.TemplateOrganizationUnitIds.Where(x => x != Guid.Empty).ToHashSet();
+            var templateUserIds = step.TemplateUserIds.Where(x => x != Guid.Empty).ToHashSet();
+
+            if (!templateOuIds.Any() && !templateUserIds.Any())
+            {
+                throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeRequired"]);
+            }
+
+            if (!selectionByStep.TryGetValue(step.StepId, out var scope))
+            {
+                throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeRequired"]);
+            }
+
+            var submittedOuIds = scope.OrganizationUnitIds.Where(x => x != Guid.Empty).ToHashSet();
+            var submittedUserIds = scope.UserIds.Where(x => x != Guid.Empty).ToHashSet();
+
+            if (!templateOuIds.SetEquals(submittedOuIds) || !templateUserIds.SetEquals(submittedUserIds))
+            {
+                throw new Volo.Abp.UserFriendlyException(L["ViewStepScopeCatalogOnly"]);
+            }
+        }
     }
 
     private List<WorkflowStepUserDto> ResolveReceiversForSubmit(

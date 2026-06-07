@@ -2,8 +2,10 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using HC.DocumentAssignments;
 using HC.DocumentFiles;
+using HC.WorkflowStepTemplates;
 using HC.DocumentWorkflowInstanceFiles;
 using HC.DocumentWorkflowInstanceLogss;
 using HC.Localization;
@@ -37,6 +39,7 @@ public sealed class ParallelSigningMergeService : IParallelSigningMergeService, 
     private readonly IRepository<IdentityUser, Guid> _identityUserRepository;
     private readonly IUserSignatureRepository _userSignatureRepository;
     private readonly IWorkflowSigningExecutionService _workflowSigningExecutionService;
+    private readonly IWorkflowCommittedStepsQueryService _workflowCommittedStepsQueryService;
     private readonly IBlobContainer _blobContainer;
     private readonly IGuidGenerator _guidGenerator;
     private readonly ICurrentTenant _currentTenant;
@@ -53,6 +56,7 @@ public sealed class ParallelSigningMergeService : IParallelSigningMergeService, 
         IRepository<IdentityUser, Guid> identityUserRepository,
         IUserSignatureRepository userSignatureRepository,
         IWorkflowSigningExecutionService workflowSigningExecutionService,
+        IWorkflowCommittedStepsQueryService workflowCommittedStepsQueryService,
         IBlobContainer blobContainer,
         IGuidGenerator guidGenerator,
         ICurrentTenant currentTenant,
@@ -68,6 +72,7 @@ public sealed class ParallelSigningMergeService : IParallelSigningMergeService, 
         _identityUserRepository = identityUserRepository;
         _userSignatureRepository = userSignatureRepository;
         _workflowSigningExecutionService = workflowSigningExecutionService;
+        _workflowCommittedStepsQueryService = workflowCommittedStepsQueryService;
         _blobContainer = blobContainer;
         _guidGenerator = guidGenerator;
         _currentTenant = currentTenant;
@@ -134,7 +139,11 @@ public sealed class ParallelSigningMergeService : IParallelSigningMergeService, 
             x => x.DocumentId == instance.DocumentId
             && x.Status == nameof(DocumentAssignmentStatus.DONE)
             && x.CreationTime >= instance.StartedAt);
-        allDoneAssignments = allDoneAssignments.OrderBy(a => a.StepOrder).ToList();
+        var committedSteps = await _workflowCommittedStepsQueryService
+            .LoadCommittedWorkflowStepsOrderedAsync(instance);
+        allDoneAssignments = allDoneAssignments
+            .OrderBy(a => ResolveMergeSigningIndex(committedSteps, a))
+            .ToList();
 
         if (!allDoneAssignments.Any())
         {
@@ -197,15 +206,16 @@ public sealed class ParallelSigningMergeService : IParallelSigningMergeService, 
                 logDict.TryGetValue(doneAssignment.Id, out var log);
                 var noteContent = log?.Note;
 
+                var signingIndex = ResolveMergeSigningIndex(committedSteps, doneAssignment);
                 pdfBytes = _workflowSigningExecutionService.ReplacePdfPlaceholders(
                     pdfBytes,
-                    doneAssignment.StepOrder,
+                    signingIndex,
                     signatureImageBytes,
                     fullName,
                     noteContent ?? "");
 
-                _logger.LogInformation("[PARALLEL_MERGE] Applied signature for step {StepOrder}, user {UserId}",
-                    doneAssignment.StepOrder, userId);
+                _logger.LogInformation("[PARALLEL_MERGE] Applied signature for signing index {SigningIndex}, user {UserId}",
+                    signingIndex, userId);
             }
             catch (Exception ex)
             {
@@ -251,5 +261,21 @@ public sealed class ParallelSigningMergeService : IParallelSigningMergeService, 
     {
         var ext = Path.GetExtension(file.Name ?? file.Path ?? "").ToLowerInvariant();
         return ext == ".pdf";
+    }
+
+    private static int ResolveMergeSigningIndex(
+        IReadOnlyList<WorkflowStepTemplate> committedSteps,
+        DocumentAssignment assignment)
+    {
+        if (assignment.WorkflowStepTemplateId.HasValue
+            && WorkflowStepNavigationHelper.TryGetSigningPlaceholderIndex(
+                committedSteps,
+                assignment.WorkflowStepTemplateId.Value,
+                out var signingIndex))
+        {
+            return signingIndex;
+        }
+
+        return assignment.StepOrder;
     }
 }

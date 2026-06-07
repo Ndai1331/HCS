@@ -12,5 +12,7 @@ public interface IDocumentSigningFilterQueryBuilder
         DocumentSigningDateFilterField dateFilterField,
         DateTime? fromDate,
         DateTime? toDate,
-        Guid? focusDocumentId);
+        Guid? focusDocumentId,
+        Guid? submitterUserId = null,
+        Guid? submitterOrganizationUnitId = null);
 }

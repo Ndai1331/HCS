@@ -12,7 +12,9 @@ using HC.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Identity;
+using HC.Blazor.Shared;
 using HC.DocumentFiles;
+using HC.DocumentWorkflowInstances;
 using Volo.Abp.BlobStoring;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
@@ -39,6 +41,7 @@ public partial class ProjectTasksDetail : HCComponentBase
     [Inject] private IProjectTaskAssignmentsAppService ProjectTaskAssignmentsAppService { get; set; } = default!;
     [Inject] private IProjectTaskDocumentsAppService ProjectTaskDocumentsAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
+    [Inject] private IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
     [Inject] private HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService { get; set; } = default!;
     [Inject] private ILogger<ProjectTasksDetail> NotificationLogger { get; set; } = default!;
@@ -732,41 +735,27 @@ public partial class ProjectTasksDetail : HCComponentBase
 
         try
         {
-            var documentId = context.Document.Id;
-            var hasPdf = DocumentHasPdfFile(documentId);
-            
-            if (!hasPdf)
+            var document = context.Document;
+            var pdfFileUrl = await WorkflowPdfDisplayHelper.LoadPdfDataUrlWithWorkflowPreferenceAsync(
+                document.Id,
+                document.SourceType,
+                document.WorkflowId,
+                DocumentWorkflowInstancesAppService,
+                DocumentFilesAppService,
+                DocumentPdfViewerAppService);
+
+            if (string.IsNullOrEmpty(pdfFileUrl))
             {
                 await UiMessageService.Warn(L["NoPdfFileAvailable"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
 
-            // Get PDF file URL
-            var pdfFile = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
+            PdfFileUrl = pdfFileUrl;
+            IsPdfFile = true;
+            if (PdfViewerModal != null)
             {
-                DocumentId = documentId,
-                MaxResultCount = 1
-            });
-
-            if (pdfFile.Items.Any())
-            {
-                var file = pdfFile.Items.First();
-                if (!string.IsNullOrEmpty(file.DocumentFile.Path))
-                {
-                    var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
-                    {
-                        BlobPath = file.DocumentFile.Path,
-                        WatermarkAction = "view"
-                    });
-                    var base64 = Convert.ToBase64String(fileBytes);
-                    PdfFileUrl = $"data:application/pdf;base64,{base64}";
-                    IsPdfFile = true;
-                    if (PdfViewerModal != null)
-                    {
-                        await PdfViewerModal.Show();
-                    }
-                }
+                await PdfViewerModal.Show();
             }
         }
         catch (Exception ex)
@@ -871,23 +860,9 @@ public partial class ProjectTasksDetail : HCComponentBase
         return false;
     }
 
-    private async Task<bool> CheckIfDocumentHasPdfFileAsync(Guid documentId)
+    private Task<bool> CheckIfDocumentHasPdfFileAsync(Guid documentId)
     {
-        try
-        {
-            var files = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-            {
-                DocumentId = documentId,
-                MaxResultCount = 100
-            });
-
-            return files.Items.Any(f => !string.IsNullOrEmpty(f.DocumentFile.Name) && 
-                f.DocumentFile.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
-        }
-        catch
-        {
-            return false;
-        }
+        return WorkflowPdfDisplayHelper.HasDisplayPdfAsync(documentId, DocumentWorkflowInstancesAppService);
     }
 
     private async Task GetAssignmentIdentityUserCollectionLookupAsync()

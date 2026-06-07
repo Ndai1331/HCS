@@ -10,18 +10,20 @@ using SixLabors.ImageSharp.Processing;
 namespace HC.DocumentWorkflowInstances;
 
 /// <summary>
-/// Composites a handwritten signature under the "Đã ký" layout banner (layout on top).
+/// Overlays a small "Đã ký" badge at the bottom-right corner of the handwritten signature image.
 /// Layout asset: Assets/Signing/electronic-signature-layout.png (embedded resource).
 /// </summary>
 public static class ElectronicSignatureLayoutComposer
 {
     private const string LayoutResourceSuffix = "electronic-signature-layout.png";
 
-    // Left portion of the banner reserved for the signature image (layout is 168x69).
-    private const double SignatureZoneWidthRatio = 0.58;
-    private const int ZonePadding = 4;
-    // Export at 3x native size so Word/LibreOffice renders a readable banner at ~4cm width.
-    private const int ExportLayoutWidthPx = 504;
+    /// <summary>Badge width relative to signature width (keeps "Đã ký" compact).</summary>
+    private const double LayoutBadgeWidthRatio = 0.28;
+
+    private const int BadgeMarginPx = 6;
+
+    // Upscale final composite so Word/LibreOffice renders a readable image at ~4cm width.
+    private const int ExportMinWidthPx = 504;
 
     private static byte[]? _cachedLayoutBytes;
 
@@ -35,35 +37,35 @@ public static class ElectronicSignatureLayoutComposer
         try
         {
             var layoutBytes = GetLayoutBytes();
-            using var layout = Image.Load<Rgba32>(layoutBytes);
+            using var layoutBadge = Image.Load<Rgba32>(layoutBytes);
             using var signature = Image.Load<Rgba32>(signatureImageBytes);
             CropSignatureBorder(signature);
 
-            var zoneWidth = Math.Max(1, (int)(layout.Width * SignatureZoneWidthRatio) - ZonePadding * 2);
-            var zoneHeight = Math.Max(1, layout.Height - ZonePadding * 2);
+            var badgeWidth = Math.Clamp(
+                (int)Math.Round(signature.Width * LayoutBadgeWidthRatio),
+                48,
+                Math.Max(48, signature.Width - BadgeMarginPx * 2));
+            var badgeHeight = Math.Max(
+                1,
+                (int)Math.Round(layoutBadge.Height * (badgeWidth / (double)layoutBadge.Width)));
 
-            signature.Mutate(ctx => ctx.Resize(new ResizeOptions
+            layoutBadge.Mutate(ctx => ctx.Resize(badgeWidth, badgeHeight));
+
+            var posX = Math.Max(0, signature.Width - layoutBadge.Width - BadgeMarginPx);
+            var posY = Math.Max(0, signature.Height - layoutBadge.Height - BadgeMarginPx);
+
+            signature.Mutate(ctx => ctx.DrawImage(layoutBadge, new Point(posX, posY), 1f));
+
+            if (signature.Width < ExportMinWidthPx)
             {
-                Size = new Size(zoneWidth, zoneHeight),
-                Mode = ResizeMode.Max
-            }));
-
-            var posX = ZonePadding + Math.Max(0, (zoneWidth - signature.Width) / 2);
-            var posY = ZonePadding + Math.Max(0, (zoneHeight - signature.Height) / 2);
-
-            // Signature first (bottom), layout overlay on top so "Đã ký" is never covered.
-            using var composite = new Image<Rgba32>(layout.Width, layout.Height);
-            composite.Mutate(ctx => ctx.DrawImage(signature, new Point(posX, posY), 1f));
-            composite.Mutate(ctx => ctx.DrawImage(layout, Point.Empty, 1f));
-
-            if (composite.Width < ExportLayoutWidthPx)
-            {
-                var exportHeight = Math.Max(1, (int)Math.Round(composite.Height * ((double)ExportLayoutWidthPx / composite.Width)));
-                composite.Mutate(ctx => ctx.Resize(ExportLayoutWidthPx, exportHeight));
+                var exportHeight = Math.Max(
+                    1,
+                    (int)Math.Round(signature.Height * ((double)ExportMinWidthPx / signature.Width)));
+                signature.Mutate(ctx => ctx.Resize(ExportMinWidthPx, exportHeight));
             }
 
             using var output = new MemoryStream();
-            composite.Save(output, new PngEncoder { ColorType = PngColorType.RgbWithAlpha });
+            signature.Save(output, new PngEncoder { ColorType = PngColorType.RgbWithAlpha });
             return output.ToArray();
         }
         catch

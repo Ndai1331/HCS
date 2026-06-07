@@ -81,6 +81,15 @@ Các field phục vụ luồng “Gửi” / hiển thị inbox:
 - **Tất cả**: union hai nhánh trên.
 - **Đang theo dõi**: chưa có logic (count = 0).
 
+### 3.1.1 Xem PDF & Giao việc từ trình ký
+
+- API: `GetWorkflowDisplayPdfFileAsync(documentId)` (`WorkflowDisplayPdfResolver`) — thứ tự ưu tiên:
+  1. PDF trên document có **`IsSigned = true`**, `UploadedAt` mới nhất (file đã ký đủ / merge song song).
+  2. `DocumentAssignment` **DONE** bước **SIGN/PROCESS**, `DocumentFileResultId` trỏ PDF, `ProcessedAt` mới nhất.
+  3. PDF bất kỳ trên document, `UploadedAt` mới nhất (đang xử lý, chưa có bản signed).
+- **Không** dùng file bản sao lúc trình ký (`IsSigned = false`) khi đã tồn tại file signed mới hơn.
+- Blazor: `WorkflowPdfDisplayHelper` — grid **Xem PDF**, modal **Giao việc**, tab **Tài liệu ký**, và PDF trên công việc gắn document workflow đều gọi resolver này.
+
 ### 3.2 Trình ký từ menu quản lý (0 / 1 / 2) — **bản sao + liên kết gốc**
 
 Khi submit **không** dùng “chỉ template workflow” trên một document đang là **Archive / Personal / SentToMe**:
@@ -118,8 +127,18 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
   - **mọi `DocumentWorkflowInstance` chỉ chạy trên document `SourceType = Workflow`.**
 - Khi re-submit đổi document, cleanup assignment cũ luôn chạy theo **document workflow cũ** để không để lại assignment treo `IsCurrent`.
 
+### 3.2.2 Hủy trình ký do người trình ký (chưa ai ký)
+
+- API: `POST api/app/document-workflow-instances/cancel-by-initiator` (`CancelWorkflowByInitiatorInput`).
+- Chỉ **người tạo instance** (`CreatorId`) và instance ở trạng thái **`IN_PROGRESS`** hoặc **`OVERDUE`**.
+- **Không** hủy được sau khi **đã ký file** (file workflow `IsSigned=true` từ lúc trình ký trở đi), hoặc đã hoàn thành bước **SIGN/PROCESS** (`assignment DONE`). Chỉ **trình ký** (submit, file copy `IsSigned=false`) vẫn được hủy. Bước **VIEW** không chặn hủy.
+- Hủy mềm: instance → **`CANCELLED`**, assignment `PENDING` → **`REVOKE`**, tài liệu workflow con + parent (nếu có) → **`DA_HUY`**; log/history `WORKFLOW_CANCELLED`.
+- Sau hủy: nút **Trình ký** trên document gốc hiện lại (không còn child `IN_PROGRESS`/`COMPLETED`); trình lại tạo **bản workflow con mới** như submit lần đầu.
+- UI: nút hủy trên `/document-signing` khi `CanCancelWorkflow` (cột Actions, thường tab **Tôi gửi đi**).
+
 ### 3.3 Modal trình ký & file Word/PDF
 
+- Chọn quy trình: **Select2** (lookup `GetWorkflowLookupAsync`, tìm theo tên, `MaxResultCount = 20`).
 - Có thể dùng **file mẫu workflow** (`UseWorkflowTemplateFile`) → tạo document mới `SourceType = Workflow` (không có parent trừ khi sau này mở rộng).
 - Hoặc chọn văn bản từ **0/1/2** → luồng **duplicate** như trên.
 - File **.doc/.docx**: bắt buộc nội dung trình ký (RichText); replace placeholder trong Word rồi convert PDF (`WorkflowSigningExecutionService`, OpenXml, LibreOffice).
@@ -140,19 +159,47 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
 ### 3.4.1 Bước VIEW (xem theo OU / người chỉ định)
 
 - Bước `VIEW` có thể đặt ở **bất kỳ** thứ tự trong quy trình.
-- Khi quy trình **tới** bước VIEW: ghi `UnlockedViewStepTemplateIds` (ExtraProperties trên instance); **không** tạo `DocumentAssignment` PENDING.
-- Người được xem khi bước đã unlock:
-  - `RoleInSubmitterOrganizationUnit` + role → user active có role và thuộc OU chain người trình ký;
-  - `SpecificUser` → đúng user chỉ định trên assignment.
-- Sau unlock, engine **auto-skip** các bước VIEW liên tiếp; **dừng** tại bước `SIGN` / `PROCESS` (assignment + ký bắt buộc).
+- **Danh mục quy trình** (`WorkflowDetail` → gán người thực hiện):
+  - Bước **VIEW**: `ScopedAssignee` — **Khoa phòng** và/hoặc **Người dùng** (bắt buộc ít nhất một trong hai); **Vai trò** tùy chọn (thêm user có role trong các OU đã chọn). Lưu `OrganizationUnitIds`, `DefaultUserIds`, `RoleId`.
+  - Bước **SIGN / PROCESS**: `SpecificUser` hoặc `RoleInSubmitterOrganizationUnit` (người thuộc khoa phòng người trình ký), **không** chọn OU trên modal danh mục.
+- **Trình ký** (`SubmitWorkflowModal`):
+  - Bước **SIGN / PROCESS**: chọn người ký/xử lý từ danh sách candidate theo OU người trình ký (như trước).
+  - Bước **VIEW**: **chỉ hiển thị** OU / vai trò / người dùng đã cấu hình trên danh mục (read-only); **không** cho thêm OU/user lúc trình ký; server lưu `ViewStepScopesJson` đúng theo danh mục.
+- Khi quy trình **tới** bước VIEW: ghi `UnlockedViewStepTemplateIds`; **không** tạo `DocumentAssignment` PENDING.
+- Người được xem khi bước đã unlock (union):
+  - User chỉ định (template + lựa chọn lúc trình ký);
+  - User thuộc các OU đã chọn;
+  - User có role đã cấu hình trong các OU đã chọn;
+  - Instance cũ không có `ViewStepScopesJson`: vẫn fallback `RoleInSubmitterOrganizationUnit` theo OU người trình ký.
+- Sau unlock, engine **auto-skip** các bước VIEW liên tiếp; **dừng** tại bước `SIGN` / `PROCESS`.
 - Danh sách `/document-signing`: UNION assignment workflow + document có quyền xem bước VIEW đã unlock (`HasViewAccess`, `CanAct` chỉ khi có assignment PENDING bước chặn).
+
+**Dữ liệu cũ (assignment `ScopedAssignee` trên bước Ký/Xử lý):**
+
+- Runtime vẫn resolve candidate nếu có `RoleId` (coi như `RoleInSubmitterOrganizationUnit`) hoặc user cụ thể.
+- Khi lưu qua API/UI, server tự chuẩn hóa `AssigneeType` và xóa `OrganizationUnitIdsJson` trên bước chặn.
+- SQL tùy chọn (PostgreSQL) — chỉ bước SIGN/PROCESS có role, đang `ScopedAssignee`:
+
+```sql
+UPDATE "AppWorkflowStepAssignments" a
+SET "AssigneeType" = 'RoleInSubmitterOrganizationUnit',
+    "OrganizationUnitIdsJson" = NULL,
+    "DefaultUserIdsJson" = NULL,
+    "DefaultUserId" = NULL
+FROM "AppWorkflowStepTemplates" s
+WHERE s."Id" = a."StepId"
+  AND upper(s."Type") IN ('SIGN', 'PROCESS')
+  AND a."AssigneeType" = 'ScopedAssignee'
+  AND a."RoleId" IS NOT NULL;
+```
 
 ### 3.4 Xử lý bước (Approve / Return / Reject)
 
 - **DocumentAssignment**: `PENDING`, `DONE`, `REJECTED`, `REVOKE`; gắn `WorkflowStepTemplateId` cho bước workflow (chỉ bước chặn SIGN/PROCESS).
 - **DocumentWorkflowInstance**: `IN_PROGRESS`, `COMPLETED`, `REJECTED`, `RETURNED`, `CANCELLED`, …
 - Return / Reject: map trạng thái document đúng nghiệp vụ (**TRA_VE**, **TU_CHOI**, không dùng HT cho trả về/từ chối).
-- **SEQUENTIAL vs PARALLEL** (`WorkflowTemplate.SignMode`): tạo assignment và copy/merge file theo logic đã triển khai; ký điện tử **ELECTRONIC** (placeholder `<<SignNN>>`, …).
+- **SEQUENTIAL vs PARALLEL** (`WorkflowTemplate.SignMode`): tạo assignment và copy/merge file theo logic đã triển khai; ký điện tử **ELECTRONIC** / **DIGITAL** dùng placeholder `<<SignNN>>`.
+- **`<<SignNN>>`**: `NN` = **thứ tự bước Ký/Xử lý** (1, 2, 3…), **bỏ qua** bước Xem — **không** dùng `WorkflowStepTemplate.Order`. Ví dụ: Xem (order=1) → Ký (order=2) → Ký (order=3) → ký bước thứ hai dùng `<<Sign01>>`, bước thứ ba `<<Sign02>>`. `DocumentAssignment.StepOrder` lưu chỉ số placeholder này; lúc ký runtime vẫn resolve lại từ committed steps (sửa instance cũ ghi nhầm `StepOrder` = template order).
 
 ### 3.5 SLA & quá hạn
 
@@ -186,6 +233,7 @@ Nếu document nguồn đã là **`Workflow` (3)** (ví dụ tiếp tục trên 
 | `SubmitToWorkflowAsync` | Trình ký (duplicate 0/1/2 → 3 + parent sync) |
 | `ProcessWorkflowActionAsync` | Duyệt / trả / từ chối + ký điện tử nếu có |
 | `GetDocumentSigningListAsync` | Danh sách trình ký (filter DB, Workflow + step assignment) |
+| `GetWorkflowDisplayPdfFileAsync` | PDF hiển thị / Giao việc (file signed cuối, không file trình ký) |
 | `IsDocumentSourceFileWordFormatAsync` | Kiểm tra .doc/.docx cho modal |
 
 Controller: `DocumentWorkflowInstanceController.Extended.cs`.

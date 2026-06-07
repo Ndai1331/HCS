@@ -76,7 +76,9 @@ public class DocumentSigningExportService : HCAppService, IDocumentSigningExport
             input.DateFilterField,
             input.FromDate,
             input.ToDate,
-            focusDocumentId: null);
+            focusDocumentId: null,
+            input.SubmitterUserId,
+            input.SubmitterOrganizationUnitId);
 
         if (input.FilterMode == DocumentSigningFilterMode.Following)
         {

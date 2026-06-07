@@ -109,4 +109,14 @@ public partial interface IDocumentWorkflowInstancesAppService
     Task ExtendWorkflowAsync(ExtendWorkflowInput input);
 
     Task<WorkflowExtensionSummaryDto> GetWorkflowExtensionSummaryAsync(Guid workflowInstanceId);
+
+    /// <summary>
+    /// Initiator cancels an in-progress or overdue workflow when no SIGN step has been completed.
+    /// </summary>
+    Task CancelWorkflowByInitiatorAsync(CancelWorkflowByInitiatorInput input);
+
+    /// <summary>
+    /// Resolves the PDF to display for a workflow document (latest signed file, then latest DONE assignment result, then latest PDF).
+    /// </summary>
+    Task<WorkflowDisplayPdfFileDto?> GetWorkflowDisplayPdfFileAsync(Guid documentId);
 }

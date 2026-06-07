@@ -26,12 +26,14 @@
 @using Volo.Abp.Http.Client
 @using Excubo.Blazor.TreeViews
 @using HC.DocumentFiles
+@using HC.DocumentWorkflowInstances
 @using Blazorise.PdfViewer
 
 @inherits HCComponentBase
 @inject IDocumentsAppService DocumentsAppService
 @inject IDocumentHistoriesAppService DocumentHistoriesAppService
 @inject IDocumentFilesAppService DocumentFilesAppService
+@inject IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService
 @inject HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService
 @inject IUiMessageService UiMessageService
 @inject IBlockUiService BlockUiService

@@ -150,4 +150,18 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     {
         return _documentWorkflowInstancesAppService.GetWorkflowExtensionSummaryAsync(workflowInstanceId);
     }
+
+    [HttpPost]
+    [Route("cancel-by-initiator")]
+    public Task CancelWorkflowByInitiatorAsync(CancelWorkflowByInitiatorInput input)
+    {
+        return _documentWorkflowInstancesAppService.CancelWorkflowByInitiatorAsync(input);
+    }
+
+    [HttpGet]
+    [Route("workflow-display-pdf-file/{documentId}")]
+    public Task<WorkflowDisplayPdfFileDto?> GetWorkflowDisplayPdfFileAsync(Guid documentId)
+    {
+        return _documentWorkflowInstancesAppService.GetWorkflowDisplayPdfFileAsync(documentId);
+    }
 }

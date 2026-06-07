@@ -9,7 +9,6 @@
 @using Volo.Saas.Host.Blazor.Pages.Shared.Components.SaasEditionPercentageWidget
 @inherits HCComponentBase
 @using Volo.Abp.Identity
-@using HC.UserDepartments
 @using HC.UserSignatures
 @using HC.Shared
 @using Blazorise
@@ -34,9 +33,9 @@
         padding: 0.5rem;
     }
 
-     .flatpickr-calendar.static {
+    .flatpickr-calendar.static {
         position: absolute;
-        top: unset; /*calc(80% + 2px);*/
+        top: unset;
     } 
 </style>
 <Row>
@@ -731,84 +730,6 @@
                     @L["Cancel"]
                 </Button>
                 <SubmitButton Form="EditUserSignatureForm" Clicked="UpdateUserSignatureAsync" />
-            </ModalFooter>
-        </Form>
-    </ModalContent>
-</Modal>
-
-@* ************************* CREATE USER DEPARTMENT MODAL ************************* *@
-<Modal @ref="CreateUserDepartmentModal" Closing="@CreateUserDepartmentModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
-        <Form id="CreateUserDepartmentForm">
-            <ModalHeader>
-                <ModalTitle>@L["NewUserDepartment"]</ModalTitle>
-                <CloseButton Clicked="CloseCreateUserDepartmentModalAsync" />
-            </ModalHeader>
-            <ModalBody>
-                <Field>
-                    <FieldLabel>@L["Department"] *</FieldLabel>
-                    <Div @key="@CreateDepartmentSelect2RenderKey">
-                        <Select2 IdSelector="c => c.Id.ToString()"
-                                 TextSelector="c => c.DisplayName"
-                                 FilterFunction="GetDepartmentCollectionLookupAsync"
-                                 GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
-                                 Datasource="DepartmentsCollection"
-                                 Value="@SelectedDepartmentForCreate"
-                                 OnValueChanged="OnDepartmentChangedForCreate"                
-                                 Cache="MemoryCache"
-                                 Multiselect="false" />
-                    </Div>
-                </Field>
-                <Field>
-                    <Check TValue="bool" @bind-Checked="@NewUserDepartment.IsPrimary">@L["IsDepartmentPrimary"]</Check>
-                </Field>
-                <Field>
-                    <Check TValue="bool" @bind-Checked="@NewUserDepartment.IsActive">@L["IsActive"]</Check>
-                </Field>
-            </ModalBody>
-            <ModalFooter>
-                <Button Color="Color.Secondary" Clicked="CloseCreateUserDepartmentModalAsync">
-                    @L["Cancel"]
-                </Button>
-                <SubmitButton Form="CreateUserDepartmentForm" Clicked="CreateUserDepartmentAsync"/>
-            </ModalFooter>
-        </Form>
-    </ModalContent>
-</Modal>
-
-@* ************************* EDIT USER DEPARTMENT MODAL ************************* *@
-<Modal @ref="EditUserDepartmentModal" Closing="@EditUserDepartmentModal.CancelClosingModalWhenFocusLost">
-    <ModalContent Centered="true">
-        <Form id="EditUserDepartmentForm">
-            <ModalHeader>
-                <ModalTitle>@L["UpdateUserDepartment"]</ModalTitle>
-                <CloseButton Clicked="CloseEditUserDepartmentModalAsync" />
-            </ModalHeader>
-            <ModalBody>
-                <Field>
-                    <FieldLabel>@L["Department"] *</FieldLabel>
-                    <Select2 IdSelector="c => c.Id.ToString()"
-                             TextSelector="c => c.DisplayName"
-                             FilterFunction="GetDepartmentCollectionLookupAsync"
-                             GetElementById="async (items, id, token) => items.Where(x => x.Id.ToString() == id).FirstOrDefault()"
-                             Datasource="DepartmentsCollection"
-                             Value="@SelectedDepartmentForEdit"
-                             OnValueChanged="OnDepartmentChangedForEdit"                
-                             Cache="MemoryCache"
-                             Multiselect="false" />
-                </Field>
-                <Field>
-                    <Check TValue="bool" @bind-Checked="@EditingUserDepartment.IsPrimary">@L["IsDepartmentPrimary"]</Check>
-                </Field>
-                <Field>
-                    <Check TValue="bool" @bind-Checked="@EditingUserDepartment.IsActive">@L["IsActive"]</Check>
-                </Field>
-            </ModalBody>
-            <ModalFooter>
-                <Button Color="Color.Secondary" Clicked="CloseEditUserDepartmentModalAsync">
-                    @L["Cancel"]
-                </Button>
-                <SubmitButton Form="EditUserDepartmentForm" Clicked="UpdateUserDepartmentAsync" />
             </ModalFooter>
         </Form>
     </ModalContent>

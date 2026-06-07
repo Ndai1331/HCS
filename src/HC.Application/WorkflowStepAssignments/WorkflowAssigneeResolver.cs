@@ -112,6 +112,85 @@ public class WorkflowAssigneeResolver : IWorkflowAssigneeResolver, ITransientDep
             .ToList();
     }
 
+    public async Task<List<WorkflowStepUserDto>> ResolveCandidatesByRoleInOrganizationUnitsAsync(
+        Guid roleId,
+        IReadOnlyList<Guid> organizationUnitIds,
+        bool isPrimary = false)
+    {
+        var ouIds = organizationUnitIds?
+            .Where(x => x != Guid.Empty)
+            .Distinct()
+            .ToList() ?? new List<Guid>();
+
+        if (ouIds.Count == 0)
+        {
+            return new List<WorkflowStepUserDto>();
+        }
+
+        var ouScopeById = new Dictionary<Guid, OrganizationUnitScope>();
+        foreach (var ouId in ouIds)
+        {
+            var ou = await _organizationUnitRepository.FindAsync(ouId);
+            if (ou == null)
+            {
+                continue;
+            }
+
+            ouScopeById[ouId] = new OrganizationUnitScope
+            {
+                OrganizationUnitId = ou.Id,
+                DisplayName = ou.DisplayName ?? string.Empty,
+                Depth = 0
+            };
+        }
+
+        if (ouScopeById.Count == 0)
+        {
+            return new List<WorkflowStepUserDto>();
+        }
+
+        var userQuery = await _identityUserRepository.GetQueryableAsync();
+        var candidateRows = await _asyncExecuter.ToListAsync(
+            from user in userQuery
+            where user.IsActive
+            where user.Roles.Any(r => r.RoleId == roleId)
+            from userOu in user.OrganizationUnits
+            where ouScopeById.Keys.Contains(userOu.OrganizationUnitId)
+            select new
+            {
+                user.Id,
+                user.UserName,
+                user.Surname,
+                user.Name,
+                userOu.OrganizationUnitId
+            });
+
+        var resultByUserId = new Dictionary<Guid, WorkflowStepUserDto>();
+        foreach (var row in candidateRows)
+        {
+            if (!ouScopeById.TryGetValue(row.OrganizationUnitId, out var scope))
+            {
+                continue;
+            }
+
+            resultByUserId[row.Id] = new WorkflowStepUserDto
+            {
+                UserId = row.Id,
+                UserName = row.UserName ?? "Unknown",
+                FullName = $"{row.Surname} {row.Name}".Trim(),
+                IsPrimary = isPrimary,
+                OrganizationUnitId = scope.OrganizationUnitId,
+                OrganizationUnitName = scope.DisplayName,
+                IsFromParentOrganizationUnit = false,
+                OrganizationUnitDepth = scope.Depth
+            };
+        }
+
+        return resultByUserId.Values
+            .OrderBy(x => x.FullName)
+            .ToList();
+    }
+
     private async Task<List<OrganizationUnitScope>> GetOrganizationUnitChainAsync(Guid startOrganizationUnitId)
     {
         var chain = new List<OrganizationUnitScope>();

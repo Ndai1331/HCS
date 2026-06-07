@@ -42,6 +42,18 @@ public abstract class DocumentWorkflowInstanceBase : FullAuditedAggregateRoot<Gu
     [CanBeNull]
     public virtual string? CommittedStepTemplateIdsJson { get; set; }
 
+    /// <summary>
+    /// JSON array of VIEW <see cref="WorkflowStepTemplate"/> Ids that have been reached (unlocked for read access).
+    /// </summary>
+    [CanBeNull]
+    public virtual string? UnlockedViewStepTemplateIdsJson { get; set; }
+
+    /// <summary>
+    /// JSON map of VIEW step template Id to selected organization units and users at submit.
+    /// </summary>
+    [CanBeNull]
+    public virtual string? ViewStepScopesJson { get; set; }
+
     /// <summary>When status became OVERDUE (signing deadline passed).</summary>
     public virtual DateTime? OverdueAt { get; set; }
 

@@ -2,14 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Blazorise;
 using Blazorise.RichTextEdit;
 using HC.Documents;
 using HC.DocumentFiles;
 using HC.DocumentWorkflowInstances;
+using HC.WorkflowStepAssignments;
 using HC.Shared;
+using HC.Blazor.Pages;
+using HC.Blazor.Components.DepartmentTreeSelect;
+using HC.Blazor.Components.Select2;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Components.Messages;
@@ -28,9 +34,11 @@ public partial class SubmitWorkflowModal
     [Parameter] public EventCallback OnClosed { get; set; }
 
     [Inject] private IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService { get; set; } = default!;
+    [Inject] private IWorkflowStepAssignmentsAppService WorkflowStepAssignmentsAppService { get; set; } = default!;
     [Inject] private IDocumentsAppService DocumentsAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
+    [Inject] private IMemoryCache __MemoryCache { get; set; } = default!;
 
     private bool IsLoadingWorkflowInfo { get; set; }
 
@@ -41,7 +49,8 @@ public partial class SubmitWorkflowModal
 
     private Modal ModalRef { get; set; } = new();
     private Guid? SelectedWorkflowId { get; set; }
-    private IReadOnlyList<LookupDto<Guid>> AvailableWorkflows { get; set; } = new List<LookupDto<Guid>>();
+    private IReadOnlyList<LookupDto<Guid>> WorkflowsCollection { get; set; } = new List<LookupDto<Guid>>();
+    private List<LookupDto<Guid>> SelectedWorkflow { get; set; } = new();
     private WorkflowSubmitInfoDto? WorkflowSubmitInfo { get; set; }
     private bool UseWorkflowTemplateFile { get; set; }
     private bool UseTemplateFile { get; set; } = true;
@@ -63,6 +72,8 @@ public partial class SubmitWorkflowModal
     private FilePicker? WorkflowFilePicker { get; set; }
     private List<UploadedFileInfo> UploadedFiles { get; set; } = new();
     private Dictionary<Guid, Guid?> StepSignerSelections { get; set; } = new();
+    private List<DepartmentTreeView> AllViewStepDepartmentsFlat { get; set; } = new();
+    private Dictionary<Guid, string> ViewStepUserDisplayNamesById { get; set; } = new();
 
     private class UploadedFileInfo
     {
@@ -82,12 +93,16 @@ public partial class SubmitWorkflowModal
         SelectedDocumentId = preSelectedDocument?.Document?.Id;
         SelectedDocumentDto = preSelectedDocument;
         SelectedWorkflowId = null;
+        SelectedWorkflow.Clear();
+        WorkflowsCollection = new List<LookupDto<Guid>>();
         WorkflowSubmitInfo = null;
         UseTemplateFile = true;
         UseWorkflowTemplateFile = preSelectedDocument != null ? false : UseWorkflowTemplateFile;
         SigningContent = null;
         UploadedFiles.Clear();
         StepSignerSelections.Clear();
+        ViewStepUserDisplayNamesById.Clear();
+        AllViewStepDepartmentsFlat.Clear();
         ModalResetKey++;
         IsSelectedDocumentWordFormat = false;
 
@@ -114,23 +129,39 @@ public partial class SubmitWorkflowModal
             await LoadMyDocumentsAsync();
         }
 
-        await LoadWorkflowLookupAsync();
         await InvokeAsync(ModalRef.Show);
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task LoadWorkflowLookupAsync()
+    private async Task GetWorkflowCollectionLookupAsync(string? newValue = null)
     {
         try
         {
             var result = await DocumentWorkflowInstancesAppService.GetWorkflowLookupAsync(
-                new LookupRequestDto { MaxResultCount = 200 });
-            AvailableWorkflows = result.Items;
+                new LookupRequestDto { Filter = newValue, MaxResultCount = 20 });
+            WorkflowsCollection = result.Items ?? new List<LookupDto<Guid>>();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading workflow lookup");
         }
+    }
+
+    private async Task<List<LookupDto<Guid>>> GetWorkflowCollectionLookupAsync(
+        IReadOnlyList<LookupDto<Guid>> dbset,
+        string filter,
+        CancellationToken token)
+    {
+        var result = await DocumentWorkflowInstancesAppService.GetWorkflowLookupAsync(
+            new LookupRequestDto { Filter = filter, MaxResultCount = 20 });
+        WorkflowsCollection = result.Items ?? new List<LookupDto<Guid>>();
+        return WorkflowsCollection.ToList();
+    }
+
+    private async Task OnWorkflowSelect2ChangedAsync()
+    {
+        var workflowId = SelectedWorkflow.FirstOrDefault()?.Id;
+        await OnWorkflowSelectedAsync(workflowId == Guid.Empty ? null : workflowId);
     }
 
     private async Task LoadMyDocumentsAsync()
@@ -199,6 +230,8 @@ public partial class SubmitWorkflowModal
             {
                 WorkflowSubmitInfo = await DocumentWorkflowInstancesAppService.GetWorkflowSubmitInfoAsync(workflowId.Value);
                 StepSignerSelections.Clear();
+                await LoadViewStepOrganizationUnitTreeAsync();
+                await LoadViewStepUserDisplayNamesAsync();
             }
             catch (Exception ex)
             {
@@ -281,10 +314,20 @@ public partial class SubmitWorkflowModal
                 return;
             }
 
-            var firstStep = WorkflowSubmitInfo.Steps.OrderBy(s => s.Order).FirstOrDefault();
-            if (firstStep == null || !firstStep.CandidateUsers.Any())
+            var firstBlockingStep = WorkflowSubmitInfo.Steps
+                .Where(s => !s.IsViewStep)
+                .OrderBy(s => s.Order)
+                .FirstOrDefault();
+            if (firstBlockingStep != null && !firstBlockingStep.CandidateUsers.Any())
             {
                 await UiMessageService.Error(L["FirstStepMustHaveAssignedUsers"],
+                    options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
+                return;
+            }
+
+            if (!ValidateViewStepCatalogScopes())
+            {
+                await UiMessageService.Error(L["ViewStepScopeRequired"],
                     options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
@@ -329,7 +372,8 @@ public partial class SubmitWorkflowModal
                 AttachedFileIds = UploadedFiles.Any()
                     ? UploadedFiles.Select(f => f.DocumentFileId).ToList()
                     : null,
-                StepSignerSelections = BuildStepSignerSelections()
+                StepSignerSelections = BuildStepSignerSelections(),
+                ViewStepScopeSelections = BuildViewStepScopeSelections()
             };
 
             await DocumentWorkflowInstancesAppService.SubmitToWorkflowAsync(input);
@@ -405,6 +449,147 @@ public partial class SubmitWorkflowModal
     private void OnSignerSelectionChanged(Guid stepId, Guid? userId)
     {
         StepSignerSelections[stepId] = userId;
+    }
+
+    private async Task LoadViewStepOrganizationUnitTreeAsync()
+    {
+        var organizationUnits = await DocumentsAppService.GetOrganizationUnitTreeAsync();
+        var departments = organizationUnits
+            .Select(ou => new DepartmentTreeView
+            {
+                Id = ou.Id,
+                ParentId = ou.ParentId?.ToString(),
+                Code = ou.Code,
+                Name = ou.DisplayName
+            })
+            .ToList();
+
+        var departmentsDictionary = new Dictionary<string, List<DepartmentTreeView>>();
+        foreach (var department in departments)
+        {
+            var parentId = department.ParentId ?? string.Empty;
+            if (!departmentsDictionary.ContainsKey(parentId))
+            {
+                departmentsDictionary[parentId] = new List<DepartmentTreeView>();
+            }
+
+            departmentsDictionary[parentId].Add(department);
+        }
+
+        foreach (var department in departments)
+        {
+            var departmentId = department.Id.ToString();
+            department.Children = departmentsDictionary.TryGetValue(departmentId, out var children)
+                ? children
+                : new List<DepartmentTreeView>();
+        }
+
+        var roots = departmentsDictionary.TryGetValue(string.Empty, out var rootNodes)
+            ? rootNodes
+            : new List<DepartmentTreeView>();
+        AllViewStepDepartmentsFlat = FlattenViewStepDepartments(roots);
+    }
+
+    private static List<DepartmentTreeView> FlattenViewStepDepartments(IEnumerable<DepartmentTreeView> nodes)
+    {
+        var result = new List<DepartmentTreeView>();
+        foreach (var node in nodes)
+        {
+            result.Add(node);
+            result.AddRange(FlattenViewStepDepartments(node.Children));
+        }
+
+        return result;
+    }
+
+    private async Task LoadViewStepUserDisplayNamesAsync()
+    {
+        ViewStepUserDisplayNamesById = new Dictionary<Guid, string>();
+        if (WorkflowSubmitInfo == null)
+        {
+            return;
+        }
+
+        var userIds = WorkflowSubmitInfo.Steps
+            .Where(s => s.IsViewStep)
+            .SelectMany(s => s.TemplateUserIds)
+            .Where(x => x != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (userIds.Count == 0)
+        {
+            return;
+        }
+
+        var lookup = await WorkflowStepAssignmentsAppService.GetIdentityUserLookupAsync(new LookupRequestDto
+        {
+            MaxResultCount = Math.Max(userIds.Count, 100)
+        });
+
+        foreach (var userId in userIds)
+        {
+            var match = lookup.Items?.FirstOrDefault(u => u.Id == userId);
+            ViewStepUserDisplayNamesById[userId] = match?.DisplayName ?? userId.ToString();
+        }
+    }
+
+    private static bool HasViewStepCatalogScope(WorkflowStepDetailDto step)
+    {
+        return step.TemplateOrganizationUnitIds.Any(x => x != Guid.Empty)
+               || step.TemplateUserIds.Any(x => x != Guid.Empty);
+    }
+
+    private bool ValidateViewStepCatalogScopes()
+    {
+        if (WorkflowSubmitInfo == null)
+        {
+            return true;
+        }
+
+        return WorkflowSubmitInfo.Steps.Where(s => s.IsViewStep).All(HasViewStepCatalogScope);
+    }
+
+    private IReadOnlyList<string> GetViewStepOrganizationUnitNames(WorkflowStepDetailDto step)
+    {
+        return step.TemplateOrganizationUnitIds
+            .Where(id => id != Guid.Empty)
+            .Select(id => AllViewStepDepartmentsFlat.FirstOrDefault(d => d.Id == id)?.Name ?? id.ToString())
+            .Distinct()
+            .ToList();
+    }
+
+    private IReadOnlyList<string> GetViewStepUserDisplayNames(WorkflowStepDetailDto step)
+    {
+        return step.TemplateUserIds
+            .Where(id => id != Guid.Empty)
+            .Select(id => ViewStepUserDisplayNamesById.TryGetValue(id, out var name) ? name : id.ToString())
+            .Distinct()
+            .ToList();
+    }
+
+    private List<WorkflowStepViewScopeSelectionDto> BuildViewStepScopeSelections()
+    {
+        if (WorkflowSubmitInfo == null)
+        {
+            return new List<WorkflowStepViewScopeSelectionDto>();
+        }
+
+        return WorkflowSubmitInfo.Steps
+            .Where(s => s.IsViewStep)
+            .Select(step => new WorkflowStepViewScopeSelectionDto
+            {
+                StepId = step.StepId,
+                OrganizationUnitIds = step.TemplateOrganizationUnitIds
+                    .Where(x => x != Guid.Empty)
+                    .Distinct()
+                    .ToList(),
+                UserIds = step.TemplateUserIds
+                    .Where(x => x != Guid.Empty)
+                    .Distinct()
+                    .ToList()
+            })
+            .ToList();
     }
 
     private static string? GetWorkflowTemplateFilePath(WorkflowSubmitInfoDto? workflowInfo)

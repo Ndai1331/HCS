@@ -24,7 +24,8 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
     private readonly IRepository<Document, Guid> _documentRepository;
     private readonly IRepository<WorkflowStepAssignment, Guid> _workflowStepAssignmentRepository;
     private readonly IRepository<WorkflowStepTemplate, Guid> _workflowStepTemplateRepository;
-    private readonly IWorkflowAssigneeResolver _workflowAssigneeResolver;
+    private readonly IWorkflowViewScopeResolver _workflowViewScopeResolver;
+    private readonly IWorkflowCommittedStepsQueryService _workflowCommittedStepsQueryService;
 
     public WorkflowViewAccessService(
         IDocumentWorkflowInstanceRepository documentWorkflowInstanceRepository,
@@ -32,14 +33,16 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         IRepository<Document, Guid> documentRepository,
         IRepository<WorkflowStepAssignment, Guid> _workflowStepAssignmentRepositoryParam,
         IRepository<WorkflowStepTemplate, Guid> workflowStepTemplateRepository,
-        IWorkflowAssigneeResolver workflowAssigneeResolver)
+        IWorkflowViewScopeResolver workflowViewScopeResolver,
+        IWorkflowCommittedStepsQueryService workflowCommittedStepsQueryService)
     {
         _documentWorkflowInstanceRepository = documentWorkflowInstanceRepository;
         _documentAssignmentRepository = documentAssignmentRepository;
         _documentRepository = documentRepository;
         _workflowStepAssignmentRepository = _workflowStepAssignmentRepositoryParam;
         _workflowStepTemplateRepository = workflowStepTemplateRepository;
-        _workflowAssigneeResolver = workflowAssigneeResolver;
+        _workflowViewScopeResolver = workflowViewScopeResolver;
+        _workflowCommittedStepsQueryService = workflowCommittedStepsQueryService;
     }
 
     public async Task<bool> CanUserViewWorkflowDocumentAsync(Guid workflowInstanceId, Guid userId)
@@ -103,17 +106,14 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
 
     private async Task<bool> UserMatchesAnyUnlockedViewStepAsync(DocumentWorkflowInstance instance, Guid userId)
     {
-        var unlockedStepIds = WorkflowSubmissionHelper.GetUnlockedViewStepTemplateIds(instance);
+        var unlockedStepIds = await GetEffectiveUnlockedViewStepIdsAsync(instance);
         if (unlockedStepIds.Count == 0)
         {
             return false;
         }
 
         var submitterUserId = instance.CreatorId;
-        if (!submitterUserId.HasValue)
-        {
-            return false;
-        }
+        var instanceViewScopes = WorkflowSubmissionHelper.GetViewStepScopes(instance);
 
         var stepTemplates = await _workflowStepTemplateRepository.GetListAsync(x => unlockedStepIds.Contains(x.Id));
         var viewSteps = stepTemplates
@@ -132,7 +132,13 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         foreach (var step in viewSteps)
         {
             var stepAssignments = templateAssignments.Where(a => a.StepId == step.Id).ToList();
-            if (await UserMatchesViewStepAssignmentsAsync(stepAssignments, submitterUserId.Value, userId))
+            instanceViewScopes.TryGetValue(step.Id, out var instanceScope);
+            var viewerIds = await _workflowViewScopeResolver.ResolveViewerUserIdsAsync(
+                stepAssignments,
+                instanceScope,
+                submitterUserId);
+
+            if (viewerIds.Contains(userId))
             {
                 return true;
             }
@@ -141,34 +147,33 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         return false;
     }
 
-    private async Task<bool> UserMatchesViewStepAssignmentsAsync(
-        IReadOnlyList<WorkflowStepAssignment> stepAssignments,
-        Guid submitterUserId,
-        Guid userId)
+    /// <summary>
+    /// Reads persisted unlock list, or infers VIEW steps already passed from committed steps vs current step (legacy instances).
+    /// </summary>
+    private async Task<List<Guid>> GetEffectiveUnlockedViewStepIdsAsync(DocumentWorkflowInstance instance)
     {
-        foreach (var assignment in stepAssignments)
+        var persisted = WorkflowSubmissionHelper.GetUnlockedViewStepTemplateIds(instance);
+        if (persisted.Count > 0)
         {
-            if (!assignment.IsActive)
-            {
-                continue;
-            }
-
-            if (assignment.AssigneeType == WorkflowStepAssigneeTypeNames.RoleInSubmitterOrganizationUnit
-                && assignment.RoleId.HasValue)
-            {
-                var candidates = await _workflowAssigneeResolver.ResolveCandidatesByRoleAsync(
-                    assignment.RoleId.Value, submitterUserId, assignment.IsPrimary);
-                if (candidates.Any(c => c.UserId == userId))
-                {
-                    return true;
-                }
-            }
-            else if (assignment.DefaultUserId == userId)
-            {
-                return true;
-            }
+            return persisted;
         }
 
-        return false;
+        if (!ActiveInstanceStatuses.Contains(instance.Status))
+        {
+            return persisted;
+        }
+
+        var committedSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(instance);
+        var currentStep = committedSteps.FirstOrDefault(s => s.Id == instance.CurrentStepId);
+        if (currentStep == null)
+        {
+            return persisted;
+        }
+
+        return committedSteps
+            .Where(s => WorkflowStepNavigationHelper.IsViewStep(s.Type) && s.Order < currentStep.Order)
+            .Select(s => s.Id)
+            .ToList();
     }
+
 }

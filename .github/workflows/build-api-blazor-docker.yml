@@ -1,4 +1,4 @@
-name: Build API + Blazor Docker images
+name: Build API + Blazor + AuthServer Docker images
 
 on:
   push:
@@ -75,7 +75,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push (Blazor + API)
+      - name: Build and push (Blazor + API + AuthServer)
         shell: pwsh
         run: |
           ./build-api-blazor-linux-amd64.ps1 -version '${{ steps.version.outputs.version }}' -ClearDockerCache

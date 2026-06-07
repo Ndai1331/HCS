@@ -23,7 +23,9 @@ using Volo.Abp;
 using Volo.Abp.Content;
 using System.Threading;
 using Volo.Abp.Identity;
+using HC.Blazor.Shared;
 using HC.DocumentFiles;
+using HC.DocumentWorkflowInstances;
 using Volo.Abp.BlobStoring;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.AspNetCore.Components.Messages;
@@ -37,6 +39,7 @@ public partial class ProjectTasks
     [Inject] private IProjectTaskAssignmentsAppService ProjectTaskAssignmentsAppService { get; set; } = default!;
     [Inject] private IProjectTaskDocumentsAppService ProjectTaskDocumentsAppService { get; set; } = default!;
     [Inject] private IDocumentFilesAppService DocumentFilesAppService { get; set; } = default!;
+    [Inject] private IDocumentWorkflowInstancesAppService DocumentWorkflowInstancesAppService { get; set; } = default!;
     [Inject] private IBlobContainer BlobContainer { get; set; } = default!;
     [Inject] private HC.DocumentPdfViewer.IDocumentPdfViewerAppService DocumentPdfViewerAppService { get; set; } = default!;
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
@@ -1214,29 +1217,9 @@ public partial class ProjectTasks
         }
     }
     
-    private async Task<bool> CheckIfDocumentHasPdfFileAsync(Guid documentId)
+    private Task<bool> CheckIfDocumentHasPdfFileAsync(Guid documentId)
     {
-        try
-        {
-            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-            {
-                DocumentId = documentId,
-                MaxResultCount = 1,
-                SkipCount = 0
-            });
-            
-            if (documentFilesResult.Items == null || !documentFilesResult.Items.Any())
-            {
-                return false;
-            }
-            
-            var documentFile = documentFilesResult.Items.First();
-            return IsPdfFileExtension(documentFile.DocumentFile.Name) && !string.IsNullOrEmpty(documentFile.DocumentFile.Path);
-        }
-        catch
-        {
-            return false;
-        }
+        return WorkflowPdfDisplayHelper.HasDisplayPdfAsync(documentId, DocumentWorkflowInstancesAppService);
     }
     
     private async Task OpenPdfViewerModalForDocumentAsync(ProjectTaskDocumentWithNavigationPropertiesDto projectTaskDocument)
@@ -1248,30 +1231,24 @@ public partial class ProjectTasks
                 return;
             }
             CurrentPdfDocumentId = projectTaskDocument.Document.Id;
-            
-            // Get document files for this document
-            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-            {
-                DocumentId = projectTaskDocument.Document.Id,
-                MaxResultCount = 1,
-                SkipCount = 0
-            });
-            
-            if (documentFilesResult.Items == null || !documentFilesResult.Items.Any())
+
+            var pdfFileUrl = await WorkflowPdfDisplayHelper.LoadPdfDataUrlWithWorkflowPreferenceAsync(
+                projectTaskDocument.Document.Id,
+                projectTaskDocument.Document.SourceType,
+                projectTaskDocument.Document.WorkflowId,
+                DocumentWorkflowInstancesAppService,
+                DocumentFilesAppService,
+                DocumentPdfViewerAppService);
+
+            if (string.IsNullOrEmpty(pdfFileUrl))
             {
                 await UiMessageService.Warn(L["NoFileAvailable"] ?? L["NoFileAvailable"],
                 options: new Action<UiMessageOptions>(options => options.OkButtonText = L["Ok"]));
                 return;
             }
-            
-            var documentFile = documentFilesResult.Items.First();
-            
-            // Check if file is PDF
-            if (!IsPdfFileExtension(documentFile.DocumentFile.Name) || string.IsNullOrEmpty(documentFile.DocumentFile.Path))
-            {
-                await UiMessageService.Warn(L["FileIsNotPdf"] ?? "File is not a PDF");
-                return;
-            }
+
+            PdfFileUrl = pdfFileUrl;
+            IsPdfFile = true;
 
             // Store which modal was open and hide them temporarily
             // Check if modals are actually visible before hiding
@@ -1298,18 +1275,6 @@ public partial class ProjectTasks
                     WasEditModalOpen = false;
                 }
             }
-
-            // Get watermarked PDF from API (user + timestamp stamped)
-            var fileBytes = await DocumentPdfViewerAppService.GetWatermarkedPdfAsync(new HC.DocumentPdfViewer.GetWatermarkedPdfInput
-            {
-                BlobPath = documentFile.DocumentFile.Path,
-                WatermarkAction = "view"
-            });
-            
-            // Create data URL for PDF
-            var base64 = Convert.ToBase64String(fileBytes);
-            PdfFileUrl = $"data:application/pdf;base64,{base64}";
-            IsPdfFile = true;
 
             // Open PDF viewer modal
             if (PdfViewerModal != null)

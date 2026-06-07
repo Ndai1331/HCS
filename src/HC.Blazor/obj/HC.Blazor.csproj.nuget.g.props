@@ -1,0 +1,255 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <RestoreSuccess Condition=" '$(RestoreSuccess)' == '' ">True</RestoreSuccess>
+    <RestoreTool Condition=" '$(RestoreTool)' == '' ">NuGet</RestoreTool>
+    <ProjectAssetsFile Condition=" '$(ProjectAssetsFile)' == '' ">$(MSBuildThisFileDirectory)project.assets.json</ProjectAssetsFile>
+    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">/Users/nguyenlong/.nuget/packages/</NuGetPackageRoot>
+    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">/Users/nguyenlong/.nuget/packages/</NuGetPackageFolders>
+    <NuGetProjectStyle Condition=" '$(NuGetProjectStyle)' == '' ">PackageReference</NuGetProjectStyle>
+    <NuGetToolVersion Condition=" '$(NuGetToolVersion)' == '' ">7.0.0</NuGetToolVersion>
+  </PropertyGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <SourceRoot Include="/Users/nguyenlong/.nuget/packages/" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.featuremanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.FeatureManagement.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.featuremanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.FeatureManagement.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.FeatureManagement.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.FeatureManagement.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.saas.host.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Saas.Host.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.saas.host.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Saas.Host.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Saas.Host.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Saas.Host.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.filemanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.FileManagement.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.filemanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.FileManagement.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.FileManagement.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.FileManagement.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.texttemplatemanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.TextTemplateManagement.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.texttemplatemanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.TextTemplateManagement.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.TextTemplateManagement.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.TextTemplateManagement.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.settingmanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.SettingManagement.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.settingmanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.SettingManagement.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.SettingManagement.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.SettingManagement.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.auditlogging.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.AuditLogging.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.auditlogging.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.AuditLogging.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.AuditLogging.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.AuditLogging.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.openiddict.pro.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.OpenIddict.Pro.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.openiddict.pro.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.OpenIddict.Pro.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.OpenIddict.Pro.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.OpenIddict.Pro.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.languagemanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.LanguageManagement.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.languagemanagement.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.LanguageManagement.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.LanguageManagement.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.LanguageManagement.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.identity.pro.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.Identity.Pro.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.identity.pro.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.Identity.Pro.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.Identity.Pro.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.Identity.Pro.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.http.client.web/10.0.1/contentFiles/any/net10.0/Volo.Abp.Http.Client.Web.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.http.client.web/10.0.1/contentFiles/any/net10.0/Volo.Abp.Http.Client.Web.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.Http.Client.Web</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.Http.Client.Web.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.http.client.identitymodel.web/10.0.1/contentFiles/any/net10.0/Volo.Abp.Http.Client.IdentityModel.Web.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.http.client.identitymodel.web/10.0.1/contentFiles/any/net10.0/Volo.Abp.Http.Client.IdentityModel.Web.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.Http.Client.IdentityModel.Web</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.Http.Client.IdentityModel.Web.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.gdpr.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.Gdpr.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.gdpr.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.Gdpr.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.Gdpr.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.Gdpr.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.aspnetcore.serilog/10.0.1/contentFiles/any/net10.0/Volo.Abp.AspNetCore.Serilog.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.serilog/10.0.1/contentFiles/any/net10.0/Volo.Abp.AspNetCore.Serilog.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.AspNetCore.Serilog</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.AspNetCore.Serilog.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.aspnetcore.mvc.ui.theme.leptonx/5.0.1/contentFiles/any/net10.0/Themes/LeptonX/Global/side-menu/libs/bootstrap-icons/font/bootstrap-icons.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.mvc.ui.theme.leptonx/5.0.1/contentFiles/any/net10.0/Themes/LeptonX/Global/side-menu/libs/bootstrap-icons/font/bootstrap-icons.json')">
+      <NuGetPackageId>Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonX</NuGetPackageId>
+      <NuGetPackageVersion>5.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Themes/LeptonX/Global/side-menu/libs/bootstrap-icons/font/bootstrap-icons.json</Link>
+    </Content>
+    <Content Include="$(NuGetPackageRoot)volo.abp.aspnetcore.mvc.ui.theme.leptonx/5.0.1/contentFiles/any/net10.0/Themes/LeptonX/Global/side-menu/libs/bootstrap-icons/package.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.mvc.ui.theme.leptonx/5.0.1/contentFiles/any/net10.0/Themes/LeptonX/Global/side-menu/libs/bootstrap-icons/package.json')">
+      <NuGetPackageId>Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonX</NuGetPackageId>
+      <NuGetPackageVersion>5.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Themes/LeptonX/Global/side-menu/libs/bootstrap-icons/package.json</Link>
+    </Content>
+    <Content Include="$(NuGetPackageRoot)volo.abp.aspnetcore.mvc.ui.theme.leptonx/5.0.1/contentFiles/any/net10.0/compilerconfig.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.mvc.ui.theme.leptonx/5.0.1/contentFiles/any/net10.0/compilerconfig.json')">
+      <NuGetPackageId>Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonX</NuGetPackageId>
+      <NuGetPackageVersion>5.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>compilerconfig.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.aspnetcore.mvc.client/10.0.1/contentFiles/any/net10.0/Volo.Abp.AspNetCore.Mvc.Client.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.mvc.client/10.0.1/contentFiles/any/net10.0/Volo.Abp.AspNetCore.Mvc.Client.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.AspNetCore.Mvc.Client</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.AspNetCore.Mvc.Client.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.account.pro.public.web.impersonation/10.0.1/contentFiles/any/net10.0/Volo.Abp.Account.Pro.Public.Web.Impersonation.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.account.pro.public.web.impersonation/10.0.1/contentFiles/any/net10.0/Volo.Abp.Account.Pro.Public.Web.Impersonation.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.Account.Pro.Public.Web.Impersonation</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.Account.Pro.Public.Web.Impersonation.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.account.pro.public.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.Account.Pro.Public.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.account.pro.public.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.Account.Pro.Public.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.Account.Pro.Public.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.Account.Pro.Public.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)volo.abp.account.pro.admin.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.Account.Pro.Admin.Blazor.Server.abppkg.analyze.json" Condition="Exists('$(NuGetPackageRoot)volo.abp.account.pro.admin.blazor.server/10.0.1/contentFiles/any/net10.0/Volo.Abp.Account.Pro.Admin.Blazor.Server.abppkg.analyze.json')">
+      <NuGetPackageId>Volo.Abp.Account.Pro.Admin.Blazor.Server</NuGetPackageId>
+      <NuGetPackageVersion>10.0.1</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Volo.Abp.Account.Pro.Admin.Blazor.Server.abppkg.analyze.json</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Content Include="$(NuGetPackageRoot)keudellcoding.blazor.advancedblazorselect2/1.3.0/contentFiles/any/netstandard2.0/libman.json" Condition="Exists('$(NuGetPackageRoot)keudellcoding.blazor.advancedblazorselect2/1.3.0/contentFiles/any/netstandard2.0/libman.json')">
+      <NuGetPackageId>KeudellCoding.Blazor.AdvancedBlazorSelect2</NuGetPackageId>
+      <NuGetPackageVersion>1.3.0</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>libman.json</Link>
+    </Content>
+  </ItemGroup>
+  <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)volo.abp.aspnetcore.components.web/10.0.1/buildTransitive/Volo.Abp.AspNetCore.Components.Web.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.components.web/10.0.1/buildTransitive/Volo.Abp.AspNetCore.Components.Web.props')" />
+    <Import Project="$(NuGetPackageRoot)blazorise/1.8.8/buildTransitive/Blazorise.props" Condition="Exists('$(NuGetPackageRoot)blazorise/1.8.8/buildTransitive/Blazorise.props')" />
+    <Import Project="$(NuGetPackageRoot)blazorise.snackbar/1.8.6/buildTransitive/Blazorise.Snackbar.props" Condition="Exists('$(NuGetPackageRoot)blazorise.snackbar/1.8.6/buildTransitive/Blazorise.Snackbar.props')" />
+    <Import Project="$(NuGetPackageRoot)blazorise.datagrid/1.8.6/buildTransitive/Blazorise.DataGrid.props" Condition="Exists('$(NuGetPackageRoot)blazorise.datagrid/1.8.6/buildTransitive/Blazorise.DataGrid.props')" />
+    <Import Project="$(NuGetPackageRoot)volo.abp.blazoriseui/10.0.1/buildTransitive/Volo.Abp.BlazoriseUI.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.blazoriseui/10.0.1/buildTransitive/Volo.Abp.BlazoriseUI.props')" />
+    <Import Project="$(NuGetPackageRoot)blazorise.charts/1.8.6/buildTransitive/Blazorise.Charts.props" Condition="Exists('$(NuGetPackageRoot)blazorise.charts/1.8.6/buildTransitive/Blazorise.Charts.props')" />
+    <Import Project="$(NuGetPackageRoot)volo.saas.host.blazor/10.0.1/buildTransitive/Volo.Saas.Host.Blazor.props" Condition="Exists('$(NuGetPackageRoot)volo.saas.host.blazor/10.0.1/buildTransitive/Volo.Saas.Host.Blazor.props')" />
+    <Import Project="$(NuGetPackageRoot)excubo.blazor.treeviews/4.0.42/buildTransitive/Excubo.Blazor.TreeViews.props" Condition="Exists('$(NuGetPackageRoot)excubo.blazor.treeviews/4.0.42/buildTransitive/Excubo.Blazor.TreeViews.props')" />
+    <Import Project="$(NuGetPackageRoot)volo.filemanagement.blazor/10.0.1/buildTransitive/Volo.FileManagement.Blazor.props" Condition="Exists('$(NuGetPackageRoot)volo.filemanagement.blazor/10.0.1/buildTransitive/Volo.FileManagement.Blazor.props')" />
+    <Import Project="$(NuGetPackageRoot)scriban/7.2.0/build/Scriban.props" Condition="Exists('$(NuGetPackageRoot)scriban/7.2.0/build/Scriban.props')" />
+    <Import Project="$(NuGetPackageRoot)volo.abp.permissionmanagement.blazor/10.0.1/buildTransitive/Volo.Abp.PermissionManagement.Blazor.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.permissionmanagement.blazor/10.0.1/buildTransitive/Volo.Abp.PermissionManagement.Blazor.props')" />
+    <Import Project="$(NuGetPackageRoot)volo.abp.auditlogging.blazor/10.0.1/buildTransitive/Volo.Abp.AuditLogging.Blazor.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.auditlogging.blazor/10.0.1/buildTransitive/Volo.Abp.AuditLogging.Blazor.props')" />
+    <Import Project="$(NuGetPackageRoot)microsoft.aspnetcore.components.webassembly.authentication/10.0.0/buildTransitive/Microsoft.AspNetCore.Components.WebAssembly.Authentication.props" Condition="Exists('$(NuGetPackageRoot)microsoft.aspnetcore.components.webassembly.authentication/10.0.0/buildTransitive/Microsoft.AspNetCore.Components.WebAssembly.Authentication.props')" />
+    <Import Project="$(NuGetPackageRoot)volo.abp.aspnetcore.components.webassembly.theming/10.0.1/buildTransitive/Volo.Abp.AspNetCore.Components.WebAssembly.Theming.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.components.webassembly.theming/10.0.1/buildTransitive/Volo.Abp.AspNetCore.Components.WebAssembly.Theming.props')" />
+    <Import Project="$(NuGetPackageRoot)volo.abp.aspnetcore.components.web.leptonxtheme/5.0.1/buildTransitive/Volo.Abp.AspNetCore.Components.Web.LeptonXTheme.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.components.web.leptonxtheme/5.0.1/buildTransitive/Volo.Abp.AspNetCore.Components.Web.LeptonXTheme.props')" />
+    <Import Project="$(NuGetPackageRoot)volo.abp.aspnetcore.components.server.leptonxtheme/5.0.1/buildTransitive/Volo.Abp.AspNetCore.Components.Server.LeptonXTheme.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.aspnetcore.components.server.leptonxtheme/5.0.1/buildTransitive/Volo.Abp.AspNetCore.Components.Server.LeptonXTheme.props')" />
+    <Import Project="$(NuGetPackageRoot)volo.abp.account.pro.public.blazor.shared/10.0.1/buildTransitive/Volo.Abp.Account.Pro.Public.Blazor.Shared.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.account.pro.public.blazor.shared/10.0.1/buildTransitive/Volo.Abp.Account.Pro.Public.Blazor.Shared.props')" />
+    <Import Project="$(NuGetPackageRoot)volo.abp.account.pro.admin.blazor/10.0.1/buildTransitive/Volo.Abp.Account.Pro.Admin.Blazor.props" Condition="Exists('$(NuGetPackageRoot)volo.abp.account.pro.admin.blazor/10.0.1/buildTransitive/Volo.Abp.Account.Pro.Admin.Blazor.props')" />
+    <Import Project="$(NuGetPackageRoot)microsoft.entityframeworkcore/10.0.0/buildTransitive/net10.0/Microsoft.EntityFrameworkCore.props" Condition="Exists('$(NuGetPackageRoot)microsoft.entityframeworkcore/10.0.0/buildTransitive/net10.0/Microsoft.EntityFrameworkCore.props')" />
+    <Import Project="$(NuGetPackageRoot)microsoft.aspnetcore.app.internal.assets/10.0.1/build/Microsoft.AspNetCore.App.Internal.Assets.props" Condition="Exists('$(NuGetPackageRoot)microsoft.aspnetcore.app.internal.assets/10.0.1/build/Microsoft.AspNetCore.App.Internal.Assets.props')" />
+    <Import Project="$(NuGetPackageRoot)keudellcoding.blazor.advancedblazorselect2/1.3.0/buildTransitive/KeudellCoding.Blazor.AdvancedBlazorSelect2.props" Condition="Exists('$(NuGetPackageRoot)keudellcoding.blazor.advancedblazorselect2/1.3.0/buildTransitive/KeudellCoding.Blazor.AdvancedBlazorSelect2.props')" />
+    <Import Project="$(NuGetPackageRoot)blazorise.scheduler/1.8.8/buildTransitive/Blazorise.Scheduler.props" Condition="Exists('$(NuGetPackageRoot)blazorise.scheduler/1.8.8/buildTransitive/Blazorise.Scheduler.props')" />
+    <Import Project="$(NuGetPackageRoot)blazorise.richtextedit/1.8.6/buildTransitive/Blazorise.RichTextEdit.props" Condition="Exists('$(NuGetPackageRoot)blazorise.richtextedit/1.8.6/buildTransitive/Blazorise.RichTextEdit.props')" />
+    <Import Project="$(NuGetPackageRoot)blazorise.pdfviewer/1.8.6/buildTransitive/Blazorise.PdfViewer.props" Condition="Exists('$(NuGetPackageRoot)blazorise.pdfviewer/1.8.6/buildTransitive/Blazorise.PdfViewer.props')" />
+    <Import Project="$(NuGetPackageRoot)blazorise.icons.fontawesome/1.8.6/buildTransitive/Blazorise.Icons.FontAwesome.props" Condition="Exists('$(NuGetPackageRoot)blazorise.icons.fontawesome/1.8.6/buildTransitive/Blazorise.Icons.FontAwesome.props')" />
+    <Import Project="$(NuGetPackageRoot)blazorise.bootstrap5/1.8.6/buildTransitive/Blazorise.Bootstrap5.props" Condition="Exists('$(NuGetPackageRoot)blazorise.bootstrap5/1.8.6/buildTransitive/Blazorise.Bootstrap5.props')" />
+  </ImportGroup>
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <PkgMicrosoft_Extensions_ApiDescription_Server Condition=" '$(PkgMicrosoft_Extensions_ApiDescription_Server)' == '' ">/Users/nguyenlong/.nuget/packages/microsoft.extensions.apidescription.server/9.0.0</PkgMicrosoft_Extensions_ApiDescription_Server>
+    <PkgMicrosoft_CodeAnalysis_Analyzers Condition=" '$(PkgMicrosoft_CodeAnalysis_Analyzers)' == '' ">/Users/nguyenlong/.nuget/packages/microsoft.codeanalysis.analyzers/3.3.3</PkgMicrosoft_CodeAnalysis_Analyzers>
+    <PkgMicrosoft_AspNetCore_Components_WebAssembly_Server Condition=" '$(PkgMicrosoft_AspNetCore_Components_WebAssembly_Server)' == '' ">/Users/nguyenlong/.nuget/packages/microsoft.aspnetcore.components.webassembly.server/10.0.0</PkgMicrosoft_AspNetCore_Components_WebAssembly_Server>
+    <PkgAWSSDK_Core Condition=" '$(PkgAWSSDK_Core)' == '' ">/Users/nguyenlong/.nuget/packages/awssdk.core/3.7.105.20</PkgAWSSDK_Core>
+  </PropertyGroup>
+</Project>

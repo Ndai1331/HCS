@@ -14,7 +14,9 @@ using HC.ProjectTaskAssignments;
 using HC.ProjectTaskDocuments;
 using System.Threading;
 using System.IO;
+using HC.Blazor.Shared;
 using HC.DocumentFiles;
+using HC.DocumentWorkflowInstances;
 using Volo.Abp.AspNetCore.Components.Messages;
 namespace HC.Blazor.Components.ProjectTaskCreateModal;
 
@@ -849,29 +851,9 @@ public partial class ProjectTaskCreateModal
         CreateFieldErrors.Remove("ProgressPercent");
     }
     
-    private async Task<bool> CheckIfDocumentHasPdfFileAsync(Guid documentId)
+    private Task<bool> CheckIfDocumentHasPdfFileAsync(Guid documentId)
     {
-        try
-        {
-            var documentFilesResult = await DocumentFilesAppService.GetListAsync(new GetDocumentFilesInput
-            {
-                DocumentId = documentId,
-                MaxResultCount = 1,
-                SkipCount = 0
-            });
-            
-            if (documentFilesResult.Items == null || !documentFilesResult.Items.Any())
-            {
-                return false;
-            }
-            
-            var documentFile = documentFilesResult.Items.First();
-            return IsPdfFileExtension(documentFile.DocumentFile.Name) && !string.IsNullOrEmpty(documentFile.DocumentFile.Path);
-        }
-        catch
-        {
-            return false;
-        }
+        return WorkflowPdfDisplayHelper.HasDisplayPdfAsync(documentId, DocumentWorkflowInstancesAppService);
     }
 
     

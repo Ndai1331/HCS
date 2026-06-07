@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HC.WorkflowStepTemplates;
 
 namespace HC.DocumentWorkflowInstances;
@@ -27,10 +28,20 @@ internal static class WorkflowStepNavigationHelper
         int startIndex)
     {
         var index = startIndex;
+        var unlocked = WorkflowSubmissionHelper.GetUnlockedViewStepTemplateIds(instance);
         while (index < steps.Count && IsViewStep(steps[index].Type))
         {
-            WorkflowSubmissionHelper.UnlockViewStep(instance, steps[index].StepId);
+            if (!unlocked.Contains(steps[index].StepId))
+            {
+                unlocked.Add(steps[index].StepId);
+            }
+
             index++;
+        }
+
+        if (unlocked.Count > 0)
+        {
+            WorkflowSubmissionHelper.SetUnlockedViewStepTemplateIds(instance, unlocked);
         }
 
         return index;
@@ -42,10 +53,20 @@ internal static class WorkflowStepNavigationHelper
         int startIndex)
     {
         var index = startIndex;
+        var unlocked = WorkflowSubmissionHelper.GetUnlockedViewStepTemplateIds(instance);
         while (index < steps.Count && IsViewStep(steps[index].Type))
         {
-            WorkflowSubmissionHelper.UnlockViewStep(instance, steps[index].Id);
+            if (!unlocked.Contains(steps[index].Id))
+            {
+                unlocked.Add(steps[index].Id);
+            }
+
             index++;
+        }
+
+        if (unlocked.Count > 0)
+        {
+            WorkflowSubmissionHelper.SetUnlockedViewStepTemplateIds(instance, unlocked);
         }
 
         return index;
@@ -85,5 +106,77 @@ internal static class WorkflowStepNavigationHelper
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 1-based index among SIGN/PROCESS steps only (for Word/PDF placeholders &lt;&lt;SignNN&gt;&gt;), ordered by template Order.
+    /// </summary>
+    public static int GetSigningPlaceholderIndex(
+        IReadOnlyList<WorkflowStepTemplate> committedStepsOrdered,
+        Guid stepTemplateId)
+    {
+        if (!TryGetSigningPlaceholderIndex(committedStepsOrdered, stepTemplateId, out var signingIndex))
+        {
+            throw new InvalidOperationException(
+                $"Step template {stepTemplateId} is not a blocking SIGN/PROCESS step in the committed workflow.");
+        }
+
+        return signingIndex;
+    }
+
+    /// <summary>
+    /// 1-based index among SIGN/PROCESS steps only (for Word/PDF placeholders &lt;&lt;SignNN&gt;&gt;), ordered by template Order.
+    /// </summary>
+    public static int GetSigningPlaceholderIndex(
+        IReadOnlyList<WorkflowStepDetailDto> committedStepsOrdered,
+        Guid stepTemplateId)
+    {
+        if (!TryGetSigningPlaceholderIndex(committedStepsOrdered, stepTemplateId, out var signingIndex))
+        {
+            throw new InvalidOperationException(
+                $"Step template {stepTemplateId} is not a blocking SIGN/PROCESS step in the committed workflow.");
+        }
+
+        return signingIndex;
+    }
+
+    public static bool TryGetSigningPlaceholderIndex(
+        IReadOnlyList<WorkflowStepTemplate> committedStepsOrdered,
+        Guid stepTemplateId,
+        out int signingIndex)
+    {
+        var blocking = committedStepsOrdered
+            .Where(s => IsBlockingStep(s.Type))
+            .OrderBy(s => s.Order)
+            .ToList();
+        var index = blocking.FindIndex(s => s.Id == stepTemplateId);
+        if (index < 0)
+        {
+            signingIndex = 0;
+            return false;
+        }
+
+        signingIndex = index + 1;
+        return true;
+    }
+
+    public static bool TryGetSigningPlaceholderIndex(
+        IReadOnlyList<WorkflowStepDetailDto> committedStepsOrdered,
+        Guid stepTemplateId,
+        out int signingIndex)
+    {
+        var blocking = committedStepsOrdered
+            .Where(s => IsBlockingStep(s.Type))
+            .OrderBy(s => s.Order)
+            .ToList();
+        var index = blocking.FindIndex(s => s.StepId == stepTemplateId);
+        if (index < 0)
+        {
+            signingIndex = 0;
+            return false;
+        }
+
+        signingIndex = index + 1;
+        return true;
     }
 }
