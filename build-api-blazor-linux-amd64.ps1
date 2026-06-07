@@ -174,55 +174,55 @@ try {
 }
 Write-Host "Docker image built and pushed successfully for API (tags: $version, latest)" -ForegroundColor Green
 
-# Write-Host "********* BUILDING AuthServer (HC.AuthServer) *********" -ForegroundColor Green
-# $authServerFolder = Join-Path $slnFolder "src/HC.AuthServer"
-# Set-Location $authServerFolder
+Write-Host "********* BUILDING AuthServer (HC.AuthServer) *********" -ForegroundColor Green
+$authServerFolder = Join-Path $slnFolder "src/HC.AuthServer"
+Set-Location $authServerFolder
 
-# Write-Host "Publishing AuthServer..." -ForegroundColor Yellow
-# try {
-#     $authServerPublishDir = Join-Path $authServerFolder "bin/Release/net10.0/publish"
-#     if (Test-Path $authServerPublishDir) {
-#         Remove-Item $authServerPublishDir -Recurse -Force
-#     }
-#     $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
-#     if (-not $?) {
-#         throw "dotnet publish failed"
-#     }
-# } catch {
-#     Write-Host "ERROR: dotnet publish failed for AuthServer" -ForegroundColor Red
-#     Write-Host $result -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
+Write-Host "Publishing AuthServer..." -ForegroundColor Yellow
+try {
+    $authServerPublishDir = Join-Path $authServerFolder "bin/Release/net10.0/publish"
+    if (Test-Path $authServerPublishDir) {
+        Remove-Item $authServerPublishDir -Recurse -Force
+    }
+    $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
+    if (-not $?) {
+        throw "dotnet publish failed"
+    }
+} catch {
+    Write-Host "ERROR: dotnet publish failed for AuthServer" -ForegroundColor Red
+    Write-Host $result -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
 
-# Start-Sleep -Seconds 1
-# $authServerPublishPathFull = [System.IO.Path]::GetFullPath((Join-Path $authServerFolder "bin/Release/net10.0/publish"))
-# if (-not (Test-Path $authServerPublishPathFull)) {
-#     Write-Host "ERROR: AuthServer publish folder not found: $authServerPublishPathFull" -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
+Start-Sleep -Seconds 1
+$authServerPublishPathFull = [System.IO.Path]::GetFullPath((Join-Path $authServerFolder "bin/Release/net10.0/publish"))
+if (-not (Test-Path $authServerPublishPathFull)) {
+    Write-Host "ERROR: AuthServer publish folder not found: $authServerPublishPathFull" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
 
-# $authServerDll = Join-Path $authServerPublishPathFull "HC.AuthServer.dll"
-# if (-not (Test-Path $authServerDll)) {
-#     Write-Host "ERROR: AuthServer publish output is invalid. Missing file: $authServerDll" -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
+$authServerDll = Join-Path $authServerPublishPathFull "HC.AuthServer.dll"
+if (-not (Test-Path $authServerDll)) {
+    Write-Host "ERROR: AuthServer publish output is invalid. Missing file: $authServerDll" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
 
-# Write-Host "Publish successful. Output: $authServerPublishPathFull" -ForegroundColor Green
-# Write-Host "Building Docker image for AuthServer (linux/amd64, Dockerfile.local)..." -ForegroundColor Yellow
-# try {
-#     docker buildx build --pull --no-cache --platform linux/amd64 -f Dockerfile.local -t "${authServerAppImage}:$version" -t "${authServerAppImage}:latest" . --push
-#     if (-not $?) {
-#         throw "docker build failed"
-#     }
-# } catch {
-#     Write-Host "ERROR: Docker build failed for AuthServer" -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
-# Write-Host "Docker image built and pushed successfully for AuthServer (tags: $version, latest) -> $authServerAppImage" -ForegroundColor Green
+Write-Host "Publish successful. Output: $authServerPublishPathFull" -ForegroundColor Green
+Write-Host "Building Docker image for AuthServer (linux/amd64, Dockerfile.local)..." -ForegroundColor Yellow
+try {
+    docker buildx build --pull --no-cache --platform linux/amd64 -f Dockerfile.local -t "${authServerAppImage}:$version" -t "${authServerAppImage}:latest" . --push
+    if (-not $?) {
+        throw "docker build failed"
+    }
+} catch {
+    Write-Host "ERROR: Docker build failed for AuthServer" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+Write-Host "Docker image built and pushed successfully for AuthServer (tags: $version, latest) -> $authServerAppImage" -ForegroundColor Green
 
 # Write-Host "********* BUILDING HC.PushNotificationWorker (linux/amd64, in-container publish) *********" -ForegroundColor Green
 # $pushNotificationWorkerFolder = Join-Path $slnFolder "src/HC.PushNotificationWorker"
