@@ -1,0 +1,407 @@
+@using System
+@using HC.UserSignatures
+@using HC.SignatureSettings
+@using Blazorise
+@using Blazorise.DataGrid
+@inherits HCComponentBase
+
+<div class="d-flex justify-content-end mb-3">
+    <Button Color="Color.Primary" Clicked="OpenCreateModalAsync">
+        <Icon Name="IconName.Add" Class="me-1" /> @L["NewUserSignature"]
+    </Button>
+</div>
+
+<DataGrid TItem="UserSignatureWithNavigationPropertiesDto" Data="UserSignatures" ShowPager="false" Responsive="true" Hoverable="true" Bordered="true">
+    <EmptyTemplate>
+        <div class="text-center p-3">@L["NoDataAvailable"]</div>
+    </EmptyTemplate>
+    <DataGridColumns>
+        <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto" Caption="@L["SignType"]">
+            <DisplayTemplate>@GetSignTypeDisplayName(context.UserSignature.SignType)</DisplayTemplate>
+        </DataGridColumn>
+        <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto" Caption="@L["ProviderCode"]">
+            <DisplayTemplate>@context.UserSignature.ProviderCode</DisplayTemplate>
+        </DataGridColumn>
+        <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto" Caption="@L["TokenRef"]">
+            <DisplayTemplate>@context.UserSignature.TokenRef</DisplayTemplate>
+        </DataGridColumn>
+        <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto" Caption="@L["SignatureImage"]">
+            <DisplayTemplate>
+                @if (!string.IsNullOrEmpty(context.UserSignature.SignatureImage))
+                {
+                    <img src="@GetSignatureImageUrl(context.UserSignature.SignatureImage)"
+                         alt="signature"
+                         style="max-width: 120px; max-height: 60px; object-fit: contain;" />
+                }
+            </DisplayTemplate>
+        </DataGridColumn>
+        <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto" Caption="@L["SealImg"]">
+            <DisplayTemplate>
+                @if (!string.IsNullOrEmpty(context.UserSignature.SealImg))
+                {
+                    <img src="@GetSignatureImageUrl(context.UserSignature.SealImg)"
+                         alt="seal"
+                         style="max-width: 120px; max-height: 60px; object-fit: contain;" />
+                }
+            </DisplayTemplate>
+        </DataGridColumn>
+        <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto" Caption="@L["IsActive"]" TextAlignment="TextAlignment.Center">
+            <DisplayTemplate>
+                @if (context.UserSignature.IsActive)
+                {
+                    <Icon TextColor="TextColor.Success" Name="@IconName.Check" />
+                }
+                else
+                {
+                    <Icon TextColor="TextColor.Danger" Name="@IconName.Times" />
+                }
+            </DisplayTemplate>
+        </DataGridColumn>
+        <DataGridColumn TItem="UserSignatureWithNavigationPropertiesDto" Caption="@L["Actions"]" Width="120px">
+            <DisplayTemplate>
+                <div class="d-flex gap-1">
+                    <Button Outline Color="Color.Primary" Size="Size.Small" Title="@L["Edit"]" Clicked="@(() => OpenEditModalAsync(context))">
+                        <Icon Name="IconName.Edit" />
+                    </Button>
+                    <Button Outline Color="Color.Danger" Size="Size.Small" Title="@L["Delete"]" Clicked="@(() => DeleteAsync(context))">
+                        <Icon Name="IconName.Delete" />
+                    </Button>
+                </div>
+            </DisplayTemplate>
+        </DataGridColumn>
+    </DataGridColumns>
+</DataGrid>
+
+@* ************************* CREATE MODAL ************************* *@
+<Modal @ref="CreateModalRef">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <Form id="PanelCreateUserSignatureForm">
+            <ModalHeader>
+                <ModalTitle>@L["NewUserSignature"]</ModalTitle>
+                <CloseButton Clicked="CloseCreateModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is6">
+                        <Field>
+                            <FieldLabel>@L["SignType"] *</FieldLabel>
+                            <Select TValue="SignType?" SelectedValue="@CreateSignType"
+                                    SelectedValueChanged="OnCreateSignTypeChangedAsync"
+                                    Style="@(HasCreateFieldError("SignType") ? "border-color: #dc3545;" : "")">
+                                <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L["SelectAnItem"]</SelectItem>
+                                @foreach (var item in Enum.GetValues<SignType>())
+                                {
+                                    <SelectItem TValue="SignType?" Value="@item">@L[$"Enum:SignType.{item}"]</SelectItem>
+                                }
+                            </Select>
+                            @if (HasCreateFieldError("SignType"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateFieldError("SignType")</div>
+                            }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is6">
+                        <Field>
+                            <FieldLabel>@L["ProviderCode"] *</FieldLabel>
+                            <Select TValue="Guid?" SelectedValue="@CreateSignatureSettingId"
+                                    SelectedValueChanged="@((Guid? v) => { CreateSignatureSettingId = v; CreateFieldErrors.Remove("ProviderCode"); })"
+                                    Style="@(HasCreateFieldError("ProviderCode") ? "border-color: #dc3545;" : "")">
+                                <SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["SelectAnItem"]</SelectItem>
+                                @foreach (var item in SignatureSettingsCollection)
+                                {
+                                    <SelectItem TValue="Guid?" Value="@item.Id">@item.DisplayName</SelectItem>
+                                }
+                            </Select>
+                            @if (HasCreateFieldError("ProviderCode"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateFieldError("ProviderCode")</div>
+                            }
+                        </Field>
+                    </Column>
+                    @if (IsDigitalSignType(CreateModel.SignType))
+                    {
+                        <Column ColumnSize="ColumnSize.Is6">
+                            <Field>
+                                <FieldLabel>@L["TokenRef"] *</FieldLabel>
+                                <TextEdit @bind-Text="CreateModel.TokenRef"
+                                          Style="@(HasCreateFieldError("TokenRef") ? "border-color: #dc3545;" : "")" />
+                                @if (HasCreateFieldError("TokenRef"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetCreateFieldError("TokenRef")</div>
+                                }
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is6">
+                            <Field>
+                                <FieldLabel>@L["Secret"] *</FieldLabel>
+                                <TextEdit Role="TextRole.Password" @bind-Text="CreateModel.Secret"
+                                          Style="@(HasCreateFieldError("Secret") ? "border-color: #dc3545;" : "")" />
+                                @if (HasCreateFieldError("Secret"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetCreateFieldError("Secret")</div>
+                                }
+                            </Field>
+                        </Column>
+                    }
+                    <Column ColumnSize="ColumnSize.Is6">
+                        <Field>
+                            <FieldLabel>@L["ValidFrom"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" InputMode="DateInputMode.Date"
+                                        Date="@CreateModel.ValidFrom"
+                                        DateChanged="@((DateTime? v) => CreateModel.ValidFrom = v)" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is6">
+                        <Field>
+                            <FieldLabel>@L["ValidTo"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" InputMode="DateInputMode.Date"
+                                        Date="@CreateModel.ValidTo"
+                                        DateChanged="@((DateTime? v) => CreateModel.ValidTo = v)" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is6" Style="padding-top: 32px;">
+                        <Field>
+                            <Check TValue="bool" @bind-Checked="CreateModel.IsActive">@L["IsActive"]</Check>
+                        </Field>
+                    </Column>
+                    @if (IsDigitalSignType(CreateModel.SignType))
+                    {
+                        <Column ColumnSize="ColumnSize.Is12">
+                            <Field>
+                                <FieldLabel>@L["SealImg"] *</FieldLabel>
+                                <FilePicker @ref="CreateSealImageFilePicker"
+                                            Multiple="false"
+                                            Changed="@(e => UploadSealImageFileAsync(e, false))"
+                                            ShowMode="FilePickerShowMode.List"
+                                            MaxFileSize="52428800"
+                                            Accept="image/*"
+                                            FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
+                                    <ButtonsTemplate>
+                                        <Buttons>
+                                            <Button Clicked="@context.Clear" Color="Color.Warning">
+                                                <Icon Name="IconName.Clear" /> @L["Clear"]
+                                            </Button>
+                                        </Buttons>
+                                    </ButtonsTemplate>
+                                </FilePicker>
+                                @if (!string.IsNullOrEmpty(CreateModel.SealImg))
+                                {
+                                    <div class="mt-2">
+                                        <img src="@GetSignatureImageUrl(CreateModel.SealImg)"
+                                             alt="Seal Preview"
+                                             style="max-width: 300px; max-height: 150px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                                    </div>
+                                }
+                                @if (HasCreateFieldError("SealImg"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetCreateFieldError("SealImg")</div>
+                                }
+                            </Field>
+                        </Column>
+                    }
+                    <Column ColumnSize="ColumnSize.Is12">
+                        <Field>
+                            <FieldLabel>@L["SignatureImage"] *</FieldLabel>
+                            <FilePicker @ref="CreateSignatureImageFilePicker"
+                                        Multiple="false"
+                                        Changed="@(e => UploadSignatureImageFileAsync(e, false))"
+                                        ShowMode="FilePickerShowMode.List"
+                                        MaxFileSize="52428800"
+                                        Accept="image/*"
+                                        FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
+                                <ButtonsTemplate>
+                                    <Buttons>
+                                        <Button Clicked="@context.Clear" Color="Color.Warning">
+                                            <Icon Name="IconName.Clear" /> @L["Clear"]
+                                        </Button>
+                                    </Buttons>
+                                </ButtonsTemplate>
+                            </FilePicker>
+                            @if (!string.IsNullOrEmpty(CreateModel.SignatureImage))
+                            {
+                                <div class="mt-2">
+                                    <img src="@GetSignatureImageUrl(CreateModel.SignatureImage)"
+                                         alt="Signature Preview"
+                                         style="max-width: 300px; max-height: 150px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                                </div>
+                            }
+                            @if (HasCreateFieldError("SignatureImage"))
+                            {
+                                <div class="invalid-feedback d-block">@GetCreateFieldError("SignatureImage")</div>
+                            }
+                        </Field>
+                    </Column>
+                </Row>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseCreateModalAsync">@L["Cancel"]</Button>
+                <SubmitButton Form="PanelCreateUserSignatureForm" Clicked="CreateAsync" Color="Color.Primary">@L["Save"]</SubmitButton>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+@* ************************* EDIT MODAL ************************* *@
+<Modal @ref="EditModalRef">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <Form id="PanelEditUserSignatureForm">
+            <ModalHeader>
+                <ModalTitle>@L["UpdateUserSignature"]</ModalTitle>
+                <CloseButton Clicked="CloseEditModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is6">
+                        <Field>
+                            <FieldLabel>@L["SignType"] *</FieldLabel>
+                            <Select TValue="SignType?" SelectedValue="@EditSignType"
+                                    SelectedValueChanged="OnEditSignTypeChangedAsync"
+                                    Style="@(HasEditFieldError("SignType") ? "border-color: #dc3545;" : "")">
+                                <SelectItem TValue="SignType?" Value="@((SignType?)null)">@L["SelectAnItem"]</SelectItem>
+                                @foreach (var item in Enum.GetValues<SignType>())
+                                {
+                                    <SelectItem TValue="SignType?" Value="@item">@L[$"Enum:SignType.{item}"]</SelectItem>
+                                }
+                            </Select>
+                            @if (HasEditFieldError("SignType"))
+                            {
+                                <div class="invalid-feedback d-block">@GetEditFieldError("SignType")</div>
+                            }
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is6">
+                        <Field>
+                            <FieldLabel>@L["ProviderCode"] *</FieldLabel>
+                            <Select TValue="Guid?" SelectedValue="@EditSignatureSettingId"
+                                    SelectedValueChanged="@((Guid? v) => { EditSignatureSettingId = v; EditFieldErrors.Remove("ProviderCode"); })"
+                                    Style="@(HasEditFieldError("ProviderCode") ? "border-color: #dc3545;" : "")">
+                                <SelectItem TValue="Guid?" Value="@((Guid?)null)">@L["SelectAnItem"]</SelectItem>
+                                @foreach (var item in SignatureSettingsCollection)
+                                {
+                                    <SelectItem TValue="Guid?" Value="@item.Id">@item.DisplayName</SelectItem>
+                                }
+                            </Select>
+                            @if (HasEditFieldError("ProviderCode"))
+                            {
+                                <div class="invalid-feedback d-block">@GetEditFieldError("ProviderCode")</div>
+                            }
+                        </Field>
+                    </Column>
+                    @if (IsDigitalSignType(EditModel.SignType))
+                    {
+                        <Column ColumnSize="ColumnSize.Is6">
+                            <Field>
+                                <FieldLabel>@L["TokenRef"] *</FieldLabel>
+                                <TextEdit @bind-Text="EditModel.TokenRef"
+                                          Style="@(HasEditFieldError("TokenRef") ? "border-color: #dc3545;" : "")" />
+                                @if (HasEditFieldError("TokenRef"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetEditFieldError("TokenRef")</div>
+                                }
+                            </Field>
+                        </Column>
+                        <Column ColumnSize="ColumnSize.Is6">
+                            <Field>
+                                <FieldLabel>@L["Secret"]</FieldLabel>
+                                <FieldHelp>@L["DigitalSignSecretLeaveBlankToKeep"]</FieldHelp>
+                                <TextEdit Role="TextRole.Password" @bind-Text="EditModel.Secret" />
+                            </Field>
+                        </Column>
+                    }
+                    <Column ColumnSize="ColumnSize.Is6">
+                        <Field>
+                            <FieldLabel>@L["ValidFrom"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" InputMode="DateInputMode.Date"
+                                        Date="@EditModel.ValidFrom"
+                                        DateChanged="@((DateTime? v) => EditModel.ValidFrom = v)" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is6">
+                        <Field>
+                            <FieldLabel>@L["ValidTo"]</FieldLabel>
+                            <DatePicker TValue="DateTime?" InputMode="DateInputMode.Date"
+                                        Date="@EditModel.ValidTo"
+                                        DateChanged="@((DateTime? v) => EditModel.ValidTo = v)" />
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is6" Style="padding-top: 32px;">
+                        <Field>
+                            <Check TValue="bool" @bind-Checked="EditModel.IsActive">@L["IsActive"]</Check>
+                        </Field>
+                    </Column>
+                    @if (IsDigitalSignType(EditModel.SignType))
+                    {
+                        <Column ColumnSize="ColumnSize.Is12">
+                            <Field>
+                                <FieldLabel>@L["SealImg"] *</FieldLabel>
+                                <FilePicker @ref="EditSealImageFilePicker"
+                                            Multiple="false"
+                                            Changed="@(e => UploadSealImageFileAsync(e, true))"
+                                            ShowMode="FilePickerShowMode.List"
+                                            MaxFileSize="52428800"
+                                            Accept="image/*"
+                                            FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
+                                    <ButtonsTemplate>
+                                        <Buttons>
+                                            <Button Clicked="@context.Clear" Color="Color.Warning">
+                                                <Icon Name="IconName.Clear" /> @L["Clear"]
+                                            </Button>
+                                        </Buttons>
+                                    </ButtonsTemplate>
+                                </FilePicker>
+                                @if (!string.IsNullOrEmpty(EditModel.SealImg))
+                                {
+                                    <div class="mt-2">
+                                        <img src="@GetSignatureImageUrl(EditModel.SealImg)"
+                                             alt="Seal Preview"
+                                             style="max-width: 300px; max-height: 150px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                                    </div>
+                                }
+                                @if (HasEditFieldError("SealImg"))
+                                {
+                                    <div class="invalid-feedback d-block">@GetEditFieldError("SealImg")</div>
+                                }
+                            </Field>
+                        </Column>
+                    }
+                    <Column ColumnSize="ColumnSize.Is12">
+                        <Field>
+                            <FieldLabel>@L["SignatureImage"] *</FieldLabel>
+                            <FilePicker @ref="EditSignatureImageFilePicker"
+                                        Multiple="false"
+                                        Changed="@(e => UploadSignatureImageFileAsync(e, true))"
+                                        ShowMode="FilePickerShowMode.List"
+                                        MaxFileSize="52428800"
+                                        Accept="image/*"
+                                        FilePickerLocalizer="FilePickerHelper.FilePickerLocalizer">
+                                <ButtonsTemplate>
+                                    <Buttons>
+                                        <Button Clicked="@context.Clear" Color="Color.Warning">
+                                            <Icon Name="IconName.Clear" /> @L["Clear"]
+                                        </Button>
+                                    </Buttons>
+                                </ButtonsTemplate>
+                            </FilePicker>
+                            @if (!string.IsNullOrEmpty(EditModel.SignatureImage))
+                            {
+                                <div class="mt-2">
+                                    <img src="@GetSignatureImageUrl(EditModel.SignatureImage)"
+                                         alt="Signature Preview"
+                                         style="max-width: 300px; max-height: 150px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />
+                                </div>
+                            }
+                            @if (HasEditFieldError("SignatureImage"))
+                            {
+                                <div class="invalid-feedback d-block">@GetEditFieldError("SignatureImage")</div>
+                            }
+                        </Field>
+                    </Column>
+                </Row>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseEditModalAsync">@L["Cancel"]</Button>
+                <SubmitButton Form="PanelEditUserSignatureForm" Clicked="UpdateAsync" Color="Color.Primary">@L["Save"]</SubmitButton>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>

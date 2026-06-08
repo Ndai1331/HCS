@@ -9,6 +9,7 @@ using HC.Permissions;
 using Volo.Abp.Account.Localization;
 using Volo.Abp.UI.Navigation;
 using Volo.Abp.Authorization.Permissions;
+using Volo.Abp.Identity;
 using Volo.Abp.SettingManagement.Blazor.Menus;
 using Volo.Abp.Identity.Pro.Blazor.Navigation;
 using Volo.Abp.AuditLogging.Blazor.Menus;
@@ -90,6 +91,18 @@ public class HCMenuContributor : IMenuContributor
         administration.Order = 15;
         //Administration->Identity
         administration.SetSubItemOrder(IdentityProMenus.GroupName, 2);
+        // administration.GetMenuItemOrNull(IdentityProMenus.GroupName)?.AddItem(
+        //     new ApplicationMenuItem(
+        //         "Identity.NewUsers",
+        //         l["Menu:Users"],
+        //         url: "/identity/users-management",
+        //         order:3
+        //     ).RequirePermissions(IdentityPermissions.Users.Default)
+        // );
+
+        SetMenuItemUrl(administration, IdentityProMenus.Users, "/identity/users-management");
+
+
         //Administration->OpenIddict
         administration.SetSubItemOrder(OpenIddictProMenus.GroupName, 3);
         //Administration->Language Management
@@ -131,5 +144,18 @@ public class HCMenuContributor : IMenuContributor
         context.Menu.AddItem(new ApplicationMenuItem(HCMenus.Home, hcResource["Menu:Home"], url: "~/", icon: "bi bi-house-fill", order: int.MaxValue - 1000).RequireAuthenticated());
         context.Menu.AddItem(new ApplicationMenuItem(HCMenus.Chat, hcResource["Menu:Chat"], url: "~/chat", icon: "bi bi-chat-dots-fill", order: int.MaxValue - 1000).RequireAuthenticated());
         return Task.CompletedTask;
+    }
+
+    private static void SetMenuItemUrl(IHasMenuItems parent, string itemName, string url)
+    {
+        foreach (var item in parent.Items)
+        {
+            if (item.Name == itemName)
+            {
+                item.Url = url;
+                return;
+            }
+            SetMenuItemUrl(item, itemName, url);
+        }
     }
 }
