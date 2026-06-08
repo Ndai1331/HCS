@@ -1,0 +1,205 @@
+@page "/identity/users-management"
+@attribute [Authorize(IdentityPermissions.Users.Default)]
+@using HC.Identity
+@using HC.Localization
+@using HC.UserSignatures
+@using HC.Blazor.Components.UserSignaturesPanel
+@using Microsoft.AspNetCore.Authorization
+@using HC.Blazor.Components.DepartmentTreeSelect
+@using Volo.Abp.AspNetCore.Components.Web.Theming.Layout
+@using Volo.Abp.Identity
+@inherits HCComponentBase
+
+<PageHeader Title="@L["Users"]" BreadcrumbItems="BreadcrumbItems" Toolbar="Toolbar" />
+
+<Card>
+    <CardBody>
+        <Row>
+            <div class="col col-md-8 col-lg-10">
+                <Form id="UserSearchForm">
+                    <Addons>
+                        <Addon AddonType="AddonType.Body">
+                            <TextEdit @bind-Text="FilterText" Placeholder="@L["Search"]" />
+                        </Addon>
+                        <Addon AddonType="AddonType.End">
+                            <SubmitButton Form="UserSearchForm" Clicked="SearchAsync">
+                                <Icon Name="IconName.Search" Class="me-1" />@L["Search"]
+                            </SubmitButton>
+                        </Addon>
+                    </Addons>
+                </Form>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <Button Color="Color.Primary" Outline Style="width:100%" Clicked="@(() => ShowAdvancedFilters = !ShowAdvancedFilters)">
+                    @L["Filters"]
+                    <i aria-hidden="true" class="fa ms-1 @(!ShowAdvancedFilters ? "fa-angle-down" : "fa-angle-up")"></i>
+                </Button>
+            </div>
+        </Row>
+
+        <div style="display: @(!ShowAdvancedFilters ? "none" : "block")" class="mt-3">
+            <Row>
+                <Column ColumnSize="ColumnSize.Is4">
+                    <Field>
+                        <FieldLabel>@L["Role"]</FieldLabel>
+                        <Select TValue="Guid?" SelectedValue="FilterRoleId" SelectedValueChanged="OnFilterRoleChangedAsync">
+                            <SelectItem Value="@((Guid?)null)">@L["All"]</SelectItem>
+                            @foreach (var role in FilterRoleLookups)
+                            {
+                                <SelectItem Value="@role.Id">@role.DisplayName</SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is4">
+                    <Field>
+                        <FieldLabel>@L["OrganizationUnit"]</FieldLabel>
+                        <Select TValue="Guid?" SelectedValue="FilterOrganizationUnitId" SelectedValueChanged="OnFilterOrganizationUnitChangedAsync">
+                            <SelectItem Value="@((Guid?)null)">@L["All"]</SelectItem>
+                            @foreach (var ou in OrganizationUnitLookups)
+                            {
+                                <SelectItem Value="@ou.Id">@ou.DisplayName</SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is4">
+                    <Field>
+                        <FieldLabel>@L["UserName"]</FieldLabel>
+                        <TextEdit Text="@FilterUserName" TextChanged="OnFilterUserNameChangedAsync" />
+                    </Field>
+                </Column>
+            </Row>
+            <Row Class="mt-3">
+                <Column ColumnSize="ColumnSize.Is4">
+                    <Field>
+                        <FieldLabel>@L["PhoneNumber"]</FieldLabel>
+                        <TextEdit Text="@FilterPhoneNumber" TextChanged="OnFilterPhoneNumberChangedAsync" />
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is4">
+                    <Field>
+                        <FieldLabel>@L["FullName"]</FieldLabel>
+                        <TextEdit Text="@FilterFullName" TextChanged="OnFilterFullNameChangedAsync" />
+                    </Field>
+                </Column>
+                <Column ColumnSize="ColumnSize.Is4">
+                    <Field>
+                        <FieldLabel>@L["IsActive"]</FieldLabel>
+                        <Select TValue="bool?" SelectedValue="FilterIsActive" SelectedValueChanged="OnFilterIsActiveChangedAsync">
+                            <SelectItem Value="@((bool?)null)">@L["All"]</SelectItem>
+                            <SelectItem Value="@true">@L["Yes"]</SelectItem>
+                            <SelectItem Value="@false">@L["No"]</SelectItem>
+                        </Select>
+                    </Field>
+                </Column>
+            </Row>
+            <Row Class="mt-3">
+                <Column ColumnSize="ColumnSize.Is12" Class="d-flex justify-content-end">
+                    <Button Color="Color.Secondary" Clicked="ClearFiltersAsync">
+                        <Icon Name="IconName.Clear" Class="me-1" />@L["Clear"]
+                    </Button>
+                </Column>
+            </Row>
+        </div>
+    </CardBody>
+</Card>
+
+<Card>
+    <CardBody>
+        <DataGrid TItem="IdentityUserWithNavigationPropertiesDto"
+                  Data="UserList"
+                  ReadData="OnGridReadAsync"
+                  TotalItems="TotalCount"
+                  ShowPager="true"
+                  Responsive="true"
+                  Hoverable="true"
+                  Striped="true"
+                  Bordered="true"
+                  PageSize="PageSize">
+            <DataGridColumns>
+                <DataGridColumn TItem="IdentityUserWithNavigationPropertiesDto" Caption="@L["Actions"]" Sortable="false" Width="210px">
+                    <DisplayTemplate>
+                        <Dropdown>
+                            <DropdownToggle Color="Color.Primary" Size="Size.Small">@L["Actions"]</DropdownToggle>
+                            <DropdownMenu>
+                                <DropdownItem Clicked="@(() => OpenDetailModalAsync(context))">
+                                    <Icon Name="IconName.Eye" /> @L["ViewDetail"]
+                                </DropdownItem>
+                                <DropdownItem Clicked="@(() => OpenEditModalAsync(context.User))">
+                                    <Icon Name="IconName.Edit" /> @L["Edit"]
+                                </DropdownItem>
+                                <DropdownItem Clicked="@(() => OpenResetPasswordModalAsync(context.User))">
+                                    <Icon Name="IconName.Key" /> @L["ResetPassword"]
+                                </DropdownItem>
+                                <DropdownDivider />
+                                <DropdownItem Clicked="@(() => DeleteUserAsync(context.User))" TextColor="TextColor.Danger">
+                                    <Icon Name="IconName.Delete" /> @L["Delete"]
+                                </DropdownItem>
+                            </DropdownMenu>
+                        </Dropdown>
+                    </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="IdentityUserWithNavigationPropertiesDto" Caption="@L["GeneralInformation"]" Sortable="false" Width="320px">
+                    <DisplayTemplate>
+                        <div class="small lh-sm">
+                            <div><strong>@L["UserName"]:</strong> @context.User.UserName</div>
+                            <div><strong>@L["Email"]:</strong> @context.User.Email</div>
+                            <div><strong>@L["FullName"]:</strong> @FormatFullName(context.User.Surname, context.User.Name)</div>
+                            <div><strong>@L["Role"]:</strong> @context.RolesName</div>
+                            <div><strong>@L["Position"]:</strong> @context.PositionName</div>
+                            <div><strong>@L["Department"]:</strong> @context.OrganizationUnitsName</div>
+                        </div>
+                    </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="IdentityUserWithNavigationPropertiesDto" Caption="@L["ActiveStatus"]" TextAlignment="TextAlignment.Center"><DisplayTemplate>@if (context.User.IsActive){<Icon TextColor="TextColor.Success" Name="@IconName.Check"/>}else{<Icon TextColor="TextColor.Danger" Name="@IconName.Times"/>}</DisplayTemplate></DataGridColumn>
+                <DataGridColumn TItem="IdentityUserWithNavigationPropertiesDto" Caption="@L["AccountLock"]" TextAlignment="TextAlignment.Center"><DisplayTemplate>@if (context.User.LockoutEnabled){<Icon TextColor="TextColor.Success" Name="@IconName.Check"/>}else{<Icon TextColor="TextColor.Danger" Name="@IconName.Times"/>}</DisplayTemplate></DataGridColumn>
+                <DataGridColumn TItem="IdentityUserWithNavigationPropertiesDto" Caption="@L["EmailConfirmed"]" TextAlignment="TextAlignment.Center"><DisplayTemplate>@if (context.User.EmailConfirmed){<Icon TextColor="TextColor.Success" Name="@IconName.Check"/>}else{<Icon TextColor="TextColor.Danger" Name="@IconName.Times"/>}</DisplayTemplate></DataGridColumn>
+                <DataGridColumn TItem="IdentityUserWithNavigationPropertiesDto" Caption="@L["TwoFactorAuthentication"]" TextAlignment="TextAlignment.Center"><DisplayTemplate>@if (context.User.TwoFactorEnabled){<Icon TextColor="TextColor.Success" Name="@IconName.Check"/>}else{<Icon TextColor="TextColor.Danger" Name="@IconName.Times"/>}</DisplayTemplate></DataGridColumn>
+                <DataGridColumn TItem="IdentityUserWithNavigationPropertiesDto" Caption="@L["AccessFailedCount"]"><DisplayTemplate>@context.User.AccessFailedCount</DisplayTemplate></DataGridColumn>
+                <DataGridColumn TItem="IdentityUserWithNavigationPropertiesDto" Caption="@L["CreationTime"]"><DisplayTemplate>@FormatDateTime(context.User.CreationTime)</DisplayTemplate></DataGridColumn>
+                <DataGridColumn TItem="IdentityUserWithNavigationPropertiesDto" Caption="@L["LastModificationTime"]"><DisplayTemplate>@FormatDateTime(context.User.LastModificationTime)</DisplayTemplate></DataGridColumn>
+            </DataGridColumns>
+        </DataGrid>
+    </CardBody>
+</Card>
+
+<Modal @ref="CreateModalRef"><ModalContent Centered="true" Size="ModalSize.Large"><Form id="CreateUserForm"><ModalHeader><ModalTitle>@L["CreateUser"]</ModalTitle><CloseButton Clicked="CloseCreateModalAsync" /></ModalHeader><ModalBody><Tabs SelectedTab="@SelectedCreateTab" SelectedTabChanged="OnSelectedCreateTabChanged"><Items><Tab Name="user-info">@L["UserInformation"]</Tab><Tab Name="roles">@($"{L["Role"]} ({GetSelectedRoleCount()})")</Tab><Tab Name="ou">@($"{L["OrganizationUnitTree"]} ({GetSelectedOrganizationUnitCount()})")</Tab></Items><Content><TabPanel Name="user-info"><Validations @ref="CreateValidations" Mode="ValidationMode.Auto" Model="CreateModel"><Row><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["UserName"] *</FieldLabel><TextEdit @bind-Text="CreateModel.UserName" /></Field></Column><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["Password"] *</FieldLabel><TextEdit @bind-Text="CreateModel.Password" Role="TextRole.Password" /></Field></Column><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["Surname"]</FieldLabel><TextEdit @bind-Text="CreateModel.Surname" /></Field></Column><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["Name"]</FieldLabel><TextEdit @bind-Text="CreateModel.Name" /></Field></Column><Column ColumnSize="ColumnSize.Is12"><Field><FieldLabel>@L["EmailAddress"] *</FieldLabel><TextEdit @bind-Text="CreateModel.Email" /></Field></Column><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["PhoneNumber"]</FieldLabel><TextEdit @bind-Text="CreateModel.PhoneNumber" /></Field></Column><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["Position"] *</FieldLabel><CommonSelect2 FilterFunction="FilterPositionLookupAsync" GetElementById="GetPositionByIdAsync" Datasource="PositionLookups" Value="SelectedCreatePosition" ValueChanged="OnCreatePositionChanged" Placeholder="@L["SelectAnItem"]" /></Field></Column><Column ColumnSize="ColumnSize.Is3"><Field><Check TValue="bool" @bind-Checked="CreateModel.IsActive">@L["ActiveStatus"]</Check></Field></Column><Column ColumnSize="ColumnSize.Is3"><Field><Check TValue="bool" @bind-Checked="CreateModel.LockoutEnabled">@L["AccountLock"]</Check></Field></Column><Column ColumnSize="ColumnSize.Is3"><Field><Check TValue="bool" @bind-Checked="CreateModel.EmailConfirmed">@L["EmailConfirmed"]</Check></Field></Column><Column ColumnSize="ColumnSize.Is3"><Field><Check TValue="bool" @bind-Checked="CreateModel.ShouldChangePasswordOnNextLogin">@L["ForcePasswordChange"]</Check></Field></Column></Row></Validations></TabPanel><TabPanel Name="roles">@foreach (var roleName in AllRoleNames){<Field><Check TValue="bool" Checked="@(RoleSelection.TryGetValue(roleName, out var isOn) && isOn)" CheckedChanged="@(val => OnRoleCheckedChanged(roleName, val))">@roleName</Check></Field>}</TabPanel><TabPanel Name="ou"><DepartmentTreeSelect Items="OrganizationUnitTreeViews" SelectedItems="SelectedOrganizationUnits" SelectedItemsChanged="@(v => SelectedOrganizationUnits = v)" /></TabPanel></Content></Tabs></ModalBody><ModalFooter><Button Color="Color.Secondary" Clicked="CloseCreateModalAsync">@L["Cancel"]</Button><SubmitButton Form="CreateUserForm" Clicked="CreateAsync" Color="Color.Primary">@L["Save"]</SubmitButton></ModalFooter></Form></ModalContent></Modal>
+
+<Modal @ref="EditModalRef"><ModalContent Centered="true" Size="ModalSize.ExtraLarge"><Form id="EditUserForm"><ModalHeader><ModalTitle>@L["EditUser"]</ModalTitle><CloseButton Clicked="CloseEditModalAsync" /></ModalHeader><ModalBody><Tabs SelectedTab="@SelectedEditTab" SelectedTabChanged="OnSelectedEditTabChanged"><Items><Tab Name="user-info">@L["UserInformation"]</Tab><Tab Name="roles">@($"{L["Role"]} ({GetSelectedRoleCount()})")</Tab><Tab Name="ou">@($"{L["OrganizationUnitTree"]} ({GetSelectedOrganizationUnitCount()})")</Tab><Tab Name="signatures">@L["UserSignatures"]</Tab></Items><Content><TabPanel Name="user-info"><Validations @ref="EditValidations" Mode="ValidationMode.Auto" Model="EditModel"><Row><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["UserName"] *</FieldLabel><TextEdit @bind-Text="EditModel.UserName" ReadOnly="true" /></Field></Column><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["EmailAddress"] *</FieldLabel><TextEdit @bind-Text="EditModel.Email" /></Field></Column><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["Surname"]</FieldLabel><TextEdit @bind-Text="EditModel.Surname" /></Field></Column><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["Name"]</FieldLabel><TextEdit @bind-Text="EditModel.Name" /></Field></Column><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["PhoneNumber"]</FieldLabel><TextEdit @bind-Text="EditModel.PhoneNumber" /></Field></Column><Column ColumnSize="ColumnSize.Is6"><Field><FieldLabel>@L["Position"] *</FieldLabel><CommonSelect2 FilterFunction="FilterPositionLookupAsync" GetElementById="GetPositionByIdAsync" Datasource="PositionLookups" Value="SelectedEditPosition" ValueChanged="OnEditPositionChanged" Placeholder="@L["SelectAnItem"]" /></Field></Column><Column ColumnSize="ColumnSize.Is3"><Field><Check TValue="bool" @bind-Checked="EditModel.IsActive">@L["ActiveStatus"]</Check></Field></Column><Column ColumnSize="ColumnSize.Is3"><Field><Check TValue="bool" @bind-Checked="EditModel.LockoutEnabled">@L["AccountLock"]</Check></Field></Column><Column ColumnSize="ColumnSize.Is3"><Field><Check TValue="bool" @bind-Checked="EditModel.EmailConfirmed">@L["EmailConfirmed"]</Check></Field></Column><Column ColumnSize="ColumnSize.Is3"><Field><Check TValue="bool" @bind-Checked="EditModel.ShouldChangePasswordOnNextLogin">@L["ForcePasswordChange"]</Check></Field></Column></Row></Validations></TabPanel><TabPanel Name="roles">@foreach (var roleName in AllRoleNames){<Field><Check TValue="bool" Checked="@(RoleSelection.TryGetValue(roleName, out var isOn) && isOn)" CheckedChanged="@(val => OnRoleCheckedChanged(roleName, val))">@roleName</Check></Field>}</TabPanel><TabPanel Name="ou"><DepartmentTreeSelect Items="OrganizationUnitTreeViews" SelectedItems="SelectedOrganizationUnits" SelectedItemsChanged="@(v => SelectedOrganizationUnits = v)" /></TabPanel><TabPanel Name="signatures">@if (EditingUser != null){<UserSignaturesPanel IdentityUserId="EditingUser.Id"/>}</TabPanel></Content></Tabs></ModalBody><ModalFooter><Button Color="Color.Secondary" Clicked="CloseEditModalAsync">@L["Cancel"]</Button><SubmitButton Form="EditUserForm" Clicked="UpdateAsync" Color="Color.Primary">@L["Save"]</SubmitButton></ModalFooter></Form></ModalContent></Modal>
+
+<Modal @ref="DetailModalRef"><ModalContent Centered="true" Size="ModalSize.ExtraLarge"><ModalHeader><ModalTitle>@L["ViewDetail"] - @(DetailUser?.UserName)</ModalTitle><CloseButton Clicked="CloseDetailModalAsync" /></ModalHeader><ModalBody>@if (DetailUser != null){<Tabs SelectedTab="@SelectedDetailTab" SelectedTabChanged="OnSelectedDetailTabChanged"><Items><Tab Name="user-info">@L["UserInformation"]</Tab><Tab Name="ou">@($"{L["OrganizationUnitTree"]} ({GetDetailOrganizationUnitCount()})")</Tab><Tab Name="overview">@L["Overview"]</Tab><Tab Name="signatures">@L["UserSignatures"]</Tab></Items><Content><TabPanel Name="user-info"><table class="table table-bordered"><tbody><tr><th>@L["UserId"]</th><td>@DetailUser.Id</td></tr><tr><th>@L["UserName"]</th><td>@DetailUser.UserName</td></tr><tr><th>@L["Surname"]</th><td>@DetailUser.Surname</td></tr><tr><th>@L["Name"]</th><td>@DetailUser.Name</td></tr><tr><th>@L["EmailAddress"]</th><td>@DetailUser.Email</td></tr><tr><th>@L["PhoneNumber"]</th><td>@DetailUser.PhoneNumber</td></tr><tr><th>@L["Role"]</th><td>@DetailRolesName</td></tr><tr><th>@L["Position"]</th><td>@DetailPositionName</td></tr><tr><th>@L["ActiveStatus"]</th><td>@(DetailUser.IsActive ? L["Yes"] : L["No"])</td></tr></tbody></table></TabPanel><TabPanel Name="ou"><DepartmentTreeSelect Items="OrganizationUnitTreeViews" SelectedItems="DetailOrganizationUnits" SelectedItemsChanged="@(v => DetailOrganizationUnits = v)" /></TabPanel><TabPanel Name="overview"><table class="table table-bordered"><tbody><tr><th>@L["EmailConfirmed"]</th><td>@(DetailUser.EmailConfirmed ? @L["Yes"] : @L["No"])</td></tr><tr><th>@L["TwoFactorAuthentication"]</th><td>@(DetailUser.TwoFactorEnabled ? L["Yes"] : L["No"])</td></tr><tr><th>@L["AccessFailedCount"]</th><td>@DetailUser.AccessFailedCount</td></tr><tr><th>@L["CreationTime"]</th><td>@FormatDateTime(DetailUser.CreationTime)</td></tr><tr><th>@L["LastModificationTime"]</th><td>@FormatDateTime(DetailUser.LastModificationTime)</td></tr></tbody></table></TabPanel><TabPanel Name="signatures"><UserSignaturesPanel IdentityUserId="DetailUser.Id" /></TabPanel></Content></Tabs>}</ModalBody><ModalFooter><Button Color="Color.Secondary" Clicked="CloseDetailModalAsync">@L["Close"]</Button></ModalFooter></ModalContent></Modal>
+
+@* ************************* RESET PASSWORD MODAL ************************* *@
+<Modal @ref="ResetPasswordModalRef">
+    <ModalContent Centered="true">
+        <Form id="ResetPasswordForm">
+            <ModalHeader>
+                <ModalTitle>@L["SetPassword"] - @(ResetPasswordUser?.UserName)</ModalTitle>
+                <CloseButton Clicked="CloseResetPasswordModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                <Field>
+                    <FieldLabel>@L["NewPassword"] *</FieldLabel>
+                    <Addons>
+                        <Addon AddonType="AddonType.Body">
+                            <TextEdit @bind-Text="NewPasswordValue" Role="@(ShowNewPassword ? TextRole.Text : TextRole.Password)" />
+                        </Addon>
+                        <Addon AddonType="AddonType.End">
+                            <Button Color="Color.Secondary" Clicked="@(() => ShowNewPassword = !ShowNewPassword)">
+                                <Icon Name="@(ShowNewPassword ? IconName.EyeSlash : IconName.Eye)" />
+                            </Button>
+                            <Button Color="Color.Primary" Clicked="GenerateRandomPassword" Title="@L["GenerateRandom"]">
+                                <Icon Name="IconName.Random" />
+                            </Button>
+                        </Addon>
+                    </Addons>
+                </Field>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseResetPasswordModalAsync">@L["Cancel"]</Button>
+                <SubmitButton Form="ResetPasswordForm" Clicked="ResetPasswordAsync" Color="Color.Primary">@L["Save"]</SubmitButton>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>

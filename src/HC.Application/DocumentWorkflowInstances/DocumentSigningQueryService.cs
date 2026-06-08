@@ -121,9 +121,13 @@ public class DocumentSigningQueryService : HCAppService, IDocumentSigningQuerySe
 
         var pagedSortRows = await AsyncExecuter.ToListAsync(
             documentSigningSortQuery
+                // Group 1 (documents needing my action) on top
                 .OrderByDescending(x => x.NeedsMySignature)
-                .ThenByDescending(x => x.IsOverdueStatus || x.DeadlineUrgent)
-                .ThenBy(x => x.DeadlineSort)
+                // Within group 1: overdue / deadline-urgent items first
+                .ThenByDescending(x => x.NeedsMySignature && (x.IsOverdueStatus || x.DeadlineUrgent))
+                // Within group 1: nearest deadline first (no-deadline items fall to the bottom of the group)
+                .ThenBy(x => x.NeedsMySignature ? x.DeadlineSort : DateTime.MaxValue)
+                // Group 2 (and tie-breaker for group 1): newest incoming date first
                 .ThenByDescending(x => x.Document.IncommingDate)
                 .Skip(input.SkipCount)
                 .Take(input.MaxResultCount));
