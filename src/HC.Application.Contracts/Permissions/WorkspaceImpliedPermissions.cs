@@ -3,6 +3,7 @@ using HC.Chat.Authorization;
 
 namespace HC.Permissions;
 
+
 /// <summary>
 /// Permissions granted implicitly when <see cref="HCPermissions.Workspace.Default"/> is assigned.
 /// Covers all APIs used by the Workspace (Index) page.
