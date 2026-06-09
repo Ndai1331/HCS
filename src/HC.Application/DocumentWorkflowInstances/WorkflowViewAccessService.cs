@@ -13,10 +13,17 @@ namespace HC.DocumentWorkflowInstances;
 
 public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessService, ITransientDependency
 {
-    private static readonly string[] ActiveInstanceStatuses =
+    /// <summary>
+    /// Workflow instances eligible for VIEW-step document visibility (all non-draft statuses).
+    /// </summary>
+    private static readonly string[] ViewEligibleInstanceStatuses =
     {
         nameof(DocumentWorkflowInstanceStatus.IN_PROGRESS),
-        nameof(DocumentWorkflowInstanceStatus.OVERDUE)
+        nameof(DocumentWorkflowInstanceStatus.OVERDUE),
+        nameof(DocumentWorkflowInstanceStatus.COMPLETED),
+        nameof(DocumentWorkflowInstanceStatus.REJECTED),
+        nameof(DocumentWorkflowInstanceStatus.RETURNED),
+        nameof(DocumentWorkflowInstanceStatus.CANCELLED)
     };
 
     private readonly IDocumentWorkflowInstanceRepository _documentWorkflowInstanceRepository;
@@ -81,19 +88,19 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
         var instanceQueryable = await _documentWorkflowInstanceRepository.GetQueryableAsync();
         var documentQueryable = await _documentRepository.GetQueryableAsync();
 
-        var activeInstances = await AsyncExecuter.ToListAsync(
+        var viewEligibleInstances = await AsyncExecuter.ToListAsync(
             from inst in instanceQueryable
             join doc in documentQueryable on inst.DocumentId equals doc.Id
             where doc.SourceType == DocumentSourceType.Workflow
-            where ActiveInstanceStatuses.Contains(inst.Status)
+            where ViewEligibleInstanceStatuses.Contains(inst.Status)
             select inst);
 
-        if (activeInstances.Count == 0)
+        if (viewEligibleInstances.Count == 0)
         {
             return result;
         }
 
-        foreach (var instance in activeInstances)
+        foreach (var instance in viewEligibleInstances)
         {
             if (await UserMatchesAnyUnlockedViewStepAsync(instance, userId))
             {
@@ -148,7 +155,7 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
     }
 
     /// <summary>
-    /// Reads persisted unlock list, or infers VIEW steps already passed from committed steps vs current step (legacy instances).
+    /// Reads persisted unlock list, or infers VIEW steps from committed steps and workflow status (legacy instances).
     /// </summary>
     private async Task<List<Guid>> GetEffectiveUnlockedViewStepIdsAsync(DocumentWorkflowInstance instance)
     {
@@ -158,12 +165,28 @@ public class WorkflowViewAccessService : HCAppService, IWorkflowViewAccessServic
             return persisted;
         }
 
-        if (!ActiveInstanceStatuses.Contains(instance.Status))
+        if (!ViewEligibleInstanceStatuses.Contains(instance.Status))
         {
             return persisted;
         }
 
         var committedSteps = await _workflowCommittedStepsQueryService.LoadCommittedWorkflowStepsOrderedAsync(instance);
+        if (committedSteps.Count == 0)
+        {
+            return persisted;
+        }
+
+        if (string.Equals(
+                instance.Status,
+                nameof(DocumentWorkflowInstanceStatus.COMPLETED),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return committedSteps
+                .Where(s => WorkflowStepNavigationHelper.IsViewStep(s.Type))
+                .Select(s => s.Id)
+                .ToList();
+        }
+
         var currentStep = committedSteps.FirstOrDefault(s => s.Id == instance.CurrentStepId);
         if (currentStep == null)
         {
