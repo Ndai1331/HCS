@@ -55,6 +55,48 @@ public class WorkflowAssigneeResolver : IWorkflowAssigneeResolver, ITransientDep
         return ouChain.Select(x => x.OrganizationUnitId).ToList();
     }
 
+    public async Task<IReadOnlyList<Guid>> GetOrganizationUnitScopeWithDescendantsForUserAsync(Guid userId)
+    {
+        var userQuery = await _identityUserRepository.GetQueryableAsync();
+
+        // Take every OU the user belongs to (not only the primary one).
+        var userOuIds = await _asyncExecuter.ToListAsync(
+            userQuery
+                .Where(u => u.Id == userId)
+                .SelectMany(u => u.OrganizationUnits)
+                .Select(ou => ou.OrganizationUnitId));
+
+        if (userOuIds.Count == 0)
+        {
+            return Array.Empty<Guid>();
+        }
+
+        var scope = new HashSet<Guid>();
+
+        foreach (var ouId in userOuIds.Distinct())
+        {
+            // Ancestors: the OU itself plus all parents up to the root.
+            var chain = await GetOrganizationUnitChainAsync(ouId);
+            foreach (var node in chain)
+            {
+                scope.Add(node.OrganizationUnitId);
+            }
+
+            // Descendants: every OU nested under this OU, at any depth.
+            var ou = await _organizationUnitRepository.FindAsync(ouId);
+            if (ou != null && !string.IsNullOrEmpty(ou.Code))
+            {
+                var descendants = await _organizationUnitRepository.GetAllChildrenWithParentCodeAsync(ou.Code, ou.Id);
+                foreach (var child in descendants)
+                {
+                    scope.Add(child.Id);
+                }
+            }
+        }
+
+        return scope.ToList();
+    }
+
     public async Task<List<WorkflowStepUserDto>> ResolveCandidatesByRoleAsync(Guid roleId, Guid submitterUserId, bool isPrimary = false)
     {
         var primaryOuId = await GetSubmitterPrimaryOrganizationUnitIdAsync(submitterUserId);
