@@ -217,7 +217,27 @@ public abstract class DocumentWorkflowInstancesAppServiceBase : HCAppService
             new DocumentWorkflowInstanceDownloadTokenCacheItem
             {
                 Token = token,
-                UserId = CurrentUser.Id
+                UserId = CurrentUser.Id,
+                ExportAllUsers = false
+            },
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30) });
+        return new HC.Shared.DownloadTokenResultDto
+        {
+            Token = token
+        };
+    }
+
+    [Authorize(HCPermissions.Documents.ExportAllUsers)]
+    public virtual async Task<HC.Shared.DownloadTokenResultDto> GetAllUsersSigningExportDownloadTokenAsync()
+    {
+        var token = Guid.NewGuid().ToString("N");
+        await _downloadTokenCache.SetAsync(
+            token,
+            new DocumentWorkflowInstanceDownloadTokenCacheItem
+            {
+                Token = token,
+                UserId = CurrentUser.Id,
+                ExportAllUsers = true
             },
             new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30) });
         return new HC.Shared.DownloadTokenResultDto

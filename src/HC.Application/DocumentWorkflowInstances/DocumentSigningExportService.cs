@@ -66,23 +66,33 @@ public class DocumentSigningExportService : HCAppService, IDocumentSigningExport
     [AllowAnonymous]
     public async Task<IRemoteStreamContent> GetDocumentSigningListAsExcelFileAsync(DocumentSigningExcelDownloadDto input)
     {
-        var currentUserId = await ValidateAndConsumeSigningExportTokenAsync(input.DownloadToken);
+        var currentUserId = await ValidateAndConsumeSigningExportTokenAsync(input.DownloadToken, input.ExportAllUsers);
         var now = Clock.Now;
 
-        var filterState = await _signingFilterQueryBuilder.BuildSigningFilterStateAsync(
-            currentUserId,
-            input.FilterText,
-            input.FilterMode,
-            input.DateFilterField,
-            input.FromDate,
-            input.ToDate,
-            focusDocumentId: null,
-            input.SubmitterUserId,
-            input.SubmitterOrganizationUnitId);
+        var filterState = input.ExportAllUsers
+            ? await _signingFilterQueryBuilder.BuildAllUsersSigningFilterStateAsync(
+                input.FilterText,
+                input.FilterMode,
+                input.DateFilterField,
+                input.FromDate,
+                input.ToDate,
+                focusDocumentId: null,
+                input.SubmitterUserId,
+                input.SubmitterOrganizationUnitId)
+            : await _signingFilterQueryBuilder.BuildSigningFilterStateAsync(
+                currentUserId,
+                input.FilterText,
+                input.FilterMode,
+                input.DateFilterField,
+                input.FromDate,
+                input.ToDate,
+                focusDocumentId: null,
+                input.SubmitterUserId,
+                input.SubmitterOrganizationUnitId);
 
         if (input.FilterMode == DocumentSigningFilterMode.Following)
         {
-            return await CreateSigningExcelStreamAsync(new List<Dictionary<string, object?>>());
+            return await CreateSigningExcelStreamAsync(new List<Dictionary<string, object?>>(), input.ExportAllUsers);
         }
 
         var documentSigningSortQuery =
@@ -125,15 +135,19 @@ public class DocumentSigningExportService : HCAppService, IDocumentSigningExport
 
         var documents = sortRows.Select(x => x.Document).ToList();
         var exportRows = await BuildSigningExportRowsAsync(documents);
-        return await CreateSigningExcelStreamAsync(exportRows);
+        return await CreateSigningExcelStreamAsync(exportRows, input.ExportAllUsers);
     }
 
-    private async Task<IRemoteStreamContent> CreateSigningExcelStreamAsync(List<Dictionary<string, object?>> rows)
+    private async Task<IRemoteStreamContent> CreateSigningExcelStreamAsync(
+        List<Dictionary<string, object?>> rows,
+        bool exportAllUsers = false)
     {
         var memoryStream = new MemoryStream();
         await memoryStream.SaveAsAsync(rows);
         memoryStream.Seek(0, SeekOrigin.Begin);
-        var fileName = $"kyduyet_{Clock.Now:yyyyMMdd_HHmm}.xlsx";
+        var fileName = exportAllUsers
+            ? $"kyduyet_all_users_{Clock.Now:yyyyMMdd_HHmm}.xlsx"
+            : $"kyduyet_{Clock.Now:yyyyMMdd_HHmm}.xlsx";
         return new RemoteStreamContent(
             memoryStream,
             fileName,
@@ -568,7 +582,9 @@ public class DocumentSigningExportService : HCAppService, IDocumentSigningExport
     /// <summary>
     /// Signing export is [AllowAnonymous] (browser navigation); user id comes from the one-time download token.
     /// </summary>
-    private async Task<Guid> ValidateAndConsumeSigningExportTokenAsync(string inputToken)
+    private async Task<Guid> ValidateAndConsumeSigningExportTokenAsync(
+        string inputToken,
+        bool requestedExportAllUsers)
     {
         if (string.IsNullOrEmpty(inputToken))
         {
@@ -578,7 +594,8 @@ public class DocumentSigningExportService : HCAppService, IDocumentSigningExport
         var cacheItem = await _downloadTokenCache.GetAsync(inputToken);
         if (cacheItem == null
             || cacheItem.Token != inputToken
-            || !cacheItem.UserId.HasValue)
+            || !cacheItem.UserId.HasValue
+            || cacheItem.ExportAllUsers != requestedExportAllUsers)
         {
             throw new AbpAuthorizationException("Invalid download token.");
         }

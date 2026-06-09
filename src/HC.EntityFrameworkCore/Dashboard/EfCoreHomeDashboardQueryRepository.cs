@@ -27,18 +27,23 @@ public class EfCoreHomeDashboardQueryRepository : IHomeDashboardQueryRepository,
         DateTime filterStart,
         DateTime filterEndExclusive,
         int maxListItems = 200,
+        Guid? userId = null,
         CancellationToken cancellationToken = default)
     {
-        var totalProjectsCount = await _projectRepository.GetCountAsync(cancellationToken: cancellationToken);
+        var totalProjectsCount = await _projectRepository.GetCountAsync(
+            userId: userId,
+            cancellationToken: cancellationToken);
 
         var filteredProjectsCount = await _projectRepository.GetCountAsync(
             startDateMin: filterStart,
             startDateMax: filterEndExclusive,
+            userId: userId,
             cancellationToken: cancellationToken);
 
         var filteredProjects = await _projectRepository.GetListWithNavigationPropertiesAsync(
             startDateMin: filterStart,
             startDateMax: filterEndExclusive,
+            userId: userId,
             maxResultCount: maxListItems,
             skipCount: 0,
             cancellationToken: cancellationToken);
@@ -46,11 +51,13 @@ public class EfCoreHomeDashboardQueryRepository : IHomeDashboardQueryRepository,
         var totalTasksCount = await _projectTaskRepository.GetCountAsync(
             startDateMin: filterStart,
             startDateMax: filterEndExclusive,
+            userId: userId,
             cancellationToken: cancellationToken);
 
         var filteredTasks = await _projectTaskRepository.GetListWithNavigationPropertiesAsync(
             startDateMin: filterStart,
             startDateMax: filterEndExclusive,
+            userId: userId,
             sorting: "ProjectTask.StartDate DESC",
             maxResultCount: maxListItems,
             skipCount: 0,

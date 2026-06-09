@@ -93,6 +93,7 @@ public class HCPermissionDefinitionProvider : PermissionDefinitionProvider
         documentPermission.AddChild(HCPermissions.Documents.Create, L("Permission:Create"));
         documentPermission.AddChild(HCPermissions.Documents.Edit, L("Permission:Edit"));
         documentPermission.AddChild(HCPermissions.Documents.Delete, L("Permission:Delete"));
+        documentPermission.AddChild(HCPermissions.Documents.ExportAllUsers, L("Action.ExportAllUsers"));
         documentPermission.AddChild(HCPermissions.Documents.SubmitForSigning, L("Action.SubmitForSigning"));
         documentPermission.AddChild(HCPermissions.Documents.Send, L("Action.Send"));
         documentPermission.AddChild(HCPermissions.Documents.SubmitForApproval, L("Action.SubmitForApproval"));

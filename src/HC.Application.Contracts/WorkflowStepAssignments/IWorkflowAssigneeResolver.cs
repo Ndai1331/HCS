@@ -9,6 +9,8 @@ public interface IWorkflowAssigneeResolver
 {
     Task<Guid?> GetSubmitterPrimaryOrganizationUnitIdAsync(Guid submitterUserId);
 
+    Task<IReadOnlyList<Guid>> GetOrganizationUnitScopeIdsForUserAsync(Guid userId);
+
     Task<List<WorkflowStepUserDto>> ResolveCandidatesByRoleAsync(Guid roleId, Guid submitterUserId, bool isPrimary = false);
 
     Task<List<WorkflowStepUserDto>> ResolveCandidatesByRoleInOrganizationUnitsAsync(

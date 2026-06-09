@@ -50,6 +50,11 @@ public partial interface IDocumentWorkflowInstancesAppService
     Task<IRemoteStreamContent> GetDocumentSigningListAsExcelFileAsync(DocumentSigningExcelDownloadDto input);
 
     /// <summary>
+    /// One-time download token for all-users signing Excel export (requires ExportAllUsers permission).
+    /// </summary>
+    Task<HC.Shared.DownloadTokenResultDto> GetAllUsersSigningExportDownloadTokenAsync();
+
+    /// <summary>
     /// Get workflow instance logs (with navigation properties) for the action modal
     /// </summary>
     Task<List<DocumentWorkflowInstanceLogsWithNavigationPropertiesDto>> GetWorkflowInstanceLogsAsync(Guid workflowInstanceId);

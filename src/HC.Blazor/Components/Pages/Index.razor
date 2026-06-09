@@ -1003,7 +1003,7 @@
                                             </div>
                                             <div class="flex-grow-1" style="min-width: 0;">
                                                 <div class="fw-bold text-truncate d-flex align-items-center justify-content-between" style="font-size: 0.875rem;">
-                                                    <span>@participant.IdentityUser?.Surname @participant.IdentityUser?.Name</span>
+                                                    <span>@((participant.IdentityUser != null ? $"{participant.IdentityUser.Surname} {participant.IdentityUser.Name}".Trim() : "-"))</span>
                                                     <Badge Color="@GetParticipantResponseColor(participant.CalendarEventParticipant.ResponseStatus)" TextColor="TextColor.White" style="font-size: 0.7rem;">
                                                         @L[$"Enum:ParticipantResponse.{participant.CalendarEventParticipant.ResponseStatus}"]
                                                     </Badge>
@@ -1173,7 +1173,7 @@
                                                     </div>
                                                     <div class="flex-grow-1" style="min-width: 0;">
                                                         <div class="fw-bold text-truncate d-flex align-items-center justify-content-between" style="font-size: 0.875rem;">
-                                                            <span>@member.User?.Surname @member.User?.Name</span>
+                                                            <span>@((member.User != null ? $"{member.User.Surname} {member.User.Name}".Trim() : "-"))</span>
                                                             <span class="@($"badge bg-{EnumStatusColorHelper.GetProjectAssignmentRoleBackgroundColor(member.ProjectMember.MemberRole)}")" style="font-size: 0.7rem;">
                                                                 @L[$"Enum:ProjectMemberRole.{member.ProjectMember.MemberRole}"]
                                                             </span>

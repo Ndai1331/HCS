@@ -10,6 +10,7 @@ using HC.Documents;
 using HC.NotificationReceivers;
 using HC.ProjectTasks;
 using HC.Projects;
+using HC.Chat.Helpers;
 using HC.Permissions;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Application.Dtos;
@@ -58,8 +59,14 @@ public class HomeDashboardAppService : HCAppService, IHomeDashboardAppService
 
         var bundle = new HomeDashboardBundleDto();
 
+        Guid? userId = null;
+        if (!CurrentUser.IsAdminRole())
+        {
+            userId = CurrentUser.Id;
+        }
+
         var summary = await _homeDashboardQueryRepository.GetProjectAndTaskSummaryAsync(
-            filterStart, filterEndExclusive, maxListItems: 200);
+            filterStart, filterEndExclusive, maxListItems: 200, userId: userId);
 
         bundle.TotalProjectsCount = (int)summary.TotalProjectsCount;
         bundle.ActiveProjectsCount = (int)summary.FilteredProjectsCount;

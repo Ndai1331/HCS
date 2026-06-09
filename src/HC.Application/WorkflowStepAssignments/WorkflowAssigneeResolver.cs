@@ -43,6 +43,18 @@ public class WorkflowAssigneeResolver : IWorkflowAssigneeResolver, ITransientDep
                 .Select(ou => (Guid?)ou.OrganizationUnitId));
     }
 
+    public async Task<IReadOnlyList<Guid>> GetOrganizationUnitScopeIdsForUserAsync(Guid userId)
+    {
+        var primaryOuId = await GetSubmitterPrimaryOrganizationUnitIdAsync(userId);
+        if (!primaryOuId.HasValue)
+        {
+            return Array.Empty<Guid>();
+        }
+
+        var ouChain = await GetOrganizationUnitChainAsync(primaryOuId.Value);
+        return ouChain.Select(x => x.OrganizationUnitId).ToList();
+    }
+
     public async Task<List<WorkflowStepUserDto>> ResolveCandidatesByRoleAsync(Guid roleId, Guid submitterUserId, bool isPrimary = false)
     {
         var primaryOuId = await GetSubmitterPrimaryOrganizationUnitIdAsync(submitterUserId);

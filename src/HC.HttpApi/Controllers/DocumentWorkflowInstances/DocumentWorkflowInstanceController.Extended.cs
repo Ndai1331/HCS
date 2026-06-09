@@ -75,6 +75,13 @@ public class DocumentWorkflowInstanceController : DocumentWorkflowInstanceContro
     }
 
     [HttpGet]
+    [Route("all-users-signing-export-download-token")]
+    public Task<HC.Shared.DownloadTokenResultDto> GetAllUsersSigningExportDownloadTokenAsync()
+    {
+        return _documentWorkflowInstancesAppService.GetAllUsersSigningExportDownloadTokenAsync();
+    }
+
+    [HttpGet]
     [Route("workflow-instance-logs/{workflowInstanceId}")]
     public Task<List<DocumentWorkflowInstanceLogsWithNavigationPropertiesDto>> GetWorkflowInstanceLogsAsync(Guid workflowInstanceId)
     {

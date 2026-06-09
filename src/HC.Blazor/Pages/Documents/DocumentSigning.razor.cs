@@ -263,6 +263,11 @@ public partial class DocumentSigning
             await DownloadAsExcelAsync();
         }, IconName.Download, requiredPolicyName: HCPermissions.Documents.SubmitForSigning);
 
+        Toolbar.AddButton(L["ExportAllUsersToExcel"], async () =>
+        {
+            await DownloadAllUsersAsExcelAsync();
+        }, IconName.Download, requiredPolicyName: HCPermissions.Documents.ExportAllUsers);
+
         Toolbar.AddButton(L["CreateSigning"], async () =>
         {
             await ShowSubmitWorkflowModalAsync();
@@ -277,7 +282,13 @@ public partial class DocumentSigning
         return Task.CompletedTask;
     }
 
-    private async Task DownloadAsExcelAsync()
+    private Task DownloadAsExcelAsync()
+        => DownloadSigningExcelAsync(exportAllUsers: false);
+
+    private Task DownloadAllUsersAsExcelAsync()
+        => DownloadSigningExcelAsync(exportAllUsers: true);
+
+    private async Task DownloadSigningExcelAsync(bool exportAllUsers)
     {
         if (IsExporting)
         {
@@ -291,25 +302,10 @@ public partial class DocumentSigning
         {
             await UiMessageService.Info(L["Exporting"], options: options => options.OkButtonText = L["Ok"]);
             SyncFilterDatesFromRange();
-            var token = (await DocumentWorkflowInstancesAppService.GetDownloadTokenAsync()).Token;
-            var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("HC")
-                ?? await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
-            var culture = CultureInfo.CurrentUICulture.Name ?? CultureInfo.CurrentCulture.Name;
-            if (!culture.IsNullOrEmpty())
-            {
-                culture = "&culture=" + culture;
-            }
-
-            var url = $"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/document-workflow-instances/document-signing-as-excel-file" +
-                      $"?DownloadToken={HttpUtility.UrlEncode(token)}{culture}" +
-                      $"&FilterText={HttpUtility.UrlEncode(FilterText)}" +
-                      $"&FilterMode={(int)CurrentFilterMode}" +
-                      $"&DateFilterField={(int)ExportDateFilterField}" +
-                      $"&FromDate={FromDate?.ToString("O")}" +
-                      $"&ToDate={ToDate?.ToString("O")}" +
-                      $"&SubmitterUserId={SelectedFilterSubmitterUser.FirstOrDefault()?.Id}" +
-                      $"&SubmitterOrganizationUnitId={SelectedFilterSubmitterOrganizationUnit.FirstOrDefault()?.Id}";
-
+            var token = exportAllUsers
+                ? (await DocumentWorkflowInstancesAppService.GetAllUsersSigningExportDownloadTokenAsync()).Token
+                : (await DocumentWorkflowInstancesAppService.GetDownloadTokenAsync()).Token;
+            var url = await BuildSigningExportUrlAsync(token, exportAllUsers);
             NavigationManager.NavigateTo(url, forceLoad: true);
         }
         finally
@@ -317,6 +313,28 @@ public partial class DocumentSigning
             await BlockUiService.UnBlock();
             IsExporting = false;
         }
+    }
+
+    private async Task<string> BuildSigningExportUrlAsync(string token, bool exportAllUsers)
+    {
+        var remoteService = await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("HC")
+            ?? await RemoteServiceConfigurationProvider.GetConfigurationOrDefaultOrNullAsync("Default");
+        var culture = CultureInfo.CurrentUICulture.Name ?? CultureInfo.CurrentCulture.Name;
+        if (!culture.IsNullOrEmpty())
+        {
+            culture = "&culture=" + culture;
+        }
+
+        var exportAllUsersParam = exportAllUsers ? "&ExportAllUsers=true" : string.Empty;
+        return $"{remoteService?.BaseUrl.EnsureEndsWith('/') ?? string.Empty}api/app/document-workflow-instances/document-signing-as-excel-file" +
+               $"?DownloadToken={HttpUtility.UrlEncode(token)}{culture}{exportAllUsersParam}" +
+               $"&FilterText={HttpUtility.UrlEncode(FilterText)}" +
+               $"&FilterMode={(int)CurrentFilterMode}" +
+               $"&DateFilterField={(int)ExportDateFilterField}" +
+               $"&FromDate={FromDate?.ToString("O")}" +
+               $"&ToDate={ToDate?.ToString("O")}" +
+               $"&SubmitterUserId={SelectedFilterSubmitterUser.FirstOrDefault()?.Id}" +
+               $"&SubmitterOrganizationUnitId={SelectedFilterSubmitterOrganizationUnit.FirstOrDefault()?.Id}";
     }
 
     #endregion

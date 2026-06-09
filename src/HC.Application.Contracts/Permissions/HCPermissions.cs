@@ -211,6 +211,7 @@ public static class HCPermissions
         public const string RejectApproval = Default + ".RejectApproval";
         public const string ApproveWithNote = Default + ".ApproveWithNote";
         public const string MyDocuments = Default + ".MyDocuments";
+        public const string ExportAllUsers = Default + ".ExportAllUsers";
     }
 
     public static class DocumentFiles

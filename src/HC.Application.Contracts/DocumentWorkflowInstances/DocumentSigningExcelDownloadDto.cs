@@ -22,4 +22,9 @@ public class DocumentSigningExcelDownloadDto
     public Guid? SubmitterUserId { get; set; }
 
     public Guid? SubmitterOrganizationUnitId { get; set; }
+
+    /// <summary>
+    /// When true, export all users' signing records (requires an all-users export token).
+    /// </summary>
+    public bool ExportAllUsers { get; set; }
 }

@@ -202,6 +202,135 @@ public class DocumentSigningFilterQueryBuilder : HCAppService, IDocumentSigningF
         };
     }
 
+    public async Task<SigningFilterState> BuildAllUsersSigningFilterStateAsync(
+        string? filterText,
+        DocumentSigningFilterMode filterMode,
+        DocumentSigningDateFilterField dateFilterField,
+        DateTime? fromDate,
+        DateTime? toDate,
+        Guid? focusDocumentId,
+        Guid? submitterUserId = null,
+        Guid? submitterOrganizationUnitId = null)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        var assignmentQueryable = await _documentAssignmentRepository.GetQueryableAsync();
+        var instanceQueryable = await _documentWorkflowInstanceRepository.GetQueryableAsync();
+        var documentQueryable = await _documentRepository.GetQueryableAsync();
+
+        var workflowDocumentQuery = documentQueryable.Where(d => d.SourceType == DocumentSourceType.Workflow);
+        var baseDocQuery = workflowDocumentQuery;
+        baseDocQuery = ApplySigningDateFilter(baseDocQuery, instanceQueryable, dateFilterField, fromDate, toDate);
+
+        if (!string.IsNullOrWhiteSpace(filterText))
+        {
+            var trimmed = filterText.Trim();
+            baseDocQuery = baseDocQuery.Where(d =>
+                (d.Title != null && d.Title.Contains(trimmed)) ||
+                (d.No != null && d.No.Contains(trimmed)) ||
+                (d.StorageNumber != null && d.StorageNumber.Contains(trimmed)));
+        }
+
+        if (submitterUserId.HasValue && submitterUserId.Value != Guid.Empty)
+        {
+            var submitterDocIdsQuery = instanceQueryable
+                .Where(i => i.CreatorId == submitterUserId.Value)
+                .Select(i => i.DocumentId)
+                .Distinct();
+            baseDocQuery = baseDocQuery.Where(d => submitterDocIdsQuery.Contains(d.Id));
+        }
+
+        if (submitterOrganizationUnitId.HasValue && submitterOrganizationUnitId.Value != Guid.Empty)
+        {
+            var userQueryable = await _identityUserRepository.GetQueryableAsync();
+            var creatorIdsInOu = await AsyncExecuter.ToListAsync(
+                userQueryable
+                    .Where(u => u.OrganizationUnits.Any(ou => ou.OrganizationUnitId == submitterOrganizationUnitId.Value))
+                    .Select(u => u.Id));
+
+            if (creatorIdsInOu.Count == 0)
+            {
+                baseDocQuery = baseDocQuery.Where(d => false);
+            }
+            else
+            {
+                var submitterOuDocIds = await AsyncExecuter.ToListAsync(
+                    instanceQueryable
+                        .Where(i => i.CreatorId.HasValue && creatorIdsInOu.Contains(i.CreatorId.Value))
+                        .Select(i => i.DocumentId)
+                        .Distinct());
+                baseDocQuery = submitterOuDocIds.Count == 0
+                    ? baseDocQuery.Where(d => false)
+                    : baseDocQuery.Where(d => submitterOuDocIds.Contains(d.Id));
+            }
+        }
+
+        var sentToMeDocIdQuery = assignmentQueryable
+            .Where(a => a.WorkflowStepTemplateId != null)
+            .Select(a => a.DocumentId)
+            .Distinct();
+
+        var sentByMeDocIdQuery =
+            from inst in instanceQueryable
+            where inst.CreatorId != null
+            join a in assignmentQueryable on inst.DocumentId equals a.DocumentId
+            where a.WorkflowStepTemplateId != null && a.ReceiverUserId != inst.CreatorId
+            select inst.DocumentId;
+
+        var filteredDocIds = baseDocQuery.Select(d => d.Id);
+        var sentToMeCount = await AsyncExecuter.CountAsync(
+            filteredDocIds.Where(id => sentToMeDocIdQuery.Contains(id)));
+        var sentByMeCount = await AsyncExecuter.CountAsync(
+            filteredDocIds.Where(id => sentByMeDocIdQuery.Contains(id)));
+        const int followingCount = 0;
+        var allCount = await AsyncExecuter.CountAsync(filteredDocIds);
+
+        IQueryable<Document> modeFilteredQuery;
+        switch (filterMode)
+        {
+            case DocumentSigningFilterMode.SentToMe:
+                modeFilteredQuery = baseDocQuery.Where(d => sentToMeDocIdQuery.Contains(d.Id));
+                break;
+            case DocumentSigningFilterMode.SentByMe:
+                modeFilteredQuery = baseDocQuery.Where(d => sentByMeDocIdQuery.Contains(d.Id));
+                break;
+            case DocumentSigningFilterMode.Following:
+                modeFilteredQuery = baseDocQuery.Where(d => false);
+                break;
+            default:
+                modeFilteredQuery = baseDocQuery;
+                break;
+        }
+
+        if (focusDocumentId.HasValue)
+        {
+            modeFilteredQuery = modeFilteredQuery.Where(d => d.Id == focusDocumentId.Value);
+        }
+
+        var emptyPendingAssignmentDocIdsQuery = documentQueryable.Where(d => false).Select(d => d.Id);
+
+        stopwatch.Stop();
+        if (stopwatch.ElapsedMilliseconds >= 500)
+        {
+            Logger.LogInformation(
+                "BuildAllUsersSigningFilterStateAsync completed in {ElapsedMs}ms, mode={FilterMode}, allCount={AllCount}",
+                stopwatch.ElapsedMilliseconds,
+                filterMode,
+                allCount);
+        }
+
+        return new SigningFilterState
+        {
+            ModeFilteredQuery = modeFilteredQuery,
+            InstanceQueryable = instanceQueryable,
+            MyPendingAssignmentDocIdsQuery = emptyPendingAssignmentDocIdsQuery,
+            AllCount = allCount,
+            SentToMeCount = sentToMeCount,
+            SentByMeCount = sentByMeCount,
+            FollowingCount = followingCount
+        };
+    }
+
     private async Task<HashSet<Guid>> GetSentByMeExcludeBecauseCreatorSignedAsync(
         Guid currentUserId,
         List<Guid> candidateDocumentIds)

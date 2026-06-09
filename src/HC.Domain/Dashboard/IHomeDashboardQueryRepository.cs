@@ -31,5 +31,6 @@ public interface IHomeDashboardQueryRepository
         DateTime filterStart,
         DateTime filterEndExclusive,
         int maxListItems = 200,
+        Guid? userId = null,
         CancellationToken cancellationToken = default);
 }
