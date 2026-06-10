@@ -3,6 +3,11 @@
 @using HC.Permissions
 @inherits MasterDataPage
 
+@* Render the inherited base component markup; without this, Razor emits an empty BuildRenderTree override and the page shows nothing. *@
+@{
+    base.BuildRenderTree(__builder);
+}
+
 @code {
     protected override string DefaultType => "LOAI_VB";
     protected override string PageTitle => L["DocumentTypes"];

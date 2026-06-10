@@ -2,6 +2,11 @@
 @attribute [Authorize(HCPermissions.MasterDatas.SectorDefault)]
 @inherits MasterDataPage
 
+@* Render the inherited base component markup; without this, Razor emits an empty BuildRenderTree override and the page shows nothing. *@
+@{
+    base.BuildRenderTree(__builder);
+}
+
 @code {
     protected override string DefaultType => "LINH_VUC_VB";
     protected override string PageTitle => L["Sector"];

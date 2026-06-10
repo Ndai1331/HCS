@@ -2,6 +2,11 @@
 @attribute [Authorize(HCPermissions.MasterDatas.DocumentStatusDefault)]
 @inherits MasterDataPage
 
+@* Render the inherited base component markup; without this, Razor emits an empty BuildRenderTree override and the page shows nothing. *@
+@{
+    base.BuildRenderTree(__builder);
+}
+
 @code {
     protected override string DefaultType => "TRANG_THAI_VB";
     protected override string PageTitle => L["DocumentStatus"];
