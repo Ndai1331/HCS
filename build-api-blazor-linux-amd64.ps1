@@ -10,8 +10,8 @@ $slnFolder = $currentFolder
 $blazorBaseImage = "longnguyen1331/hc-blazor-base:$BaseTag"
 $apiBaseImage = "longnguyen1331/hc-api-base:$BaseTag"
 $blazorAppImage = "longnguyen1331/hc-blazor"
-# $apiAppImage = "longnguyen1331/hc-api"
-# $authServerAppImage = "longnguyen1331/hc-authserver"
+$apiAppImage = "longnguyen1331/hc-api"
+$authServerAppImage = "longnguyen1331/hc-authserver"
 # $backgroundJobWorkerAppImage = "longnguyen1331/hc-backgroundjobworker"
 # $pushNotificationWorkerAppImage = "longnguyen1331/hc-pushnotificationworker"
 
@@ -124,105 +124,105 @@ ENTRYPOINT ["dotnet", "HC.Blazor.dll"]
 }
 Write-Host "Docker image built and pushed successfully for Blazor (tags: $version, latest)" -ForegroundColor Green
 
-# Write-Host "********* BUILDING API (HC.HttpApi.Host, LibreOffice base) *********" -ForegroundColor Green
-# $apiFolder = Join-Path $slnFolder "src/HC.HttpApi.Host"
-# Set-Location $apiFolder
+Write-Host "********* BUILDING API (HC.HttpApi.Host, LibreOffice base) *********" -ForegroundColor Green
+$apiFolder = Join-Path $slnFolder "src/HC.HttpApi.Host"
+Set-Location $apiFolder
 
-# Write-Host "Publishing API..." -ForegroundColor Yellow
-# try {
-#     $apiPublishDir = Join-Path $apiFolder "bin/Release/net10.0/publish"
-#     if (Test-Path $apiPublishDir) {
-#         Remove-Item $apiPublishDir -Recurse -Force
-#     }
-#     $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
-#     if (-not $?) {
-#         throw "dotnet publish failed"
-#     }
-# } catch {
-#     Write-Host "ERROR: dotnet publish failed for API" -ForegroundColor Red
-#     Write-Host $result -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
+Write-Host "Publishing API..." -ForegroundColor Yellow
+try {
+    $apiPublishDir = Join-Path $apiFolder "bin/Release/net10.0/publish"
+    if (Test-Path $apiPublishDir) {
+        Remove-Item $apiPublishDir -Recurse -Force
+    }
+    $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
+    if (-not $?) {
+        throw "dotnet publish failed"
+    }
+} catch {
+    Write-Host "ERROR: dotnet publish failed for API" -ForegroundColor Red
+    Write-Host $result -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
 
-# Start-Sleep -Seconds 1
-# $apiPublishPathFull = [System.IO.Path]::GetFullPath((Join-Path $apiFolder "bin/Release/net10.0/publish"))
-# if (-not (Test-Path $apiPublishPathFull)) {
-#     Write-Host "ERROR: API publish folder not found: $apiPublishPathFull" -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
+Start-Sleep -Seconds 1
+$apiPublishPathFull = [System.IO.Path]::GetFullPath((Join-Path $apiFolder "bin/Release/net10.0/publish"))
+if (-not (Test-Path $apiPublishPathFull)) {
+    Write-Host "ERROR: API publish folder not found: $apiPublishPathFull" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
 
-# $apiDll = Join-Path $apiPublishPathFull "HC.HttpApi.Host.dll"
-# if (-not (Test-Path $apiDll)) {
-#     Write-Host "ERROR: API publish output is invalid. Missing file: $apiDll" -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
+$apiDll = Join-Path $apiPublishPathFull "HC.HttpApi.Host.dll"
+if (-not (Test-Path $apiDll)) {
+    Write-Host "ERROR: API publish output is invalid. Missing file: $apiDll" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
 
-# Write-Host "Publish successful. Output: $apiPublishPathFull" -ForegroundColor Green
-# Write-Host "Building Docker image for API (linux/amd64, Dockerfile.local)..." -ForegroundColor Yellow
-# try {
-#     docker buildx build --pull --no-cache --platform linux/amd64 -f Dockerfile.local -t "${apiAppImage}:$version" -t "${apiAppImage}:latest" . --push
-#     if (-not $?) {
-#         throw "docker build failed"
-#     }
-# } catch {
-#     Write-Host "ERROR: Docker build failed for API" -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
-# Write-Host "Docker image built and pushed successfully for API (tags: $version, latest)" -ForegroundColor Green
+Write-Host "Publish successful. Output: $apiPublishPathFull" -ForegroundColor Green
+Write-Host "Building Docker image for API (linux/amd64, Dockerfile.local)..." -ForegroundColor Yellow
+try {
+    docker buildx build --pull --no-cache --platform linux/amd64 -f Dockerfile.local -t "${apiAppImage}:$version" -t "${apiAppImage}:latest" . --push
+    if (-not $?) {
+        throw "docker build failed"
+    }
+} catch {
+    Write-Host "ERROR: Docker build failed for API" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+Write-Host "Docker image built and pushed successfully for API (tags: $version, latest)" -ForegroundColor Green
 
-# Write-Host "********* BUILDING AuthServer (HC.AuthServer) *********" -ForegroundColor Green
-# $authServerFolder = Join-Path $slnFolder "src/HC.AuthServer"
-# Set-Location $authServerFolder
+Write-Host "********* BUILDING AuthServer (HC.AuthServer) *********" -ForegroundColor Green
+$authServerFolder = Join-Path $slnFolder "src/HC.AuthServer"
+Set-Location $authServerFolder
 
-# Write-Host "Publishing AuthServer..." -ForegroundColor Yellow
-# try {
-#     $authServerPublishDir = Join-Path $authServerFolder "bin/Release/net10.0/publish"
-#     if (Test-Path $authServerPublishDir) {
-#         Remove-Item $authServerPublishDir -Recurse -Force
-#     }
-#     $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
-#     if (-not $?) {
-#         throw "dotnet publish failed"
-#     }
-# } catch {
-#     Write-Host "ERROR: dotnet publish failed for AuthServer" -ForegroundColor Red
-#     Write-Host $result -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
+Write-Host "Publishing AuthServer..." -ForegroundColor Yellow
+try {
+    $authServerPublishDir = Join-Path $authServerFolder "bin/Release/net10.0/publish"
+    if (Test-Path $authServerPublishDir) {
+        Remove-Item $authServerPublishDir -Recurse -Force
+    }
+    $result = dotnet publish -c Release -o bin/Release/net10.0/publish 2>&1
+    if (-not $?) {
+        throw "dotnet publish failed"
+    }
+} catch {
+    Write-Host "ERROR: dotnet publish failed for AuthServer" -ForegroundColor Red
+    Write-Host $result -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
 
-# Start-Sleep -Seconds 1
-# $authServerPublishPathFull = [System.IO.Path]::GetFullPath((Join-Path $authServerFolder "bin/Release/net10.0/publish"))
-# if (-not (Test-Path $authServerPublishPathFull)) {
-#     Write-Host "ERROR: AuthServer publish folder not found: $authServerPublishPathFull" -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
+Start-Sleep -Seconds 1
+$authServerPublishPathFull = [System.IO.Path]::GetFullPath((Join-Path $authServerFolder "bin/Release/net10.0/publish"))
+if (-not (Test-Path $authServerPublishPathFull)) {
+    Write-Host "ERROR: AuthServer publish folder not found: $authServerPublishPathFull" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
 
-# $authServerDll = Join-Path $authServerPublishPathFull "HC.AuthServer.dll"
-# if (-not (Test-Path $authServerDll)) {
-#     Write-Host "ERROR: AuthServer publish output is invalid. Missing file: $authServerDll" -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
+$authServerDll = Join-Path $authServerPublishPathFull "HC.AuthServer.dll"
+if (-not (Test-Path $authServerDll)) {
+    Write-Host "ERROR: AuthServer publish output is invalid. Missing file: $authServerDll" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
 
-# Write-Host "Publish successful. Output: $authServerPublishPathFull" -ForegroundColor Green
-# Write-Host "Building Docker image for AuthServer (linux/amd64, Dockerfile.local)..." -ForegroundColor Yellow
-# try {
-#     docker buildx build --pull --no-cache --platform linux/amd64 -f Dockerfile.local -t "${authServerAppImage}:$version" -t "${authServerAppImage}:latest" . --push
-#     if (-not $?) {
-#         throw "docker build failed"
-#     }
-# } catch {
-#     Write-Host "ERROR: Docker build failed for AuthServer" -ForegroundColor Red
-#     Set-Location $currentFolder
-#     exit 1
-# }
-# Write-Host "Docker image built and pushed successfully for AuthServer (tags: $version, latest) -> $authServerAppImage" -ForegroundColor Green
+Write-Host "Publish successful. Output: $authServerPublishPathFull" -ForegroundColor Green
+Write-Host "Building Docker image for AuthServer (linux/amd64, Dockerfile.local)..." -ForegroundColor Yellow
+try {
+    docker buildx build --pull --no-cache --platform linux/amd64 -f Dockerfile.local -t "${authServerAppImage}:$version" -t "${authServerAppImage}:latest" . --push
+    if (-not $?) {
+        throw "docker build failed"
+    }
+} catch {
+    Write-Host "ERROR: Docker build failed for AuthServer" -ForegroundColor Red
+    Set-Location $currentFolder
+    exit 1
+}
+Write-Host "Docker image built and pushed successfully for AuthServer (tags: $version, latest) -> $authServerAppImage" -ForegroundColor Green
 
 # Write-Host "********* BUILDING HC.PushNotificationWorker (linux/amd64, in-container publish) *********" -ForegroundColor Green
 # $pushNotificationWorkerFolder = Join-Path $slnFolder "src/HC.PushNotificationWorker"
@@ -273,6 +273,7 @@ Write-Host "Docker image built and pushed successfully for Blazor (tags: $versio
 #     exit 1
 # }
 
+
 # Start-Sleep -Seconds 1
 # $bjwPublishPathFull = [System.IO.Path]::GetFullPath((Join-Path $bjwFolder "bin/Release/net10.0/publish"))
 # if (-not (Test-Path $bjwPublishPathFull)) {
@@ -305,9 +306,6 @@ Write-Host "Docker image built and pushed successfully for Blazor (tags: $versio
 # Write-Host "********* BUILD COMPLETED (Blazor + API with LibreOffice + HC.BackgroundJobWorker) *********" -ForegroundColor Green
 # Set-Location $currentFolder
 # exit 0
-
-
-
 
 # cd /Users/nguyenlong/Documents/Projects/HCS/src/HC.AuthServer && docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-authserver:latest -t longnguyen1331/hc-authserver:latest . --push
 # cd /Users/nguyenlong/Documents/Projects/HCS/src/HC.HttpApi.Host && docker buildx build --no-cache --platform linux/amd64 -f Dockerfile.local -t longnguyen1331/hc-api:latest -t longnguyen1331/hc-api:latest . --push
