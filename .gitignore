@@ -296,11 +296,10 @@ src/HC.Blazor/Logs/*
 *mework-src*
 *mework-src/**
 
-src/HC.Blazor/wwwroot/images/logo/logo.png
-src/HC.Blazor/wwwroot/images/login-pages/login-bg-img-light.jpg
-src/HC.Blazor/wwwroot/images/login-pages/login-bg-img-dim.jpg
-src/HC.Blazor/wwwroot/images/login-pages/login-bg-img-dark.jpg
-src/HC.AuthServer/wwwroot/images/logo/logo.png
-src/HC.AuthServer/wwwroot/images/login-pages/login-bg-img-light.jpg
-src/HC.AuthServer/wwwroot/images/login-pages/login-bg-img-dim.jpg
-src/HC.AuthServer/wwwroot/images/login-pages/login-bg-img-dark.jpg
+# src/HC.Blazor/wwwroot/images/logo/logo.png
+# src/HC.Blazor/wwwroot/images/login-pages/login-bg-img-dim.jpg
+# src/HC.Blazor/wwwroot/images/login-pages/login-bg-img-dark.jpg
+# src/HC.AuthServer/wwwroot/images/logo/logo.png
+# src/HC.AuthServer/wwwroot/images/login-pages/login-bg-img-light.jpg
+# src/HC.AuthServer/wwwroot/images/login-pages/login-bg-img-dim.jpg
+# src/HC.AuthServer/wwwroot/images/login-pages/login-bg-img-dark.jpg
