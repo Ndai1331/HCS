@@ -17,6 +17,12 @@ public interface IWorkflowAssigneeResolver
     /// </summary>
     Task<IReadOnlyList<Guid>> GetOrganizationUnitScopeWithDescendantsForUserAsync(Guid userId);
 
+    /// <summary>
+    /// For every OU the user belongs to directly, includes that OU and all descendants (children).
+    /// Does not include ancestor (parent) OUs.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOrganizationUnitAndDescendantsScopeForUserAsync(Guid userId);
+
     Task<List<WorkflowStepUserDto>> ResolveCandidatesByRoleAsync(Guid roleId, Guid submitterUserId, bool isPrimary = false);
 
     Task<List<WorkflowStepUserDto>> ResolveCandidatesByRoleInOrganizationUnitsAsync(

@@ -97,6 +97,41 @@ public class WorkflowAssigneeResolver : IWorkflowAssigneeResolver, ITransientDep
         return scope.ToList();
     }
 
+    public async Task<IReadOnlyList<Guid>> GetOrganizationUnitAndDescendantsScopeForUserAsync(Guid userId)
+    {
+        var userQuery = await _identityUserRepository.GetQueryableAsync();
+
+        var userOuIds = await _asyncExecuter.ToListAsync(
+            userQuery
+                .Where(u => u.Id == userId)
+                .SelectMany(u => u.OrganizationUnits)
+                .Select(ou => ou.OrganizationUnitId));
+
+        if (userOuIds.Count == 0)
+        {
+            return Array.Empty<Guid>();
+        }
+
+        var scope = new HashSet<Guid>();
+
+        foreach (var ouId in userOuIds.Distinct())
+        {
+            scope.Add(ouId);
+
+            var ou = await _organizationUnitRepository.FindAsync(ouId);
+            if (ou != null && !string.IsNullOrEmpty(ou.Code))
+            {
+                var descendants = await _organizationUnitRepository.GetAllChildrenWithParentCodeAsync(ou.Code, ou.Id);
+                foreach (var child in descendants)
+                {
+                    scope.Add(child.Id);
+                }
+            }
+        }
+
+        return scope.ToList();
+    }
+
     public async Task<List<WorkflowStepUserDto>> ResolveCandidatesByRoleAsync(Guid roleId, Guid submitterUserId, bool isPrimary = false)
     {
         var primaryOuId = await GetSubmitterPrimaryOrganizationUnitIdAsync(submitterUserId);
